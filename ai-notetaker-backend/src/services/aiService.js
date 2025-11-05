@@ -1,0 +1,403 @@
+const { openai, MODELS, PRICING } = require('../config/openai');
+const { supabase } = require('../config/supabase');
+const { logger } = require('../utils/logger');
+const { AppError } = require('../middleware/errorHandler');
+const noteService = require('./noteService');
+
+class AIService {
+  /**
+   * Generate summary from note content
+   */
+  async generateSummary(userId, noteId, options = {}) {
+    const { length = 'medium' } = options;
+
+    try {
+      // Get note content
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      const lengthInstructions = {
+        short: 'in 2-3 sentences',
+        medium: 'in 1-2 paragraphs',
+        long: 'in a detailed, comprehensive summary'
+      };
+
+      const prompt = `Please provide a ${length} summary of the following content ${lengthInstructions[length]}:\n\n${note.content}`;
+
+      const completion = await openai.chat.completions.create({
+        model: MODELS.GPT4_MINI,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that creates clear, concise summaries of educational content.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: length === 'long' ? 1000 : length === 'medium' ? 500 : 200
+      });
+
+      const summary = completion.choices[0].message.content;
+
+      // Save AI content
+      const aiContent = await this.saveAIContent(noteId, 'summary', {
+        summary,
+        length,
+        model: MODELS.GPT4_MINI
+      });
+
+      // Log usage
+      await this.logUsage(userId, 'summary', completion.usage);
+
+      logger.info('Summary generated', { userId, noteId, length });
+
+      return {
+        id: aiContent.id,
+        summary,
+        length,
+        note_id: noteId
+      };
+
+    } catch (error) {
+      logger.error('Error generating summary', { error: error.message, userId, noteId });
+      throw new AppError('Failed to generate summary', 500);
+    }
+  }
+
+  /**
+   * Generate quiz questions from note content
+   */
+  async generateQuiz(userId, noteId, options = {}) {
+    const { difficulty = 'medium', num_questions = 5 } = options;
+
+    try {
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      const prompt = `Create ${num_questions} ${difficulty} multiple-choice quiz questions based on the following content. 
+      
+Format your response as a JSON array with this structure:
+[
+  {
+    "question": "Question text?",
+    "options": ["A) Option 1", "B) Option 2", "C) Option 3", "D) Option 4"],
+    "correct_answer": "A",
+    "explanation": "Brief explanation of why this is correct"
+  }
+]
+
+Content:
+${note.content}`;
+
+      const completion = await openai.chat.completions.create({
+        model: MODELS.GPT4_MINI,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert educator who creates engaging, educational quiz questions. Always respond with valid JSON only.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' }
+      });
+
+      const responseContent = completion.choices[0].message.content;
+      let questions;
+      
+      try {
+        const parsed = JSON.parse(responseContent);
+        questions = parsed.questions || parsed;
+      } catch {
+        throw new AppError('Failed to parse quiz questions', 500);
+      }
+
+      // Save AI content
+      const aiContent = await this.saveAIContent(noteId, 'quiz', {
+        questions,
+        difficulty,
+        num_questions,
+        model: MODELS.GPT4_MINI
+      });
+
+      // Log usage
+      await this.logUsage(userId, 'quiz', completion.usage);
+
+      logger.info('Quiz generated', { userId, noteId, num_questions });
+
+      return {
+        id: aiContent.id,
+        questions,
+        difficulty,
+        note_id: noteId
+      };
+
+    } catch (error) {
+      logger.error('Error generating quiz', { error: error.message, userId, noteId });
+      throw new AppError('Failed to generate quiz', 500);
+    }
+  }
+
+  /**
+   * Generate flashcards from note content
+   */
+  async generateFlashcards(userId, noteId, options = {}) {
+    const { num_cards = 10 } = options;
+
+    try {
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      const prompt = `Create ${num_cards} flashcards based on the following content. Each flashcard should have a front (question/term) and back (answer/definition).
+
+Format your response as a JSON array with this structure:
+[
+  {
+    "front": "Question or term",
+    "back": "Answer or definition"
+  }
+]
+
+Content:
+${note.content}`;
+
+      const completion = await openai.chat.completions.create({
+        model: MODELS.GPT4_MINI,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+        response_format: { type: 'json_object' }
+      });
+
+      const responseContent = completion.choices[0].message.content;
+      let flashcards;
+      
+      try {
+        const parsed = JSON.parse(responseContent);
+        flashcards = parsed.flashcards || parsed.cards || parsed;
+      } catch {
+        throw new AppError('Failed to parse flashcards', 500);
+      }
+
+      // Save AI content
+      const aiContent = await this.saveAIContent(noteId, 'flashcards', {
+        flashcards,
+        num_cards,
+        model: MODELS.GPT4_MINI
+      });
+
+      // Log usage
+      await this.logUsage(userId, 'flashcards', completion.usage);
+
+      logger.info('Flashcards generated', { userId, noteId, num_cards });
+
+      return {
+        id: aiContent.id,
+        flashcards,
+        note_id: noteId
+      };
+
+    } catch (error) {
+      logger.error('Error generating flashcards', { error: error.message, userId, noteId });
+      throw new AppError('Failed to generate flashcards', 500);
+    }
+  }
+
+  /**
+   * Generate visual learning diagram in Mermaid format
+   */
+  async generateDiagram(userId, noteId, options = {}) {
+    const { style = 'flowchart' } = options;
+
+    try {
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      const prompt = `Create a ${style} diagram in Mermaid syntax to visualize the key concepts from the following content. The diagram should help with visual learning and understanding relationships between concepts.
+
+Return ONLY the Mermaid syntax, starting with the diagram type (e.g., "graph TD" or "mindmap" or "sequenceDiagram").
+
+Content:
+${note.content.substring(0, 3000)}`; // Limit content length
+
+      const completion = await openai.chat.completions.create({
+        model: MODELS.GPT4_MINI,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert at creating educational diagrams using Mermaid syntax. Return only valid Mermaid syntax.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.5,
+        max_tokens: 1500
+      });
+
+      let diagram = completion.choices[0].message.content.trim();
+      
+      // Remove markdown code fences if present
+      diagram = diagram.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '').trim();
+
+      // Save AI content
+      const aiContent = await this.saveAIContent(noteId, 'diagram', {
+        diagram,
+        style,
+        model: MODELS.GPT4_MINI
+      });
+
+      // Log usage
+      await this.logUsage(userId, 'diagram', completion.usage);
+
+      logger.info('Diagram generated', { userId, noteId, style });
+
+      return {
+        id: aiContent.id,
+        diagram,
+        style,
+        note_id: noteId
+      };
+
+    } catch (error) {
+      logger.error('Error generating diagram', { error: error.message, userId, noteId });
+      throw new AppError('Failed to generate diagram', 500);
+    }
+  }
+
+  /**
+   * Get all AI-generated content for a note
+   */
+  async getAIContentForNote(userId, noteId) {
+    try {
+      // Verify note belongs to user
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      const { data, error } = await supabase
+        .from('ai_content')
+        .select('*')
+        .eq('note_id', noteId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      return data;
+    } catch (error) {
+      logger.error('Error fetching AI content', { error: error.message, userId, noteId });
+      throw new AppError('Failed to fetch AI content', 500);
+    }
+  }
+
+  /**
+   * Delete AI-generated content
+   */
+  async deleteAIContent(userId, contentId) {
+    try {
+      // Verify content belongs to user's note
+      const { data: content } = await supabase
+        .from('ai_content')
+        .select('note_id')
+        .eq('id', contentId)
+        .single();
+
+      if (!content) return false;
+
+      const note = await noteService.getNoteById(userId, content.note_id);
+      if (!note) return false;
+
+      const { error } = await supabase
+        .from('ai_content')
+        .delete()
+        .eq('id', contentId);
+
+      if (error) throw error;
+
+      logger.info('AI content deleted', { userId, contentId });
+      return true;
+    } catch (error) {
+      logger.error('Error deleting AI content', { error: error.message, userId, contentId });
+      throw new AppError('Failed to delete AI content', 500);
+    }
+  }
+
+  /**
+   * Save AI-generated content to database
+   */
+  async saveAIContent(noteId, contentType, content) {
+    const { data, error } = await supabase
+      .from('ai_content')
+      .insert({
+        note_id: noteId,
+        content_type: contentType,
+        content
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return data;
+  }
+
+  /**
+   * Log API usage for tracking
+   */
+  async logUsage(userId, actionType, usage) {
+    try {
+      const tokensUsed = usage.total_tokens || 0;
+      const model = MODELS.GPT4_MINI;
+      const pricing = PRICING[model] || { input: 0, output: 0 };
+      
+      const cost = (
+        (usage.prompt_tokens || 0) * pricing.input / 1000 +
+        (usage.completion_tokens || 0) * pricing.output / 1000
+      );
+
+      await supabase
+        .from('usage_logs')
+        .insert({
+          user_id: userId,
+          action_type: actionType,
+          tokens_used: tokensUsed,
+          cost_usd: cost,
+          metadata: {
+            model,
+            prompt_tokens: usage.prompt_tokens,
+            completion_tokens: usage.completion_tokens
+          }
+        });
+    } catch (error) {
+      logger.warn('Failed to log usage', { error: error.message });
+    }
+  }
+}
+
+module.exports = new AIService();

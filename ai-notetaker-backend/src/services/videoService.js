@@ -1,4 +1,4 @@
-const ytdl = require('ytdl-core');
+const ytdl = require('@distube/ytdl-core');
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');

@@ -149,18 +149,60 @@ class VideoService {
   }
 
   /**
-   * Get video metadata using yt-dlp
+   * Get video metadata using yt-dlp with multiple fallback strategies
    */
   async getVideoMetadata(videoUrl) {
-    return new Promise((resolve, reject) => {
-      const ytDlp = spawn('yt-dlp', [
+    const strategies = [
+      // Strategy 1: Android client (most reliable)
+      [
         '--dump-json',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=android',
-        '--user-agent', 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+        '--extractor-args', 'youtube:player_client=android,web',
+        '--no-check-certificates',
         videoUrl
-      ]);
+      ],
+      // Strategy 2: iOS client fallback
+      [
+        '--dump-json',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=ios',
+        '--no-check-certificates',
+        videoUrl
+      ],
+      // Strategy 3: TV embedded client
+      [
+        '--dump-json',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=tv_embedded',
+        '--no-check-certificates',
+        videoUrl
+      ]
+    ];
+
+    for (let i = 0; i < strategies.length; i++) {
+      try {
+        const metadata = await this._tryGetMetadata(strategies[i]);
+        return metadata;
+      } catch (error) {
+        logger.warn(`Metadata strategy ${i + 1} failed`, { error: error.message });
+        if (i === strategies.length - 1) {
+          throw error;
+        }
+        // Wait a bit before trying next strategy
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  }
+
+  /**
+   * Helper method to try getting metadata with specific args
+   */
+  async _tryGetMetadata(args) {
+    return new Promise((resolve, reject) => {
+      const ytDlp = spawn('yt-dlp', args);
 
       let stdout = '';
       let stderr = '';
@@ -195,24 +237,75 @@ class VideoService {
   }
 
   /**
-   * Download audio using yt-dlp (more reliable than ytdl-core)
+   * Download audio using yt-dlp with multiple fallback strategies
    */
   async downloadAudio(videoUrl, videoId) {
     const tempAudioPath = path.join(os.tmpdir(), `video_${videoId}_${Date.now()}.mp3`);
 
-    return new Promise((resolve, reject) => {
-      const ytDlp = spawn('yt-dlp', [
+    const strategies = [
+      // Strategy 1: Android client
+      [
         '-f', 'bestaudio',
         '--extract-audio',
         '--audio-format', 'mp3',
         '--audio-quality', '0',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=android',
-        '--user-agent', 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+        '--extractor-args', 'youtube:player_client=android,web',
+        '--no-check-certificates',
         '-o', tempAudioPath,
         videoUrl
-      ]);
+      ],
+      // Strategy 2: iOS client
+      [
+        '-f', 'bestaudio',
+        '--extract-audio',
+        '--audio-format', 'mp3',
+        '--audio-quality', '0',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=ios',
+        '--no-check-certificates',
+        '-o', tempAudioPath,
+        videoUrl
+      ],
+      // Strategy 3: TV embedded
+      [
+        '-f', 'bestaudio',
+        '--extract-audio',
+        '--audio-format', 'mp3',
+        '--audio-quality', '0',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=tv_embedded',
+        '--no-check-certificates',
+        '-o', tempAudioPath,
+        videoUrl
+      ]
+    ];
+
+    for (let i = 0; i < strategies.length; i++) {
+      try {
+        await this._tryDownload(strategies[i], tempAudioPath);
+        return tempAudioPath;
+      } catch (error) {
+        logger.warn(`Download strategy ${i + 1} failed`, { error: error.message });
+        if (i === strategies.length - 1) {
+          throw error;
+        }
+        // Clean up partial download before retry
+        await fs.unlink(tempAudioPath).catch(() => {});
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  }
+
+  /**
+   * Helper method to try downloading with specific args
+   */
+  async _tryDownload(args, expectedPath) {
+    return new Promise((resolve, reject) => {
+      const ytDlp = spawn('yt-dlp', args);
 
       let stderr = '';
 
@@ -228,11 +321,11 @@ class VideoService {
         }
 
         // yt-dlp may add extensions, check for the file
-        fs.access(tempAudioPath)
-          .then(() => resolve(tempAudioPath))
+        fs.access(expectedPath)
+          .then(() => resolve(expectedPath))
           .catch(() => {
             // Try with .mp3 extension if not already there
-            const mp3Path = tempAudioPath.replace(/\.[^.]+$/, '') + '.mp3';
+            const mp3Path = expectedPath.replace(/\.[^.]+$/, '') + '.mp3';
             fs.access(mp3Path)
               .then(() => resolve(mp3Path))
               .catch(() => reject(new Error('Audio file not found after download')));

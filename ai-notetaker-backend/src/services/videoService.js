@@ -153,30 +153,51 @@ class VideoService {
    */
   async getVideoMetadata(videoUrl) {
     const strategies = [
-      // Strategy 1: Android client (most reliable)
+      // Strategy 1: Android client with OAuth (most reliable now)
       [
         '--dump-json',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=android,web',
+        '--extractor-args', 'youtube:player_client=android',
+        '--extractor-args', 'youtube:skip=translated_subs',
         '--no-check-certificates',
         videoUrl
       ],
-      // Strategy 2: iOS client fallback
+      // Strategy 2: Web client with age gate bypass
       [
         '--dump-json',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=ios',
+        '--extractor-args', 'youtube:player_client=web',
+        '--extractor-args', 'youtube:skip=translated_subs,hls,dash',
+        '--age-limit', '21',
         '--no-check-certificates',
         videoUrl
       ],
-      // Strategy 3: TV embedded client
+      // Strategy 3: MediaConnect client (newer, less detected)
+      [
+        '--dump-json',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=mediaconnect',
+        '--no-check-certificates',
+        videoUrl
+      ],
+      // Strategy 4: TV embedded client
       [
         '--dump-json',
         '--no-playlist',
         '--no-warnings',
         '--extractor-args', 'youtube:player_client=tv_embedded',
+        '--no-check-certificates',
+        videoUrl
+      ],
+      // Strategy 5: Android VR as last resort
+      [
+        '--dump-json',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=android_vr',
         '--no-check-certificates',
         videoUrl
       ]
@@ -185,14 +206,19 @@ class VideoService {
     for (let i = 0; i < strategies.length; i++) {
       try {
         const metadata = await this._tryGetMetadata(strategies[i]);
+        logger.info(`Metadata strategy ${i + 1} succeeded`, { videoUrl });
         return metadata;
       } catch (error) {
         logger.warn(`Metadata strategy ${i + 1} failed`, { error: error.message });
         if (i === strategies.length - 1) {
-          throw error;
+          // All strategies failed
+          throw new AppError(
+            'YouTube is blocking video access. This video may be restricted, private, or require sign-in. Please try a different video or contact support.',
+            403
+          );
         }
         // Wait a bit before trying next strategy
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
   }
@@ -251,12 +277,13 @@ class VideoService {
         '--audio-quality', '0',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=android,web',
+        '--extractor-args', 'youtube:player_client=android',
+        '--extractor-args', 'youtube:skip=translated_subs',
         '--no-check-certificates',
         '-o', tempAudioPath,
         videoUrl
       ],
-      // Strategy 2: iOS client
+      // Strategy 2: Web client
       [
         '-f', 'bestaudio',
         '--extract-audio',
@@ -264,12 +291,27 @@ class VideoService {
         '--audio-quality', '0',
         '--no-playlist',
         '--no-warnings',
-        '--extractor-args', 'youtube:player_client=ios',
+        '--extractor-args', 'youtube:player_client=web',
+        '--extractor-args', 'youtube:skip=translated_subs,hls,dash',
+        '--age-limit', '21',
         '--no-check-certificates',
         '-o', tempAudioPath,
         videoUrl
       ],
-      // Strategy 3: TV embedded
+      // Strategy 3: MediaConnect
+      [
+        '-f', 'bestaudio',
+        '--extract-audio',
+        '--audio-format', 'mp3',
+        '--audio-quality', '0',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=mediaconnect',
+        '--no-check-certificates',
+        '-o', tempAudioPath,
+        videoUrl
+      ],
+      // Strategy 4: TV embedded
       [
         '-f', 'bestaudio',
         '--extract-audio',
@@ -287,15 +329,19 @@ class VideoService {
     for (let i = 0; i < strategies.length; i++) {
       try {
         await this._tryDownload(strategies[i], tempAudioPath);
+        logger.info(`Download strategy ${i + 1} succeeded`, { videoId });
         return tempAudioPath;
       } catch (error) {
         logger.warn(`Download strategy ${i + 1} failed`, { error: error.message });
         if (i === strategies.length - 1) {
-          throw error;
+          throw new AppError(
+            'Failed to download video audio. The video may be restricted or unavailable.',
+            403
+          );
         }
         // Clean up partial download before retry
         await fs.unlink(tempAudioPath).catch(() => {});
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
   }

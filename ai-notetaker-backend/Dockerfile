@@ -10,7 +10,7 @@ RUN apk add --no-cache \
 
 # Install yt-dlp using pip
 # --break-system-packages flag is needed for newer pip versions
-RUN pip3 install --no-cache-dir --break-system-packages yt-dlp
+RUN pip3 install --no-cache-dir --break-system-packages -U yt-dlp
 
 # Verify installations
 RUN yt-dlp --version && ffmpeg -version

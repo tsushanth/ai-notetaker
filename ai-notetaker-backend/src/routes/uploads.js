@@ -43,8 +43,23 @@ router.post('/pdf', upload.single('file'), asyncHandler(async (req, res) => {
   }
 
   const { title } = req.body;
+  
+  // ✅ FIX: Get user token from request
+  // Your auth middleware should set this
+  const userToken = req.token || req.user?.token || req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!userToken) {
+    throw new AppError('Authentication token missing', 401);
+  }
 
-  const result = await pdfService.processPDF(req.userId, req.file, title);
+  // ✅ FIX: Pass userToken to PDF service
+  const result = await pdfService.processPDF(
+    req.userId, 
+    req.file, 
+    title,
+    'pdf',
+    userToken  // ← Pass the token for RLS
+  );
 
   res.status(201).json({
     success: true,
@@ -79,10 +94,22 @@ router.post('/slideshow', upload.single('file'), asyncHandler(async (req, res) =
   }
 
   const { title } = req.body;
+  
+  // ✅ FIX: Get user token
+  const userToken = req.token || req.user?.token || req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!userToken) {
+    throw new AppError('Authentication token missing', 401);
+  }
 
-  // For now, we'll treat slideshows similar to PDFs
-  // In production, you might want specialized processing
-  const result = await pdfService.processPDF(req.userId, req.file, title, 'slideshow');
+  // ✅ FIX: Pass userToken to PDF service
+  const result = await pdfService.processPDF(
+    req.userId, 
+    req.file, 
+    title, 
+    'slideshow',
+    userToken  // ← Pass the token for RLS
+  );
 
   res.status(201).json({
     success: true,

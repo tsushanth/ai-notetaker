@@ -7,9 +7,18 @@ const storageService = require('./storageService');
 class PDFService {
   /**
    * Process a PDF file and create a note
+   * @param {string} userId - User ID
+   * @param {Object} file - File object with buffer
+   * @param {string} title - Optional title
+   * @param {string} sourceType - Source type (default: 'pdf')
+   * @param {string} userToken - User's JWT token (REQUIRED for storage)
    */
-  async processPDF(userId, file, title, sourceType = 'pdf') {
+  async processPDF(userId, file, title, sourceType = 'pdf', userToken) {
     try {
+      if (!userToken) {
+        throw new AppError('User token required for PDF processing', 401);
+      }
+
       // Extract text from PDF
       const pdfData = await pdfParse(file.buffer);
       const extractedText = pdfData.text;
@@ -18,8 +27,13 @@ class PDFService {
         throw new AppError('Could not extract text from PDF', 400);
       }
 
-      // Upload PDF to storage
-      const uploadResult = await storageService.uploadFile(userId, file, 'pdfs');
+      // Upload PDF to storage - PASS USER TOKEN HERE
+      const uploadResult = await storageService.uploadFile(
+        userId, 
+        file, 
+        'pdfs',
+        userToken  // ← This is the critical fix!
+      );
 
       // Create note with extracted content
       const note = await noteService.createNote(userId, {
@@ -60,45 +74,6 @@ class PDFService {
       
       throw new AppError('Failed to process PDF', 500);
     }
-  }
-
-  /**
-   * Extract images from PDF (advanced feature - requires additional libraries)
-   */
-  async extractImagesFromPDF(userId, file) {
-    // This would require additional libraries like pdf2pic or pdf-lib
-    // Implementation left for future enhancement
-    throw new AppError('Image extraction not yet implemented', 501);
-  }
-
-  /**
-   * Process multiple PDFs in batch
-   */
-  async processPDFBatch(userId, files) {
-    const results = [];
-    const errors = [];
-
-    for (const file of files) {
-      try {
-        const result = await this.processPDF(userId, file);
-        results.push(result);
-      } catch (error) {
-        errors.push({
-          filename: file.originalname,
-          error: error.message
-        });
-      }
-    }
-
-    return {
-      successful: results,
-      failed: errors,
-      summary: {
-        total: files.length,
-        successful: results.length,
-        failed: errors.length
-      }
-    };
   }
 }
 

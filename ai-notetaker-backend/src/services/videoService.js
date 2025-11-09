@@ -1,8 +1,8 @@
-const ytdl = require('@distube/ytdl-core');
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
 const os = require('os');
+const { spawn } = require('child_process');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const { openai, MODELS } = require('../config/openai');
@@ -10,7 +10,7 @@ const noteService = require('./noteService');
 
 class VideoService {
   /**
-   * Process a video URL and transcribe its audio
+   * Process a video URL and transcribe its audio using Whisper
    */
   async processVideoUrl(userId, videoUrl, title) {
     try {
@@ -19,13 +19,13 @@ class VideoService {
         throw new AppError('Invalid video URL', 400);
       }
 
-      // Check if it's a YouTube URL
-      if (ytdl.validateURL(videoUrl)) {
-        return await this.processYouTubeVideo(userId, videoUrl, title);
+      // Extract video ID
+      const videoId = this.extractYouTubeId(videoUrl);
+      if (!videoId) {
+        throw new AppError('Could not extract video ID from URL', 400);
       }
 
-      // For other video platforms, you'd implement similar logic
-      throw new AppError('Only YouTube URLs are currently supported', 400);
+      return await this.processYouTubeVideo(userId, videoUrl, videoId, title);
 
     } catch (error) {
       logger.error('Error processing video URL', { error: error.message, userId, videoUrl });
@@ -39,102 +39,219 @@ class VideoService {
   }
 
   /**
-   * Process YouTube video
+   * Process YouTube video using yt-dlp and Whisper API
    */
-  async processYouTubeVideo(userId, videoUrl, customTitle) {
-    try {
-      // Get video info
-      const info = await ytdl.getInfo(videoUrl);
-      const videoTitle = customTitle || info.videoDetails.title;
-      const videoDuration = parseInt(info.videoDetails.lengthSeconds);
+  async processYouTubeVideo(userId, videoUrl, videoId, customTitle) {
+    let tempAudioPath = null;
 
-      // Check duration limit (e.g., 2 hours)
+    try {
+      // Get video metadata using yt-dlp
+      const metadata = await this.getVideoMetadata(videoUrl);
+      const videoTitle = customTitle || metadata.title || `YouTube Video ${videoId}`;
+      const videoDuration = metadata.duration || 0;
+
+      // Check duration limit (e.g., 2 hours = 7200 seconds)
       const maxDuration = parseInt(process.env.MAX_AUDIO_DURATION) || 7200;
       if (videoDuration > maxDuration) {
         throw new AppError(
-          `Video is too long. Maximum duration is ${maxDuration / 60} minutes`,
+          `Video is too long. Maximum duration is ${Math.floor(maxDuration / 60)} minutes`,
           400
         );
       }
 
-      // Download audio
-      const tempAudioPath = path.join(os.tmpdir(), `video_${Date.now()}.mp3`);
+      // Download audio using yt-dlp
+      logger.info('Downloading audio', { videoId, duration: videoDuration });
+      tempAudioPath = await this.downloadAudio(videoUrl, videoId);
+
+      // Check file size (Whisper has 25MB limit)
+      const stats = await fs.stat(tempAudioPath);
+      const fileSizeMB = stats.size / (1024 * 1024);
       
-      await new Promise((resolve, reject) => {
-        const stream = ytdl(videoUrl, { 
-          quality: 'highestaudio',
-          filter: 'audioonly',
-          // Add these options to bypass bot detection
-          requestOptions: {
-            headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              'Accept-Language': 'en-US,en;q=0.9',
-            }
-          }
-        });
-
-        const writeStream = require('fs').createWriteStream(tempAudioPath);
-        
-        stream.pipe(writeStream);
-
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
-        stream.on('error', reject);
-      });
-
-      try {
-        // Transcribe audio with OpenAI Whisper
-        const audioFile = await fs.readFile(tempAudioPath);
-        const transcription = await openai.audio.transcriptions.create({
-          file: new File([audioFile], 'audio.mp3', { type: 'audio/mpeg' }),
-          model: MODELS.WHISPER,
-          language: 'en',
-          response_format: 'verbose_json'
-        });
-
-        // Clean up temp file
-        await fs.unlink(tempAudioPath).catch(() => {});
-
-        // Create note with transcription
-        const note = await noteService.createNote(userId, {
-          title: videoTitle,
-          content: transcription.text,
-          source_type: 'video',
-          source_url: videoUrl,
-          metadata: {
-            video_id: info.videoDetails.videoId,
-            channel: info.videoDetails.author.name,
-            duration: videoDuration,
-            published_at: info.videoDetails.publishDate,
-            thumbnail: info.videoDetails.thumbnails[0]?.url
-          }
-        });
-
-        logger.info('YouTube video processed', { 
-          userId, 
-          noteId: note.id,
-          videoId: info.videoDetails.videoId
-        });
-
-        return {
-          note,
-          stats: {
-            duration: videoDuration,
-            characters: transcription.text.length,
-            words: transcription.text.split(/\s+/).length
-          }
-        };
-
-      } catch (transcribeError) {
-        // Clean up temp file on error
-        await fs.unlink(tempAudioPath).catch(() => {});
-        throw transcribeError;
+      if (fileSizeMB > 25) {
+        throw new AppError('Audio file too large for transcription (max 25MB)', 400);
       }
 
+      logger.info('Transcribing audio with Whisper', { 
+        videoId, 
+        fileSizeMB: fileSizeMB.toFixed(2) 
+      });
+
+      // Transcribe with OpenAI Whisper
+      const audioBuffer = await fs.readFile(tempAudioPath);
+      const transcription = await openai.audio.transcriptions.create({
+        file: await this.createFile(audioBuffer, 'audio.mp3'),
+        model: MODELS.WHISPER,
+        language: 'en',
+        response_format: 'verbose_json'
+      });
+
+      // Clean up temp file
+      await fs.unlink(tempAudioPath).catch(() => {});
+      tempAudioPath = null;
+
+      // Create note with transcription
+      const note = await noteService.createNote(userId, {
+        title: videoTitle,
+        content: transcription.text,
+        source_type: 'video',
+        source_url: videoUrl,
+        metadata: {
+          video_id: videoId,
+          channel: metadata.uploader || metadata.channel,
+          duration: videoDuration,
+          thumbnail: metadata.thumbnail,
+          transcription_language: 'en'
+        }
+      });
+
+      logger.info('YouTube video processed successfully', { 
+        userId, 
+        noteId: note.id,
+        videoId: videoId,
+        duration: videoDuration
+      });
+
+      return {
+        note,
+        stats: {
+          duration: videoDuration,
+          characters: transcription.text.length,
+          words: transcription.text.split(/\s+/).length
+        }
+      };
+
     } catch (error) {
-      logger.error('Error processing YouTube video', { error: error.message, userId });
+      // Clean up temp file on error
+      if (tempAudioPath) {
+        await fs.unlink(tempAudioPath).catch(() => {});
+      }
+
+      logger.error('Error processing YouTube video', { 
+        error: error.message, 
+        userId, 
+        videoId 
+      });
+
+      // Provide specific error messages
+      if (error.message && error.message.includes('Video unavailable')) {
+        throw new AppError('Video is unavailable or private', 404);
+      }
+      if (error.message && error.message.includes('Sign in')) {
+        throw new AppError('Video requires sign-in to view', 403);
+      }
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
       throw new AppError('Failed to process YouTube video', 500);
     }
+  }
+
+  /**
+   * Get video metadata using yt-dlp
+   */
+  async getVideoMetadata(videoUrl) {
+    return new Promise((resolve, reject) => {
+      const ytDlp = spawn('yt-dlp', [
+        '--dump-json',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=android',
+        '--user-agent', 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+        videoUrl
+      ]);
+
+      let stdout = '';
+      let stderr = '';
+
+      ytDlp.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      ytDlp.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      ytDlp.on('close', (code) => {
+        if (code !== 0) {
+          logger.error('yt-dlp metadata error', { stderr, code });
+          reject(new Error('Failed to fetch video metadata'));
+          return;
+        }
+
+        try {
+          const metadata = JSON.parse(stdout);
+          resolve(metadata);
+        } catch (e) {
+          reject(new Error('Failed to parse video metadata'));
+        }
+      });
+
+      ytDlp.on('error', (error) => {
+        reject(new Error(`yt-dlp not found: ${error.message}`));
+      });
+    });
+  }
+
+  /**
+   * Download audio using yt-dlp (more reliable than ytdl-core)
+   */
+  async downloadAudio(videoUrl, videoId) {
+    const tempAudioPath = path.join(os.tmpdir(), `video_${videoId}_${Date.now()}.mp3`);
+
+    return new Promise((resolve, reject) => {
+      const ytDlp = spawn('yt-dlp', [
+        '-f', 'bestaudio',
+        '--extract-audio',
+        '--audio-format', 'mp3',
+        '--audio-quality', '0',
+        '--no-playlist',
+        '--no-warnings',
+        '--extractor-args', 'youtube:player_client=android',
+        '--user-agent', 'com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip',
+        '-o', tempAudioPath,
+        videoUrl
+      ]);
+
+      let stderr = '';
+
+      ytDlp.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      ytDlp.on('close', (code) => {
+        if (code !== 0) {
+          logger.error('yt-dlp download error', { stderr, code });
+          reject(new Error('Failed to download audio'));
+          return;
+        }
+
+        // yt-dlp may add extensions, check for the file
+        fs.access(tempAudioPath)
+          .then(() => resolve(tempAudioPath))
+          .catch(() => {
+            // Try with .mp3 extension if not already there
+            const mp3Path = tempAudioPath.replace(/\.[^.]+$/, '') + '.mp3';
+            fs.access(mp3Path)
+              .then(() => resolve(mp3Path))
+              .catch(() => reject(new Error('Audio file not found after download')));
+          });
+      });
+
+      ytDlp.on('error', (error) => {
+        reject(new Error(`yt-dlp not found: ${error.message}`));
+      });
+    });
+  }
+
+  /**
+   * Create File object for OpenAI API (Node.js doesn't have native File)
+   */
+  async createFile(buffer, filename) {
+    // OpenAI SDK expects a File-like object
+    const blob = new Blob([buffer], { type: 'audio/mpeg' });
+    return new File([blob], filename, { type: 'audio/mpeg' });
   }
 
   /**
@@ -163,7 +280,8 @@ class VideoService {
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
       /youtube\.com\/embed\/([^&\n?#]+)/,
-      /youtube\.com\/v\/([^&\n?#]+)/
+      /youtube\.com\/v\/([^&\n?#]+)/,
+      /youtube\.com\/shorts\/([^&\n?#]+)/
     ];
 
     for (const pattern of patterns) {
@@ -175,46 +293,17 @@ class VideoService {
   }
 
   /**
-   * Get video captions/subtitles if available
-   * This is an alternative to transcription for videos that have captions
+   * Format seconds to timestamp (HH:MM:SS)
    */
-  async getVideoCaptions(videoUrl) {
-    try {
-      const info = await ytdl.getInfo(videoUrl);
-      const captions = info.player_response?.captions;
-      
-      if (!captions || !captions.playerCaptionsTracklistRenderer) {
-        return null;
-      }
-
-      const captionTracks = captions.playerCaptionsTracklistRenderer.captionTracks;
-      
-      // Get English captions
-      const englishTrack = captionTracks.find(track => 
-        track.languageCode === 'en' || track.languageCode.startsWith('en')
-      );
-
-      if (!englishTrack) return null;
-
-      // Fetch caption content
-      const response = await axios.get(englishTrack.baseUrl);
-      
-      // Parse and clean caption text (remove timestamps, tags, etc.)
-      // This is a simplified version - you might want more sophisticated parsing
-      const text = response.data
-        .replace(/<[^>]*>/g, '') // Remove XML tags
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .trim();
-
-      return text;
-    } catch (error) {
-      logger.warn('Could not fetch captions', { error: error.message });
-      return null;
+  formatTimestamp(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   }
 }
 

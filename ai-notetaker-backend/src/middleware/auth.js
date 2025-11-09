@@ -135,15 +135,21 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Attach user to request object
-    req.user = user;
+    // ✅ CRITICAL FIX: Store the token for RLS operations
+    // Attach user info AND token to request object
+    req.user = {
+      ...user,
+      token: token  // ← Add raw token to user object
+    };
     req.userId = user.id;
     req.userEmail = user.email;
+    req.token = token;  // ← Also store at top level for easy access
 
     // Log successful authentication (debug level)
     logger.debug('Authentication successful', {
       userId: req.userId,
       email: req.userEmail,
+      hasToken: !!req.token,
       path: req.path,
       method: req.method
     });
@@ -185,9 +191,14 @@ const optionalAuth = async (req, res, next) => {
       const { data: { user }, error } = await supabase.auth.getUser(token);
       
       if (!error && user) {
-        req.user = user;
+        // ✅ Also store token in optional auth
+        req.user = {
+          ...user,
+          token: token
+        };
         req.userId = user.id;
         req.userEmail = user.email;
+        req.token = token;
       }
     }
   } catch (error) {

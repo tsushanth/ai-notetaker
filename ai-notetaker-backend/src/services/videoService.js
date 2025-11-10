@@ -8,6 +8,14 @@ const { AppError } = require('../middleware/errorHandler');
 const { openai, MODELS } = require('../config/openai');
 const noteService = require('./noteService');
 
+const INVIDIOUS_INSTANCES = [
+  'https://yewtu.be',
+  'https://inv.nadeko.net',
+  'https://invidious.nerdvpn.de',
+  'https://invidious.privacyredirect.com',
+  'https://vid.puffyan.us'
+];
+
 class VideoService {
   /**
    * Process a video URL and transcribe its audio using Whisper
@@ -39,18 +47,55 @@ class VideoService {
   }
 
   /**
-   * Process YouTube video using yt-dlp and Whisper API
+   * Process YouTube video - tries yt-dlp first, then Invidious fallback
    */
   async processYouTubeVideo(userId, videoUrl, videoId, customTitle) {
     let tempAudioPath = null;
 
     try {
-      // Get video metadata using yt-dlp
-      const metadata = await this.getVideoMetadata(videoUrl);
+      let metadata;
+      let useInvidious = false;
+
+      // Try yt-dlp first with all strategies
+      try {
+        logger.info('Attempting yt-dlp download', { videoId });
+        metadata = await this.getVideoMetadata(videoUrl);
+        logger.info('yt-dlp metadata successful', { videoId, title: metadata.title });
+      } catch (error) {
+        logger.warn('yt-dlp failed, falling back to Invidious', { 
+          error: error.message,
+          videoId 
+        });
+        
+        // Fallback to Invidious
+        const invidiousData = await this.getVideoInfoViaInvidious(videoId);
+        
+        if (!invidiousData.audioUrl) {
+          throw new AppError(
+            'Unable to access this video. It may be private, age-restricted, or unavailable in your region.',
+            403
+          );
+        }
+
+        metadata = {
+          title: invidiousData.title,
+          duration: invidiousData.duration,
+          uploader: invidiousData.uploader,
+          thumbnail: invidiousData.thumbnail
+        };
+        useInvidious = true;
+        
+        logger.info('Downloading audio via Invidious', { 
+          videoId,
+          audioUrl: invidiousData.audioUrl.substring(0, 100) + '...'
+        });
+        tempAudioPath = await this.downloadAudioFromUrl(invidiousData.audioUrl, videoId);
+      }
+
       const videoTitle = customTitle || metadata.title || `YouTube Video ${videoId}`;
       const videoDuration = metadata.duration || 0;
 
-      // Check duration limit (e.g., 2 hours = 7200 seconds)
+      // Check duration limit
       const maxDuration = parseInt(process.env.MAX_AUDIO_DURATION) || 7200;
       if (videoDuration > maxDuration) {
         throw new AppError(
@@ -59,9 +104,11 @@ class VideoService {
         );
       }
 
-      // Download audio using yt-dlp
-      logger.info('Downloading audio', { videoId, duration: videoDuration });
-      tempAudioPath = await this.downloadAudio(videoUrl, videoId);
+      // If using yt-dlp (not Invidious), download audio normally
+      if (!useInvidious) {
+        logger.info('Downloading audio via yt-dlp', { videoId, duration: videoDuration });
+        tempAudioPath = await this.downloadAudio(videoUrl, videoId);
+      }
 
       // Check file size (Whisper has 25MB limit)
       const stats = await fs.stat(tempAudioPath);
@@ -73,7 +120,8 @@ class VideoService {
 
       logger.info('Transcribing audio with Whisper', { 
         videoId, 
-        fileSizeMB: fileSizeMB.toFixed(2) 
+        fileSizeMB: fileSizeMB.toFixed(2),
+        method: useInvidious ? 'invidious' : 'yt-dlp'
       });
 
       // Transcribe with OpenAI Whisper
@@ -100,7 +148,8 @@ class VideoService {
           channel: metadata.uploader || metadata.channel,
           duration: videoDuration,
           thumbnail: metadata.thumbnail,
-          transcription_language: 'en'
+          transcription_language: 'en',
+          processing_method: useInvidious ? 'invidious' : 'yt-dlp'
         }
       });
 
@@ -108,7 +157,8 @@ class VideoService {
         userId, 
         noteId: note.id,
         videoId: videoId,
-        duration: videoDuration
+        duration: videoDuration,
+        method: useInvidious ? 'invidious' : 'yt-dlp'
       });
 
       return {
@@ -128,18 +178,11 @@ class VideoService {
 
       logger.error('Error processing YouTube video', { 
         error: error.message, 
+        stack: error.stack,
         userId, 
         videoId 
       });
 
-      // Provide specific error messages
-      if (error.message && error.message.includes('Video unavailable')) {
-        throw new AppError('Video is unavailable or private', 404);
-      }
-      if (error.message && error.message.includes('Sign in')) {
-        throw new AppError('Video requires sign-in to view', 403);
-      }
-      
       if (error instanceof AppError) {
         throw error;
       }
@@ -149,11 +192,181 @@ class VideoService {
   }
 
   /**
+   * Get video info using Invidious API (bot-detection free)
+   * Improved to check multiple audio format types
+   */
+  async getVideoInfoViaInvidious(videoId) {
+    for (const instance of INVIDIOUS_INSTANCES) {
+      try {
+        logger.info('Trying Invidious instance', { instance, videoId });
+        
+        const response = await axios.get(`${instance}/api/v1/videos/${videoId}`, {
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+          }
+        });
+
+        if (!response.data) {
+          logger.warn('Invidious returned no data', { instance });
+          continue;
+        }
+
+        logger.info('Invidious response received', { 
+          instance,
+          hasAdaptiveFormats: !!response.data.adaptiveFormats,
+          adaptiveFormatsCount: response.data.adaptiveFormats?.length || 0,
+          hasFormatStreams: !!response.data.formatStreams,
+          formatStreamsCount: response.data.formatStreams?.length || 0
+        });
+
+        // Try to find audio stream in multiple locations
+        let audioUrl = null;
+        
+        // Strategy 1: Check adaptiveFormats for audio-only streams
+        if (response.data.adaptiveFormats && response.data.adaptiveFormats.length > 0) {
+          // Look for audio-only formats (no video)
+          const audioOnly = response.data.adaptiveFormats.find(f => 
+            f.type && f.type.includes('audio') && !f.type.includes('video')
+          );
+          
+          if (audioOnly?.url) {
+            audioUrl = audioOnly.url;
+            logger.info('Found audio-only stream in adaptiveFormats', { 
+              type: audioOnly.type,
+              bitrate: audioOnly.bitrate 
+            });
+          }
+        }
+
+        // Strategy 2: Check formatStreams (contains audio+video)
+        if (!audioUrl && response.data.formatStreams && response.data.formatStreams.length > 0) {
+          // Use lowest quality to save bandwidth (audio quality is same)
+          const lowestQuality = response.data.formatStreams
+            .filter(f => f.url)
+            .sort((a, b) => (a.qualityLabel || '720p').localeCompare(b.qualityLabel || '720p'))[0];
+          
+          if (lowestQuality?.url) {
+            audioUrl = lowestQuality.url;
+            logger.info('Using formatStreams (audio+video)', { 
+              quality: lowestQuality.qualityLabel,
+              type: lowestQuality.type
+            });
+          }
+        }
+
+        // Strategy 3: Last resort - use any adaptive format
+        if (!audioUrl && response.data.adaptiveFormats && response.data.adaptiveFormats.length > 0) {
+          const anyFormat = response.data.adaptiveFormats.find(f => f.url);
+          if (anyFormat?.url) {
+            audioUrl = anyFormat.url;
+            logger.info('Using any available adaptive format', { 
+              type: anyFormat.type 
+            });
+          }
+        }
+
+        if (audioUrl) {
+          return {
+            title: response.data.title,
+            duration: response.data.lengthSeconds,
+            uploader: response.data.author,
+            thumbnail: response.data.videoThumbnails?.[0]?.url,
+            audioUrl: audioUrl
+          };
+        }
+
+        logger.warn('No audio URL found in Invidious response', { instance });
+        continue;
+
+      } catch (error) {
+        logger.warn('Invidious instance failed', { 
+          instance, 
+          error: error.message,
+          status: error.response?.status
+        });
+        continue;
+      }
+    }
+    
+    throw new AppError(
+      'Unable to access video from any source. The video may be private, age-restricted, or region-blocked.',
+      403
+    );
+  }
+
+  /**
+   * Download audio from direct URL (from Invidious)
+   * Improved with better error handling and progress logging
+   */
+  async downloadAudioFromUrl(audioUrl, videoId) {
+    const tempAudioPath = path.join(os.tmpdir(), `video_${videoId}_${Date.now()}.mp4`);
+    
+    try {
+      logger.info('Starting audio download from URL', { 
+        videoId,
+        urlPrefix: audioUrl.substring(0, 100)
+      });
+
+      const response = await axios({
+        method: 'GET',
+        url: audioUrl,
+        responseType: 'stream',
+        timeout: 180000, // 3 minutes
+        maxRedirects: 5,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': '*/*'
+        }
+      });
+
+      const writer = fs.createWriteStream(tempAudioPath);
+      
+      let downloadedBytes = 0;
+      response.data.on('data', (chunk) => {
+        downloadedBytes += chunk.length;
+      });
+
+      response.data.pipe(writer);
+
+      return new Promise((resolve, reject) => {
+        writer.on('finish', () => {
+          logger.info('Audio download completed', { 
+            videoId,
+            bytes: downloadedBytes,
+            mb: (downloadedBytes / (1024 * 1024)).toFixed(2)
+          });
+          resolve(tempAudioPath);
+        });
+        writer.on('error', (error) => {
+          logger.error('Audio download stream error', { 
+            videoId,
+            error: error.message
+          });
+          reject(error);
+        });
+        
+        // Timeout handler
+        setTimeout(() => {
+          writer.destroy();
+          reject(new Error('Download timeout after 3 minutes'));
+        }, 180000);
+      });
+    } catch (error) {
+      logger.error('Audio download failed', { 
+        videoId,
+        error: error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
    * Get video metadata using yt-dlp with multiple fallback strategies
    */
   async getVideoMetadata(videoUrl) {
     const strategies = [
-      // Strategy 1: Android client with OAuth (most reliable now)
+      // Strategy 1: Android client
       [
         '--dump-json',
         '--no-playlist',
@@ -163,7 +376,7 @@ class VideoService {
         '--no-check-certificates',
         videoUrl
       ],
-      // Strategy 2: Web client with age gate bypass
+      // Strategy 2: Web client
       [
         '--dump-json',
         '--no-playlist',
@@ -174,7 +387,7 @@ class VideoService {
         '--no-check-certificates',
         videoUrl
       ],
-      // Strategy 3: MediaConnect client (newer, less detected)
+      // Strategy 3: MediaConnect
       [
         '--dump-json',
         '--no-playlist',
@@ -183,21 +396,12 @@ class VideoService {
         '--no-check-certificates',
         videoUrl
       ],
-      // Strategy 4: TV embedded client
+      // Strategy 4: TV embedded
       [
         '--dump-json',
         '--no-playlist',
         '--no-warnings',
         '--extractor-args', 'youtube:player_client=tv_embedded',
-        '--no-check-certificates',
-        videoUrl
-      ],
-      // Strategy 5: Android VR as last resort
-      [
-        '--dump-json',
-        '--no-playlist',
-        '--no-warnings',
-        '--extractor-args', 'youtube:player_client=android_vr',
         '--no-check-certificates',
         videoUrl
       ]
@@ -211,13 +415,8 @@ class VideoService {
       } catch (error) {
         logger.warn(`Metadata strategy ${i + 1} failed`, { error: error.message });
         if (i === strategies.length - 1) {
-          // All strategies failed
-          throw new AppError(
-            'YouTube is blocking video access. This video may be restricted, private, or require sign-in. Please try a different video or contact support.',
-            403
-          );
+          throw error;
         }
-        // Wait a bit before trying next strategy
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
@@ -310,19 +509,6 @@ class VideoService {
         '--no-check-certificates',
         '-o', tempAudioPath,
         videoUrl
-      ],
-      // Strategy 4: TV embedded
-      [
-        '-f', 'bestaudio',
-        '--extract-audio',
-        '--audio-format', 'mp3',
-        '--audio-quality', '0',
-        '--no-playlist',
-        '--no-warnings',
-        '--extractor-args', 'youtube:player_client=tv_embedded',
-        '--no-check-certificates',
-        '-o', tempAudioPath,
-        videoUrl
       ]
     ];
 
@@ -334,12 +520,8 @@ class VideoService {
       } catch (error) {
         logger.warn(`Download strategy ${i + 1} failed`, { error: error.message });
         if (i === strategies.length - 1) {
-          throw new AppError(
-            'Failed to download video audio. The video may be restricted or unavailable.',
-            403
-          );
+          throw error;
         }
-        // Clean up partial download before retry
         await fs.unlink(tempAudioPath).catch(() => {});
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
@@ -366,11 +548,10 @@ class VideoService {
           return;
         }
 
-        // yt-dlp may add extensions, check for the file
+        // Check for the file
         fs.access(expectedPath)
           .then(() => resolve(expectedPath))
           .catch(() => {
-            // Try with .mp3 extension if not already there
             const mp3Path = expectedPath.replace(/\.[^.]+$/, '') + '.mp3';
             fs.access(mp3Path)
               .then(() => resolve(mp3Path))
@@ -385,10 +566,9 @@ class VideoService {
   }
 
   /**
-   * Create File object for OpenAI API (Node.js doesn't have native File)
+   * Create File object for OpenAI API
    */
   async createFile(buffer, filename) {
-    // OpenAI SDK expects a File-like object
     const blob = new Blob([buffer], { type: 'audio/mpeg' });
     return new File([blob], filename, { type: 'audio/mpeg' });
   }

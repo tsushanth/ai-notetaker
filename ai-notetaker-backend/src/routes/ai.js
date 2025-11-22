@@ -1,13 +1,29 @@
 const express = require('express');
+const { logger } = require('../utils/logger');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
 const aiService = require('../services/aiService');
-const podcastService = require('../services/podcastService');
 
 // All routes require authentication
 router.use(authenticate);
+
+/**
+ * Chat with note content
+ * POST /api/ai/chat
+ * Body: { note_id, question, conversation_history }
+ */
+router.post('/chat', validate('chatWithNote'), asyncHandler(async (req, res) => {
+  const { note_id, question, conversation_history } = req.validatedBody;
+
+  const response = await aiService.chatWithNote(req.userId, note_id, question, conversation_history);
+
+  res.json({
+    success: true,
+    data: response
+  });
+}));
 
 /**
  * Generate summary from note
@@ -58,19 +74,122 @@ router.post('/flashcards', validate('generateAIContent'), asyncHandler(async (re
 }));
 
 /**
- * Generate podcast script from note
+ * Generate podcast script and audio (async)
  * POST /api/ai/podcast
- * Body: { note_id, options: { style } }
  */
 router.post('/podcast', validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
-  const podcast = await podcastService.generatePodcastScript(req.userId, note_id, options);
+  logger.info('Starting async podcast generation', { 
+    userId: req.userId, 
+    noteId: note_id 
+  });
 
+  // Return immediately with pending status
   res.json({
     success: true,
-    data: podcast
+    data: {
+      note_id,
+      status: 'generating',
+      message: 'Podcast generation started. Please wait 60-90 seconds.'
+    }
   });
+
+  // Generate in background (don't await)
+  aiService.generatePodcast(req.userId, note_id, options)
+    .then(result => {
+      logger.info('Background podcast generation completed', { 
+        noteId: note_id,
+        hasAudio: !!result.audio_url 
+      });
+    })
+    .catch(error => {
+      logger.error('Background podcast generation failed', { 
+        error: error.message,
+        noteId: note_id
+      });
+    });
+}));
+
+/**
+ * Check podcast generation status
+ * GET /api/ai/podcast/status/:note_id
+ */
+router.get('/podcast/status/:note_id', asyncHandler(async (req, res) => {
+  const { note_id } = req.params;
+
+  // Get the most recent podcast for this note
+  const content = await aiService.getLatestPodcastForNote(req.userId, note_id);
+
+  if (!content) {
+    return res.json({
+      success: true,
+      data: {
+        status: 'not_found',
+        message: 'No podcast generated yet'
+      }
+    });
+  }
+
+  // Check if it has audio
+  if (content.content.audio_url) {
+    return res.json({
+      success: true,
+      data: {
+        status: 'ready',
+        id: content.id,
+        audio_url: content.content.audio_url,
+        script: content.content.script,
+        duration: content.content.duration,
+        style: content.content.style,
+        note_id: content.note_id
+      }
+    });
+  } else {
+    return res.json({
+      success: true,
+      data: {
+        status: 'generating',
+        message: 'Podcast is still being generated'
+      }
+    });
+  }
+}));
+
+/**
+ * Get audio URL for a podcast
+ * GET /api/ai/podcast/:id/audio
+ */
+router.get('/podcast/:id/audio', asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.userId;
+
+  // Get AI content
+  const { supabaseAdmin } = require('../config/supabase');
+  const { data, error } = await supabaseAdmin
+    .from('ai_content')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .single();
+
+  if (error || !data) {
+    return res.status(404).json({ 
+      success: false,
+      error: 'Podcast not found' 
+    });
+  }
+
+  const audioUrl = data.content?.audio_url;
+  if (!audioUrl) {
+    return res.status(404).json({ 
+      success: false,
+      error: 'Audio not generated yet' 
+    });
+  }
+
+  // Redirect to audio URL
+  res.redirect(audioUrl);
 }));
 
 /**

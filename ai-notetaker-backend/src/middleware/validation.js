@@ -37,6 +37,17 @@ const schemas = {
 
   transcribeAudio: Joi.object({
     recording_id: Joi.string().uuid().required()
+  }),
+
+  chatWithNote: Joi.object({
+    note_id: Joi.string().uuid().required(),
+    question: Joi.string().min(1).max(1000).required(),
+    conversation_history: Joi.array().items(
+      Joi.object({
+        text: Joi.string().required(),
+        isUser: Joi.boolean().required()
+      })
+    ).optional()
   })
 };
 

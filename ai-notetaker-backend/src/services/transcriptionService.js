@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const { supabase, supabaseAdmin } = require('../config/supabase');
 const { openai, MODELS } = require('../config/openai');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
@@ -14,8 +14,8 @@ class TranscriptionService {
    */
   async transcribeRecording(userId, recordingId) {
     try {
-      // Get recording details
-      const { data: recording, error: fetchError } = await supabase
+      // Get recording details - USE supabaseAdmin
+      const { data: recording, error: fetchError } = await supabaseAdmin
         .from('recordings')
         .select('*')
         .eq('id', recordingId)
@@ -27,15 +27,21 @@ class TranscriptionService {
       }
 
       if (recording.status === 'completed') {
+        // Already transcribed, return existing data
+        logger.info('Recording already transcribed', { recordingId });
         return {
           recording_id: recordingId,
           transcription: recording.transcription,
-          status: 'completed'
+          duration: recording.duration,
+          status: 'completed',
+          note_id: recording.note_id
         };
       }
 
-      // Update status to processing
-      await supabase
+      logger.info('Starting transcription', { userId, recordingId });
+
+      // Update status to processing - USE supabaseAdmin
+      await supabaseAdmin
         .from('recordings')
         .update({ status: 'processing' })
         .eq('id', recordingId);
@@ -48,6 +54,8 @@ class TranscriptionService {
       await fs.writeFile(tempFilePath, audioBuffer);
 
       try {
+        logger.info('Calling Whisper API', { recordingId, fileSize: audioBuffer.length });
+
         // Transcribe with OpenAI Whisper
         const transcription = await openai.audio.transcriptions.create({
           file: await fs.readFile(tempFilePath).then(buffer => 
@@ -56,7 +64,7 @@ class TranscriptionService {
             })
           ),
           model: MODELS.WHISPER,
-          language: 'en', // Can be made dynamic
+          language: 'en', // Can be made dynamic based on user preference
           response_format: 'verbose_json'
         });
 
@@ -66,67 +74,97 @@ class TranscriptionService {
         const transcriptionText = transcription.text;
         const duration = Math.round(transcription.duration || 0);
 
-        // Update recording with transcription
-        const { data: updatedRecording, error: updateError } = await supabase
+        logger.info('Transcription successful', { 
+          recordingId, 
+          textLength: transcriptionText.length,
+          duration 
+        });
+
+        // Create a new note from transcription
+        const note = await noteService.createNote(userId, {
+          title: recording.title || `Recording from ${new Date().toLocaleDateString()}`,
+          content: transcriptionText,
+          source_type: 'recording',
+          source_url: recording.file_url,
+          metadata: { 
+            recording_id: recordingId,
+            duration: duration,
+            format: recording.format
+          }
+        });
+
+        logger.info('Note created from transcription', { noteId: note.id, recordingId });
+
+        // Update recording with transcription and link to note - USE supabaseAdmin
+        const { data: updatedRecording, error: updateError } = await supabaseAdmin
           .from('recordings')
           .update({
             transcription: transcriptionText,
             duration: duration,
-            status: 'completed'
+            status: 'completed',
+            note_id: note.id // Link to the created note
           })
           .eq('id', recordingId)
           .select()
           .single();
 
-        if (updateError) throw updateError;
-
-        // Create or update associated note if note_id exists
-        if (recording.note_id) {
-          await noteService.updateNote(userId, recording.note_id, {
-            content: transcriptionText
-          });
-        } else {
-          // Create a new note from transcription
-          const note = await noteService.createNote(userId, {
-            title: `Recording from ${new Date().toLocaleDateString()}`,
-            content: transcriptionText,
-            source_type: 'recording',
-            metadata: { recording_id: recordingId }
-          });
-
-          // Link recording to note
-          await supabase
-            .from('recordings')
-            .update({ note_id: note.id })
-            .eq('id', recordingId);
+        if (updateError) {
+          logger.error('Failed to update recording', { error: updateError, recordingId });
+          throw updateError;
         }
 
-        logger.info('Transcription completed', { userId, recordingId });
+        logger.info('Transcription completed successfully', { 
+          userId, 
+          recordingId, 
+          noteId: note.id 
+        });
 
         return {
           recording_id: recordingId,
           transcription: transcriptionText,
           duration: duration,
-          status: 'completed'
+          status: 'completed',
+          note_id: note.id // Return note ID so app can fetch it
         };
 
       } catch (transcribeError) {
         // Clean up temp file on error
         await fs.unlink(tempFilePath).catch(() => {});
+        
+        logger.error('Whisper API error', { 
+          error: transcribeError.message,
+          recordingId 
+        });
+        
         throw transcribeError;
       }
 
     } catch (error) {
-      logger.error('Transcription error', { error: error.message, userId, recordingId });
+      logger.error('Transcription error', { 
+        error: error.message, 
+        stack: error.stack,
+        userId, 
+        recordingId 
+      });
 
-      // Update recording status to failed
-      await supabase
+      // Update recording status to failed - USE supabaseAdmin
+      await supabaseAdmin
         .from('recordings')
         .update({
           status: 'failed',
           error_message: error.message
         })
-        .eq('id', recordingId);
+        .eq('id', recordingId)
+        .catch(updateErr => {
+          logger.error('Failed to update error status', { 
+            error: updateErr.message, 
+            recordingId 
+          });
+        });
+
+      if (error instanceof AppError) {
+        throw error;
+      }
 
       throw new AppError('Failed to transcribe recording', 500);
     }

@@ -28,14 +28,17 @@
     "express-rate-limit": "^7.1.5",
     "fluent-ffmpeg": "^2.1.2",
     "form-data": "^4.0.0",
+    "fs": "^0.0.1-security",
     "helmet": "^7.1.0",
     "joi": "^17.11.0",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "openai": "^4.20.1",
     "pdf-parse": "^1.1.1",
     "uuid": "^9.0.1",
     "winston": "^3.11.0",
-    "youtube-transcript": "^1.2.1"
+    "youtube-transcript": "^1.2.1",
+    "youtube-transcript-api": "^3.0.6"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

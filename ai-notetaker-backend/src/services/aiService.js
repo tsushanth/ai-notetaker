@@ -1,73 +1,139 @@
 const { openai, MODELS, PRICING } = require('../config/openai');
-const { supabase } = require('../config/supabase');
+const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 
 class AIService {
+
   /**
-   * Generate summary from note content
-   */
-  async generateSummary(userId, noteId, options = {}) {
-    const { length = 'medium' } = options;
-
-    try {
-      // Get note content
-      const note = await noteService.getNoteById(userId, noteId);
-      if (!note) {
-        throw new AppError('Note not found', 404);
-      }
-
-      const lengthInstructions = {
-        short: 'in 2-3 sentences',
-        medium: 'in 1-2 paragraphs',
-        long: 'in a detailed, comprehensive summary'
-      };
-
-      const prompt = `Please provide a ${length} summary of the following content ${lengthInstructions[length]}:\n\n${note.content}`;
-
-      const completion = await openai.chat.completions.create({
-        model: MODELS.GPT4_MINI,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant that creates clear, concise summaries of educational content.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: length === 'long' ? 1000 : length === 'medium' ? 500 : 200
-      });
-
-      const summary = completion.choices[0].message.content;
-
-      // Save AI content
-      const aiContent = await this.saveAIContent(noteId, 'summary', {
-        summary,
-        length,
-        model: MODELS.GPT4_MINI
-      });
-
-      // Log usage
-      await this.logUsage(userId, 'summary', completion.usage);
-
-      logger.info('Summary generated', { userId, noteId, length });
-
-      return {
-        id: aiContent.id,
-        summary,
-        length,
-        note_id: noteId
-      };
-
-    } catch (error) {
-      logger.error('Error generating summary', { error: error.message, userId, noteId });
-      throw new AppError('Failed to generate summary', 500);
+ * Chat with note content
+ */
+async chatWithNote(userId, noteId, question, conversationHistory = []) {
+  try {
+    // Get note content
+    const note = await noteService.getNoteById(userId, noteId);
+    if (!note) {
+      throw new AppError('Note not found', 404);
     }
+
+    // Build conversation messages
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a helpful AI assistant helping a student understand their notes. Here are the notes:
+
+${note.content}
+
+Answer questions based on these notes. Be concise, clear, and educational.`
+      }
+    ];
+
+    // Add conversation history
+    if (conversationHistory && conversationHistory.length > 0) {
+      conversationHistory.forEach(msg => {
+        messages.push({
+          role: msg.isUser ? 'user' : 'assistant',
+          content: msg.text
+        });
+      });
+    }
+
+    // Add current question
+    messages.push({
+      role: 'user',
+      content: question
+    });
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: MODELS.GPT4_MINI,
+      messages: messages,
+      temperature: 0.7,
+      max_tokens: 1024
+    });
+
+    const answer = completion.choices[0].message.content;
+
+    // Log usage
+    await this.logUsage(userId, 'chat', completion.usage);
+
+    logger.info('Chat response generated', { userId, noteId });
+
+    return {
+      answer,
+      note_id: noteId
+    };
+
+  } catch (error) {
+    logger.error('Error in chat', { error: error.message, userId, noteId });
+    throw new AppError('Failed to generate chat response', 500);
   }
+}
+
+/**
+ * Generate summary from note content
+ */
+async generateSummary(userId, noteId, options = {}) {
+  const { length = 'medium' } = options;
+
+  try {
+    // Get note content
+    const note = await noteService.getNoteById(userId, noteId);
+    if (!note) {
+      throw new AppError('Note not found', 404);
+    }
+
+    const lengthInstructions = {
+      short: 'in 2-3 sentences',
+      medium: 'in 1-2 paragraphs',
+      long: 'in a detailed, comprehensive summary'
+    };
+
+    const prompt = `Please provide a ${length} summary of the following content ${lengthInstructions[length]}:\n\n${note.content}`;
+
+    const completion = await openai.chat.completions.create({
+      model: MODELS.GPT4_MINI,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant that creates clear, concise summaries of educational content.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: length === 'long' ? 1000 : length === 'medium' ? 500 : 200
+    });
+
+    const summary = completion.choices[0].message.content;
+
+    // Save AI content
+    const aiContent = await this.saveAIContent(noteId, 'summary', {
+      summary,
+      length,
+      model: MODELS.GPT4_MINI
+    });
+
+    // Log usage
+    await this.logUsage(userId, 'summary', completion.usage);
+
+    logger.info('Summary generated', { userId, noteId, length });
+
+    return {
+      id: aiContent.id,
+      summary,
+      length,
+      note_id: noteId
+    };
+
+  } catch (error) {
+    logger.error('Error generating summary', { error: error.message, userId, noteId });
+    throw new AppError('Failed to generate summary', 500);
+  }
+}
 
   /**
    * Generate quiz questions from note content
@@ -291,6 +357,176 @@ ${note.content.substring(0, 3000)}`; // Limit content length
   }
 
   /**
+ * Generate podcast script from note content
+ */
+async generatePodcast(userId, noteId, options = {}) {
+  const { 
+    duration = 'medium', 
+    style = 'conversational',
+    num_hosts = 2,
+    generate_audio = true,
+    voice = 'alloy'
+  } = options;
+
+  try {
+    const note = await noteService.getNoteById(userId, noteId);
+    if (!note) {
+      throw new AppError('Note not found', 404);
+    }
+
+    const durationInstructions = {
+      short: '3-5 minute podcast (approximately 400-600 words)',
+      medium: '8-12 minute podcast (approximately 1000-1500 words)',
+      long: '15-20 minute podcast (approximately 2000-3000 words)'
+    };
+
+    const styleInstructions = {
+      conversational: 'Create a natural, engaging conversation between hosts with back-and-forth dialogue, enthusiasm, and occasional interjections.',
+      educational: 'Create an educational podcast with clear explanations, examples, and teaching moments.',
+      storytelling: 'Create a narrative-driven podcast that tells a compelling story around the content.',
+      interview: 'Create an interview-style podcast where one host asks insightful questions and the other provides detailed answers.'
+    };
+
+    const prompt = `Create a ${duration} podcast script based on the following content. ${styleInstructions[style]}
+
+The podcast should have ${num_hosts} host(s). Use clear speaker labels like "Host 1:" and "Host 2:".
+
+Guidelines:
+- Make it engaging and natural
+- Include smooth transitions between topics
+- Add appropriate energy and enthusiasm
+- Use examples and analogies where helpful
+- End with a strong conclusion
+- Target length: ${durationInstructions[duration]}
+
+Content to discuss:
+${note.content}
+
+Format the script with clear speaker labels and natural dialogue.`;
+
+    const completion = await openai.chat.completions.create({
+      model: MODELS.GPT4_MINI,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert podcast scriptwriter who creates engaging, natural-sounding podcast scripts. Write dialogue that sounds authentic and conversational.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.9,
+      max_tokens: duration === 'long' ? 4000 : duration === 'medium' ? 2500 : 1500
+    });
+
+    const script = completion.choices[0].message.content;
+
+    // Prepare content object
+    const contentData = {
+      script,
+      duration,
+      style,
+      num_hosts,
+      model: MODELS.GPT4_MINI
+    };
+
+    // Generate audio if requested
+    if (generate_audio) {
+      try {
+        logger.info('Generating podcast audio', { userId, noteId });
+        
+        const ttsService = require('./ttsService');
+        
+        // Generate audio from script
+        const audioBuffer = await ttsService.generateAudio(script, voice);
+        
+        // Upload to Supabase storage
+        const audioUrl = await ttsService.uploadAudio(audioBuffer, userId, noteId);
+        
+        contentData.audio_url = audioUrl;
+        
+        logger.info('Podcast audio generated', { userId, noteId, audioUrl });
+      } catch (audioError) {
+        logger.error('Failed to generate podcast audio', { 
+          error: audioError.message, 
+          userId, 
+          noteId 
+        });
+        // Continue without audio - don't fail the whole request
+        contentData.audio_generation_failed = true;
+      }
+    }
+
+    // Save AI content
+    const aiContent = await this.saveAIContent(noteId, 'podcast', contentData);
+
+    // Log usage
+    await this.logUsage(userId, 'podcast', completion.usage);
+
+    logger.info('Podcast script generated', { 
+      userId, 
+      noteId, 
+      duration, 
+      style,
+      hasAudio: !!contentData.audio_url
+    });
+
+    return {
+      id: aiContent.id,
+      script,
+      audio_url: contentData.audio_url,
+      duration,
+      style,
+      note_id: noteId
+    };
+
+  } catch (error) {
+    logger.error('Error generating podcast', { 
+      error: error.message, 
+      userId, 
+      noteId 
+    });
+    throw new AppError('Failed to generate podcast', 500);
+  }
+}
+
+/**
+ * Get the most recent podcast for a note
+ */
+async getLatestPodcastForNote(userId, noteId) {
+  try {
+    // Verify note belongs to user
+    const note = await noteService.getNoteById(userId, noteId);
+    if (!note) {
+      return null;
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('ai_content')
+      .select('*')
+      .eq('note_id', noteId)
+      .eq('content_type', 'podcast')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // No rows returned
+        return null;
+      }
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    logger.error('Error fetching latest podcast', { error: error.message, userId, noteId });
+    return null;
+  }
+}
+
+  /**
    * Get all AI-generated content for a note
    */
   async getAIContentForNote(userId, noteId) {
@@ -301,7 +537,7 @@ ${note.content.substring(0, 3000)}`; // Limit content length
         throw new AppError('Note not found', 404);
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('ai_content')
         .select('*')
         .eq('note_id', noteId)
@@ -322,7 +558,7 @@ ${note.content.substring(0, 3000)}`; // Limit content length
   async deleteAIContent(userId, contentId) {
     try {
       // Verify content belongs to user's note
-      const { data: content } = await supabase
+      const { data: content } = await supabaseAdmin
         .from('ai_content')
         .select('note_id')
         .eq('id', contentId)
@@ -333,7 +569,7 @@ ${note.content.substring(0, 3000)}`; // Limit content length
       const note = await noteService.getNoteById(userId, content.note_id);
       if (!note) return false;
 
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('ai_content')
         .delete()
         .eq('id', contentId);
@@ -352,7 +588,7 @@ ${note.content.substring(0, 3000)}`; // Limit content length
    * Save AI-generated content to database
    */
   async saveAIContent(noteId, contentType, content) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('ai_content')
       .insert({
         note_id: noteId,
@@ -381,7 +617,7 @@ ${note.content.substring(0, 3000)}`; // Limit content length
         (usage.completion_tokens || 0) * pricing.output / 1000
       );
 
-      await supabase
+      await supabaseAdmin
         .from('usage_logs')
         .insert({
           user_id: userId,

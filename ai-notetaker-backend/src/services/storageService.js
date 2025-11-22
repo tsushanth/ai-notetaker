@@ -3,11 +3,34 @@ const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const { v4: uuidv4 } = require('uuid');
 
+// DON'T create admin client here - do it lazily
+let _supabaseAdmin = null;
+
 class StorageService {
   constructor() {
     this.bucket = process.env.SUPABASE_STORAGE_BUCKET || 'notetaker-files';
     this.supabaseUrl = process.env.SUPABASE_URL;
     this.supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+  }
+
+  /**
+   * Get admin client (lazy initialization)
+   */
+  getAdminClient() {
+    if (!_supabaseAdmin) {
+      const serviceKey = process.env.SUPABASE_SERVICE_KEY;
+      
+      if (!serviceKey) {
+        throw new AppError('SUPABASE_SERVICE_KEY not configured', 500);
+      }
+
+      _supabaseAdmin = createClient(
+        process.env.SUPABASE_URL,
+        serviceKey
+      );
+    }
+    
+    return _supabaseAdmin;
   }
 
   /**
@@ -29,6 +52,152 @@ class StorageService {
         }
       }
     });
+  }
+
+  /**
+   * Upload audio recording (used by /api/recordings/upload)
+   * @param {string} userId - User ID
+   * @param {Object} file - Multer file object
+   * @param {Object} options - Additional options (note_id, title)
+   */
+  async uploadRecording(userId, file, options = {}) {
+    try {
+      const supabaseAdmin = this.getAdminClient();
+      const { note_id, title } = options;
+      
+      // Generate unique filename
+      const fileExt = this.getFileExtension(file.originalname || file.mimetype);
+      const fileName = `${userId}/recordings/${uuidv4()}_${Date.now()}.${fileExt}`;
+
+      logger.info('Uploading recording to storage', { 
+        userId, 
+        fileName,
+        size: file.size || file.buffer?.length,
+        mimetype: file.mimetype
+      });
+
+      // Upload to Supabase Storage using admin client (bypass RLS)
+      const { data: uploadData, error: uploadError } = await supabaseAdmin
+        .storage
+        .from(this.bucket)
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false
+        });
+
+      if (uploadError) {
+        logger.error('Storage upload error', { 
+          error: uploadError.message,
+          errorCode: uploadError.statusCode,
+          fileName 
+        });
+        throw new AppError('Failed to upload audio file', 500);
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabaseAdmin
+        .storage
+        .from(this.bucket)
+        .getPublicUrl(fileName);
+
+      logger.info('Recording uploaded to storage', { 
+        fileName,
+        publicUrl 
+      });
+
+      // Create recording record in database using admin client
+      const { data: recording, error: dbError } = await supabaseAdmin
+        .from('recordings')
+        .insert({
+          id: uuidv4(),
+          user_id: userId,
+          note_id: note_id || null,
+          title: title || 'Voice Recording',
+          storage_path: fileName,
+          file_url: publicUrl,
+          file_size: file.size || file.buffer?.length,
+          format: fileExt,
+          status: 'uploaded'
+        })
+        .select()
+        .single();
+
+      if (dbError) {
+        logger.error('Database insert error', { error: dbError.message });
+        
+        // Clean up uploaded file
+        await supabaseAdmin.storage
+          .from(this.bucket)
+          .remove([fileName])
+          .catch(() => {});
+        
+        throw new AppError('Failed to create recording record', 500);
+      }
+
+      logger.info('Recording record created', { recordingId: recording.id });
+
+      return recording;
+
+    } catch (error) {
+      logger.error('Upload recording error', { 
+        error: error.message,
+        userId 
+      });
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw new AppError('Failed to upload recording', 500);
+    }
+  }
+
+  /**
+   * Download file from Supabase Storage
+   * @param {string} storagePath - Path to file in storage
+   */
+  async downloadFile(storagePath) {
+    try {
+      const supabaseAdmin = this.getAdminClient();
+      
+      logger.info('Downloading file from storage', { storagePath });
+
+      const { data, error } = await supabaseAdmin
+        .storage
+        .from(this.bucket)
+        .download(storagePath);
+
+      if (error) {
+        logger.error('Storage download error', { 
+          error: error.message,
+          storagePath 
+        });
+        throw new AppError('Failed to download file', 500);
+      }
+
+      // Convert Blob to Buffer
+      const arrayBuffer = await data.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      logger.info('File downloaded successfully', { 
+        storagePath,
+        size: buffer.length 
+      });
+
+      return buffer;
+
+    } catch (error) {
+      logger.error('Download file error', { 
+        error: error.message,
+        storagePath 
+      });
+      
+      if (error instanceof AppError) {
+        throw error;
+      }
+      
+      throw new AppError('Failed to download file', 500);
+    }
   }
 
   /**
@@ -98,6 +267,8 @@ class StorageService {
       'audio/ogg': 'ogg',
       'audio/m4a': 'm4a',
       'audio/mp4': 'm4a',
+      'audio/x-m4a': 'm4a',
+      'audio/aac': 'aac',
       'video/mp4': 'mp4',
       'video/webm': 'webm',
       'application/pdf': 'pdf',

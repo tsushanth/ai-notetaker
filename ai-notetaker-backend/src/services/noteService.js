@@ -1,4 +1,4 @@
-const { supabase } = require('../config/supabase');
+const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 
@@ -8,7 +8,7 @@ class NoteService {
    */
   async createNote(userId, noteData) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('notes')
         .insert({
           user_id: userId,
@@ -35,7 +35,7 @@ class NoteService {
     const offset = (page - 1) * limit;
 
     try {
-      let query = supabase
+      let query = supabaseAdmin
         .from('notes')
         .select('*', { count: 'exact' })
         .eq('user_id', userId);
@@ -77,7 +77,7 @@ class NoteService {
    */
   async getNoteById(userId, noteId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('notes')
         .select(`
           *,
@@ -107,7 +107,7 @@ class NoteService {
    */
   async updateNote(userId, noteId, updates) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('notes')
         .update(updates)
         .eq('id', noteId)
@@ -135,7 +135,7 @@ class NoteService {
    */
   async deleteNote(userId, noteId) {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('notes')
         .delete()
         .eq('id', noteId)
@@ -156,7 +156,7 @@ class NoteService {
    */
   async searchNotes(userId, searchQuery) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('notes')
         .select('*')
         .eq('user_id', userId)

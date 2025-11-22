@@ -14,10 +14,24 @@ const upload = multer({
   },
   fileFilter: (req, file, cb) => {
     const allowedMimes = [
-      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/wave', 
-      'audio/x-wav', 'audio/webm', 'audio/ogg', 'audio/m4a',
-      'audio/mp4', 'audio/x-m4a', 'video/mp4', 'video/webm'
+      'audio/mpeg', 
+      'audio/mp3', 
+      'audio/wav', 
+      'audio/wave', 
+      'audio/x-wav', 
+      'audio/webm', 
+      'audio/ogg', 
+      'audio/m4a',
+      'audio/mp4', 
+      'audio/x-m4a', 
+      'audio/aac',
+      'audio/x-aac',
+      'video/mp4', 
+      'video/webm',
+      'application/octet-stream' // ✅ Add this as fallback
     ];
+
+    console.log('File mimetype:', file.mimetype);
     
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);

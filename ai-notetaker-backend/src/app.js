@@ -13,6 +13,7 @@ const notesRoutes = require('./routes/notes');
 const recordingsRoutes = require('./routes/recordings');
 const uploadsRoutes = require('./routes/uploads');
 const aiRoutes = require('./routes/ai');
+const userRoutes = require('./routes/user');
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use('/api/notes', notesRoutes);
 app.use('/api/recordings', recordingsRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/user', userRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

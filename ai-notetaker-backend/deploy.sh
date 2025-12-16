@@ -24,11 +24,13 @@ MAX_AUDIO_DURATION=7200,\
 RATE_LIMIT_WINDOW=900000,\
 RATE_LIMIT_MAX_REQUESTS=100,\
 SUPABASE_STORAGE_BUCKET=notetaker-files,\
-SUPADATA_API_KEY=REDACTED_SECRET" \
+SUPADATA_API_KEY=REDACTED_SECRET,\
+ALERT_EMAIL_USER=puzzleverseai@gmail.com" \
   --set-secrets="\
 OPENAI_API_KEY=openai-key:latest,\
 SUPABASE_SERVICE_KEY=supabase-service-key:latest,\
-YOUTUBE_COOKIES=youtube-cookies:latest"
+YOUTUBE_COOKIES=youtube-cookies:latest,\
+ALERT_EMAIL_PASS=ALERT_EMAIL_PASS:latest"
 
 if [ $? -eq 0 ]; then
   echo "✅ Deployment successful!"

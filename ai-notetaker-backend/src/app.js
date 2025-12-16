@@ -15,6 +15,7 @@ const uploadsRoutes = require('./routes/uploads');
 const aiRoutes = require('./routes/ai');
 const userRoutes = require('./routes/user');
 const analyticsRoutes = require('./routes/analytics');
+const alertsRoutes = require('./routes/alerts');
 
 const app = express();
 
@@ -87,6 +88,7 @@ app.use('/api/uploads', uploadsRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/alerts', alertsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {

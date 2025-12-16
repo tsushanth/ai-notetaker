@@ -15,9 +15,25 @@ router.use(authenticate);
  * Body: { note_id, question, conversation_history }
  */
 router.post('/chat', validate('chatWithNote'), asyncHandler(async (req, res) => {
-  const { note_id, question, conversation_history } = req.validatedBody;
+  const { note_id, question, conversation_history, language } = req.validatedBody;
 
-  const response = await aiService.chatWithNote(req.userId, note_id, question, conversation_history);
+  const response = await aiService.chatWithNote(req.userId, note_id, question, conversation_history, language);
+
+  res.json({
+    success: true,
+    data: response
+  });
+}));
+
+/**
+ * Generate chat suggestions for a note
+ * GET /api/ai/suggestions/:note_id?language=spanish
+ */
+router.get('/suggestions/:note_id', asyncHandler(async (req, res) => {
+  const { note_id } = req.params;
+  const { language = 'english' } = req.query;
+
+  const response = await aiService.generateChatSuggestions(req.userId, note_id, language);
 
   res.json({
     success: true,

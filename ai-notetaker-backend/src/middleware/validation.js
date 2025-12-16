@@ -26,7 +26,8 @@ const schemas = {
       difficulty: Joi.string().valid('easy', 'medium', 'hard'),
       num_questions: Joi.number().min(1).max(50),
       num_cards: Joi.number().min(1).max(100),
-      style: Joi.string()
+      style: Joi.string(),
+      language: Joi.string().valid('english', 'spanish', 'french', 'german', 'portuguese', 'italian', 'chinese', 'japanese', 'korean', 'hindi').default('english')
     }).default({})
   }),
 
@@ -42,6 +43,7 @@ const schemas = {
   chatWithNote: Joi.object({
     note_id: Joi.string().uuid().required(),
     question: Joi.string().min(1).max(1000).required(),
+    language: Joi.string().valid('english', 'spanish', 'french', 'german', 'portuguese', 'italian', 'chinese', 'japanese', 'korean', 'hindi').default('english'),
     conversation_history: Joi.array().items(
       Joi.object({
         text: Joi.string().required(),

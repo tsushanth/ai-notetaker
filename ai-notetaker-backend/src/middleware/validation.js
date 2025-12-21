@@ -1,6 +1,25 @@
 const Joi = require('joi');
 
 /**
+ * Supported languages for AI-generated content
+ * Matches iOS and Android client language lists
+ */
+const SUPPORTED_LANGUAGES = [
+  // Major World Languages
+  'english', 'spanish', 'french', 'german', 'portuguese', 'italian',
+  'chinese', 'chinese_traditional', 'japanese', 'korean',
+  // South Asian Languages
+  'hindi', 'bengali', 'tamil', 'telugu', 'urdu', 'marathi', 'gujarati', 'punjabi',
+  // European Languages
+  'dutch', 'polish', 'russian', 'ukrainian', 'swedish', 'norwegian',
+  'danish', 'finnish', 'greek', 'czech', 'romanian', 'hungarian',
+  // Middle Eastern & African Languages
+  'arabic', 'hebrew', 'turkish', 'persian', 'swahili',
+  // Southeast Asian Languages
+  'thai', 'vietnamese', 'indonesian', 'malay', 'tagalog'
+];
+
+/**
  * Validation schemas for different endpoints
  */
 const schemas = {
@@ -27,7 +46,7 @@ const schemas = {
       num_questions: Joi.number().min(1).max(50),
       num_cards: Joi.number().min(1).max(100),
       style: Joi.string(),
-      language: Joi.string().valid('english', 'spanish', 'french', 'german', 'portuguese', 'italian', 'chinese', 'japanese', 'korean', 'hindi').default('english')
+      language: Joi.string().valid(...SUPPORTED_LANGUAGES).default('english')
     }).default({})
   }),
 
@@ -43,7 +62,7 @@ const schemas = {
   chatWithNote: Joi.object({
     note_id: Joi.string().uuid().required(),
     question: Joi.string().min(1).max(1000).required(),
-    language: Joi.string().valid('english', 'spanish', 'french', 'german', 'portuguese', 'italian', 'chinese', 'japanese', 'korean', 'hindi').default('english'),
+    language: Joi.string().valid(...SUPPORTED_LANGUAGES).default('english'),
     conversation_history: Joi.array().items(
       Joi.object({
         text: Joi.string().required(),

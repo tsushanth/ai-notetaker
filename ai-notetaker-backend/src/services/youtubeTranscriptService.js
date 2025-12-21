@@ -199,8 +199,18 @@ class YouTubeTranscriptService {
       throw new Error('No transcript content in Supadata response');
     }
 
+    // Ensure content is a string (Supadata may return array of segments)
+    let content = data.content;
+    if (Array.isArray(content)) {
+      content = content.map(segment =>
+        typeof segment === 'string' ? segment : (segment.text || segment.content || '')
+      ).join(' ');
+    } else if (typeof content !== 'string') {
+      content = String(content);
+    }
+
     return {
-      content: data.content,
+      content,
       lang: data.lang || 'en',
       source: data.generated ? 'supadata_generated' : 'supadata_native'
     };
@@ -229,8 +239,19 @@ class YouTubeTranscriptService {
 
       if (data.status === 'completed') {
         logger.info('Supadata job completed', { videoId, jobId });
+
+        // Ensure content is a string
+        let content = data.result?.content || data.content;
+        if (Array.isArray(content)) {
+          content = content.map(segment =>
+            typeof segment === 'string' ? segment : (segment.text || segment.content || '')
+          ).join(' ');
+        } else if (typeof content !== 'string') {
+          content = String(content);
+        }
+
         return {
-          content: data.result?.content || data.content,
+          content,
           lang: data.result?.lang || data.lang || 'en',
           source: 'supadata_generated'
         };

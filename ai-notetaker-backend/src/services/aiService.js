@@ -5,6 +5,38 @@ const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 
 /**
+ * Maximum characters to send to AI (approximately 100K tokens = ~400K chars)
+ * GPT-4's context is 128K tokens, we leave room for system prompts and response
+ */
+const MAX_CONTENT_CHARS = 350000;
+
+/**
+ * Truncate content to fit within token limits
+ * Uses intelligent truncation: keeps beginning and samples from rest
+ */
+function truncateContent(content, maxChars = MAX_CONTENT_CHARS) {
+  if (content.length <= maxChars) {
+    return content;
+  }
+
+  // For very long content, keep the first 80% and last 10% of allowed chars
+  const firstPart = Math.floor(maxChars * 0.85);
+  const lastPart = Math.floor(maxChars * 0.10);
+
+  const truncated = content.substring(0, firstPart) +
+    '\n\n[... content truncated for length ...]\n\n' +
+    content.substring(content.length - lastPart);
+
+  logger.info('Content truncated for AI processing', {
+    originalLength: content.length,
+    truncatedLength: truncated.length,
+    maxChars
+  });
+
+  return truncated;
+}
+
+/**
  * Get language instruction for AI prompts
  */
 function getLanguageInstruction(language) {
@@ -33,7 +65,7 @@ class AIService {
           role: 'system',
           content: `You are a helpful AI assistant helping a student understand their notes. Here are the notes:
 
-${note.content}
+${truncateContent(note.content)}
 
 Answer questions based on these notes. Be concise, clear, and educational.${getLanguageInstruction(language)}`
         }
@@ -176,7 +208,7 @@ Return ONLY a JSON array of 3 strings, no other text. Example: ["Question 1?", "
         long: 'in a detailed, comprehensive summary'
       };
 
-      const prompt = `Please provide a ${length} summary of the following content ${lengthInstructions[length]}:\n\n${note.content}`;
+      const prompt = `Please provide a ${length} summary of the following content ${lengthInstructions[length]}:\n\n${truncateContent(note.content)}`;
 
       const completion = await openai.chat.completions.create({
         model: MODELS.GPT4_MINI,
@@ -246,7 +278,7 @@ Format your response as a JSON array with this structure:
 ]
 
 Content:
-${note.content}`;
+${truncateContent(note.content)}`;
 
       const completion = await openai.chat.completions.create({
         model: MODELS.GPT4_MINI,
@@ -324,7 +356,7 @@ Format your response as a JSON array with this structure:
 ]
 
 Content:
-${note.content}`;
+${truncateContent(note.content)}`;
 
       const completion = await openai.chat.completions.create({
         model: MODELS.GPT4_MINI,
@@ -487,7 +519,7 @@ Guidelines:
 - Target length: ${durationInstructions[duration]}
 
 Content to discuss:
-${note.content}
+${truncateContent(note.content)}
 
 Format the script with clear speaker labels and natural dialogue.`;
 

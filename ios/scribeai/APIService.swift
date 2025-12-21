@@ -1,0 +1,1840 @@
+//
+//  APIService.swift
+//  scribeai
+//
+//  Created by Sushanth Tiruvaipati on 11/18/25.
+//  Updated with automatic token refresh on 401 errors
+//
+
+import Foundation
+
+enum APIError: Error {
+    case invalidURL
+    case noData
+    case decodingError
+    case serverError(String)
+    case unauthorized
+    case timeout
+    case networkError(String, isRetryable: Bool)
+}
+
+extension APIError: LocalizedError {
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL:
+            return "Invalid URL"
+        case .noData:
+            return "No data received"
+        case .decodingError:
+            return "Failed to decode response"
+        case .serverError(let message):
+            return message
+        case .unauthorized:
+            return "Session expired. Please log in again."
+        case .timeout:
+            return "Request timed out. Please try again."
+        case .networkError(let message, _):
+            return message
+        }
+    }
+}
+
+class APIService {
+    static let shared = APIService()
+    
+    // Separate session for long-running operations like transcription
+    private lazy var longRunningSession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 300 // 5 minutes
+        config.timeoutIntervalForResource = 600 // 10 minutes
+        return URLSession(configuration: config)
+    }()
+
+    private init() {}
+
+    // MARK: - Dynamic Timeout Helper
+
+    /// Calculate appropriate timeout based on content size
+    /// Larger notes require more processing time on the server
+    private func calculateTimeout(forContentLength contentLength: Int, baseTimeout: TimeInterval = 60) -> TimeInterval {
+        // Base timeout: 60 seconds for small content
+        // Add 30 seconds per 100K characters (roughly 17K words)
+        // Cap at 5 minutes (300 seconds)
+        let additionalTime = TimeInterval(contentLength / 100_000) * 30
+        let totalTimeout = baseTimeout + additionalTime
+        return min(totalTimeout, 300) // Cap at 5 minutes
+    }
+
+    /// Create a URLSession with dynamic timeout based on content length
+    private func sessionForContent(length: Int) -> URLSession {
+        let timeout = calculateTimeout(forContentLength: length)
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = timeout
+        config.timeoutIntervalForResource = timeout + 60 // Extra buffer for resource timeout
+        print("⏱️ Using dynamic timeout: \(Int(timeout))s for content length: \(length)")
+        return URLSession(configuration: config)
+    }
+
+    // MARK: - Retry Logic with Exponential Backoff
+
+    /// Configuration for retry behavior
+    private struct RetryConfig {
+        let maxAttempts: Int
+        let baseDelay: TimeInterval
+        let maxDelay: TimeInterval
+
+        static let upload = RetryConfig(maxAttempts: 3, baseDelay: 1.0, maxDelay: 8.0)
+        static let transcribe = RetryConfig(maxAttempts: 2, baseDelay: 2.0, maxDelay: 8.0)
+    }
+
+    /// Check if an error is retryable (transient network issues)
+    private func isRetryableError(_ error: Error) -> Bool {
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .networkConnectionLost,      // Connection dropped mid-request
+                 .notConnectedToInternet,     // No network
+                 .timedOut,                   // Request timed out
+                 .cannotConnectToHost,        // Server unreachable
+                 .cannotFindHost,             // DNS resolution failed
+                 .dnsLookupFailed,            // DNS lookup failed
+                 .dataNotAllowed,             // Cellular data disabled
+                 .internationalRoamingOff:    // Roaming disabled
+                return true
+            default:
+                return false
+            }
+        }
+        return false
+    }
+
+    /// Convert URLError to user-friendly APIError
+    private func convertNetworkError(_ error: URLError) -> APIError {
+        let isRetryable = isRetryableError(error)
+
+        let message: String
+        switch error.code {
+        case .networkConnectionLost:
+            message = "Network connection was lost. Please check your connection and try again."
+        case .notConnectedToInternet:
+            message = "No internet connection. Please check your network settings."
+        case .timedOut:
+            message = "The request timed out. Please try again."
+        case .cannotConnectToHost, .cannotFindHost:
+            message = "Unable to reach the server. Please try again later."
+        case .dataNotAllowed:
+            message = "Cellular data is disabled. Please enable it or connect to Wi-Fi."
+        default:
+            message = "A network error occurred. Please try again."
+        }
+
+        return .networkError(message, isRetryable: isRetryable)
+    }
+
+    /// Execute an operation with retry logic and exponential backoff
+    private func executeWithRetry<T>(
+        config: RetryConfig,
+        operation: @escaping () async throws -> T
+    ) async throws -> T {
+        var lastError: Error?
+
+        for attempt in 1...config.maxAttempts {
+            do {
+                return try await operation()
+            } catch {
+                lastError = error
+
+                // Check if this is a retryable error
+                if isRetryableError(error), attempt < config.maxAttempts {
+                    // Calculate delay with exponential backoff: baseDelay * 2^(attempt-1)
+                    let delay = min(config.baseDelay * pow(2.0, Double(attempt - 1)), config.maxDelay)
+                    print("⚠️ Attempt \(attempt)/\(config.maxAttempts) failed: \(error.localizedDescription)")
+                    print("🔄 Retrying in \(delay) seconds...")
+
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                } else {
+                    // Non-retryable error or last attempt - throw immediately
+                    if let urlError = error as? URLError {
+                        throw convertNetworkError(urlError)
+                    }
+                    throw error
+                }
+            }
+        }
+
+        // If we get here, all retries failed
+        if let urlError = lastError as? URLError {
+            throw convertNetworkError(urlError)
+        }
+        throw lastError ?? APIError.serverError("Unknown error after retries")
+    }
+
+    // MARK: - Language Preference Helper
+
+    private func getPreferredLanguage() -> String {
+        return UserDefaults.standard.string(forKey: "preferred_language") ?? "english"
+    }
+    
+    /// Execute an API request with automatic token refresh on 401
+    private func executeWithTokenRefresh<T>(
+        _ operation: @escaping (String) async throws -> T,
+        hasRetriedOnce: Bool = false
+    ) async throws -> T {
+        // Get a valid token (will refresh if expired)
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+        
+        do {
+            return try await operation(token)
+        } catch APIError.unauthorized {
+            // If we already retried once, don't retry again
+            if hasRetriedOnce {
+                print("❌ Still unauthorized after token refresh, clearing tokens")
+                TokenManager.shared.clearTokens()
+                throw APIError.unauthorized
+            }
+            
+            print("🔄 Got 401, attempting token refresh...")
+            
+            // Try to refresh the token
+            guard let newToken = await TokenManager.shared.refreshTokenIfNeeded() else {
+                print("❌ Token refresh failed")
+                TokenManager.shared.clearTokens()
+                throw APIError.unauthorized
+            }
+            
+            print("🔄 Retrying request with new token...")
+            
+            // Retry the operation with the new token
+            return try await operation(newToken)
+        }
+    }
+    
+    // MARK: - Notes
+
+    /// Result type for paginated notes fetch
+    struct PaginatedNotesResult {
+        let notes: [Note]
+        let pagination: NotesPagination?
+    }
+
+    func fetchNotes(token: String, page: Int = 1, limit: Int = 20) async throws -> [Note] {
+        // Use the token refresh wrapper - backwards compatible, returns just notes
+        return try await executeWithTokenRefresh { validToken in
+            let result = try await self._fetchNotes(token: validToken, page: page, limit: limit)
+            return result.notes
+        }
+    }
+
+    func fetchNotesPaginated(token: String, page: Int = 1, limit: Int = 20) async throws -> PaginatedNotesResult {
+        // Use the token refresh wrapper - returns notes with pagination info
+        return try await executeWithTokenRefresh { validToken in
+            try await self._fetchNotes(token: validToken, page: page, limit: limit)
+        }
+    }
+    
+    // MARK: - Analytics
+
+    func trackAnalyticsEvent(token: String, event: [String: Any]) async throws {
+        guard let url = URL(string: "\(Constants.baseURL)/api/analytics/event") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: event)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw APIError.serverError("Failed to track event")
+        }
+    }
+    
+    private func _fetchNotes(token: String, page: Int = 1, limit: Int = 20) async throws -> PaginatedNotesResult {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.notes)?page=\(page)&limit=\(limit)") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let errorResponse = try? JSONDecoder().decode(NotesResponse.self, from: data)
+            throw APIError.serverError(errorResponse?.error ?? "Failed to fetch notes")
+        }
+
+        let notesResponse = try JSONDecoder().decode(NotesResponse.self, from: data)
+        return PaginatedNotesResult(
+            notes: notesResponse.data ?? [],
+            pagination: notesResponse.pagination
+        )
+    }
+    
+    func fetchNoteById(token: String, noteId: String) async throws -> Note {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._fetchNoteById(token: validToken, noteId: noteId)
+        }
+    }
+    
+    private func _fetchNoteById(token: String, noteId: String) async throws -> Note {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.notes)/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch note")
+        }
+        
+        let noteResponse = try JSONDecoder().decode(NoteResponse.self, from: data)
+        
+        guard let note = noteResponse.data else {
+            throw APIError.noData
+        }
+        
+        return note
+    }
+    
+    func deleteNote(token: String, noteId: String) async throws {
+        try await executeWithTokenRefresh { validToken in
+            try await self._deleteNote(token: validToken, noteId: noteId)
+        }
+    }
+    
+    private func _deleteNote(token: String, noteId: String) async throws {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.notes)/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
+               let errorMessage = errorData["error"] {
+                throw APIError.serverError(errorMessage)
+            }
+            throw APIError.serverError("Failed to delete note")
+        }
+    }
+    
+    // MARK: - Recording Upload & Transcription
+
+    func uploadRecording(token: String, fileURL: URL, title: String? = nil) async throws -> Recording {
+        return try await executeWithTokenRefresh { validToken in
+            // Wrap upload in retry logic for network resilience
+            try await self.executeWithRetry(config: .upload) {
+                try await self._uploadRecording(token: validToken, fileURL: fileURL, title: title)
+            }
+        }
+    }
+    
+    private func _uploadRecording(token: String, fileURL: URL, title: String? = nil) async throws -> Recording {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.uploadAudio)") else {
+            throw APIError.invalidURL
+        }
+        
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 120 // 2 minutes for upload
+        
+        var httpBody = Data()
+        
+        // Add audio file
+        let fileData = try Data(contentsOf: fileURL)
+        let filename = fileURL.lastPathComponent
+        let mimeType = getMimeType(for: fileURL)
+        
+        print("📤 Uploading recording: \(filename), size: \(fileData.count) bytes")
+        
+        httpBody.append("--\(boundary)\r\n".data(using: .utf8)!)
+        httpBody.append("Content-Disposition: form-data; name=\"audio\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        httpBody.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        httpBody.append(fileData)
+        httpBody.append("\r\n".data(using: .utf8)!)
+        
+        // Add title if provided
+        if let title = title, !title.isEmpty {
+            httpBody.append("--\(boundary)\r\n".data(using: .utf8)!)
+            httpBody.append("Content-Disposition: form-data; name=\"title\"\r\n\r\n".data(using: .utf8)!)
+            httpBody.append(title.data(using: .utf8)!)
+            httpBody.append("\r\n".data(using: .utf8)!)
+        }
+        
+        httpBody.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = httpBody
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("📤 Upload response: \(httpResponse.statusCode)")
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 201 else {
+            let errorMessage = extractErrorMessage(from: data) ?? "Failed to upload recording (HTTP \(httpResponse.statusCode))"
+            print("❌ Upload failed: \(errorMessage)")
+            throw APIError.serverError(errorMessage)
+        }
+        
+        let recordingResponse = try JSONDecoder().decode(RecordingResponse.self, from: data)
+        
+        guard let recording = recordingResponse.data else {
+            throw APIError.noData
+        }
+        
+        print("✅ Upload successful, recording_id: \(recording.id)")
+        
+        return recording
+    }
+    
+    func transcribeRecording(token: String, recordingId: String) async throws -> TranscriptionResult {
+        return try await executeWithTokenRefresh { validToken in
+            // Wrap transcription in retry logic for network resilience
+            try await self.executeWithRetry(config: .transcribe) {
+                try await self._transcribeRecording(token: validToken, recordingId: recordingId)
+            }
+        }
+    }
+    
+    private func _transcribeRecording(token: String, recordingId: String) async throws -> TranscriptionResult {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.transcribe)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 300 // 5 minutes for transcription
+        
+        let body: [String: Any] = ["recording_id": recordingId]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        print("🎤 Starting transcription for recording: \(recordingId)")
+        
+        do {
+            // Use long-running session for transcription
+            let (data, response) = try await longRunningSession.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.serverError("Invalid response")
+            }
+            
+            print("🎤 Transcription response: \(httpResponse.statusCode)")
+            
+            if httpResponse.statusCode == 401 {
+                throw APIError.unauthorized
+            }
+            
+            guard httpResponse.statusCode == 200 else {
+                let errorMessage = extractErrorMessage(from: data) ?? "Failed to transcribe recording (HTTP \(httpResponse.statusCode))"
+                print("❌ Transcription failed: \(errorMessage)")
+                throw APIError.serverError(errorMessage)
+            }
+            
+            // Log raw response for debugging
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("🎤 Transcription response body: \(responseString.prefix(500))...")
+            }
+            
+            let transcriptionResponse = try JSONDecoder().decode(TranscriptionResponse.self, from: data)
+            
+            guard let result = transcriptionResponse.data else {
+                throw APIError.noData
+            }
+            
+            print("✅ Transcription successful, note_id: \(result.noteId ?? "unknown")")
+            
+            return result
+            
+        } catch let error as URLError where error.code == .timedOut {
+            print("⏱️ Transcription timed out")
+            throw APIError.timeout
+        }
+    }
+    
+    // MARK: - PDF Upload
+    
+    func uploadPDF(token: String, fileURL: URL) async throws -> Note {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._uploadPDF(token: validToken, fileURL: fileURL)
+        }
+    }
+    
+    private func _uploadPDF(token: String, fileURL: URL) async throws -> Note {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.uploadPDF)") else {
+            throw APIError.invalidURL
+        }
+        
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 120 // 2 minutes for upload
+        
+        let httpBody = try createMultipartBody(
+            boundary: boundary,
+            fileURL: fileURL,
+            fieldName: "file"
+        )
+        
+        request.httpBody = httpBody
+        
+        print("📄 Uploading PDF: \(fileURL.lastPathComponent)")
+        
+        let (data, response) = try await longRunningSession.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("📄 PDF upload response: \(httpResponse.statusCode)")
+        
+        // Log raw response for debugging
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📄 Response body: \(responseString)")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 201 || httpResponse.statusCode == 200 else {
+            let errorMessage = extractErrorMessage(from: data) ?? "Failed to upload PDF (HTTP \(httpResponse.statusCode))"
+            print("❌ PDF upload failed: \(errorMessage)")
+            throw APIError.serverError(errorMessage)
+        }
+        
+        // Try standard NoteResponse first (server returns { success, data: Note })
+        do {
+            let noteResponse = try JSONDecoder().decode(NoteResponse.self, from: data)
+            if let note = noteResponse.data {
+                print("✅ PDF upload successful, note_id: \(note.id)")
+                return note
+            }
+        } catch {
+            print("⚠️ Standard NoteResponse decode failed: \(error)")
+        }
+        
+        // Try alternate format where result contains note
+        do {
+            struct PDFUploadResponse: Codable {
+                let success: Bool
+                let data: PDFResultData?
+            }
+            
+            struct PDFResultData: Codable {
+                let note: Note
+            }
+            
+            let pdfResponse = try JSONDecoder().decode(PDFUploadResponse.self, from: data)
+            if let note = pdfResponse.data?.note {
+                print("✅ PDF upload successful (nested), note_id: \(note.id)")
+                return note
+            }
+        } catch {
+            print("⚠️ Nested format decode failed: \(error)")
+        }
+        
+        print("❌ Could not parse PDF upload response")
+        throw APIError.decodingError
+    }
+    
+    // MARK: - Podcast APIs
+
+    func getPodcast(token: String, noteId: String) async throws -> Podcast? {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._getPodcast(token: validToken, noteId: noteId)
+        }
+    }
+    
+    private func _getPodcast(token: String, noteId: String) async throws -> Podcast? {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.podcast)/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode == 404 {
+            return nil // No podcast exists yet
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch podcast")
+        }
+        
+        let podcastResponse = try JSONDecoder().decode(PodcastResponse.self, from: data)
+        return podcastResponse.data
+    }
+
+    // MARK: - AI Content APIs
+
+    func getAIContent(token: String, noteId: String, contentType: String) async throws -> AIContent? {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._getAIContent(token: validToken, noteId: noteId, contentType: contentType)
+        }
+    }
+    
+    private func _getAIContent(token: String, noteId: String, contentType: String) async throws -> AIContent? {
+        // Use the unified endpoint to get all AI content for a note
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/note/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        // Log raw response for debugging
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📦 Raw API response: \(jsonString)")
+        }
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode == 404 {
+            return nil // No content exists yet
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch AI content")
+        }
+        
+        
+        // Response wrapper
+        struct AIContentListResponse: Codable {
+            let success: Bool
+            let data: [AIContentItem]?
+            let error: String?
+        }
+        
+        // MARK: - AI Content Models
+
+        struct AIContentItem: Codable {
+            let id: String
+            let noteId: String
+            let contentType: String
+            let content: AIContentData
+            let createdAt: String
+            
+            enum CodingKeys: String, CodingKey {
+                case id
+                case noteId = "note_id"
+                case contentType = "content_type"
+                case content
+                case createdAt = "created_at"
+            }
+        }
+
+        struct AIContentData: Codable {
+            let model: String?
+            let questions: QuizQuestionsWrapper?
+            let flashcards: [Flashcard]?
+            let audioUrl: String?
+            let duration: String?
+            let style: String?
+            let script: String?
+            let numHosts: Int?
+            let difficulty: String?
+            let numQuestions: Int?
+            let numCards: Int?
+            let status: String?
+            let summary: String?
+            let length: String?
+            
+            enum CodingKeys: String, CodingKey {
+                case model, questions, flashcards, duration, style, script, difficulty, status, summary, length
+                case audioUrl = "audio_url"
+                case numHosts = "num_hosts"
+                case numQuestions = "num_questions"
+                case numCards = "num_cards"
+            }
+        }
+
+        struct QuizQuestionsWrapper: Codable {
+            let quizQuestions: [QuizQuestion]?
+            let quiz: [QuizQuestion]?
+            
+            enum CodingKeys: String, CodingKey {
+                case quizQuestions = "quiz_questions"
+                case quiz
+            }
+            
+            // Custom decoder to handle both array and object formats
+            init(from decoder: Decoder) throws {
+                // Try to decode as direct array first
+                if let questionsArray = try? decoder.singleValueContainer().decode([QuizQuestion].self) {
+                    self.quizQuestions = questionsArray
+                    self.quiz = nil
+                } else {
+                    // Fall back to object format
+                    let container = try decoder.container(keyedBy: CodingKeys.self)
+                    self.quizQuestions = try? container.decode([QuizQuestion].self, forKey: .quizQuestions)
+                    self.quiz = try? container.decode([QuizQuestion].self, forKey: .quiz)
+                }
+            }
+            
+            // Get questions from either field
+            var questions: [QuizQuestion] {
+                return quizQuestions ?? quiz ?? []
+            }
+        }
+
+        
+        do {
+            let listResponse = try JSONDecoder().decode(AIContentListResponse.self, from: data)
+            
+            guard let items = listResponse.data else {
+                return nil
+            }
+            
+            // Find the specific content type we're looking for
+            guard let item = items.first(where: { $0.contentType == contentType }) else {
+                return nil
+            }
+            
+            // Convert flashcards (adding IDs)
+            let flashcards = item.content.flashcards?.map { flashcardData in
+                Flashcard(id: UUID().uuidString, front: flashcardData.front, back: flashcardData.back)
+            }
+            
+            // Extract quiz questions wrapper
+            let quizWrapper: QuizWrapper? = {
+                if let questionsWrapper = item.content.questions {
+                    let questions = questionsWrapper.questions
+                    return questions.isEmpty ? nil : QuizWrapper(quizQuestions: questions)
+                }
+                return nil
+            }()
+            
+            // Convert to AIContent
+            return AIContent(
+                id: item.id,
+                noteId: noteId,
+                audioUrl: item.content.audioUrl,
+                duration: item.content.duration,
+                status: item.content.status ?? "completed",
+                questions: quizWrapper,
+                flashcards: flashcards,
+                summary: item.content.summary,
+                createdAt: item.createdAt
+            )
+        } catch {
+            print("❌ Decoding error: \(error)")
+            throw error
+        }
+    }
+
+    func generatePodcast(token: String, noteId: String, contentLength: Int = 0) async throws -> AIContent {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._generatePodcast(token: validToken, noteId: noteId, contentLength: contentLength)
+        }
+    }
+
+    private func _generatePodcast(token: String, noteId: String, contentLength: Int) async throws -> AIContent {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/podcast") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "content_type": "podcast",
+            "options": [
+                "generate_audio": true,
+                "language": getPreferredLanguage()
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("📤 Generating podcast...")
+        print("   URL: \(url)")
+        print("   Body: \(String(data: request.httpBody!, encoding: .utf8) ?? "")")
+
+        // Use dynamic timeout based on content length
+        let session = contentLength > 0 ? sessionForContent(length: contentLength) : longRunningSession
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("📥 Response status: \(httpResponse.statusCode)")
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("   Response: \(responseString)")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+            throw APIError.serverError(errorData?["error"] ?? "Failed to generate podcast")
+        }
+        
+        // Server returns immediately with status: 'generating'
+        return AIContent(
+            id: nil,
+            noteId: noteId,
+            audioUrl: nil,
+            duration: nil,
+            status: "generating",
+            questions: nil,
+            flashcards: nil,
+            summary: nil,
+            createdAt: nil
+        )
+    }
+    
+    func generateQuiz(token: String, noteId: String, difficulty: String = "medium", numQuestions: Int = 5, contentLength: Int = 0) async throws -> AIContent {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._generateQuiz(token: validToken, noteId: noteId, difficulty: difficulty, numQuestions: numQuestions, contentLength: contentLength)
+        }
+    }
+
+    private func _generateQuiz(token: String, noteId: String, difficulty: String = "medium", numQuestions: Int = 5, contentLength: Int) async throws -> AIContent {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/quiz") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "content_type": "quiz",
+            "options": [
+                "difficulty": difficulty,
+                "num_questions": numQuestions,
+                "language": getPreferredLanguage()
+            ]
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("📤 Generating quiz...")
+        print("   URL: \(url.absoluteString)")
+        if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+            print("   Body: \(bodyString)")
+        }
+
+        // Use dynamic timeout based on content length
+        let session = contentLength > 0 ? sessionForContent(length: contentLength) : longRunningSession
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("📥 Response status: \(httpResponse.statusCode)")
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("   Response: \(jsonString)")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to generate quiz")
+        }
+        
+        // Response structure for generate endpoint
+        struct GenerateQuizResponse: Codable {
+            let success: Bool
+            let data: GenerateQuizData?
+            let error: String?
+        }
+        
+        struct GenerateQuizData: Codable {
+            let id: String
+            let noteId: String?
+            let questions: QuizQuestionsWrapper
+            let difficulty: String?
+            
+            enum CodingKeys: String, CodingKey {
+                case id, questions, difficulty
+                case noteId = "note_id"
+            }
+        }
+        
+        struct QuizQuestionsWrapper: Codable {
+            let quizQuestions: [QuizQuestion]?
+            let quiz: [QuizQuestion]?
+            
+            enum CodingKeys: String, CodingKey {
+                case quizQuestions = "quiz_questions"
+                case quiz
+            }
+            
+            init(from decoder: Decoder) throws {
+                // Try to decode as direct array first
+                if let questionsArray = try? decoder.singleValueContainer().decode([QuizQuestion].self) {
+                    self.quizQuestions = questionsArray
+                    self.quiz = nil
+                } else {
+                    // Fall back to object format
+                    let container = try decoder.container(keyedBy: CodingKeys.self)
+                    self.quizQuestions = try? container.decode([QuizQuestion].self, forKey: .quizQuestions)
+                    self.quiz = try? container.decode([QuizQuestion].self, forKey: .quiz)
+                }
+            }
+            
+            var questions: [QuizQuestion] {
+                return quizQuestions ?? quiz ?? []
+            }
+        }
+        
+        let generateResponse = try JSONDecoder().decode(GenerateQuizResponse.self, from: data)
+        
+        guard let quizData = generateResponse.data else {
+            throw APIError.serverError(generateResponse.error ?? "No quiz data returned")
+        }
+        
+        // Extract questions using the computed property
+        let questions = quizData.questions.questions
+        
+        guard !questions.isEmpty else {
+            throw APIError.serverError("No questions generated")
+        }
+        
+        print("✅ Successfully decoded \(questions.count) questions")
+        
+        // Convert to AIContent structure - wrap questions in QuizWrapper
+        return AIContent(
+            id: quizData.id,
+            noteId: noteId,
+            audioUrl: nil,
+            duration: nil,
+            status: "completed",
+            questions: QuizWrapper(quizQuestions: questions),
+            flashcards: nil,
+            summary: nil,
+            createdAt: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    func generateFlashcards(token: String, noteId: String, contentLength: Int = 0) async throws -> AIContent {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._generateFlashcards(token: validToken, noteId: noteId, contentLength: contentLength)
+        }
+    }
+
+    private func _generateFlashcards(token: String, noteId: String, contentLength: Int) async throws -> AIContent {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/flashcards") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "content_type": "flashcards",
+            "options": [
+                "language": getPreferredLanguage()
+            ]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("📤 POST \(url)")
+        print("📦 Body: \(String(data: request.httpBody!, encoding: .utf8) ?? "")")
+
+        // Use dynamic timeout based on content length
+        let session = contentLength > 0 ? sessionForContent(length: contentLength) : longRunningSession
+        let (data, response) = try await session.data(for: request)
+        
+        // Log raw response
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📦 Response: \(jsonString)")
+        }
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+            throw APIError.serverError(errorData?["error"] ?? errorData?["details"] ?? "Failed to generate flashcards")
+        }
+        
+        // Updated to match actual server response structure
+        struct FlashcardsGenerateResponse: Codable {
+            let success: Bool
+            let data: FlashcardsGenerateData
+        }
+        
+        struct FlashcardsGenerateData: Codable {
+            let id: String
+            let noteId: String
+            let flashcards: [FlashcardData]
+            
+            enum CodingKeys: String, CodingKey {
+                case id
+                case noteId = "note_id"
+                case flashcards
+            }
+        }
+        
+        struct FlashcardData: Codable {
+            let front: String
+            let back: String
+        }
+        
+        let flashcardsResponse = try JSONDecoder().decode(FlashcardsGenerateResponse.self, from: data)
+        
+        print("✅ Decoded flashcards response: \(flashcardsResponse.data.flashcards.count) cards")
+        
+        // Convert FlashcardData to Flashcard (adding IDs)
+        let flashcards = flashcardsResponse.data.flashcards.map { flashcardData in
+            Flashcard(id: UUID().uuidString, front: flashcardData.front, back: flashcardData.back)
+        }
+        
+        return AIContent(
+            id: flashcardsResponse.data.id,
+            noteId: noteId,
+            audioUrl: nil,
+            duration: nil,
+            status: nil,
+            questions: nil,
+            flashcards: flashcards,
+            summary: nil,
+            createdAt: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+    
+    func generateSummary(token: String, noteId: String, length: String, contentLength: Int = 0) async throws -> AIContent {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._generateSummary(token: validToken, noteId: noteId, length: length, contentLength: contentLength)
+        }
+    }
+
+    private func _generateSummary(token: String, noteId: String, length: String, contentLength: Int) async throws -> AIContent {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/summary") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "content_type": "summary",
+            "options": [
+                "length": length,
+                "language": getPreferredLanguage()
+            ]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("📤 Generating summary...")
+        print("   URL: \(url)")
+        if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+            print("   Body: \(bodyString)")
+        }
+
+        // Use dynamic timeout based on content length
+        let session = contentLength > 0 ? sessionForContent(length: contentLength) : longRunningSession
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("📥 Response status: \(httpResponse.statusCode)")
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("   Response: \(jsonString)")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+            throw APIError.serverError(errorData?["error"] ?? "Failed to generate summary")
+        }
+        
+        // Response structure for summary endpoint
+        struct GenerateSummaryResponse: Codable {
+            let success: Bool
+            let data: GenerateSummaryData?
+            let error: String?
+        }
+        
+        struct GenerateSummaryData: Codable {
+            let id: String
+            let summary: String
+            let length: String
+            let noteId: String?
+            
+            enum CodingKeys: String, CodingKey {
+                case id, summary, length
+                case noteId = "note_id"
+            }
+        }
+        
+        let summaryResponse = try JSONDecoder().decode(GenerateSummaryResponse.self, from: data)
+        
+        guard let summaryData = summaryResponse.data else {
+            throw APIError.serverError(summaryResponse.error ?? "No summary data returned")
+        }
+        
+        print("✅ Successfully generated summary")
+        
+        // Convert to AIContent structure
+        return AIContent(
+            id: summaryData.id,
+            noteId: noteId,
+            audioUrl: nil,
+            duration: nil,
+            status: "completed",
+            questions: nil,
+            flashcards: nil,
+            summary: summaryData.summary,
+            createdAt: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    func chatWithNote(token: String, noteId: String, question: String, conversationHistory: [ChatHistoryItem], contentLength: Int = 0) async throws -> ChatResponse {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._chatWithNote(token: validToken, noteId: noteId, question: question, conversationHistory: conversationHistory, contentLength: contentLength)
+        }
+    }
+
+    private func _chatWithNote(token: String, noteId: String, question: String, conversationHistory: [ChatHistoryItem], contentLength: Int) async throws -> ChatResponse {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/chat") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "question": question,
+            "language": getPreferredLanguage(),
+            "conversation_history": conversationHistory.map {
+                ["text": $0.text, "isUser": $0.isUser]
+            }
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("📤 Sending chat message...")
+        print("   URL: \(url)")
+        if let bodyString = String(data: request.httpBody!, encoding: .utf8) {
+            print("   Body: \(bodyString)")
+        }
+
+        // Use dynamic timeout based on content length
+        let session = contentLength > 0 ? sessionForContent(length: contentLength) : longRunningSession
+        let (data, response) = try await session.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("📥 Response status: \(httpResponse.statusCode)")
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("   Response: \(jsonString)")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+            throw APIError.serverError(errorData?["error"] ?? "Failed to chat with note")
+        }
+        
+        // Response structure for chat endpoint
+        struct ChatApiResponse: Codable {
+            let success: Bool
+            let data: ChatResponse?
+            let error: String?
+        }
+        
+        let chatApiResponse = try JSONDecoder().decode(ChatApiResponse.self, from: data)
+        
+        guard let chatResponse = chatApiResponse.data else {
+            throw APIError.serverError(chatApiResponse.error ?? "No chat response returned")
+        }
+        
+        print("✅ Successfully received chat response")
+
+        return chatResponse
+    }
+
+    // MARK: - Chat Suggestions
+
+    func getChatSuggestions(token: String, noteId: String) async throws -> [String] {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._getChatSuggestions(token: validToken, noteId: noteId)
+        }
+    }
+
+    private func _getChatSuggestions(token: String, noteId: String) async throws -> [String] {
+        let language = getPreferredLanguage()
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/suggestions/\(noteId)?language=\(language)") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        print("📤 Fetching chat suggestions with language: \(language)")
+        print("   URL: \(url)")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+            throw APIError.serverError(errorData?["error"] ?? "Failed to get suggestions")
+        }
+
+        struct SuggestionsResponse: Codable {
+            let success: Bool
+            let data: SuggestionsData?
+            let error: String?
+        }
+
+        struct SuggestionsData: Codable {
+            let suggestions: [String]
+            let note_id: String
+        }
+
+        let suggestionsResponse = try JSONDecoder().decode(SuggestionsResponse.self, from: data)
+
+        guard let suggestionsData = suggestionsResponse.data else {
+            throw APIError.serverError(suggestionsResponse.error ?? "No suggestions returned")
+        }
+
+        print("✅ Received \(suggestionsData.suggestions.count) suggestions")
+
+        return suggestionsData.suggestions
+    }
+
+    func checkPodcastStatus(token: String, noteId: String) async throws -> AIContent? {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._checkPodcastStatus(token: validToken, noteId: noteId)
+        }
+    }
+    
+    private func _checkPodcastStatus(token: String, noteId: String) async throws -> AIContent? {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/podcast/status/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to check podcast status")
+        }
+        
+        struct PodcastStatusResponse: Codable {
+            let success: Bool
+            let data: PodcastStatusData
+        }
+        
+        struct PodcastStatusData: Codable {
+            let status: String
+            let id: String?
+            let audioUrl: String?
+            let script: String?
+            let duration: String?
+            let style: String?
+            let noteId: String?
+            let message: String?
+            
+            enum CodingKeys: String, CodingKey {
+                case status
+                case id
+                case audioUrl = "audio_url"
+                case script
+                case duration
+                case style
+                case noteId = "note_id"
+                case message
+            }
+        }
+        
+        let statusResponse = try JSONDecoder().decode(PodcastStatusResponse.self, from: data)
+        
+        if statusResponse.data.status == "not_found" {
+            return nil
+        }
+        
+        if statusResponse.data.status == "generating" {
+            return AIContent(
+                id: nil,
+                noteId: noteId,
+                audioUrl: nil,
+                duration: nil,
+                status: "generating",
+                questions: nil,
+                flashcards: nil,
+                summary: nil,
+                createdAt: nil
+            )
+        }
+        
+        // Ready
+        return AIContent(
+            id: statusResponse.data.id,
+            noteId: noteId,
+            audioUrl: statusResponse.data.audioUrl,
+            duration: statusResponse.data.duration,
+            status: "ready",
+            questions: nil,
+            flashcards: nil,
+            summary: nil,
+            createdAt: nil
+        )
+    }
+
+
+    // MARK: - Quiz APIs
+
+    func getQuiz(token: String, noteId: String) async throws -> Quiz? {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._getQuiz(token: validToken, noteId: noteId)
+        }
+    }
+    
+    private func _getQuiz(token: String, noteId: String) async throws -> Quiz? {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.quiz)/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode == 404 {
+            return nil
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch quiz")
+        }
+        
+        let quizResponse = try JSONDecoder().decode(QuizResponse.self, from: data)
+        return quizResponse.data
+    }
+
+    
+
+    // MARK: - Flashcards APIs
+
+    func getFlashcards(token: String, noteId: String) async throws -> FlashcardSet? {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._getFlashcards(token: validToken, noteId: noteId)
+        }
+    }
+    
+    private func _getFlashcards(token: String, noteId: String) async throws -> FlashcardSet? {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.flashcards)/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode == 404 {
+            return nil
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch flashcards")
+        }
+        
+        let flashcardResponse = try JSONDecoder().decode(FlashcardResponse.self, from: data)
+        return flashcardResponse.data
+    }
+
+    
+
+    // MARK: - Chat APIs
+
+    func getChatHistory(token: String, noteId: String) async throws -> [ChatMessage] {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._getChatHistory(token: validToken, noteId: noteId)
+        }
+    }
+    
+    private func _getChatHistory(token: String, noteId: String) async throws -> [ChatMessage] {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.chat)/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        if httpResponse.statusCode == 404 {
+            return []
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch chat history")
+        }
+        
+        struct ChatHistoryApiResponse: Codable {
+            let success: Bool
+            let data: [ChatMessageData]?
+            let error: String?
+        }
+        
+        struct ChatMessageData: Codable {
+            let id: String
+            let role: String
+            let text: String
+        }
+        
+        let chatHistoryResponse = try JSONDecoder().decode(ChatHistoryApiResponse.self, from: data)
+        
+        // Convert ChatMessageData to ChatMessage
+        let messages = (chatHistoryResponse.data ?? []).map { messageData in
+            ChatMessage(
+                id: messageData.id,
+                role: messageData.role,
+                text: messageData.text
+            )
+        }
+        
+        return messages
+    }
+
+    func sendChatMessage(token: String, noteId: String, message: String) async throws -> ChatMessage {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._sendChatMessage(token: validToken, noteId: noteId, message: message)
+        }
+    }
+    
+    private func _sendChatMessage(token: String, noteId: String, message: String) async throws -> ChatMessage {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.chat)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "question": message,
+            "conversation_history": []
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to send message")
+        }
+        
+        struct ChatApiResponse: Codable {
+            let success: Bool
+            let data: ChatResponse?
+            let error: String?
+        }
+        
+        let chatApiResponse = try JSONDecoder().decode(ChatApiResponse.self, from: data)
+        
+        guard let chatResponse = chatApiResponse.data else {
+            throw APIError.serverError(chatApiResponse.error ?? "No response")
+        }
+        
+        // Convert ChatResponse to ChatMessage
+        return ChatMessage(
+            id: UUID().uuidString,
+            role: "assistant",
+            text: chatResponse.answer
+        )
+    }
+    
+    // MARK: - Scanned Document Upload
+    
+    func uploadScannedDocument(token: String, pdfURL: URL, extractedText: String) async throws -> Note {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._uploadScannedDocument(token: validToken, pdfURL: pdfURL, extractedText: extractedText)
+        }
+    }
+    
+    private func _uploadScannedDocument(token: String, pdfURL: URL, extractedText: String) async throws -> Note {
+        guard let url = URL(string: "\(Constants.baseURL)/api/uploads/scan") else {
+            throw APIError.invalidURL
+        }
+        
+        let boundary = UUID().uuidString
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 120
+        
+        var httpBody = Data()
+        
+        // Add file
+        let fileData = try Data(contentsOf: pdfURL)
+        httpBody.append("--\(boundary)\r\n".data(using: .utf8)!)
+        httpBody.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(pdfURL.lastPathComponent)\"\r\n".data(using: .utf8)!)
+        httpBody.append("Content-Type: application/pdf\r\n\r\n".data(using: .utf8)!)
+        httpBody.append(fileData)
+        httpBody.append("\r\n".data(using: .utf8)!)
+        
+        // Add extracted text
+        httpBody.append("--\(boundary)\r\n".data(using: .utf8)!)
+        httpBody.append("Content-Disposition: form-data; name=\"extractedText\"\r\n\r\n".data(using: .utf8)!)
+        httpBody.append(extractedText.data(using: .utf8)!)
+        httpBody.append("\r\n".data(using: .utf8)!)
+        
+        httpBody.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        request.httpBody = httpBody
+        
+        print("📸 Uploading scanned document")
+        
+        let (data, response) = try await longRunningSession.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("📸 Scan upload response: \(httpResponse.statusCode)")
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 201 || httpResponse.statusCode == 200 else {
+            let errorMessage = extractErrorMessage(from: data) ?? "Failed to upload scanned document (HTTP \(httpResponse.statusCode))"
+            throw APIError.serverError(errorMessage)
+        }
+        
+        // Server returns: { success, message, note, stats, pdfUrl }
+        // The note is under 'note' key, not 'data'
+        struct ScanUploadResponse: Codable {
+            let success: Bool
+            let message: String?
+            let note: Note
+            let stats: ScanStats?
+            let pdfUrl: String?
+        }
+        
+        struct ScanStats: Codable {
+            let fileSize: Double?
+            let wordCount: Int?
+            let characterCount: Int?
+            let pageCount: Int?
+        }
+        
+        do {
+            let scanResponse = try JSONDecoder().decode(ScanUploadResponse.self, from: data)
+            print("✅ Scan upload successful, note_id: \(scanResponse.note.id)")
+            return scanResponse.note
+        } catch {
+            print("❌ Failed to decode scan response: \(error)")
+            
+            // Log raw response for debugging
+            if let responseString = String(data: data, encoding: .utf8) {
+                print("📸 Raw response: \(responseString)")
+            }
+            
+            throw APIError.decodingError
+        }
+    }
+    
+    // MARK: - YouTube Video Processing
+    
+    func processVideoUrl(token: String, url videoUrl: String) async throws {
+        try await executeWithTokenRefresh { validToken in
+            try await self._processVideoUrl(token: validToken, url: videoUrl)
+        }
+    }
+    
+    private func _processVideoUrl(token: String, url videoUrl: String) async throws {
+        guard let apiUrl = URL(string: "\(Constants.baseURL)\(Constants.API.videoUrl)") else {
+            throw APIError.invalidURL
+        }
+        
+        var request = URLRequest(url: apiUrl)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 180 // 3 minutes for YouTube processing
+        
+        let body: [String: Any] = ["url": videoUrl]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        print("🎬 Processing YouTube video: \(videoUrl)")
+        
+        let (data, response) = try await longRunningSession.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+        
+        print("🎬 YouTube response: \(httpResponse.statusCode)")
+        
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+        
+        guard httpResponse.statusCode == 201 else {
+            let errorMessage = extractErrorMessage(from: data) ?? "Failed to process video (HTTP \(httpResponse.statusCode))"
+            print("❌ YouTube processing failed: \(errorMessage)")
+            throw APIError.serverError(errorMessage)
+        }
+        
+        print("✅ YouTube video processed successfully")
+    }
+    
+    // MARK: - Helper Methods
+    
+    private func extractErrorMessage(from data: Data) -> String? {
+        // Try different JSON structures for error messages
+        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let error = json["error"] as? String {
+                return error
+            }
+            if let message = json["message"] as? String {
+                return message
+            }
+            if let errors = json["errors"] as? [[String: Any]],
+               let firstError = errors.first,
+               let msg = firstError["message"] as? String {
+                return msg
+            }
+        }
+        
+        // Return raw response if it's short enough
+        if let responseString = String(data: data, encoding: .utf8), responseString.count < 200 {
+            return responseString
+        }
+        
+        return nil
+    }
+    
+    private func createMultipartBody(boundary: String, fileURL: URL, fieldName: String) throws -> Data {
+        var body = Data()
+        
+        let filename = fileURL.lastPathComponent
+        let mimeType = getMimeType(for: fileURL)
+        let fileData = try Data(contentsOf: fileURL)
+        
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(filename)\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(mimeType)\r\n\r\n".data(using: .utf8)!)
+        body.append(fileData)
+        body.append("\r\n".data(using: .utf8)!)
+        body.append("--\(boundary)--\r\n".data(using: .utf8)!)
+        
+        return body
+    }
+    
+    private func getMimeType(for url: URL) -> String {
+        let pathExtension = url.pathExtension.lowercased()
+        
+        switch pathExtension {
+        case "pdf": return "application/pdf"
+        case "mp3": return "audio/mpeg"
+        case "m4a": return "audio/m4a"
+        case "wav": return "audio/wav"
+        case "aac": return "audio/aac"
+        case "mp4": return "audio/mp4"
+        default: return "application/octet-stream"
+        }
+    }
+    
+    func deleteUserAccount(token: String) async throws {
+            try await executeWithTokenRefresh { validToken in
+                try await self._deleteUserAccount(token: validToken)
+            }
+        }
+        
+        private func _deleteUserAccount(token: String) async throws {
+            guard let url = URL(string: "\(Constants.baseURL)/api/user/delete-account") else {
+                throw APIError.invalidURL
+            }
+            
+            var request = URLRequest(url: url)
+            request.httpMethod = "DELETE"
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.timeoutInterval = 60 // Account deletion may take time
+            
+            print("🗑️ Sending account deletion request...")
+            
+            let (data, response) = try await URLSession.shared.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw APIError.serverError("Invalid response")
+            }
+            
+            print("🗑️ Account deletion response: \(httpResponse.statusCode)")
+            
+            if httpResponse.statusCode == 401 {
+                throw APIError.unauthorized
+            }
+            
+            guard httpResponse.statusCode == 200 else {
+                let errorMessage = extractErrorMessage(from: data) ?? "Failed to delete account (HTTP \(httpResponse.statusCode))"
+                print("❌ Account deletion failed: \(errorMessage)")
+                throw APIError.serverError(errorMessage)
+            }
+            
+            print("✅ Account deletion successful")
+        }
+}

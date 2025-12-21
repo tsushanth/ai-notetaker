@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSMicrophoneUsageDescription</key>
+<string>We need access to your microphone to record audio notes</string>
+
+<key>NSCameraUsageDescription</key>
+<string>We need access to your camera to scan documents</string>
+<key>CFBundleDisplayName</key>
+<string>Scribe AI Learn</string>
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>kreativekoala.scribeai</string>
+        </array>
+    </dict>
+    <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>com.googleusercontent.apps.917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00</string>
+        </array>
+    </dict>
+</array>
+<key>UIDeviceFamily</key>
+<array>
+    <integer>1</integer>
+    <integer>2</integer>
+</array>
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>We need access to speech recognition to enable voice chat with your notes</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>We need access to your microphone for voice input</string>
+<key>GIDClientID</key>
+<string>917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+<!-- France App Store Compliance - Encryption Declaration -->
+<!-- Set to NO because the app only uses HTTPS (standard iOS networking) -->
+<!-- which qualifies for the encryption exemption -->
+<key>ITSAppUsesNonExemptEncryption</key>
+<false/>
+</dict>
+</plist>

@@ -18,6 +18,8 @@ DROP TABLE IF EXISTS usage_logs CASCADE;
 DROP TABLE IF EXISTS ai_content CASCADE;
 DROP TABLE IF EXISTS recordings CASCADE;
 DROP TABLE IF EXISTS notes CASCADE;
+DROP TABLE IF EXISTS subscriptions CASCADE;
+DROP TABLE IF EXISTS subscription_events CASCADE;
 
 -- Create notes table
 CREATE TABLE notes (
@@ -66,6 +68,52 @@ CREATE TABLE usage_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Create subscriptions table for server-side subscription tracking
+CREATE TABLE subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
+  product_id TEXT NOT NULL,
+  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'expired', 'grace_period', 'pending')),
+  original_transaction_id TEXT,
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  trial_start TIMESTAMPTZ,
+  trial_end TIMESTAMPTZ,
+  is_trial BOOLEAN DEFAULT false,
+  cancellation_date TIMESTAMPTZ,
+  cancellation_reason TEXT,
+  auto_renew_enabled BOOLEAN DEFAULT true,
+  price_amount DECIMAL(10, 2),
+  price_currency TEXT DEFAULT 'USD',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Create subscription events table for audit trail
+CREATE TABLE subscription_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  subscription_id UUID REFERENCES subscriptions(id) ON DELETE SET NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN (
+    'trial_started', 'trial_converted', 'trial_cancelled', 'trial_expired',
+    'subscription_started', 'subscription_renewed', 'subscription_cancelled',
+    'subscription_expired', 'subscription_grace_period', 'subscription_reactivated',
+    'refund_issued', 'billing_issue', 'price_change'
+  )),
+  platform TEXT NOT NULL CHECK (platform IN ('ios', 'android', 'web')),
+  product_id TEXT,
+  transaction_id TEXT,
+  original_transaction_id TEXT,
+  price_amount DECIMAL(10, 2),
+  price_currency TEXT,
+  environment TEXT CHECK (environment IN ('production', 'sandbox')),
+  raw_notification JSONB,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Drop existing indexes if they exist
 DROP INDEX IF EXISTS idx_notes_user_id;
 DROP INDEX IF EXISTS idx_notes_created_at;
@@ -74,6 +122,12 @@ DROP INDEX IF EXISTS idx_recordings_note_id;
 DROP INDEX IF EXISTS idx_ai_content_note_id;
 DROP INDEX IF EXISTS idx_usage_logs_user_id;
 DROP INDEX IF EXISTS idx_usage_logs_created_at;
+DROP INDEX IF EXISTS idx_subscriptions_user_id;
+DROP INDEX IF EXISTS idx_subscriptions_status;
+DROP INDEX IF EXISTS idx_subscriptions_original_transaction_id;
+DROP INDEX IF EXISTS idx_subscription_events_user_id;
+DROP INDEX IF EXISTS idx_subscription_events_event_type;
+DROP INDEX IF EXISTS idx_subscription_events_created_at;
 
 -- Create indexes for better query performance
 CREATE INDEX idx_notes_user_id ON notes(user_id);
@@ -83,6 +137,12 @@ CREATE INDEX idx_recordings_note_id ON recordings(note_id);
 CREATE INDEX idx_ai_content_note_id ON ai_content(note_id);
 CREATE INDEX idx_usage_logs_user_id ON usage_logs(user_id);
 CREATE INDEX idx_usage_logs_created_at ON usage_logs(created_at DESC);
+CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX idx_subscriptions_status ON subscriptions(status);
+CREATE INDEX idx_subscriptions_original_transaction_id ON subscriptions(original_transaction_id);
+CREATE INDEX idx_subscription_events_user_id ON subscription_events(user_id);
+CREATE INDEX idx_subscription_events_event_type ON subscription_events(event_type);
+CREATE INDEX idx_subscription_events_created_at ON subscription_events(created_at DESC);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -106,11 +166,19 @@ CREATE TRIGGER update_recordings_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_subscriptions_updated_at ON subscriptions;
+CREATE TRIGGER update_subscriptions_updated_at
+    BEFORE UPDATE ON subscriptions
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recordings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_content ENABLE ROW LEVEL SECURITY;
 ALTER TABLE usage_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscription_events ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies if they exist
 DROP POLICY IF EXISTS "Users can view their own notes" ON notes;
@@ -129,6 +197,11 @@ DROP POLICY IF EXISTS "Users can delete AI content for their notes" ON ai_conten
 
 DROP POLICY IF EXISTS "Users can view their own usage logs" ON usage_logs;
 DROP POLICY IF EXISTS "Users can insert their own usage logs" ON usage_logs;
+
+DROP POLICY IF EXISTS "Users can view their own subscription" ON subscriptions;
+DROP POLICY IF EXISTS "Service role can manage subscriptions" ON subscriptions;
+DROP POLICY IF EXISTS "Users can view their own subscription events" ON subscription_events;
+DROP POLICY IF EXISTS "Service role can manage subscription events" ON subscription_events;
 
 -- RLS Policies for notes table
 CREATE POLICY "Users can view their own notes"
@@ -205,6 +278,21 @@ CREATE POLICY "Users can view their own usage logs"
 CREATE POLICY "Users can insert their own usage logs"
     ON usage_logs FOR INSERT
     WITH CHECK (auth.uid() = user_id);
+
+-- RLS Policies for subscriptions table
+-- Users can only view their own subscription
+CREATE POLICY "Users can view their own subscription"
+    ON subscriptions FOR SELECT
+    USING (auth.uid() = user_id);
+
+-- Service role (backend) can do everything - this bypasses RLS when using service key
+-- Note: The backend uses SUPABASE_SERVICE_KEY which bypasses RLS automatically
+
+-- RLS Policies for subscription_events table
+-- Users can only view their own subscription events
+CREATE POLICY "Users can view their own subscription events"
+    ON subscription_events FOR SELECT
+    USING (auth.uid() = user_id);
 
 -- Drop and recreate view for user statistics
 DROP VIEW IF EXISTS user_stats;

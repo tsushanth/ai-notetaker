@@ -6,8 +6,10 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.net.Uri
+import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -104,6 +106,41 @@ fun ScanDocumentScreen(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         hasCameraPermission = isGranted
+    }
+
+    // Photo picker for selecting multiple images from gallery
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = 10)
+    ) { uris ->
+        if (uris.isNotEmpty()) {
+            scope.launch {
+                isProcessing = true
+                try {
+                    val remainingSlots = 10 - scannedPages.size
+                    val urisToProcess = uris.take(remainingSlots)
+
+                    for (uri in urisToProcess) {
+                        val bitmap = loadBitmapFromUri(context, uri)
+                        if (bitmap != null) {
+                            val text = extractTextFromImage(context, bitmap)
+                            scannedPages = scannedPages + ScannedPage(
+                                bitmap = bitmap,
+                                text = text,
+                                pageNumber = scannedPages.size + 1
+                            )
+                        }
+                    }
+
+                    if (uris.size > remainingSlots) {
+                        errorMessage = "Only added $remainingSlots images (max 10 pages)"
+                    }
+                } catch (e: Exception) {
+                    errorMessage = "Failed to load images: ${e.message}"
+                } finally {
+                    isProcessing = false
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -394,19 +431,30 @@ fun ScanDocumentScreen(
                                 horizontalArrangement = Arrangement.SpaceEvenly,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // Preview button
-                                if (scannedPages.isNotEmpty()) {
-                                    IconButton(
-                                        onClick = { showPreview = true },
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
-                                    ) {
-                                        Icon(
-                                            Icons.Default.GridView,
-                                            contentDescription = "Preview pages"
+                                // Gallery button - pick from camera roll
+                                IconButton(
+                                    onClick = {
+                                        if (scannedPages.size >= 10) {
+                                            errorMessage = "Maximum 10 pages allowed"
+                                            return@IconButton
+                                        }
+                                        photoPickerLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                         )
-                                    }
+                                    },
+                                    modifier = Modifier
+                                        .size(56.dp)
+                                        .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                                    enabled = !isProcessing
+                                ) {
+                                    Icon(
+                                        Icons.Default.PhotoLibrary,
+                                        contentDescription = "Choose from gallery",
+                                        tint = if (isProcessing)
+                                            MaterialTheme.colorScheme.outline
+                                        else
+                                            MaterialTheme.colorScheme.primary
+                                    )
                                 }
 
                                 // Capture button
@@ -464,23 +512,42 @@ fun ScanDocumentScreen(
                                     }
                                 }
 
+                                // Preview button (when pages exist) or placeholder
                                 if (scannedPages.isNotEmpty()) {
-                                    // Rough estimate: compressed JPEG is about 100-200KB per image
-                                    val estimatedSizeMB = scannedPages.size * 0.15 // ~150KB per page
-
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            text = "${scannedPages.size} page${if (scannedPages.size > 1) "s" else ""} scanned",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = "~${String.format("%.1f", estimatedSizeMB)} MB",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                    IconButton(
+                                        onClick = { showPreview = true },
+                                        modifier = Modifier
+                                            .size(56.dp)
+                                            .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                Icons.Default.GridView,
+                                                contentDescription = "Preview pages"
+                                            )
+                                            // Badge showing count
+                                            Box(
+                                                modifier = Modifier
+                                                    .align(Alignment.TopEnd)
+                                                    .offset(x = 4.dp, y = (-4).dp)
+                                                    .size(20.dp)
+                                                    .background(
+                                                        MaterialTheme.colorScheme.primary,
+                                                        CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "${scannedPages.size}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            }
+                                        }
                                     }
+                                } else {
+                                    // Placeholder to keep layout balanced
+                                    Spacer(modifier = Modifier.size(56.dp))
                                 }
                             }
                         }
@@ -742,6 +809,29 @@ suspend fun extractTextFromImage(context: Context, bitmap: Bitmap): String {
             .addOnFailureListener { e ->
                 continuation.resume("")
             }
+    }
+}
+
+/**
+ * Load a bitmap from a content URI (e.g., from photo picker)
+ */
+suspend fun loadBitmapFromUri(context: Context, uri: Uri): Bitmap? {
+    return withContext(Dispatchers.IO) {
+        try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val originalBitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream?.close()
+
+            if (originalBitmap != null) {
+                // Compress and resize the image similar to camera capture
+                compressAndResizeBitmap(originalBitmap, maxWidth = 1200, maxQuality = 75)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.e("ScanDebug", "Error loading bitmap from URI: ${uri}", e)
+            null
+        }
     }
 }
 

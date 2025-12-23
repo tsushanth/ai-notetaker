@@ -171,3 +171,119 @@ data class ChatResponse(
     val answer: String,
     val note_id: String
 )
+
+// ============================================
+// Subscription Models
+// ============================================
+
+data class SubscriptionSyncRequest(
+    val productId: String,
+    val platform: String = "android",
+    val status: String,
+    val originalTransactionId: String? = null,
+    val transactionId: String? = null,
+    val expirationDate: String? = null,
+    val purchaseDate: String? = null,
+    val isTrial: Boolean = false,
+    val trialEndDate: String? = null,
+    val autoRenewEnabled: Boolean = true,
+    val priceAmount: String? = null,
+    val priceCurrency: String? = null
+)
+
+data class SubscriptionSyncResponse(
+    val success: Boolean,
+    val data: SubscriptionSyncData? = null,
+    val error: String? = null
+)
+
+data class SubscriptionSyncData(
+    val subscriptionId: String,
+    val status: String,
+    val expiresAt: String? = null
+)
+
+data class SubscriptionStatusResponse(
+    val success: Boolean,
+    val data: SubscriptionStatusData? = null
+)
+
+data class SubscriptionStatusData(
+    val isSubscribed: Boolean,
+    val status: String,
+    val productId: String? = null,
+    val platform: String? = null,
+    val expiresAt: String? = null,
+    val isTrial: Boolean = false,
+    val trialEndsAt: String? = null,
+    val autoRenewEnabled: Boolean = true
+)
+
+data class AccessStatusResponse(
+    val success: Boolean,
+    val data: AccessStatusData? = null
+)
+
+data class AccessStatusData(
+    val hasAccess: Boolean,
+    val isSubscribed: Boolean,
+    val isInTrial: Boolean,
+    val reason: String? = null,
+    val trialDaysRemaining: Int = 0,
+    val trialExpiresAt: String? = null,
+    val trialExpired: Boolean = false,
+    val productId: String? = null,
+    val expiresAt: String? = null,
+    val usage: UsageData? = null,
+    val features: FeatureAccess? = null
+)
+
+data class UsageData(
+    val current: UsageCounts,
+    val limits: UsageCounts,
+    val remaining: UsageCounts
+)
+
+data class UsageCounts(
+    val notes: Int = 0,
+    val aiGenerations: Int = 0,
+    val podcasts: Int = 0
+)
+
+data class FeatureAccess(
+    val canCreateNotes: Boolean = true,
+    val canUseAI: Boolean = true,
+    val canGeneratePodcasts: Boolean = false,
+    val unlimitedAccess: Boolean = false
+)
+
+data class SubscriptionEventRequest(
+    val eventType: String,
+    val platform: String = "android",
+    val productId: String? = null,
+    val transactionId: String? = null,
+    val originalTransactionId: String? = null,
+    val priceAmount: String? = null,
+    val priceCurrency: String? = null,
+    val reason: String? = null,
+    val metadata: Map<String, Any>? = null
+)
+
+// ============================================
+// Generic & Analytics Models
+// ============================================
+
+data class GenericResponse(
+    val success: Boolean,
+    val error: String? = null
+)
+
+data class AnalyticsBatchRequest(
+    val events: List<Map<String, Any>>
+)
+
+data class ErrorReportRequest(
+    val flow: String,
+    val error: String,
+    val context: Map<String, Any>? = null
+)

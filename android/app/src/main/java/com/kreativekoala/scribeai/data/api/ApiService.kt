@@ -141,4 +141,41 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: ChatRequest
     ): Response<ChatApiResponse>
+
+    // Subscription endpoints
+    @POST("api/subscriptions/sync")
+    suspend fun syncSubscription(
+        @Header("Authorization") token: String,
+        @Body request: SubscriptionSyncRequest
+    ): Response<SubscriptionSyncResponse>
+
+    @GET("api/subscriptions/status")
+    suspend fun getSubscriptionStatus(
+        @Header("Authorization") token: String
+    ): Response<SubscriptionStatusResponse>
+
+    @GET("api/subscriptions/access")
+    suspend fun getAccessStatus(
+        @Header("Authorization") token: String
+    ): Response<AccessStatusResponse>
+
+    @POST("api/subscriptions/event")
+    suspend fun recordSubscriptionEvent(
+        @Header("Authorization") token: String,
+        @Body request: SubscriptionEventRequest
+    ): Response<GenericResponse>
+
+    // Analytics endpoints
+    @POST("api/analytics/batch")
+    suspend fun sendAnalyticsBatch(
+        @Header("Authorization") token: String,
+        @Body request: AnalyticsBatchRequest
+    ): Response<GenericResponse>
+
+    // Error reporting endpoint
+    @POST("api/errors/report")
+    suspend fun reportError(
+        @Header("Authorization") token: String,
+        @Body request: ErrorReportRequest
+    ): Response<GenericResponse>
 }

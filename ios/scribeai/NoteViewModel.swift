@@ -35,12 +35,16 @@ class NoteViewModel: ObservableObject {
             self.notes = result.notes
             self.hasMoreNotes = result.pagination?.hasMore ?? false
             self.totalNotes = result.pagination?.total ?? result.notes.count
+            #if DEBUG
             print("✅ Loaded \(result.notes.count) notes (total: \(self.totalNotes), hasMore: \(self.hasMoreNotes))")
+            #endif
         } catch APIError.unauthorized {
             // Token refresh failed - user needs to sign in again
             self.errorMessage = "Session expired. Please log in again."
             // Don't clear tokens here - let AuthViewModel handle navigation
+            #if DEBUG
             print("❌ Unauthorized - session expired")
+            #endif
         } catch {
             // Don't report or show error for cancelled requests (user navigated away)
             let isCancelled = (error as? URLError)?.code == .cancelled ||
@@ -49,10 +53,14 @@ class NoteViewModel: ObservableObject {
 
             if !isCancelled {
                 self.errorMessage = error.localizedDescription
+                #if DEBUG
                 print("❌ Failed to load notes: \(error)")
+                #endif
                 ErrorReportingService.shared.reportError(flow: .fetchNotes, error: error)
             } else {
+                #if DEBUG
                 print("ℹ️ Notes fetch cancelled (user navigated away)")
+                #endif
             }
         }
 
@@ -79,7 +87,9 @@ class NoteViewModel: ObservableObject {
 
             self.hasMoreNotes = result.pagination?.hasMore ?? false
             self.totalNotes = result.pagination?.total ?? self.notes.count
+            #if DEBUG
             print("✅ Loaded \(newNotes.count) more notes (page \(currentPage), total loaded: \(notes.count))")
+            #endif
         } catch APIError.unauthorized {
             self.errorMessage = "Session expired. Please log in again."
             currentPage -= 1 // Revert page increment
@@ -89,7 +99,9 @@ class NoteViewModel: ObservableObject {
 
             if !isCancelled {
                 self.errorMessage = error.localizedDescription
+                #if DEBUG
                 print("❌ Failed to load more notes: \(error)")
+                #endif
             }
             currentPage -= 1 // Revert page increment
         }
@@ -104,7 +116,9 @@ class NoteViewModel: ObservableObject {
             // Remove from local array
             self.notes.removeAll { $0.id == noteId }
             self.totalNotes = max(0, self.totalNotes - 1)
+            #if DEBUG
             print("✅ Note deleted")
+            #endif
         } catch APIError.unauthorized {
             self.errorMessage = "Session expired. Please log in again."
         } catch {
@@ -124,6 +138,8 @@ class NoteViewModel: ObservableObject {
         currentPage = 1
         hasMoreNotes = true
         totalNotes = 0
+        #if DEBUG
         print("🗑️ Notes cleared")
+        #endif
     }
 }

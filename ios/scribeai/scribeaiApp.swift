@@ -12,7 +12,8 @@ import GoogleSignIn
 struct ScribeAIApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @State private var showingSplash = true
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some Scene {
         WindowGroup {
             ZStack {
@@ -42,11 +43,27 @@ struct ScribeAIApp: App {
                 }
             }
             .onAppear {
+                // Track app launch
+                AnalyticsService.shared.trackAppLaunch()
+                AnalyticsService.shared.startSession()
+
                 // Dismiss splash after animation completes
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     withAnimation(.easeOut(duration: 0.5)) {
                         showingSplash = false
                     }
+                }
+            }
+            .onChange(of: scenePhase) { newPhase in
+                switch newPhase {
+                case .active:
+                    AnalyticsService.shared.startSession()
+                case .background:
+                    AnalyticsService.shared.endSession()
+                case .inactive:
+                    break
+                @unknown default:
+                    break
                 }
             }
         }

@@ -33,9 +33,10 @@ struct NoteDetailTabView: View {
     @ObservedObject var viewModel: NoteViewModel
     @Environment(\.dismiss) var dismiss
     @State private var selectedTab: NoteDetailTab = .notes
+    @State private var previousTab: NoteDetailTab = .notes
     @State private var showingDeleteAlert = false
     @State private var showingShareSheet = false
-    
+
     var body: some View {
         ZStack {
             Color.darkBackground
@@ -51,7 +52,16 @@ struct NoteDetailTabView: View {
                                 icon: tab.icon,
                                 isSelected: selectedTab == tab
                             ) {
-                                selectedTab = tab
+                                if selectedTab != tab {
+                                    // Track tab switch
+                                    AnalyticsService.shared.trackTabSwitched(
+                                        fromTab: selectedTab.rawValue,
+                                        toTab: tab.rawValue,
+                                        noteId: note.id
+                                    )
+                                    previousTab = selectedTab
+                                    selectedTab = tab
+                                }
                             }
                         }
                     }
@@ -139,13 +149,20 @@ struct NoteDetailTabView: View {
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(items: [note.content])
         }
+        .onAppear {
+            // Track note viewed
+            AnalyticsService.shared.trackNoteViewed(noteId: note.id, sourceType: note.sourceType ?? "unknown")
+        }
     }
     
     private func deleteNote() {
         guard let token = KeychainService.shared.get(Constants.Keychain.accessToken) else {
             return
         }
-        
+
+        // Track note deletion
+        AnalyticsService.shared.trackNoteDeleted(noteId: note.id)
+
         Task {
             await viewModel.deleteNote(token: token, noteId: note.id)
             dismiss()

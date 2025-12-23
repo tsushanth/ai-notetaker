@@ -19,6 +19,8 @@ struct QuizTabContent: View {
     @State private var showExplanation = false
     @State private var score = 0
     @State private var answeredQuestions: Set<String> = []
+    @State private var showPaywall = false
+    @State private var subscriptionError: APIError?
     
     var body: some View {
         VStack(spacing: 20) {
@@ -156,7 +158,19 @@ struct QuizTabContent: View {
             }
         }
         .onAppear {
+            AnalyticsService.shared.trackQuizTabViewed(noteId: note.id)
             loadQuiz()
+        }
+        .sheet(isPresented: $showPaywall) {
+            NavigationView {
+                PaywallView {
+                    showPaywall = false
+                    // Refresh access status after purchase
+                    Task {
+                        await SubscriptionGateManager.shared.refreshAccessStatus()
+                    }
+                }
+            }
         }
     }
     
@@ -204,10 +218,11 @@ struct QuizTabContent: View {
             errorMessage = "Not authenticated"
             return
         }
-        
+
+        AnalyticsService.shared.trackQuizGenerateStarted(noteId: note.id)
         isGenerating = true
         errorMessage = nil
-        
+
         Task {
             do {
                 let aiContent = try await APIService.shared.generateQuiz(token: token, noteId: note.id, contentLength: note.content.count)
@@ -230,6 +245,19 @@ struct QuizTabContent: View {
                     }
                     self.isGenerating = false
                 }
+            } catch let error as APIError {
+                await MainActor.run {
+                    self.isGenerating = false
+                    switch error {
+                    case .subscriptionRequired, .freeTierLimitReached:
+                        print("🔐 Subscription required for quiz")
+                        self.subscriptionError = error
+                        self.showPaywall = true
+                    default:
+                        print("❌ Error generating quiz: \(error)")
+                        self.errorMessage = "Failed to generate quiz: \(error.localizedDescription)"
+                    }
+                }
             } catch {
                 await MainActor.run {
                     print("❌ Error generating quiz: \(error)")
@@ -243,19 +271,38 @@ struct QuizTabContent: View {
     private func handleNext() {
         if let selectedAnswer = selectedAnswer {
             let question = quiz!.questions[currentQuestionIndex]
-            if selectedAnswer == question.correctAnswer {
+            let isCorrect = selectedAnswer == question.correctAnswer
+            if isCorrect {
                 score += 1
             }
             answeredQuestions.insert(question.id)
+
+            // Track question answered
+            AnalyticsService.shared.trackQuizQuestionAnswered(
+                questionIndex: currentQuestionIndex,
+                isCorrect: isCorrect,
+                totalQuestions: quiz!.questions.count
+            )
         }
-        
+
         // Move to next question
         currentQuestionIndex += 1
         selectedAnswer = nil
         showExplanation = false
+
+        // Track quiz completion when all questions answered
+        if let quiz = quiz, currentQuestionIndex >= quiz.questions.count {
+            let percentage = quiz.questions.count > 0 ? (score * 100 / quiz.questions.count) : 0
+            AnalyticsService.shared.trackQuizCompleted(
+                score: score,
+                total: quiz.questions.count,
+                percentageCorrect: percentage
+            )
+        }
     }
-    
+
     private func resetQuiz() {
+        AnalyticsService.shared.trackQuizRestarted()
         currentQuestionIndex = 0
         selectedAnswer = nil
         showExplanation = false

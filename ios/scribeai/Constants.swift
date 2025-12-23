@@ -17,11 +17,17 @@ struct Constants {
         static let uploadAudio = "/api/recordings/upload"
         static let transcribe = "/api/recordings/transcribe"
         static let videoUrl = "/api/uploads/video-url"
-        
+
         static let podcast = "/api/ai/podcast"
         static let quiz = "/api/ai/quiz"
         static let flashcards = "/api/ai/flashcards"
         static let chat = "/api/ai/chat"
+
+        // Subscription endpoints
+        static let subscriptionSync = "/api/subscriptions/sync"
+        static let subscriptionStatus = "/api/subscriptions/status"
+        static let subscriptionEvent = "/api/subscriptions/event"
+        static let subscriptionAccess = "/api/subscriptions/access"
     }
     
     struct Keychain {

@@ -150,41 +150,142 @@ class StoreKitManager: ObservableObject {
         }
     }
     
-    // Add these calls to your existing StoreKitManager
+    // MARK: - Subscription Lifecycle Tracking
 
-    // When trial starts:
-    func handleTrialStart(product: Product) {
+    /// Called when a user starts a trial subscription
+    func handleTrialStart(product: Product, transaction: Transaction) {
         let trialDays = product.subscription?.introductoryOffer?.period.value ?? 7
+
+        // Track in analytics
         AnalyticsService.shared.trackTrialStarted(
             productId: product.id,
             trialDuration: trialDays
         )
+
+        // Sync to server
+        SubscriptionSyncService.shared.syncSubscription(
+            product: product,
+            transaction: transaction,
+            isTrial: true
+        )
+
+        // Send event to server
+        SubscriptionSyncService.shared.sendEvent(
+            eventType: .trialStarted,
+            productId: product.id,
+            transactionId: String(transaction.id),
+            originalTransactionId: String(transaction.originalID)
+        )
+
         StoreReviewHelper.shared.recordSubscriptionEvent()
+        print("📊 Trial started: \(product.id)")
     }
 
-    // When subscription is billed:
+    /// Called when a subscription is successfully billed (first payment after trial or direct purchase)
     func handleSuccessfulBilling(product: Product, transaction: Transaction) {
+        let price = NSDecimalNumber(decimal: product.price).doubleValue
+        let currency = product.priceFormatStyle.currencyCode ?? "USD"
+
+        // Track in analytics
         AnalyticsService.shared.trackSubscriptionBilled(
             productId: product.id,
-            price: "0.00",
-            currency: product.priceFormatStyle.currencyCode ?? "USD"
+            price: String(format: "%.2f", price),
+            currency: currency
         )
+
+        // Sync to server
+        SubscriptionSyncService.shared.syncSubscription(
+            product: product,
+            transaction: transaction,
+            isTrial: false
+        )
+
+        // Send event to server
+        SubscriptionSyncService.shared.sendEvent(
+            eventType: .subscriptionStarted,
+            productId: product.id,
+            transactionId: String(transaction.id),
+            originalTransactionId: String(transaction.originalID),
+            priceAmount: price,
+            priceCurrency: currency
+        )
+
+        StoreReviewHelper.shared.recordSubscriptionEvent()
+        print("📊 Subscription billed: \(product.id) - \(currency) \(price)")
     }
 
-    // When subscription renews:
-    func handleRenewal(productId: String) {
+    /// Called when subscription renews
+    func handleRenewal(productId: String, transaction: Transaction) {
+        // Track in analytics
         AnalyticsService.shared.trackSubscriptionRenewed(productId: productId)
+
+        // Send event to server
+        SubscriptionSyncService.shared.sendEvent(
+            eventType: .subscriptionRenewed,
+            productId: productId,
+            transactionId: String(transaction.id),
+            originalTransactionId: String(transaction.originalID)
+        )
+
+        print("📊 Subscription renewed: \(productId)")
     }
 
-    // When checking transaction status - detect cancellation:
+    /// Called when checking transaction status - detects cancellation/revocation
     func checkForCancellation(transaction: Transaction) {
         if transaction.revocationDate != nil {
-            if AnalyticsService.shared.daysSinceTrialStart <= 7 {
+            let isInTrial = AnalyticsService.shared.daysSinceTrialStart <= 7
+
+            if isInTrial {
                 AnalyticsService.shared.trackTrialCancelled(reason: "revoked")
+                SubscriptionSyncService.shared.sendEvent(
+                    eventType: .trialCancelled,
+                    productId: transaction.productID,
+                    transactionId: String(transaction.id),
+                    originalTransactionId: String(transaction.originalID),
+                    reason: "revoked"
+                )
             } else {
                 AnalyticsService.shared.trackSubscriptionCancelled(reason: "revoked")
+                SubscriptionSyncService.shared.sendEvent(
+                    eventType: .subscriptionCancelled,
+                    productId: transaction.productID,
+                    transactionId: String(transaction.id),
+                    originalTransactionId: String(transaction.originalID),
+                    reason: "revoked"
+                )
             }
+
+            print("📊 Subscription cancelled/revoked: \(transaction.productID)")
         }
+    }
+
+    /// Called when subscription expires
+    func handleExpiration(transaction: Transaction) {
+        let isInTrial = AnalyticsService.shared.daysSinceTrialStart <= 7
+
+        if isInTrial {
+            AnalyticsService.shared.track(.subscriptionExpired, properties: [
+                "product_id": transaction.productID,
+                "was_trial": true
+            ])
+            SubscriptionSyncService.shared.sendEvent(
+                eventType: .trialExpired,
+                productId: transaction.productID,
+                originalTransactionId: String(transaction.originalID)
+            )
+        } else {
+            AnalyticsService.shared.track(.subscriptionExpired, properties: [
+                "product_id": transaction.productID,
+                "was_trial": false
+            ])
+            SubscriptionSyncService.shared.sendEvent(
+                eventType: .subscriptionExpired,
+                productId: transaction.productID,
+                originalTransactionId: String(transaction.originalID)
+            )
+        }
+
+        print("📊 Subscription expired: \(transaction.productID)")
     }
     
     // MARK: - Purchase
@@ -223,6 +324,23 @@ class StoreKitManager: ObservableObject {
                             expirationDate: expirationDate
                         )
                     }
+                }
+
+                // Track subscription lifecycle events
+                let hasTrialOffer = product.subscription?.introductoryOffer != nil
+                let isNewPurchase = transaction.originalID == transaction.id
+
+                if isNewPurchase {
+                    if hasTrialOffer {
+                        // User started a trial
+                        handleTrialStart(product: product, transaction: transaction)
+                    } else {
+                        // Direct purchase without trial
+                        handleSuccessfulBilling(product: product, transaction: transaction)
+                    }
+                } else {
+                    // This is a renewal or restored purchase
+                    handleRenewal(productId: product.id, transaction: transaction)
                 }
                 
             case .userCancelled:
@@ -333,23 +451,45 @@ class StoreKitManager: ObservableObject {
     }
     
     // MARK: - Transaction Listener
-    
+
     private func listenForTransactions() -> Task<Void, Error> {
         return Task.detached {
             for await result in Transaction.updates {
                 do {
                     let transaction = try await self.checkVerified(result)
-                    
+
+                    // Check for cancellation/revocation
+                    await MainActor.run {
+                        self.checkForCancellation(transaction: transaction)
+                    }
+
+                    // Check for expiration
+                    if let expirationDate = transaction.expirationDate, expirationDate <= Date() {
+                        await MainActor.run {
+                            self.handleExpiration(transaction: transaction)
+                        }
+                    }
+
+                    // Check if this is a renewal (not a new purchase)
+                    let isRenewal = transaction.originalID != transaction.id
+                    if isRenewal, transaction.revocationDate == nil {
+                        if let expirationDate = transaction.expirationDate, expirationDate > Date() {
+                            await MainActor.run {
+                                self.handleRenewal(productId: transaction.productID, transaction: transaction)
+                            }
+                        }
+                    }
+
                     // Update subscription status on main actor
                     await MainActor.run {
                         Task {
                             await self.updateSubscriptionStatus()
                         }
                     }
-                    
+
                     // Finish the transaction
                     await transaction.finish()
-                    
+
                 } catch {
                     print("❌ Transaction update error: \(error)")
                 }

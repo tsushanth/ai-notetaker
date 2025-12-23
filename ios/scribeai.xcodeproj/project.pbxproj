@@ -313,7 +313,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 22.0;
+				MARKETING_VERSION = 23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -351,7 +351,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 22.0;
+				MARKETING_VERSION = 23.0;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

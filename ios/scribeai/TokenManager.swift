@@ -28,16 +28,20 @@ class TokenManager {
     func getValidToken() async -> String? {
         // Check if we have an access token
         guard let accessToken = KeychainService.shared.get(Constants.Keychain.accessToken) else {
+            #if DEBUG
             print("🔑 No access token found")
+            #endif
             return nil
         }
-        
+
         // Check if token is expired (JWT tokens have an exp claim)
         if isTokenExpired(accessToken) {
+            #if DEBUG
             print("🔑 Access token expired, attempting refresh...")
+            #endif
             return await refreshTokenIfNeeded()
         }
-        
+
         return accessToken
     }
     
@@ -45,12 +49,14 @@ class TokenManager {
     func refreshTokenIfNeeded() async -> String? {
         // If already refreshing, wait for the result
         if isRefreshing {
+            #if DEBUG
             print("🔑 Refresh already in progress, waiting...")
+            #endif
             return await withCheckedContinuation { continuation in
                 refreshQueue.append(continuation)
             }
         }
-        
+
         isRefreshing = true
         defer {
             isRefreshing = false
@@ -61,26 +67,32 @@ class TokenManager {
             }
             refreshQueue.removeAll()
         }
-        
+
         // Check if we have a refresh token
         guard KeychainService.shared.get(Constants.Keychain.refreshToken) != nil else {
+            #if DEBUG
             print("🔑 No refresh token found")
+            #endif
             return nil
         }
-        
+
         do {
             // Use Supabase to refresh the session
             let session = try await SupabaseManager.shared.refreshSession()
-            
+
             // Save new tokens
             KeychainService.shared.save(session.accessToken, forKey: Constants.Keychain.accessToken)
             KeychainService.shared.save(session.refreshToken, forKey: Constants.Keychain.refreshToken)
-            
+
+            #if DEBUG
             print("✅ Token refreshed successfully")
+            #endif
             return session.accessToken
-            
+
         } catch {
+            #if DEBUG
             print("❌ Token refresh failed: \(error)")
+            #endif
             // Clear tokens on refresh failure - user needs to sign in again
             // Don't clear here - let the calling code decide
             return nil
@@ -121,16 +133,20 @@ class TokenManager {
         let bufferSeconds: TimeInterval = 30
         let isExpired = Date().addingTimeInterval(bufferSeconds) >= expirationDate
         
+        #if DEBUG
         if isExpired {
             print("🔑 Token expires at \(expirationDate), refreshing early")
         }
-        
+        #endif
+
         return isExpired
     }
-    
+
     /// Clear all tokens (for sign out)
     func clearTokens() {
         KeychainService.shared.clear()
+        #if DEBUG
         print("🔑 All tokens cleared")
+        #endif
     }
 }

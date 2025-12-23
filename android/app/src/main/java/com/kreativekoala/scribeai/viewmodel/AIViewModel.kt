@@ -7,6 +7,7 @@ import com.kreativekoala.scribeai.data.models.AIContentData
 import com.kreativekoala.scribeai.data.models.AIOptions
 import com.kreativekoala.scribeai.data.models.GenerateAIRequest
 import com.kreativekoala.scribeai.data.repository.NoteRepository
+import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.ErrorReportingService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +50,7 @@ class AIViewModel : ViewModel() {
             repository.generateAIContent(token, noteId, "summary", options).fold(
                 onSuccess = { content ->
                     _summaryState.value = AIContentState.Success(content)
+                    AnalyticsService.trackSummaryGenerated(noteId, content.summary?.length ?: 0)
                 },
                 onFailure = { exception ->
                     ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_SUMMARY, exception)
@@ -65,6 +67,7 @@ class AIViewModel : ViewModel() {
             repository.generateAIContent(token, noteId, "quiz", options).fold(
                 onSuccess = { content ->
                     _quizState.value = AIContentState.Success(content)
+                    AnalyticsService.trackQuizGenerated(content.questions?.quizQuestions?.size ?: 0)
                 },
                 onFailure = { exception ->
                     ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_QUIZ, exception)
@@ -81,6 +84,7 @@ class AIViewModel : ViewModel() {
             repository.generateAIContent(token, noteId, "flashcards", options).fold(
                 onSuccess = { content ->
                     _flashcardsState.value = AIContentState.Success(content)
+                    AnalyticsService.trackFlashcardsGenerated(content.flashcards?.size ?: 0)
                 },
                 onFailure = { exception ->
                     ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_FLASHCARDS, exception)
@@ -123,6 +127,7 @@ class AIViewModel : ViewModel() {
                                         audioUrl = status.audio_url
                                     )
                                     _podcastState.value = AIContentState.Success(content)
+                                    AnalyticsService.trackPodcastGenerated(0) // Duration unknown at this point
                                     return@launch
                                 }
                                 "generating" -> {
@@ -235,6 +240,8 @@ class AIViewModel : ViewModel() {
             val result = repository.chatWithNote(authToken, noteId, question, conversationHistory, language)
             result.fold(
                 onSuccess = { response ->
+                    AnalyticsService.trackChatMessageSent(noteId, question.length)
+                    AnalyticsService.trackChatUsed()
                     response.answer
                 },
                 onFailure = { exception ->

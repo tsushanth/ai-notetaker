@@ -66,10 +66,15 @@ struct HomeView: View {
             // Record app launch
             StoreReviewHelper.shared.recordAppLaunch()
             AnalyticsService.shared.track(.appLaunch)
-                
+
             // Flush any pending events now that user is authenticated
             AnalyticsService.shared.flushPendingEvents()
-            
+
+            // Refresh server-side access status
+            Task {
+                await SubscriptionGateManager.shared.refreshAccessStatus()
+            }
+
             // Check if we should show review prompt (delayed)
             DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
                 StoreReviewHelper.shared.checkAndShowPromptIfEligible()

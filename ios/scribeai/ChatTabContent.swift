@@ -176,6 +176,8 @@ struct ChatTabContent: View {
             }
         }
         .onAppear {
+            // Track chat tab viewed
+            AnalyticsService.shared.trackChatTabViewed(noteId: note.id)
             // Ensure clean state
             speechRecognizer.stopRecording()
         }
@@ -243,8 +245,10 @@ struct ChatTabContent: View {
     }
     
     private func sendMessage(_ text: String, speakResponse: Bool = false) {
-        AnalyticsService.shared.trackChatUsed()
         guard !text.isEmpty else { return }
+
+        // Track chat message sent
+        AnalyticsService.shared.trackChatMessageSent(noteId: note.id, messageLength: text.count)
         
         let userMessage = ChatMessage(id: UUID().uuidString, role: "user", text: text)
         messages.append(userMessage)
@@ -323,8 +327,10 @@ struct ChatTabContent: View {
                     .foregroundColor(.textSecondary)
             } else {
                 VStack(spacing: 8) {
-                    ForEach(suggestions, id: \.self) { suggestion in
+                    ForEach(Array(suggestions.enumerated()), id: \.element) { index, suggestion in
                         Button(action: {
+                            // Track suggestion used
+                            AnalyticsService.shared.trackChatSuggestionUsed(noteId: note.id, suggestionIndex: index)
                             inputText = suggestion
                             sendMessage(suggestion)
                         }) {

@@ -113,9 +113,12 @@ struct SubscriptionSettingsSection: View {
     }
     
     // MARK: - Not Subscribed Content
-    
+
     private var notSubscribedContent: some View {
-        Button(action: { showingPaywall = true }) {
+        Button(action: {
+            AnalyticsService.shared.trackPaywallViewed(source: "settings_section")
+            showingPaywall = true
+        }) {
             HStack {
                 ZStack {
                     Circle()
@@ -170,10 +173,13 @@ struct SubscriptionSettingsSection: View {
 struct SubscriptionBanner: View {
     @StateObject private var storeManager = StoreKitManager.shared
     @State private var showingPaywall = false
-    
+
     var body: some View {
         if !storeManager.isSubscribed {
-            Button(action: { showingPaywall = true }) {
+            Button(action: {
+                AnalyticsService.shared.trackPaywallViewed(source: "home_banner")
+                showingPaywall = true
+            }) {
                 HStack(spacing: 12) {
                     Image(systemName: "sparkles")
                         .font(.system(size: 24))
@@ -267,7 +273,10 @@ struct PremiumFeatureGate<Content: View>: View {
         if storeManager.isSubscribed {
             content()
         } else {
-            Button(action: { showingPaywall = true }) {
+            Button(action: {
+                AnalyticsService.shared.trackPaywallViewed(source: "premium_feature_gate")
+                showingPaywall = true
+            }) {
                 HStack {
                     Image(systemName: "lock.fill")
                         .foregroundColor(.textTertiary)

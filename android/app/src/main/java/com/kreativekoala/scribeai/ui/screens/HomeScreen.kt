@@ -82,12 +82,15 @@ fun HomeScreen(
         isSubscribed = subscriptionState is SubscriptionManager.SubscriptionState.Subscribed
     }
 
+    // Load notes when screen appears - use getFreshToken for network calls
     LaunchedEffect(Unit) {
         Log.d("HomeScreen", "🔵 LaunchedEffect(Unit) triggered - loading notes")
-        val token = authManager.getCurrentToken()
+        val token = authManager.getFreshToken()
         Log.d("HomeScreen", "🔵 Token retrieved: ${token?.take(20)}...")
         if (token != null) {
             viewModel.loadNotes(token, forceRefresh = true)
+        } else {
+            Log.e("HomeScreen", "❌ No token available for loading notes")
         }
     }
 
@@ -275,7 +278,10 @@ fun HomeScreen(
                         val remaining = subscriptionManager.getRemainingFreeNotebooks()
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                "$lifetimeNotebooks / ${SubscriptionManager.FREE_NOTEBOOK_LIMIT} free notebooks used",
+                                if (remaining > 0)
+                                    "$remaining free notebook${if (remaining > 1) "s" else ""} remaining"
+                                else
+                                    "Free limit reached",
                                 fontSize = 13.sp,
                                 color = if (remaining == 0) AccentRed else TextSecondary
                             )
@@ -356,6 +362,11 @@ fun HomeScreen(
                                     Spacer(Modifier.height(24.dp))
                                     val remaining = subscriptionManager.getRemainingFreeNotebooks()
                                     Card(
+                                        onClick = {
+                                            if (remaining == 0) {
+                                                showPaywall = true
+                                            }
+                                        },
                                         colors = CardDefaults.cardColors(
                                             containerColor = Purple80.copy(alpha = 0.1f)
                                         )
@@ -365,7 +376,7 @@ fun HomeScreen(
                                             horizontalAlignment = Alignment.CenterHorizontally
                                         ) {
                                             Icon(
-                                                Icons.Default.Info,
+                                                if (remaining > 0) Icons.Default.Info else Icons.Default.Star,
                                                 contentDescription = null,
                                                 tint = Purple80,
                                                 modifier = Modifier.size(20.dp)
@@ -375,10 +386,11 @@ fun HomeScreen(
                                                 if (remaining > 0)
                                                     "You can create $remaining free notebook${if (remaining > 1) "s" else ""}"
                                                 else
-                                                    "Upgrade to create unlimited notebooks",
+                                                    "Upgrade for unlimited notebooks →",
                                                 fontSize = 13.sp,
-                                                color = TextSecondary,
-                                                textAlign = TextAlign.Center
+                                                color = if (remaining > 0) TextSecondary else Purple80,
+                                                textAlign = TextAlign.Center,
+                                                fontWeight = if (remaining == 0) FontWeight.Medium else FontWeight.Normal
                                             )
                                         }
                                     }
@@ -564,8 +576,16 @@ fun HomeScreen(
             onSubscribe = {
                 showPaywall = false
                 viewModel.dismissPaywall()
-                // Reload subscription state
+                // Reload subscription state and notes
                 subscriptionManager.checkExistingSubscriptions()
+                subscriptionManager.refreshAccessStatus()
+                // Reload notes with fresh token
+                coroutineScope.launch {
+                    val token = authManager.getFreshToken()
+                    if (token != null) {
+                        viewModel.loadNotes(token, forceRefresh = true)
+                    }
+                }
             }
         )
     }

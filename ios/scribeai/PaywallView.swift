@@ -217,16 +217,20 @@ struct PaywallView: View {
             
             // Terms and Privacy
             HStack(spacing: 8) {
-                Link("Terms of Service", destination: URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/")!)
-                    .font(.system(size: 12))
-                    .foregroundColor(.textTertiary)
-                
+                if let termsURL = URL(string: "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/") {
+                    Link("Terms of Service", destination: termsURL)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textTertiary)
+                }
+
                 Text("•")
                     .foregroundColor(.textTertiary)
-                
-                Link("Privacy Policy", destination: URL(string: "https://www.sendsmiles.biz/privacy-policy")!)
-                    .font(.system(size: 12))
-                    .foregroundColor(.textTertiary)
+
+                if let privacyURL = URL(string: "https://www.sendsmiles.biz/privacy-policy") {
+                    Link("Privacy Policy", destination: privacyURL)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textTertiary)
+                }
             }
             
             // Subscription Info

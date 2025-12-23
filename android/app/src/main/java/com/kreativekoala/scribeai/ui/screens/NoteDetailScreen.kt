@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kreativekoala.scribeai.data.models.Note
 import com.kreativekoala.scribeai.ui.theme.*
+import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.viewmodel.AIViewModel
 import com.kreativekoala.scribeai.viewmodel.AIContentState
@@ -65,9 +66,26 @@ fun NoteDetailScreen(
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    // Track note view
+    LaunchedEffect(note.id) {
+        AnalyticsService.trackNoteViewed(note.id, note.sourceType ?: "unknown")
+    }
+
     LaunchedEffect(note.id, authToken) {
         authToken?.let { token ->
             aiViewModel.loadExistingContent(token, note.id)
+        }
+    }
+
+    // Track tab switches
+    LaunchedEffect(selectedTab) {
+        val tabName = tabs.getOrElse(selectedTab) { "unknown" }.lowercase()
+        when (tabName) {
+            "summary" -> AnalyticsService.trackSummaryTabViewed(note.id)
+            "podcast" -> AnalyticsService.trackPodcastTabViewed(note.id)
+            "quiz" -> AnalyticsService.trackQuizTabViewed(note.id)
+            "chat" -> AnalyticsService.trackChatTabViewed(note.id)
+            "flashcards" -> AnalyticsService.trackFlashcardsTabViewed(note.id)
         }
     }
 
@@ -85,7 +103,10 @@ fun NoteDetailScreen(
                             noteViewModel.deleteNote(
                                 token = token,
                                 noteId = note.id,
-                                onSuccess = { onNoteDeleted() },
+                                onSuccess = {
+                                    AnalyticsService.trackNoteDeleted(note.id)
+                                    onNoteDeleted()
+                                },
                                 onError = { error ->
                                     Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
                                 }

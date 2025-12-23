@@ -3,12 +3,15 @@ import Supabase
 
 class SupabaseManager {
     static let shared = SupabaseManager()
-    
+
     let client: SupabaseClient
-    
+
     private init() {
+        guard let supabaseURL = URL(string: Constants.supabaseURL) else {
+            fatalError("Invalid Supabase URL configuration")
+        }
         client = SupabaseClient(
-            supabaseURL: URL(string: Constants.supabaseURL)!,
+            supabaseURL: supabaseURL,
             supabaseKey: Constants.supabaseAnonKey
         )
     }

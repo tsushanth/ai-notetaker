@@ -33,31 +33,88 @@ class AnalyticsService {
         static let billedSuccessfully = "analytics_billed_successfully"
         static let successActionsCount = "analytics_success_actions"
         static let pendingEvents = "analytics_pending_events"
+        static let sessionCount = "analytics_session_count"
+        static let totalAppTime = "analytics_total_app_time"
+        static let lastSessionDate = "analytics_last_session_date"
     }
+
+    // Session tracking
+    private var sessionStartTime: Date?
+    private var currentSessionDuration: TimeInterval = 0
     
     // MARK: - Event Types
     enum Event: String {
+        // App lifecycle
         case appInstall = "app_install"
         case appLaunch = "app_launch"
+        case sessionStart = "session_start"
+        case sessionEnd = "session_end"
+
+        // User journey
         case reachedValue = "reached_value"
         case paywallViewed = "paywall_viewed"
+
+        // Subscription events
         case trialStarted = "trial_started"
         case trialCancelled = "trial_cancelled"
         case subscriptionBilled = "subscription_billed"
         case subscriptionRenewed = "subscription_renewed"
         case subscriptionCancelled = "subscription_cancelled"
         case subscriptionExpired = "subscription_expired"
+
+        // Content creation
         case noteCreated = "note_created"
-        case quizGenerated = "quiz_generated"
-        case flashcardsGenerated = "flashcards_generated"
-        case podcastGenerated = "podcast_generated"
-        case chatUsed = "chat_used"
+        case noteViewed = "note_viewed"
+        case noteDeleted = "note_deleted"
         case contentUploaded = "content_uploaded"
         case youtubeProcessed = "youtube_processed"
         case audioRecorded = "audio_recorded"
         case documentScanned = "document_scanned"
+
+        // AI Feature - Quiz
+        case quizTabViewed = "quiz_tab_viewed"
+        case quizGenerateStarted = "quiz_generate_started"
+        case quizGenerated = "quiz_generated"
+        case quizQuestionAnswered = "quiz_question_answered"
+        case quizCompleted = "quiz_completed"
+        case quizRestarted = "quiz_restarted"
+
+        // AI Feature - Flashcards
+        case flashcardsTabViewed = "flashcards_tab_viewed"
+        case flashcardsGenerateStarted = "flashcards_generate_started"
+        case flashcardsGenerated = "flashcards_generated"
+        case flashcardFlipped = "flashcard_flipped"
+        case flashcardSwiped = "flashcard_swiped"
+        case flashcardsCompleted = "flashcards_completed"
+
+        // AI Feature - Podcast
+        case podcastTabViewed = "podcast_tab_viewed"
+        case podcastGenerateStarted = "podcast_generate_started"
+        case podcastGenerated = "podcast_generated"
+        case podcastPlayStarted = "podcast_play_started"
+        case podcastPlayPaused = "podcast_play_paused"
+        case podcastPlayCompleted = "podcast_play_completed"
+        case podcastSkipped = "podcast_skipped"
+
+        // AI Feature - Chat
+        case chatTabViewed = "chat_tab_viewed"
+        case chatMessageSent = "chat_message_sent"
+        case chatUsed = "chat_used"
+        case chatSuggestionUsed = "chat_suggestion_used"
+
+        // AI Feature - Summary/Diagram
+        case summaryTabViewed = "summary_tab_viewed"
+        case summaryGenerated = "summary_generated"
+        case diagramGenerated = "diagram_generated"
+
+        // Feature discovery
+        case featureDiscovered = "feature_discovered"
+        case tabSwitched = "tab_switched"
+
+        // Errors
         case processingError = "processing_error"
         case paymentError = "payment_error"
+        case featureBlocked = "feature_blocked"
     }
     
     private init() {
@@ -363,7 +420,256 @@ class AnalyticsService {
     func trackChatUsed() {
         track(.chatUsed)
     }
-    
+
+    // MARK: - Quiz Events
+
+    func trackQuizTabViewed(noteId: String) {
+        track(.quizTabViewed, properties: ["note_id": noteId])
+    }
+
+    func trackQuizGenerateStarted(noteId: String) {
+        track(.quizGenerateStarted, properties: ["note_id": noteId])
+    }
+
+    func trackQuizQuestionAnswered(questionIndex: Int, isCorrect: Bool, totalQuestions: Int) {
+        track(.quizQuestionAnswered, properties: [
+            "question_index": questionIndex,
+            "is_correct": isCorrect,
+            "total_questions": totalQuestions
+        ])
+    }
+
+    func trackQuizCompleted(score: Int, total: Int, percentageCorrect: Int) {
+        track(.quizCompleted, properties: [
+            "score": score,
+            "total": total,
+            "percentage_correct": percentageCorrect
+        ])
+        trackReachedValue(contentType: "quiz_completed")
+    }
+
+    func trackQuizRestarted() {
+        track(.quizRestarted)
+    }
+
+    // MARK: - Flashcard Events
+
+    func trackFlashcardsTabViewed(noteId: String) {
+        track(.flashcardsTabViewed, properties: ["note_id": noteId])
+    }
+
+    func trackFlashcardsGenerateStarted(noteId: String) {
+        track(.flashcardsGenerateStarted, properties: ["note_id": noteId])
+    }
+
+    func trackFlashcardFlipped(cardIndex: Int, totalCards: Int) {
+        track(.flashcardFlipped, properties: [
+            "card_index": cardIndex,
+            "total_cards": totalCards
+        ])
+    }
+
+    func trackFlashcardSwiped(cardIndex: Int, direction: String) {
+        track(.flashcardSwiped, properties: [
+            "card_index": cardIndex,
+            "direction": direction
+        ])
+    }
+
+    func trackFlashcardsCompleted(totalCards: Int, totalFlips: Int) {
+        track(.flashcardsCompleted, properties: [
+            "total_cards": totalCards,
+            "total_flips": totalFlips
+        ])
+        trackReachedValue(contentType: "flashcards_completed")
+    }
+
+    // MARK: - Podcast Events
+
+    func trackPodcastTabViewed(noteId: String) {
+        track(.podcastTabViewed, properties: ["note_id": noteId])
+    }
+
+    func trackPodcastGenerateStarted(noteId: String) {
+        track(.podcastGenerateStarted, properties: ["note_id": noteId])
+    }
+
+    func trackPodcastPlayStarted(podcastId: String, duration: Int) {
+        track(.podcastPlayStarted, properties: [
+            "podcast_id": podcastId,
+            "duration_seconds": duration
+        ])
+    }
+
+    func trackPodcastPlayPaused(podcastId: String, currentPosition: Int, duration: Int) {
+        let percentPlayed = duration > 0 ? (currentPosition * 100 / duration) : 0
+        track(.podcastPlayPaused, properties: [
+            "podcast_id": podcastId,
+            "current_position_seconds": currentPosition,
+            "duration_seconds": duration,
+            "percent_played": percentPlayed
+        ])
+    }
+
+    func trackPodcastPlayCompleted(podcastId: String, duration: Int) {
+        track(.podcastPlayCompleted, properties: [
+            "podcast_id": podcastId,
+            "duration_seconds": duration
+        ])
+        trackReachedValue(contentType: "podcast_completed")
+    }
+
+    func trackPodcastSkipped(direction: String, skipSeconds: Int) {
+        track(.podcastSkipped, properties: [
+            "direction": direction,
+            "skip_seconds": skipSeconds
+        ])
+    }
+
+    // MARK: - Chat Events
+
+    func trackChatTabViewed(noteId: String) {
+        track(.chatTabViewed, properties: ["note_id": noteId])
+    }
+
+    func trackChatMessageSent(noteId: String, messageLength: Int) {
+        track(.chatMessageSent, properties: [
+            "note_id": noteId,
+            "message_length": messageLength
+        ])
+    }
+
+    func trackChatSuggestionUsed(noteId: String, suggestionIndex: Int) {
+        track(.chatSuggestionUsed, properties: [
+            "note_id": noteId,
+            "suggestion_index": suggestionIndex
+        ])
+    }
+
+    // MARK: - Summary/Diagram Events
+
+    func trackSummaryTabViewed(noteId: String) {
+        track(.summaryTabViewed, properties: ["note_id": noteId])
+    }
+
+    func trackSummaryGenerated(noteId: String, summaryLength: Int) {
+        track(.summaryGenerated, properties: [
+            "note_id": noteId,
+            "summary_length": summaryLength
+        ])
+        trackReachedValue(contentType: "summary")
+    }
+
+    func trackDiagramGenerated(noteId: String, diagramType: String) {
+        track(.diagramGenerated, properties: [
+            "note_id": noteId,
+            "diagram_type": diagramType
+        ])
+        trackReachedValue(contentType: "diagram")
+    }
+
+    // MARK: - Note Events
+
+    func trackNoteViewed(noteId: String, sourceType: String) {
+        track(.noteViewed, properties: [
+            "note_id": noteId,
+            "source_type": sourceType
+        ])
+    }
+
+    func trackNoteDeleted(noteId: String) {
+        track(.noteDeleted, properties: ["note_id": noteId])
+    }
+
+    // MARK: - Tab & Feature Discovery Events
+
+    func trackTabSwitched(fromTab: String, toTab: String, noteId: String) {
+        track(.tabSwitched, properties: [
+            "from_tab": fromTab,
+            "to_tab": toTab,
+            "note_id": noteId
+        ])
+    }
+
+    func trackFeatureDiscovered(feature: String, source: String) {
+        track(.featureDiscovered, properties: [
+            "feature": feature,
+            "source": source
+        ])
+    }
+
+    func trackFeatureBlocked(feature: String, reason: String) {
+        track(.featureBlocked, properties: [
+            "feature": feature,
+            "reason": reason
+        ])
+    }
+
+    // MARK: - Session Events
+
+    /// Called when app becomes active
+    func startSession() {
+        sessionStartTime = Date()
+        let sessionNumber = defaults.integer(forKey: Keys.sessionCount) + 1
+        defaults.set(sessionNumber, forKey: Keys.sessionCount)
+        defaults.set(Date(), forKey: Keys.lastSessionDate)
+
+        track(.sessionStart, properties: [
+            "session_number": sessionNumber,
+            "days_since_install": daysSinceInstall
+        ])
+
+        #if DEBUG
+        print("📊 Session #\(sessionNumber) started")
+        #endif
+    }
+
+    /// Called when app enters background
+    func endSession() {
+        guard let startTime = sessionStartTime else { return }
+
+        let sessionDuration = Date().timeIntervalSince(startTime)
+        currentSessionDuration = sessionDuration
+
+        // Update total app time
+        let totalTime = defaults.double(forKey: Keys.totalAppTime) + sessionDuration
+        defaults.set(totalTime, forKey: Keys.totalAppTime)
+
+        track(.sessionEnd, properties: [
+            "session_duration_seconds": Int(sessionDuration),
+            "total_app_time_minutes": Int(totalTime / 60)
+        ])
+
+        sessionStartTime = nil
+
+        #if DEBUG
+        print("📊 Session ended. Duration: \(Int(sessionDuration))s, Total: \(Int(totalTime / 60))m")
+        #endif
+    }
+
+    /// Track app launch (called once per cold start)
+    func trackAppLaunch() {
+        track(.appLaunch, properties: [
+            "session_count": defaults.integer(forKey: Keys.sessionCount),
+            "total_app_time_minutes": Int(defaults.double(forKey: Keys.totalAppTime) / 60),
+            "days_since_install": daysSinceInstall
+        ])
+    }
+
+    // Session metrics
+    var totalSessionCount: Int {
+        defaults.integer(forKey: Keys.sessionCount)
+    }
+
+    var totalAppTimeMinutes: Int {
+        Int(defaults.double(forKey: Keys.totalAppTime) / 60)
+    }
+
+    var daysSinceLastSession: Int {
+        guard let lastSession = defaults.object(forKey: Keys.lastSessionDate) as? Date else { return -1 }
+        return Calendar.current.dateComponents([.day], from: lastSession, to: Date()).day ?? 0
+    }
+
     // MARK: - Error Events
     
     func trackProcessingError(type: String, message: String) {
@@ -428,6 +734,12 @@ class AnalyticsService {
         Billed successfully: \(isSubscribed)
         Months subscribed: \(monthsSubscribed)
         Pending events: \(loadPendingEvents().count)
+
+        SESSION METRICS:
+        ================
+        Total sessions: \(totalSessionCount)
+        Total app time: \(totalAppTimeMinutes) minutes
+        Days since last session: \(daysSinceLastSession)
         """)
         #endif
     }
@@ -439,10 +751,13 @@ class AnalyticsService {
             let keysToRemove = [
                 Keys.installDate, Keys.firstValueDate, Keys.trialStartDate,
                 Keys.trialProductId, Keys.subscriptionStartDate, Keys.cancelDate,
-                Keys.billedSuccessfully, Keys.successActionsCount, Keys.pendingEvents
+                Keys.billedSuccessfully, Keys.successActionsCount, Keys.pendingEvents,
+                Keys.sessionCount, Keys.totalAppTime, Keys.lastSessionDate
             ]
             keysToRemove.forEach { self.defaults.removeObject(forKey: $0) }
             self.eventBuffer.removeAll()
+            self.sessionStartTime = nil
+            self.currentSessionDuration = 0
             print("🧪 Analytics reset for testing")
         }
         #endif

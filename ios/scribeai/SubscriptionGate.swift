@@ -21,25 +21,88 @@ class SubscriptionGateManager: ObservableObject {
     private enum Keys {
         static let installDate = "analytics_install_date"  // Reuse from AnalyticsService
         static let hasSeenPaywall = "has_seen_paywall_after_trial"
+        static let cachedAccessStatus = "cached_access_status"
+        static let lastAccessStatusFetch = "last_access_status_fetch"
     }
 
-    private init() {}
+    // Published properties for server-side status
+    @Published private(set) var serverAccessStatus: ServerAccessStatus?
+    @Published private(set) var isLoadingStatus = false
 
-    // MARK: - Trial Status
+    private init() {
+        // Load cached status on init
+        loadCachedStatus()
+    }
+
+    // MARK: - Server-Side Access Status
+
+    /// Fetch access status from server (should be called on app launch and after purchases)
+    func refreshAccessStatus() async {
+        isLoadingStatus = true
+        defer { isLoadingStatus = false }
+
+        if let status = await SubscriptionSyncService.shared.getAccessStatus() {
+            serverAccessStatus = status
+            cacheStatus(status)
+            print("✅ Access status refreshed from server")
+        }
+    }
+
+    /// Cache the access status for offline use
+    private func cacheStatus(_ status: ServerAccessStatus) {
+        do {
+            let data = try JSONEncoder().encode(status)
+            defaults.set(data, forKey: Keys.cachedAccessStatus)
+            defaults.set(Date(), forKey: Keys.lastAccessStatusFetch)
+        } catch {
+            print("❌ Failed to cache access status: \(error)")
+        }
+    }
+
+    /// Load cached status from UserDefaults
+    private func loadCachedStatus() {
+        guard let data = defaults.data(forKey: Keys.cachedAccessStatus) else { return }
+        do {
+            serverAccessStatus = try JSONDecoder().decode(ServerAccessStatus.self, from: data)
+            print("📦 Loaded cached access status")
+        } catch {
+            print("❌ Failed to load cached access status: \(error)")
+        }
+    }
+
+    /// Check if cache is stale (older than 5 minutes)
+    var isCacheStale: Bool {
+        guard let lastFetch = defaults.object(forKey: Keys.lastAccessStatusFetch) as? Date else {
+            return true
+        }
+        return Date().timeIntervalSince(lastFetch) > 300 // 5 minutes
+    }
+
+    // MARK: - Trial Status (Server-Authoritative when available)
 
     /// Check if user is within the free trial period
     var isInTrialPeriod: Bool {
+        // Prefer server status if available
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.isInTrial
+        }
+        // Fall back to local calculation
         let days = daysSinceInstall
         return days < Self.trialDays
     }
 
     /// Days remaining in trial
     var trialDaysRemaining: Int {
+        // Prefer server status if available
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.trialDaysRemaining
+        }
+        // Fall back to local calculation
         let remaining = Self.trialDays - daysSinceInstall
         return max(0, remaining)
     }
 
-    /// Days since app was installed
+    /// Days since app was installed (local fallback)
     var daysSinceInstall: Int {
         guard let installDate = defaults.object(forKey: Keys.installDate) as? Date else {
             // First time - set install date
@@ -51,14 +114,24 @@ class SubscriptionGateManager: ObservableObject {
 
     /// Check if trial has expired
     var hasTrialExpired: Bool {
+        // Prefer server status if available
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.trialExpired
+        }
         return daysSinceInstall >= Self.trialDays
     }
 
-    // MARK: - Access Control
+    // MARK: - Access Control (Server-Authoritative)
 
     /// Check if user can access premium features
     /// Returns true if subscribed OR within trial period
     var canAccessPremiumFeatures: Bool {
+        // Prefer server status if available
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.hasAccess
+        }
+
+        // Fall back to client-side check
         // If subscribed, always allow
         if StoreKitManager.shared.isSubscribed {
             return true
@@ -73,12 +146,60 @@ class SubscriptionGateManager: ObservableObject {
         return false
     }
 
+    /// Check if user is subscribed (not just in trial)
+    var isSubscribed: Bool {
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.isSubscribed
+        }
+        return StoreKitManager.shared.isSubscribed
+    }
+
+    /// Feature-specific access checks
+    var canCreateNotes: Bool {
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.features.canCreateNotes
+        }
+        return canAccessPremiumFeatures
+    }
+
+    var canUseAI: Bool {
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.features.canUseAI
+        }
+        return canAccessPremiumFeatures
+    }
+
+    var canGeneratePodcasts: Bool {
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.features.canGeneratePodcasts
+        }
+        return canAccessPremiumFeatures
+    }
+
     /// Reason why access is blocked (for UI)
     var accessBlockedReason: String {
+        if let serverStatus = serverAccessStatus {
+            if serverStatus.trialExpired && !serverStatus.isSubscribed {
+                return "Your 7-day free trial has ended. Subscribe to continue using all features."
+            }
+            if !serverStatus.hasAccess {
+                return serverStatus.reason
+            }
+        }
+
         if hasTrialExpired && !StoreKitManager.shared.isSubscribed {
             return "Your 7-day free trial has ended. Subscribe to continue using all features."
         }
         return ""
+    }
+
+    /// Usage info for free tier
+    var usageRemaining: UsageCounts? {
+        return serverAccessStatus?.usage.remaining
+    }
+
+    var usageLimits: UsageLimits? {
+        return serverAccessStatus?.usage.limits
     }
 
     // MARK: - For debugging
@@ -92,8 +213,10 @@ class SubscriptionGateManager: ObservableObject {
         Trial days remaining: \(trialDaysRemaining)
         Is in trial period: \(isInTrialPeriod)
         Has trial expired: \(hasTrialExpired)
-        Is subscribed: \(StoreKitManager.shared.isSubscribed)
+        Is subscribed: \(isSubscribed)
         Can access premium: \(canAccessPremiumFeatures)
+        Server status available: \(serverAccessStatus != nil)
+        Cache stale: \(isCacheStale)
         """)
         #endif
     }
@@ -103,6 +226,9 @@ class SubscriptionGateManager: ObservableObject {
     func resetTrialForTesting() {
         defaults.removeObject(forKey: Keys.installDate)
         defaults.removeObject(forKey: Keys.hasSeenPaywall)
+        defaults.removeObject(forKey: Keys.cachedAccessStatus)
+        defaults.removeObject(forKey: Keys.lastAccessStatusFetch)
+        serverAccessStatus = nil
         print("🧪 Trial reset for testing")
     }
 
@@ -132,7 +258,11 @@ struct SubscriptionGatedModifier: ViewModifier {
                 // Show paywall blocker
                 TrialExpiredView(
                     featureName: featureName,
-                    onSubscribe: { showPaywall = true }
+                    onSubscribe: {
+                        // Track paywall view from feature gate
+                        AnalyticsService.shared.trackPaywallViewed(source: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))")
+                        showPaywall = true
+                    }
                 )
             }
         }
@@ -140,7 +270,17 @@ struct SubscriptionGatedModifier: ViewModifier {
             NavigationView {
                 PaywallView {
                     showPaywall = false
+                    // Refresh access status after purchase attempt
+                    Task {
+                        await SubscriptionGateManager.shared.refreshAccessStatus()
+                    }
                 }
+            }
+        }
+        .task {
+            // Refresh access status if cache is stale
+            if gateManager.isCacheStale {
+                await gateManager.refreshAccessStatus()
             }
         }
     }
@@ -212,6 +352,8 @@ struct TrialBannerView: View {
                 Spacer()
 
                 Button("Upgrade") {
+                    // Track paywall view from trial banner
+                    AnalyticsService.shared.trackPaywallViewed(source: "trial_banner")
                     showPaywall = true
                 }
                 .font(.system(size: 14, weight: .semibold))

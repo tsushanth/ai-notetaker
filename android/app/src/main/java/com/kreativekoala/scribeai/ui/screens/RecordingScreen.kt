@@ -48,8 +48,8 @@ import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
 
-// Processing steps
-enum class ProcessingStep(val title: String, val index: Int) {
+// Processing steps for recording
+enum class RecordingStep(val title: String, val index: Int) {
     UPLOADING_AUDIO("Uploading audio", 0),
     TRANSCRIBING_AUDIO("Transcribing audio", 1),
     IDENTIFYING_SPEAKERS("Identifying speakers", 2),
@@ -65,8 +65,8 @@ sealed class RecordingScreenState {
     object Paused : RecordingScreenState()
     object ReviewingRecording : RecordingScreenState()
     data class Processing(
-        val currentStep: ProcessingStep,
-        val completedSteps: Set<ProcessingStep> = emptySet(),
+        val currentStep: RecordingStep,
+        val completedSteps: Set<RecordingStep> = emptySet(),
         val uploadComplete: Boolean = false
     ) : RecordingScreenState()
     data class Success(val noteId: String) : RecordingScreenState()
@@ -219,7 +219,7 @@ fun RecordingScreen(
             try {
                 // Start processing UI
                 screenState = RecordingScreenState.Processing(
-                    currentStep = ProcessingStep.UPLOADING_AUDIO
+                    currentStep = RecordingStep.UPLOADING_AUDIO
                 )
 
                 // Step 1: Upload audio
@@ -232,8 +232,8 @@ fun RecordingScreen(
 
                 // Update to show upload complete
                 screenState = RecordingScreenState.Processing(
-                    currentStep = ProcessingStep.TRANSCRIBING_AUDIO,
-                    completedSteps = setOf(ProcessingStep.UPLOADING_AUDIO),
+                    currentStep = RecordingStep.TRANSCRIBING_AUDIO,
+                    completedSteps = setOf(RecordingStep.UPLOADING_AUDIO),
                     uploadComplete = true
                 )
 
@@ -247,14 +247,14 @@ fun RecordingScreen(
 
                 // Animate through remaining steps
                 val steps = listOf(
-                    ProcessingStep.TRANSCRIBING_AUDIO,
-                    ProcessingStep.IDENTIFYING_SPEAKERS,
-                    ProcessingStep.ANALYZING_CONTENT,
-                    ProcessingStep.SUMMARIZING_KEY_POINTS,
-                    ProcessingStep.FINALIZING_NOTE
+                    RecordingStep.TRANSCRIBING_AUDIO,
+                    RecordingStep.IDENTIFYING_SPEAKERS,
+                    RecordingStep.ANALYZING_CONTENT,
+                    RecordingStep.SUMMARIZING_KEY_POINTS,
+                    RecordingStep.FINALIZING_NOTE
                 )
 
-                val completedSteps = mutableSetOf(ProcessingStep.UPLOADING_AUDIO)
+                val completedSteps = mutableSetOf(RecordingStep.UPLOADING_AUDIO)
 
                 for (step in steps) {
                     screenState = RecordingScreenState.Processing(
@@ -353,7 +353,7 @@ fun RecordingScreen(
                 }
 
                 is RecordingScreenState.Processing -> {
-                    ProcessingContent(
+                    RecordingProcessingContent(
                         currentStep = state.currentStep,
                         completedSteps = state.completedSteps,
                         uploadComplete = state.uploadComplete
@@ -683,12 +683,12 @@ private fun ReviewContent(
 }
 
 @Composable
-private fun ProcessingContent(
-    currentStep: ProcessingStep,
-    completedSteps: Set<ProcessingStep>,
+private fun RecordingProcessingContent(
+    currentStep: RecordingStep,
+    completedSteps: Set<RecordingStep>,
     uploadComplete: Boolean
 ) {
-    val steps = ProcessingStep.values().toList()
+    val steps = RecordingStep.entries
 
     Column(
         modifier = Modifier

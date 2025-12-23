@@ -4,6 +4,12 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
+const {
+  requireSubscription,
+  checkUsageLimits,
+  recordUsage,
+  requireSubscriptionForPodcast
+} = require('../middleware/subscription');
 const aiService = require('../services/aiService');
 
 // All routes require authentication
@@ -13,11 +19,16 @@ router.use(authenticate);
  * Chat with note content
  * POST /api/ai/chat
  * Body: { note_id, question, conversation_history }
+ *
+ * PROTECTED: Requires subscription or trial, with usage limits for free tier
  */
-router.post('/chat', validate('chatWithNote'), asyncHandler(async (req, res) => {
+router.post('/chat', checkUsageLimits('chat'), validate('chatWithNote'), asyncHandler(async (req, res) => {
   const { note_id, question, conversation_history, language } = req.validatedBody;
 
   const response = await aiService.chatWithNote(req.userId, note_id, question, conversation_history, language);
+
+  // Record usage for free tier tracking
+  await recordUsage(req.userId, 'chat', { note_id });
 
   res.json({
     success: true,
@@ -28,8 +39,10 @@ router.post('/chat', validate('chatWithNote'), asyncHandler(async (req, res) => 
 /**
  * Generate chat suggestions for a note
  * GET /api/ai/suggestions/:note_id?language=spanish
+ *
+ * PROTECTED: Requires subscription or trial
  */
-router.get('/suggestions/:note_id', asyncHandler(async (req, res) => {
+router.get('/suggestions/:note_id', requireSubscription, asyncHandler(async (req, res) => {
   const { note_id } = req.params;
   const { language = 'english' } = req.query;
 
@@ -45,11 +58,16 @@ router.get('/suggestions/:note_id', asyncHandler(async (req, res) => {
  * Generate summary from note
  * POST /api/ai/summary
  * Body: { note_id, options: { length: 'short'|'medium'|'long' } }
+ *
+ * PROTECTED: Requires subscription or trial, with usage limits for free tier
  */
-router.post('/summary', validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/summary', checkUsageLimits('summary'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
   const summary = await aiService.generateSummary(req.userId, note_id, options);
+
+  // Record usage for free tier tracking
+  await recordUsage(req.userId, 'summary', { note_id });
 
   res.json({
     success: true,
@@ -61,11 +79,16 @@ router.post('/summary', validate('generateAIContent'), asyncHandler(async (req, 
  * Generate quiz questions from note
  * POST /api/ai/quiz
  * Body: { note_id, options: { difficulty, num_questions } }
+ *
+ * PROTECTED: Requires subscription or trial, with usage limits for free tier
  */
-router.post('/quiz', validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/quiz', checkUsageLimits('quiz'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
   const quiz = await aiService.generateQuiz(req.userId, note_id, options);
+
+  // Record usage for free tier tracking
+  await recordUsage(req.userId, 'quiz', { note_id });
 
   res.json({
     success: true,
@@ -77,11 +100,16 @@ router.post('/quiz', validate('generateAIContent'), asyncHandler(async (req, res
  * Generate flashcards from note
  * POST /api/ai/flashcards
  * Body: { note_id, options: { num_cards } }
+ *
+ * PROTECTED: Requires subscription or trial, with usage limits for free tier
  */
-router.post('/flashcards', validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/flashcards', checkUsageLimits('flashcards'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
   const flashcards = await aiService.generateFlashcards(req.userId, note_id, options);
+
+  // Record usage for free tier tracking
+  await recordUsage(req.userId, 'flashcards', { note_id });
 
   res.json({
     success: true,
@@ -92,14 +120,20 @@ router.post('/flashcards', validate('generateAIContent'), asyncHandler(async (re
 /**
  * Generate podcast script and audio (async)
  * POST /api/ai/podcast
+ *
+ * PROTECTED: Requires active subscription or trial (NO free tier access)
  */
-router.post('/podcast', validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
-  logger.info('Starting async podcast generation', { 
-    userId: req.userId, 
-    noteId: note_id 
+  logger.info('Starting async podcast generation', {
+    userId: req.userId,
+    noteId: note_id,
+    subscription: req.subscription?.reason
   });
+
+  // Record usage
+  await recordUsage(req.userId, 'podcast', { note_id });
 
   // Return immediately with pending status
   res.json({
@@ -114,13 +148,13 @@ router.post('/podcast', validate('generateAIContent'), asyncHandler(async (req, 
   // Generate in background (don't await)
   aiService.generatePodcast(req.userId, note_id, options)
     .then(result => {
-      logger.info('Background podcast generation completed', { 
+      logger.info('Background podcast generation completed', {
         noteId: note_id,
-        hasAudio: !!result.audio_url 
+        hasAudio: !!result.audio_url
       });
     })
     .catch(error => {
-      logger.error('Background podcast generation failed', { 
+      logger.error('Background podcast generation failed', {
         error: error.message,
         noteId: note_id
       });
@@ -130,8 +164,10 @@ router.post('/podcast', validate('generateAIContent'), asyncHandler(async (req, 
 /**
  * Check podcast generation status
  * GET /api/ai/podcast/status/:note_id
+ *
+ * PROTECTED: Requires subscription or trial
  */
-router.get('/podcast/status/:note_id', asyncHandler(async (req, res) => {
+router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (req, res) => {
   const { note_id } = req.params;
 
   // Get the most recent podcast for this note
@@ -175,8 +211,10 @@ router.get('/podcast/status/:note_id', asyncHandler(async (req, res) => {
 /**
  * Get audio URL for a podcast
  * GET /api/ai/podcast/:id/audio
+ *
+ * PROTECTED: Requires subscription or trial
  */
-router.get('/podcast/:id/audio', asyncHandler(async (req, res) => {
+router.get('/podcast/:id/audio', requireSubscription, asyncHandler(async (req, res) => {
   const { id } = req.params;
   const userId = req.userId;
 
@@ -190,17 +228,17 @@ router.get('/podcast/:id/audio', asyncHandler(async (req, res) => {
     .single();
 
   if (error || !data) {
-    return res.status(404).json({ 
+    return res.status(404).json({
       success: false,
-      error: 'Podcast not found' 
+      error: 'Podcast not found'
     });
   }
 
   const audioUrl = data.content?.audio_url;
   if (!audioUrl) {
-    return res.status(404).json({ 
+    return res.status(404).json({
       success: false,
-      error: 'Audio not generated yet' 
+      error: 'Audio not generated yet'
     });
   }
 
@@ -212,11 +250,16 @@ router.get('/podcast/:id/audio', asyncHandler(async (req, res) => {
  * Generate visual learning diagram (Mermaid format)
  * POST /api/ai/diagram
  * Body: { note_id, options: { style } }
+ *
+ * PROTECTED: Requires subscription or trial, with usage limits for free tier
  */
-router.post('/diagram', validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/diagram', checkUsageLimits('diagram'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
   const diagram = await aiService.generateDiagram(req.userId, note_id, options);
+
+  // Record usage
+  await recordUsage(req.userId, 'diagram', { note_id });
 
   res.json({
     success: true,
@@ -227,6 +270,8 @@ router.post('/diagram', validate('generateAIContent'), asyncHandler(async (req, 
 /**
  * Get all AI-generated content for a note
  * GET /api/ai/note/:note_id
+ *
+ * No subscription check - users can view their previously generated content
  */
 router.get('/note/:note_id', asyncHandler(async (req, res) => {
   const content = await aiService.getAIContentForNote(req.userId, req.params.note_id);
@@ -240,6 +285,8 @@ router.get('/note/:note_id', asyncHandler(async (req, res) => {
 /**
  * Delete AI-generated content
  * DELETE /api/ai/:content_id
+ *
+ * No subscription check - users can delete their own content
  */
 router.delete('/:content_id', asyncHandler(async (req, res) => {
   const deleted = await aiService.deleteAIContent(req.userId, req.params.content_id);

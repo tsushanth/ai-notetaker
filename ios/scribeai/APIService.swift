@@ -16,6 +16,8 @@ enum APIError: Error {
     case unauthorized
     case timeout
     case networkError(String, isRetryable: Bool)
+    case subscriptionRequired(reason: String, trialExpired: Bool)
+    case freeTierLimitReached(feature: String, used: Int, limit: Int)
 }
 
 extension APIError: LocalizedError {
@@ -35,6 +37,10 @@ extension APIError: LocalizedError {
             return "Request timed out. Please try again."
         case .networkError(let message, _):
             return message
+        case .subscriptionRequired(let reason, _):
+            return reason
+        case .freeTierLimitReached(let feature, _, _):
+            return "You've reached your free limit for \(feature). Upgrade to continue."
         }
     }
 }
@@ -128,6 +134,57 @@ class APIService {
         }
 
         return .networkError(message, isRetryable: isRetryable)
+    }
+
+    // MARK: - Subscription Error Handling
+
+    /// Response structure for subscription-related 403 errors
+    private struct SubscriptionErrorResponse: Codable {
+        let success: Bool
+        let error: String
+        let code: String?
+        let details: SubscriptionErrorDetails?
+    }
+
+    private struct SubscriptionErrorDetails: Codable {
+        let reason: String?
+        let trialExpired: Bool?
+        let trialDaysRemaining: Int?
+        let featureType: String?
+        let used: Int?
+        let limit: Int?
+        let upgradeRequired: Bool?
+        let feature: String?
+    }
+
+    /// Check if response is a subscription error and throw appropriate APIError
+    private func checkForSubscriptionError(statusCode: Int, data: Data) throws {
+        guard statusCode == 403 else { return }
+
+        do {
+            let errorResponse = try JSONDecoder().decode(SubscriptionErrorResponse.self, from: data)
+
+            if errorResponse.code == "SUBSCRIPTION_REQUIRED" {
+                let reason = errorResponse.details?.reason ?? errorResponse.error
+                let trialExpired = errorResponse.details?.trialExpired ?? false
+                throw APIError.subscriptionRequired(reason: reason, trialExpired: trialExpired)
+            }
+
+            if errorResponse.code == "FREE_TIER_LIMIT_REACHED" {
+                let feature = errorResponse.details?.featureType ?? errorResponse.details?.feature ?? "this feature"
+                let used = errorResponse.details?.used ?? 0
+                let limit = errorResponse.details?.limit ?? 0
+                throw APIError.freeTierLimitReached(feature: feature, used: used, limit: limit)
+            }
+
+            // Generic 403 error
+            throw APIError.serverError(errorResponse.error)
+        } catch let apiError as APIError {
+            throw apiError
+        } catch {
+            // If decoding fails, throw generic 403 error
+            throw APIError.serverError("Access denied")
+        }
     }
 
     /// Execute an operation with retry logic and exponential backoff
@@ -843,12 +900,15 @@ class APIService {
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
         }
-        
+
+        // Check for subscription errors (403)
+        try checkForSubscriptionError(statusCode: httpResponse.statusCode, data: data)
+
         guard httpResponse.statusCode == 200 else {
             let errorData = try? JSONDecoder().decode([String: String].self, from: data)
             throw APIError.serverError(errorData?["error"] ?? "Failed to generate podcast")
         }
-        
+
         // Server returns immediately with status: 'generating'
         return AIContent(
             id: nil,
@@ -862,7 +922,7 @@ class APIService {
             createdAt: nil
         )
     }
-    
+
     func generateQuiz(token: String, noteId: String, difficulty: String = "medium", numQuestions: Int = 5, contentLength: Int = 0) async throws -> AIContent {
         return try await executeWithTokenRefresh { validToken in
             try await self._generateQuiz(token: validToken, noteId: noteId, difficulty: difficulty, numQuestions: numQuestions, contentLength: contentLength)
@@ -913,11 +973,14 @@ class APIService {
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
         }
-        
+
+        // Check for subscription errors (403)
+        try checkForSubscriptionError(statusCode: httpResponse.statusCode, data: data)
+
         guard httpResponse.statusCode == 200 else {
             throw APIError.serverError("Failed to generate quiz")
         }
-        
+
         // Response structure for generate endpoint
         struct GenerateQuizResponse: Codable {
             let success: Bool
@@ -1037,12 +1100,15 @@ class APIService {
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
         }
-        
+
+        // Check for subscription errors (403)
+        try checkForSubscriptionError(statusCode: httpResponse.statusCode, data: data)
+
         guard httpResponse.statusCode == 200 else {
             let errorData = try? JSONDecoder().decode([String: String].self, from: data)
             throw APIError.serverError(errorData?["error"] ?? errorData?["details"] ?? "Failed to generate flashcards")
         }
-        
+
         // Updated to match actual server response structure
         struct FlashcardsGenerateResponse: Codable {
             let success: Bool
@@ -1136,12 +1202,15 @@ class APIService {
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
         }
-        
+
+        // Check for subscription errors (403)
+        try checkForSubscriptionError(statusCode: httpResponse.statusCode, data: data)
+
         guard httpResponse.statusCode == 200 else {
             let errorData = try? JSONDecoder().decode([String: String].self, from: data)
             throw APIError.serverError(errorData?["error"] ?? "Failed to generate summary")
         }
-        
+
         // Response structure for summary endpoint
         struct GenerateSummaryResponse: Codable {
             let success: Bool
@@ -1231,25 +1300,28 @@ class APIService {
         if httpResponse.statusCode == 401 {
             throw APIError.unauthorized
         }
-        
+
+        // Check for subscription errors (403)
+        try checkForSubscriptionError(statusCode: httpResponse.statusCode, data: data)
+
         guard httpResponse.statusCode == 200 else {
             let errorData = try? JSONDecoder().decode([String: String].self, from: data)
             throw APIError.serverError(errorData?["error"] ?? "Failed to chat with note")
         }
-        
+
         // Response structure for chat endpoint
         struct ChatApiResponse: Codable {
             let success: Bool
             let data: ChatResponse?
             let error: String?
         }
-        
+
         let chatApiResponse = try JSONDecoder().decode(ChatApiResponse.self, from: data)
-        
+
         guard let chatResponse = chatApiResponse.data else {
             throw APIError.serverError(chatApiResponse.error ?? "No chat response returned")
         }
-        
+
         print("✅ Successfully received chat response")
 
         return chatResponse

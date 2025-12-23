@@ -164,6 +164,7 @@ struct SummaryTabContent: View {
             }
         }
         .onAppear {
+            AnalyticsService.shared.trackSummaryTabViewed(noteId: note.id)
             loadSummary()
         }
     }
@@ -222,6 +223,14 @@ struct SummaryTabContent: View {
                     print("✅ Summary generated")
                     self.summary = aiContent.summary
                     self.isGenerating = false
+
+                    // Track summary generated
+                    if let summaryText = aiContent.summary {
+                        AnalyticsService.shared.trackSummaryGenerated(
+                            noteId: self.note.id,
+                            summaryLength: summaryText.count
+                        )
+                    }
                 }
             } catch {
                 await MainActor.run {

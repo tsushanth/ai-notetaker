@@ -116,8 +116,10 @@ class AuthManager(private val context: Context) {
     }
 
     /**
-     * Get current auth token - will auto-refresh if expired
-     * This is the main method to use for API calls
+     * Get current auth token - returns cached token without blocking
+     * This method does NOT auto-refresh to avoid blocking the main thread.
+     * For operations that need a fresh token, use getFreshToken() in a coroutine.
+     * Safe to call from any thread.
      */
     fun getCurrentToken(): String? {
         val token = _authToken.value
@@ -128,23 +130,17 @@ class AuthManager(private val context: Context) {
             return null
         }
 
-        // If token is valid and not expiring soon, return it
-        if (!isTokenExpired(token) && !willExpireSoon(token)) {
-            return token
-        }
-
-        // Token is expired or expiring soon - try to refresh
-        Log.d(TAG, "Token expired or expiring soon, attempting refresh")
-        return refreshTokenBlocking()
+        // Return the cached token - even if expired
+        // The caller should use getFreshToken() if they need a valid token
+        return token
     }
 
     /**
-     * Refresh the access token using the refresh token (blocking version)
+     * Check if the current token needs refresh
      */
-    private fun refreshTokenBlocking(): String? {
-        return runBlocking(Dispatchers.IO) {
-            refreshToken()
-        }
+    fun needsTokenRefresh(): Boolean {
+        val token = _authToken.value ?: return false
+        return isTokenExpired(token) || willExpireSoon(token)
     }
 
     /**

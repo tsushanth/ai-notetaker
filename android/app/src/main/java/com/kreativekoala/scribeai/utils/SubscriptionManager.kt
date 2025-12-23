@@ -4,11 +4,23 @@ import android.app.Activity
 import android.content.Context
 import android.util.Log
 import com.android.billingclient.api.*
+import com.kreativekoala.scribeai.data.api.RetrofitClient
+import com.kreativekoala.scribeai.data.models.AccessStatusData
+import com.kreativekoala.scribeai.data.models.SubscriptionEventRequest
+import com.kreativekoala.scribeai.data.models.SubscriptionSyncRequest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.Currency
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 /**
  * Manages Google Play Billing and subscription state
@@ -33,6 +45,19 @@ class SubscriptionManager(private val context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private var billingClient: BillingClient? = null
+    private var authManager: AuthManager? = null
+
+    // Coroutine scope for background operations
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    // Server-side access status
+    private val _serverAccessStatus = MutableStateFlow<AccessStatusData?>(null)
+    val serverAccessStatus: StateFlow<AccessStatusData?> = _serverAccessStatus.asStateFlow()
+
+    // ISO date formatter
+    private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
 
     private val _subscriptionState = MutableStateFlow<SubscriptionState>(SubscriptionState.Unknown)
     val subscriptionState: StateFlow<SubscriptionState> = _subscriptionState.asStateFlow()
@@ -49,6 +74,13 @@ class SubscriptionManager(private val context: Context) {
 
     enum class SubscriptionType {
         MONTHLY, YEARLY
+    }
+
+    /**
+     * Set the auth manager for token access
+     */
+    fun setAuthManager(authManager: AuthManager) {
+        this.authManager = authManager
     }
 
     /**
@@ -167,6 +199,15 @@ class SubscriptionManager(private val context: Context) {
                 type = type,
                 expiryDate = null // Would need to call Google API for actual expiry
             )
+
+            // Track subscription for analytics
+            val productId = if (type == SubscriptionType.YEARLY) YEARLY_SUB_ID else MONTHLY_SUB_ID
+            val price = getFormattedPrice(productId)
+            val currency = getPriceCurrencyCode(productId)
+            AnalyticsService.trackSubscriptionBilled(productId, price, currency)
+
+            // Sync with server
+            syncWithServer(activePurchase)
 
             Log.d(TAG, "Active subscription found: $type")
         } else {
@@ -363,5 +404,161 @@ class SubscriptionManager(private val context: Context) {
      */
     fun cleanup() {
         billingClient?.endConnection()
+    }
+
+    // ==================== SERVER SYNC ====================
+
+    /**
+     * Sync subscription status with server
+     * Call this after a successful purchase or periodically to keep server in sync
+     */
+    fun syncWithServer(purchase: Purchase? = null) {
+        scope.launch {
+            try {
+                val token = authManager?.getFreshToken() ?: return@launch
+
+                // Determine product ID and type
+                val productId = purchase?.products?.firstOrNull()
+                    ?: if (isSubscribed()) {
+                        when ((_subscriptionState.value as? SubscriptionState.Subscribed)?.type) {
+                            SubscriptionType.YEARLY -> YEARLY_SUB_ID
+                            SubscriptionType.MONTHLY -> MONTHLY_SUB_ID
+                            else -> null
+                        }
+                    } else null
+
+                if (productId == null) {
+                    Log.d(TAG, "No subscription to sync")
+                    return@launch
+                }
+
+                val syncRequest = SubscriptionSyncRequest(
+                    productId = productId,
+                    platform = "android",
+                    status = if (isSubscribed()) "active" else "cancelled",
+                    transactionId = purchase?.orderId,
+                    originalTransactionId = purchase?.orderId,
+                    purchaseDate = purchase?.purchaseTime?.let { isoFormatter.format(Date(it)) },
+                    isTrial = false, // Google Play doesn't expose trial status directly
+                    autoRenewEnabled = true,
+                    priceAmount = getFormattedPrice(productId).replace(Regex("[^0-9.]"), ""),
+                    priceCurrency = getPriceCurrencyCode(productId)
+                )
+
+                val response = RetrofitClient.apiService.syncSubscription(
+                    "Bearer $token",
+                    syncRequest
+                )
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    Log.d(TAG, "Subscription synced with server successfully")
+                    // Refresh access status after sync
+                    refreshAccessStatus()
+                } else {
+                    Log.e(TAG, "Failed to sync subscription: ${response.errorBody()?.string()}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error syncing subscription with server", e)
+            }
+        }
+    }
+
+    /**
+     * Refresh access status from server
+     * This is the authoritative check for what features the user can access
+     */
+    fun refreshAccessStatus() {
+        scope.launch {
+            try {
+                val token = authManager?.getFreshToken() ?: return@launch
+
+                val response = RetrofitClient.apiService.getAccessStatus("Bearer $token")
+
+                if (response.isSuccessful) {
+                    val accessData = response.body()?.data
+                    _serverAccessStatus.value = accessData
+
+                    // Update local subscription state based on server response
+                    if (accessData?.isSubscribed == true || accessData?.isInTrial == true) {
+                        val type = when {
+                            accessData.productId?.contains("yearly") == true -> SubscriptionType.YEARLY
+                            else -> SubscriptionType.MONTHLY
+                        }
+                        _subscriptionState.value = SubscriptionState.Subscribed(type, null)
+                    }
+
+                    Log.d(TAG, "Access status refreshed: hasAccess=${accessData?.hasAccess}, isSubscribed=${accessData?.isSubscribed}")
+                } else {
+                    Log.e(TAG, "Failed to refresh access status: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error refreshing access status", e)
+            }
+        }
+    }
+
+    /**
+     * Check if user has server-verified access to premium features
+     */
+    fun hasServerVerifiedAccess(): Boolean {
+        return _serverAccessStatus.value?.hasAccess == true
+    }
+
+    /**
+     * Check if user can use AI features (server-authoritative)
+     */
+    fun canUseAI(): Boolean {
+        val serverStatus = _serverAccessStatus.value
+        return serverStatus?.features?.canUseAI == true ||
+               serverStatus?.hasAccess == true ||
+               isSubscribed() // Fall back to local state if server status not available
+    }
+
+    /**
+     * Check if user can generate podcasts (server-authoritative)
+     */
+    fun canGeneratePodcasts(): Boolean {
+        val serverStatus = _serverAccessStatus.value
+        return serverStatus?.features?.canGeneratePodcasts == true ||
+               serverStatus?.isSubscribed == true ||
+               serverStatus?.isInTrial == true ||
+               isSubscribed()
+    }
+
+    /**
+     * Record a subscription event on the server
+     */
+    fun recordSubscriptionEvent(
+        eventType: String,
+        productId: String? = null,
+        reason: String? = null
+    ) {
+        scope.launch {
+            try {
+                val token = authManager?.getFreshToken() ?: return@launch
+
+                val request = SubscriptionEventRequest(
+                    eventType = eventType,
+                    platform = "android",
+                    productId = productId,
+                    priceAmount = productId?.let { getFormattedPrice(it).replace(Regex("[^0-9.]"), "") },
+                    priceCurrency = productId?.let { getPriceCurrencyCode(it) },
+                    reason = reason
+                )
+
+                val response = RetrofitClient.apiService.recordSubscriptionEvent(
+                    "Bearer $token",
+                    request
+                )
+
+                if (response.isSuccessful) {
+                    Log.d(TAG, "Subscription event recorded: $eventType")
+                } else {
+                    Log.e(TAG, "Failed to record subscription event: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error recording subscription event", e)
+            }
+        }
     }
 }

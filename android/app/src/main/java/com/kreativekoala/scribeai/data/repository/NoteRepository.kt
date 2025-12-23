@@ -235,16 +235,48 @@ class NoteRepository {
                     "diagram" -> apiService.generateDiagram("Bearer $token", request)
                     else -> return@withContext Result.failure(Exception("Invalid content type"))
                 }
-                
+
                 if (response.isSuccessful && response.body()?.data != null) {
                     Result.success(response.body()!!.data!!)
                 } else {
-                    Result.failure(Exception("Failed to generate AI content"))
+                    // Handle subscription-related errors
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    val errorMessage = when (response.code()) {
+                        401 -> "Session expired. Please log in again."
+                        403 -> {
+                            // Check if this is a subscription limit error
+                            when {
+                                errorBody.contains("subscription", ignoreCase = true) ||
+                                errorBody.contains("premium", ignoreCase = true) ||
+                                errorBody.contains("limit", ignoreCase = true) ||
+                                errorBody.contains("upgrade", ignoreCase = true) ->
+                                    "This feature requires a premium subscription. Upgrade to continue."
+                                errorBody.contains("trial", ignoreCase = true) ->
+                                    "Your free trial has ended. Subscribe to continue using AI features."
+                                else -> "Access denied. Please check your subscription status."
+                            }
+                        }
+                        402 -> "Subscription required. Upgrade to access this feature."
+                        429 -> "Usage limit reached. Please try again later or upgrade your plan."
+                        500, 502, 503, 504 -> "Server error. Please try again later."
+                        else -> "Failed to generate $contentType. Please try again."
+                    }
+                    Log.e(TAG, "❌ generateAIContent failed: ${response.code()} - $errorBody")
+                    Result.failure(SubscriptionException(errorMessage, response.code()))
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "❌ generateAIContent exception", e)
                 Result.failure(e)
             }
         }
+    }
+
+    /**
+     * Custom exception for subscription-related errors
+     */
+    class SubscriptionException(message: String, val code: Int) : Exception(message) {
+        val requiresUpgrade: Boolean
+            get() = code == 402 || code == 403 || code == 429
     }
 
     suspend fun startPodcastGeneration(
@@ -257,9 +289,28 @@ class NoteRepository {
                 if (response.isSuccessful) {
                     Result.success(Unit)
                 } else {
-                    Result.failure(Exception("Failed to start generation"))
+                    // Handle subscription-related errors for podcast generation
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    val errorMessage = when (response.code()) {
+                        401 -> "Session expired. Please log in again."
+                        403, 402 -> {
+                            when {
+                                errorBody.contains("subscription", ignoreCase = true) ||
+                                errorBody.contains("premium", ignoreCase = true) ->
+                                    "Podcast generation requires a premium subscription."
+                                errorBody.contains("trial", ignoreCase = true) ->
+                                    "Your free trial has ended. Subscribe to generate podcasts."
+                                else -> "Upgrade to premium to access podcast generation."
+                            }
+                        }
+                        429 -> "Usage limit reached. Please upgrade your plan."
+                        else -> "Failed to start podcast generation. Please try again."
+                    }
+                    Log.e(TAG, "❌ startPodcastGeneration failed: ${response.code()} - $errorBody")
+                    Result.failure(SubscriptionException(errorMessage, response.code()))
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "❌ startPodcastGeneration exception", e)
                 Result.failure(e)
             }
         }

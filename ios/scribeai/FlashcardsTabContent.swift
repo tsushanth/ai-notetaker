@@ -17,6 +17,8 @@ struct FlashcardsTabContent: View {
     @State private var currentCardIndex = 0
     @State private var isFlipped = false
     @State private var dragOffset: CGSize = .zero
+    @State private var showPaywall = false
+    @State private var totalFlips = 0
     
     var body: some View {
         VStack(spacing: 20) {
@@ -93,7 +95,8 @@ struct FlashcardsTabContent: View {
                     FlashcardView(
                         card: flashcardSet.cards[currentCardIndex],
                         isFlipped: $isFlipped,
-                        dragOffset: $dragOffset
+                        dragOffset: $dragOffset,
+                        onFlip: { trackFlip() }
                     )
                     .padding(.horizontal, 24)
                     
@@ -185,10 +188,21 @@ struct FlashcardsTabContent: View {
             }
         }
         .onAppear {
+            AnalyticsService.shared.trackFlashcardsTabViewed(noteId: note.id)
             loadFlashcards()
         }
+        .sheet(isPresented: $showPaywall) {
+            NavigationView {
+                PaywallView {
+                    showPaywall = false
+                    Task {
+                        await SubscriptionGateManager.shared.refreshAccessStatus()
+                    }
+                }
+            }
+        }
     }
-    
+
     private func loadFlashcards() {
         guard let token = KeychainService.shared.get(Constants.Keychain.accessToken) else {
             print("❌ No auth token found")
@@ -229,10 +243,11 @@ struct FlashcardsTabContent: View {
             errorMessage = "Not authenticated"
             return
         }
-        
+
+        AnalyticsService.shared.trackFlashcardsGenerateStarted(noteId: note.id)
         isGenerating = true
         errorMessage = nil
-        
+
         Task {
             do {
                 let aiContent = try await APIService.shared.generateFlashcards(token: token, noteId: note.id, contentLength: note.content.count)
@@ -247,6 +262,17 @@ struct FlashcardsTabContent: View {
                     }
                     self.isGenerating = false
                 }
+            } catch let error as APIError {
+                await MainActor.run {
+                    self.isGenerating = false
+                    switch error {
+                    case .subscriptionRequired, .freeTierLimitReached:
+                        print("🔐 Subscription required for flashcards")
+                        self.showPaywall = true
+                    default:
+                        self.errorMessage = error.localizedDescription
+                    }
+                }
             } catch {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
@@ -255,26 +281,44 @@ struct FlashcardsTabContent: View {
             }
         }
     }
-    
+
     private func nextCard() {
         guard let flashcardSet = flashcardSet,
               currentCardIndex < flashcardSet.cards.count - 1 else {
+            // Track completion when reaching the last card
+            if let flashcardSet = flashcardSet, currentCardIndex >= flashcardSet.cards.count - 1 {
+                AnalyticsService.shared.trackFlashcardsCompleted(
+                    totalCards: flashcardSet.cards.count,
+                    totalFlips: totalFlips
+                )
+            }
             return
         }
-        
+
+        AnalyticsService.shared.trackFlashcardSwiped(cardIndex: currentCardIndex, direction: "next")
         withAnimation {
             currentCardIndex += 1
             isFlipped = false
         }
     }
-    
+
     private func previousCard() {
         guard currentCardIndex > 0 else { return }
-        
+
+        AnalyticsService.shared.trackFlashcardSwiped(cardIndex: currentCardIndex, direction: "previous")
         withAnimation {
             currentCardIndex -= 1
             isFlipped = false
         }
+    }
+
+    private func trackFlip() {
+        guard let flashcardSet = flashcardSet else { return }
+        totalFlips += 1
+        AnalyticsService.shared.trackFlashcardFlipped(
+            cardIndex: currentCardIndex,
+            totalCards: flashcardSet.cards.count
+        )
     }
 }
 
@@ -282,7 +326,8 @@ struct FlashcardView: View {
     let card: Flashcard
     @Binding var isFlipped: Bool
     @Binding var dragOffset: CGSize
-    
+    var onFlip: (() -> Void)?
+
     var body: some View {
         ZStack {
             // Back of card
@@ -292,7 +337,7 @@ struct FlashcardView: View {
                     .degrees(isFlipped ? 0 : 180),
                     axis: (x: 0, y: 1, z: 0)
                 )
-            
+
             // Front of card
             CardSide(text: card.front, color: Color.cardBackground)
                 .opacity(isFlipped ? 0 : 1)
@@ -316,6 +361,7 @@ struct FlashcardView: View {
                     if abs(value.translation.width) > 100 {
                         withAnimation {
                             isFlipped.toggle()
+                            onFlip?()
                         }
                     }
                     withAnimation {
@@ -326,6 +372,7 @@ struct FlashcardView: View {
         .onTapGesture {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                 isFlipped.toggle()
+                onFlip?()
             }
         }
     }

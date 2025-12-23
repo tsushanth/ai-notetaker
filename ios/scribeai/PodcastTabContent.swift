@@ -11,13 +11,14 @@ struct PodcastTabContent: View {
     @State private var audioPlayer: AVAudioPlayer?
     @State private var errorMessage: String?
     @State private var showRegenerateConfirmation = false
-    
+    @State private var showPaywall = false
+
     // Audio progress tracking
     @State private var currentTime: TimeInterval = 0
     @State private var duration: TimeInterval = 0
     @State private var progressTimer: Timer?
     @State private var isDragging = false
-    
+
     // Audio delegate for playback completion
     @StateObject private var audioDelegate = AudioPlayerDelegate()
     
@@ -297,6 +298,7 @@ struct PodcastTabContent: View {
             }
         }
         .onAppear {
+            AnalyticsService.shared.trackPodcastTabViewed(noteId: note.id)
             loadPodcast()
             setupAudioSession()
         }
@@ -312,6 +314,16 @@ struct PodcastTabContent: View {
             }
         } message: {
             Text("This will create a new podcast and replace the current one. This action cannot be undone.")
+        }
+        .sheet(isPresented: $showPaywall) {
+            NavigationView {
+                PaywallView {
+                    showPaywall = false
+                    Task {
+                        await SubscriptionGateManager.shared.refreshAccessStatus()
+                    }
+                }
+            }
         }
     }
     
@@ -334,18 +346,25 @@ struct PodcastTabContent: View {
             print("⚠️ Already buffering, ignoring tap")
             return
         }
-        
+
         guard let podcast = podcast else { return }
-        
+
         if let player = audioPlayer {
             if isPlaying {
                 player.pause()
                 isPlaying = false
                 stopProgressTimer()
+                // Track pause
+                AnalyticsService.shared.trackPodcastPlayPaused(
+                    podcastId: podcast.id,
+                    currentPosition: Int(currentTime),
+                    duration: Int(duration)
+                )
             } else {
                 player.play()
                 isPlaying = true
                 startProgressTimer()
+                // Track resume (first play is tracked in loadAndPlayAudio)
             }
         } else {
             loadAndPlayAudio(from: podcast.audioUrl)
@@ -380,6 +399,14 @@ struct PodcastTabContent: View {
                 self.currentTime = 0
                 self.audioPlayer?.currentTime = 0
                 self.stopProgressTimer()
+
+                // Track podcast play completed
+                if let podcast = self.podcast {
+                    AnalyticsService.shared.trackPodcastPlayCompleted(
+                        podcastId: podcast.id,
+                        duration: Int(self.duration)
+                    )
+                }
             }
         }
         
@@ -406,9 +433,17 @@ struct PodcastTabContent: View {
                         player.play()
                         self.isPlaying = true
                         self.isBuffering = false
-                        
+
                         startProgressTimer()
-                        
+
+                        // Track play started
+                        if let podcast = self.podcast {
+                            AnalyticsService.shared.trackPodcastPlayStarted(
+                                podcastId: podcast.id,
+                                duration: Int(player.duration)
+                            )
+                        }
+
                         print("✅ Audio loaded. Duration: \(formatTime(player.duration))")
                     } catch {
                         self.errorMessage = "Failed to play audio: \(error.localizedDescription)"
@@ -426,10 +461,16 @@ struct PodcastTabContent: View {
     
     private func skip(by seconds: Double) {
         guard let player = audioPlayer else { return }
-        
+
         let newTime = max(0, min(player.currentTime + seconds, player.duration))
         player.currentTime = newTime
         currentTime = newTime
+
+        // Track skip
+        AnalyticsService.shared.trackPodcastSkipped(
+            direction: seconds > 0 ? "forward" : "backward",
+            skipSeconds: abs(Int(seconds))
+        )
     }
     
     // MARK: - Progress Timer
@@ -511,10 +552,11 @@ struct PodcastTabContent: View {
             errorMessage = "Not authenticated"
             return
         }
-        
+
+        AnalyticsService.shared.trackPodcastGenerateStarted(noteId: note.id)
         isGenerating = true
         errorMessage = nil
-        
+
         print("🎙️ Starting podcast generation for note: \(note.id)")
         
         Task {
@@ -542,6 +584,18 @@ struct PodcastTabContent: View {
                     print("⚠️ No audio URL in response, polling for status...")
                     await pollForPodcastCompletion(token: token)
                 }
+            } catch let error as APIError {
+                await MainActor.run {
+                    self.isGenerating = false
+                    switch error {
+                    case .subscriptionRequired, .freeTierLimitReached:
+                        print("🔐 Subscription required for podcast")
+                        self.showPaywall = true
+                    default:
+                        self.errorMessage = error.localizedDescription
+                        print("❌ Error generating podcast: \(error)")
+                    }
+                }
             } catch {
                 await MainActor.run {
                     self.errorMessage = error.localizedDescription
@@ -551,7 +605,7 @@ struct PodcastTabContent: View {
             }
         }
     }
-    
+
     // MARK: - Regenerate Podcast
     
     private func regeneratePodcast() {

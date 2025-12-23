@@ -6,8 +6,13 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,10 +24,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kreativekoala.scribeai.ui.components.*
 import com.kreativekoala.scribeai.ui.theme.*
+import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import com.kreativekoala.scribeai.viewmodel.NoteViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,9 +44,13 @@ fun YouTubeInputScreen(
     subscriptionManager: SubscriptionManager
 ) {
     var youtubeUrl by remember { mutableStateOf("") }
-    var isProcessing by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
     var showTranscriptInfo by remember { mutableStateOf(false) }
+
+    // Processing state
+    var processingState by remember { mutableStateOf<ProcessingState>(ProcessingState.Idle) }
+    var processingSteps by remember { mutableStateOf(createYouTubeProcessingSteps()) }
+    var currentStepIndex by remember { mutableIntStateOf(0) }
+    var uploadComplete by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -47,16 +59,16 @@ fun YouTubeInputScreen(
 
     // Check auth with delay
     LaunchedEffect(authToken) {
-        kotlinx.coroutines.delay(500)
+        delay(500)
         if (authToken == null) {
-            errorMessage = "Please log in to continue"
-            kotlinx.coroutines.delay(1500)
+            processingState = ProcessingState.Error("Please log in to continue")
+            delay(1500)
             onNavigateToLogin()
         }
     }
 
     // Show loading while auth initializes
-    if (authToken == null) {
+    if (authToken == null && processingState is ProcessingState.Idle) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -70,272 +82,186 @@ fun YouTubeInputScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("YouTube Transcripts") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showTranscriptInfo = true }) {
-                        Icon(Icons.Default.Info, contentDescription = "Info", tint = TextSecondary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground,
-                    titleContentColor = TextPrimary
+            if (processingState is ProcessingState.Idle) {
+                TopAppBar(
+                    title = { Text("YouTube Transcript") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showTranscriptInfo = true }) {
+                            Icon(Icons.Default.Info, contentDescription = "Info", tint = TextSecondary)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = DarkBackground,
+                        titleContentColor = TextPrimary
+                    )
                 )
-            )
+            }
         },
         containerColor = DarkBackground
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(32.dp))
-
-            // YouTube Icon
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(AccentRed.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.VideoLibrary,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = AccentRed
-                )
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Info Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = CardBackground
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.Top
-                ) {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = null,
-                        tint = Purple80,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        "Only videos with captions/subtitles are supported",
-                        fontSize = 13.sp,
-                        color = TextSecondary,
-                        lineHeight = 18.sp
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // Open YouTube Button
-            OutlinedButton(
-                onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://youtube.com"))
-                    context.startActivity(intent)
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Purple80
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.OpenInNew, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Open YouTube")
-            }
-
-            Spacer(Modifier.height(24.dp))
-
-            // URL Input
-            OutlinedTextField(
-                value = youtubeUrl,
-                onValueChange = {
-                    youtubeUrl = it
-                    errorMessage = null
-                },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = {
-                    Text(
-                        "Paste YouTube link here",
-                        color = TextTertiary
-                    )
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Purple80,
-                    unfocusedBorderColor = DarkSurfaceVariant,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    cursorColor = Purple80
-                ),
-                shape = RoundedCornerShape(12.dp),
-                isError = errorMessage != null,
-                singleLine = true
-            )
-
-            if (errorMessage != null) {
-                Spacer(Modifier.height(8.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = AccentRed.copy(alpha = 0.1f)
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Error,
-                            contentDescription = null,
-                            tint = AccentRed,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            errorMessage!!,
-                            color = AccentRed,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(16.dp))
-
-            // Paste Button
-            OutlinedButton(
-                onClick = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clipData = clipboard.primaryClip
-                    if (clipData != null && clipData.itemCount > 0) {
-                        youtubeUrl = clipData.getItemAt(0).text?.toString() ?: ""
-                    }
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Purple80
-                ),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.ContentPaste, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Paste From Clipboard")
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            // Process Button
-            Button(
-                onClick = {
-                    if (youtubeUrl.isBlank()) {
-                        errorMessage = "Please enter a YouTube URL"
-                        return@Button
-                    }
-
-                    if (!isValidYouTubeUrl(youtubeUrl)) {
-                        errorMessage = "Please enter a valid YouTube URL"
-                        return@Button
-                    }
-
-                    val currentToken = authToken
-                    if (currentToken == null || authManager.isTokenExpired(currentToken)) {
-                        errorMessage = "Session expired. Please log in again."
-                        coroutineScope.launch {
-                            authManager.clearAuth()
-                            kotlinx.coroutines.delay(1000)
-                            onNavigateToLogin()
-                        }
-                        return@Button
-                    }
-
-                    isProcessing = true
-                    errorMessage = null
-
-                    viewModel.processVideoUrl(
-                        token = currentToken,
-                        url = youtubeUrl,
-                        onSuccess = {
-                            isProcessing = false
-                            onSuccess()
+            when (val state = processingState) {
+                is ProcessingState.Idle -> {
+                    YouTubeInputContent(
+                        youtubeUrl = youtubeUrl,
+                        onUrlChange = { youtubeUrl = it },
+                        onOpenYouTube = {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://youtube.com"))
+                            context.startActivity(intent)
                         },
-                        onError = { error ->
-                            isProcessing = false
+                        onPasteFromClipboard = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipData = clipboard.primaryClip
+                            if (clipData != null && clipData.itemCount > 0) {
+                                youtubeUrl = clipData.getItemAt(0).text?.toString() ?: ""
+                            }
+                        },
+                        onGenerateNotes = {
+                            if (youtubeUrl.isBlank()) {
+                                processingState = ProcessingState.Error("Please enter a YouTube URL")
+                                return@YouTubeInputContent
+                            }
 
-                            // Handle specific errors
-                            when {
-                                error.contains("No transcript available") ||
-                                        error.contains("captions") ||
-                                        error.contains("subtitles") -> {
-                                    errorMessage = "This video doesn't have captions/subtitles. Please try another video."
+                            if (!isValidYouTubeUrl(youtubeUrl)) {
+                                processingState = ProcessingState.Error(
+                                    "Please enter a valid YouTube URL.\n\n" +
+                                    "Supported formats:\n" +
+                                    "• youtube.com/watch?v=...\n" +
+                                    "• youtu.be/...\n" +
+                                    "• youtube.com/shorts/..."
+                                )
+                                return@YouTubeInputContent
+                            }
+
+                            val currentToken = authToken
+                            if (currentToken == null || authManager.isTokenExpired(currentToken)) {
+                                processingState = ProcessingState.Error("Session expired. Please log in again.")
+                                coroutineScope.launch {
+                                    authManager.clearAuth()
+                                    delay(1000)
+                                    onNavigateToLogin()
                                 }
-                                error.contains("401") || error.contains("Unauthorized") -> {
-                                    errorMessage = "Session expired. Please log in again."
-                                    coroutineScope.launch {
-                                        authManager.clearAuth()
-                                        kotlinx.coroutines.delay(1000)
-                                        onNavigateToLogin()
+                                return@YouTubeInputContent
+                            }
+
+                            // Track analytics
+                            AnalyticsService.trackYoutubeProcessed()
+
+                            // Initialize processing
+                            processingSteps = createYouTubeProcessingSteps()
+                            currentStepIndex = 0
+                            uploadComplete = false
+                            processingState = ProcessingState.Processing(
+                                steps = processingSteps,
+                                currentIndex = 0,
+                                uploadComplete = false
+                            )
+
+                            // Start processing
+                            coroutineScope.launch {
+                                // Step 1: Sending URL - set to in progress
+                                processingSteps = updateStepInList(processingSteps, 0, StepStatus.IN_PROGRESS)
+                                currentStepIndex = 0
+                                processingState = ProcessingState.Processing(processingSteps, 0, false)
+
+                                viewModel.processVideoUrl(
+                                    token = currentToken,
+                                    url = youtubeUrl,
+                                    onSuccess = {
+                                        coroutineScope.launch {
+                                            // Complete step 1
+                                            processingSteps = updateStepInList(processingSteps, 0, StepStatus.COMPLETED)
+                                            uploadComplete = true
+                                            processingState = ProcessingState.Processing(processingSteps, 0, true)
+
+                                            // Animate through remaining steps
+                                            for (i in 1 until processingSteps.size) {
+                                                delay(800)
+                                                processingSteps = updateStepInList(processingSteps, i, StepStatus.IN_PROGRESS)
+                                                currentStepIndex = i
+                                                processingState = ProcessingState.Processing(processingSteps, i, true)
+
+                                                delay(600)
+                                                processingSteps = updateStepInList(processingSteps, i, StepStatus.COMPLETED)
+                                                processingState = ProcessingState.Processing(processingSteps, i, true)
+                                            }
+
+                                            // Show success
+                                            delay(300)
+                                            processingState = ProcessingState.Success()
+                                            AnalyticsService.trackNoteCreated("youtube")
+                                        }
+                                    },
+                                    onError = { error ->
+                                        val errorMessage = when {
+                                            error.contains("No transcript available") ||
+                                            error.contains("captions") ||
+                                            error.contains("subtitles") -> {
+                                                "This video doesn't have captions/subtitles available.\n\nPlease try a different video with captions enabled."
+                                            }
+                                            error.contains("401") || error.contains("Unauthorized") -> {
+                                                "Session expired.\n\nPlease log in again."
+                                            }
+                                            error.contains("private") || error.contains("unavailable") -> {
+                                                "This video is private or unavailable.\n\nPlease check the URL and try again."
+                                            }
+                                            error.contains("timeout") || error.contains("timed out") -> {
+                                                "Request timed out.\n\nThe video might be too long. Please try a shorter video."
+                                            }
+                                            else -> {
+                                                "Failed to process video.\n\nPlease try again."
+                                            }
+                                        }
+                                        processingState = ProcessingState.Error(errorMessage)
+                                        AnalyticsService.trackProcessingError("youtube", error)
                                     }
-                                }
-                                else -> {
-                                    errorMessage = "Failed to process video. Please try again."
-                                }
+                                )
                             }
                         }
                     )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Purple80
-                ),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !isProcessing
-            ) {
-                if (isProcessing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
+                }
+
+                is ProcessingState.Processing -> {
+                    ProcessingStepsView(
+                        steps = state.steps,
+                        currentIndex = state.currentIndex,
+                        uploadComplete = state.uploadComplete
                     )
-                    Spacer(Modifier.width(12.dp))
-                    Text("Processing...")
-                } else {
-                    Icon(Icons.Default.Send, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        "Generate Notes",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
+                }
+
+                is ProcessingState.Success -> {
+                    ProcessingSuccessView(
+                        onViewNote = {
+                            onSuccess()
+                        },
+                        onGoHome = {
+                            onSuccess()
+                        }
+                    )
+                }
+
+                is ProcessingState.Error -> {
+                    ProcessingErrorView(
+                        message = state.message,
+                        onRetry = {
+                            processingState = ProcessingState.Idle
+                            processingSteps = createYouTubeProcessingSteps()
+                            currentStepIndex = 0
+                            uploadComplete = false
+                        },
+                        onGoBack = onNavigateBack
                     )
                 }
             }
-
-            Spacer(Modifier.height(32.dp))
         }
     }
 
@@ -374,6 +300,181 @@ fun YouTubeInputScreen(
             },
             containerColor = CardBackground
         )
+    }
+}
+
+@Composable
+private fun YouTubeInputContent(
+    youtubeUrl: String,
+    onUrlChange: (String) -> Unit,
+    onOpenYouTube: () -> Unit,
+    onPasteFromClipboard: () -> Unit,
+    onGenerateNotes: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(32.dp))
+
+        // YouTube Icon
+        Box(
+            modifier = Modifier
+                .size(80.dp)
+                .background(AccentRed.copy(alpha = 0.2f), RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.VideoLibrary,
+                contentDescription = null,
+                modifier = Modifier.size(40.dp),
+                tint = AccentRed
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Info Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = CardBackground
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = Purple80,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    "Only videos with captions/subtitles are supported",
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    lineHeight = 18.sp
+                )
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Open YouTube Button
+        OutlinedButton(
+            onClick = onOpenYouTube,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Purple80
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Open YouTube")
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // URL Input Label
+        Text(
+            "👇 enter link here 👇",
+            fontSize = 14.sp,
+            color = TextSecondary
+        )
+
+        Spacer(Modifier.height(8.dp))
+
+        // URL Input
+        OutlinedTextField(
+            value = youtubeUrl,
+            onValueChange = onUrlChange,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    "www.youtube.com/watch?v=...",
+                    color = TextTertiary
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Purple80,
+                unfocusedBorderColor = DarkSurfaceVariant,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                cursorColor = Purple80
+            ),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        // Paste Button
+        OutlinedButton(
+            onClick = onPasteFromClipboard,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Purple80
+            ),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.ContentPaste, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Paste From Clipboard")
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        // Generate Notes Button
+        Button(
+            onClick = onGenerateNotes,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (youtubeUrl.isNotBlank() && isValidYouTubeUrl(youtubeUrl))
+                    Purple80 else Purple80.copy(alpha = 0.5f)
+            ),
+            shape = RoundedCornerShape(12.dp),
+            enabled = youtubeUrl.isNotBlank()
+        ) {
+            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Generate Notes",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(Modifier.height(32.dp))
+    }
+}
+
+// Helper functions
+
+private fun createYouTubeProcessingSteps(): List<ProcessingStep> {
+    return YouTubeProcessingStep.entries.map { step ->
+        ProcessingStep(title = step.title, status = StepStatus.PENDING)
+    }
+}
+
+private fun updateStepInList(
+    steps: List<ProcessingStep>,
+    index: Int,
+    status: StepStatus
+): List<ProcessingStep> {
+    return steps.mapIndexed { i, step ->
+        if (i == index) step.copy(status = status) else step
     }
 }
 

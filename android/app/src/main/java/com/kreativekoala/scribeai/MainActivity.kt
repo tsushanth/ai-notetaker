@@ -13,6 +13,7 @@ import com.kreativekoala.scribeai.data.local.NoteCacheRepository
 import com.kreativekoala.scribeai.data.local.ScribeDatabase
 import com.kreativekoala.scribeai.navigation.AppNavigation
 import com.kreativekoala.scribeai.ui.theme.AINotetakerTheme
+import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.ErrorReportingService
 import com.kreativekoala.scribeai.utils.SubscriptionManager
@@ -36,6 +37,10 @@ class MainActivity : ComponentActivity() {
         // Initialize error reporting service
         ErrorReportingService.initialize(applicationContext, authManager)
 
+        // Initialize analytics service and track app launch
+        AnalyticsService.initialize(applicationContext, authManager)
+        AnalyticsService.trackAppLaunch()
+
         // Initialize TutorialManager
         val database = ScribeDatabase.getInstance(applicationContext)
         val localNoteRepository = NoteCacheRepository(database.noteCacheDao())
@@ -44,9 +49,12 @@ class MainActivity : ComponentActivity() {
             localRepository = localNoteRepository
         )
 
-        // Initialize billing client
+        // Initialize billing client with auth manager for server sync
+        subscriptionManager.setAuthManager(authManager)
         subscriptionManager.initialize {
             subscriptionManager.checkExistingSubscriptions()
+            // Refresh access status from server when billing is ready
+            subscriptionManager.refreshAccessStatus()
         }
 
         setContent {
@@ -81,5 +89,15 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        AnalyticsService.startSession()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        AnalyticsService.endSession()
     }
 }

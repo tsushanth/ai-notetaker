@@ -28,6 +28,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kreativekoala.scribeai.ui.theme.*
+import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 
 @Composable
@@ -42,6 +43,11 @@ fun PaywallScreen(
 
     val context = LocalContext.current
     val activity = context as? androidx.activity.ComponentActivity
+
+    // Track paywall viewed
+    LaunchedEffect(Unit) {
+        AnalyticsService.trackPaywallViewed("subscription_screen")
+    }
 
     // Get formatted prices from billing client (localized)
     val monthlyPrice = subscriptionManager.getFormattedPrice(SubscriptionManager.MONTHLY_SUB_ID)

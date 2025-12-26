@@ -324,23 +324,39 @@ class APIService {
         let (data, response) = try await URLSession.shared.data(for: request)
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.serverError("Invalid response")
+            throw APIError.serverError("Invalid response - not HTTP")
         }
 
-        if httpResponse.statusCode == 401 {
+        let statusCode = httpResponse.statusCode
+
+        if statusCode == 401 {
             throw APIError.unauthorized
         }
 
-        guard httpResponse.statusCode == 200 else {
+        guard statusCode == 200 else {
+            let rawResponse = String(data: data, encoding: .utf8) ?? "Unable to decode response"
             let errorResponse = try? JSONDecoder().decode(NotesResponse.self, from: data)
-            throw APIError.serverError(errorResponse?.error ?? "Failed to fetch notes")
+            let serverMessage = errorResponse?.error ?? "Unknown server error"
+            #if DEBUG
+            print("❌ Fetch notes failed - HTTP \(statusCode): \(rawResponse)")
+            #endif
+            throw APIError.serverError("HTTP \(statusCode): \(serverMessage)")
         }
 
-        let notesResponse = try JSONDecoder().decode(NotesResponse.self, from: data)
-        return PaginatedNotesResult(
-            notes: notesResponse.data ?? [],
-            pagination: notesResponse.pagination
-        )
+        do {
+            let notesResponse = try JSONDecoder().decode(NotesResponse.self, from: data)
+            return PaginatedNotesResult(
+                notes: notesResponse.data ?? [],
+                pagination: notesResponse.pagination
+            )
+        } catch {
+            let rawResponse = String(data: data, encoding: .utf8) ?? "Unable to decode response"
+            #if DEBUG
+            print("❌ Fetch notes decode error: \(error)")
+            print("📄 Raw response: \(rawResponse.prefix(500))")
+            #endif
+            throw APIError.serverError("Decode error: \(error.localizedDescription) | Response: \(rawResponse.prefix(200))")
+        }
     }
     
     func fetchNoteById(token: String, noteId: String) async throws -> Note {

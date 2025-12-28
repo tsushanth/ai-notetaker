@@ -513,7 +513,7 @@ struct ProfileView: View {
         
         // Email Support
         alert.addAction(UIAlertAction(title: "Email Support", style: .default) { _ in
-                let email = "puzzleverseai@gmail.com"
+                let email = "support@scribeai.online"
                 let subject = "Scribe AI Support Request"
                 
                 if let mailtoURL = URL(string: "mailto:\(email)?subject=\(subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"),

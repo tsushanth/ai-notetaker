@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Contact Scribe AI - Get in touch with our team for support, feedback, or partnership inquiries.">
+    <title>Contact Us - Scribe AI</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="container nav-content">
+            <a href="index.html" class="logo">
+                <span class="logo-icon">S</span>
+                <span class="logo-text">Scribe AI</span>
+            </a>
+            <div class="nav-links">
+                <a href="creators.html" class="nav-link">Creators</a>
+                <a href="privacy.html" class="nav-link">Privacy</a>
+                <a href="contact.html" class="nav-link active">Contact</a>
+            </div>
+            <button class="mobile-menu-btn" aria-label="Toggle menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu">
+        <a href="creators.html" class="mobile-menu-link">Creators</a>
+        <a href="privacy.html" class="mobile-menu-link">Privacy</a>
+        <a href="contact.html" class="mobile-menu-link active">Contact</a>
+    </div>
+
+    <!-- Contact Section -->
+    <section class="section">
+        <div class="container">
+            <h1 class="section-title">Get in Touch</h1>
+            <p class="section-subtitle">Have a question, feedback, or partnership inquiry? We'd love to hear from you.</p>
+
+            <div class="contact-grid">
+                <!-- Contact Form -->
+                <div class="contact-form-container">
+                    <form class="form" id="contactForm" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+                        <div class="form-group">
+                            <label for="name">Name *</label>
+                            <input type="text" id="name" name="name" required placeholder="Your name">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input type="email" id="email" name="email" required placeholder="you@example.com">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="subject">Subject *</label>
+                            <select id="subject" name="subject" required>
+                                <option value="">Select a topic</option>
+                                <option value="support">App Support</option>
+                                <option value="feedback">Feedback/Suggestion</option>
+                                <option value="bug">Bug Report</option>
+                                <option value="billing">Billing Question</option>
+                                <option value="partnership">Partnership Inquiry</option>
+                                <option value="press">Press/Media</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="message">Message *</label>
+                            <textarea id="message" name="message" rows="5" required placeholder="How can we help you?"></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-full">Send Message</button>
+                    </form>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="contact-info">
+                    <div class="contact-card">
+                        <div class="contact-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                        </div>
+                        <h3>Email Us</h3>
+                        <p>For general inquiries:</p>
+                        <a href="mailto:hello@scribeai.app">hello@scribeai.app</a>
+                        <p style="margin-top: 1rem;">For support:</p>
+                        <a href="mailto:support@scribeai.app">support@scribeai.app</a>
+                    </div>
+
+                    <div class="contact-card">
+                        <div class="contact-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12 6 12 12 16 14"/>
+                            </svg>
+                        </div>
+                        <h3>Response Time</h3>
+                        <p>We typically respond within 24-48 hours during business days. For urgent issues, please mention "URGENT" in your subject line.</p>
+                    </div>
+
+                    <div class="contact-card">
+                        <div class="contact-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                                <line x1="12" y1="17" x2="12.01" y2="17"/>
+                            </svg>
+                        </div>
+                        <h3>FAQs</h3>
+                        <p>Before reaching out, you might find your answer in our frequently asked questions:</p>
+                        <ul class="faq-list">
+                            <li><strong>How do I cancel my subscription?</strong><br>Go to your device's app store settings to manage subscriptions.</li>
+                            <li><strong>Can I export my notes?</strong><br>Yes! Tap the share button on any note to export.</li>
+                            <li><strong>Is my data secure?</strong><br>Yes, we use industry-standard encryption. See our <a href="privacy.html">Privacy Policy</a>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-brand">
+                    <a href="index.html" class="logo">
+                        <span class="logo-icon">S</span>
+                        <span class="logo-text">Scribe AI</span>
+                    </a>
+                    <p class="footer-tagline">Learn smarter, not harder.</p>
+                </div>
+                <div class="footer-links">
+                    <div class="footer-column">
+                        <h4>Product</h4>
+                        <a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602" target="_blank">iOS App</a>
+                        <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai" target="_blank">Android App</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Company</h4>
+                        <a href="creators.html">Creator Program</a>
+                        <a href="contact.html">Contact</a>
+                    </div>
+                    <div class="footer-column">
+                        <h4>Legal</h4>
+                        <a href="privacy.html">Privacy Policy</a>
+                        <a href="terms.html">Terms of Service</a>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 Kreative Koala. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

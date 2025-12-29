@@ -115,6 +115,30 @@ class AnalyticsService {
         case processingError = "processing_error"
         case paymentError = "payment_error"
         case featureBlocked = "feature_blocked"
+
+        // Promo codes
+        case promoCodeApplied = "promo_code_applied"
+
+        // Onboarding
+        case onboardingStarted = "onboarding_started"
+        case onboardingStepCompleted = "onboarding_step_completed"
+        case onboardingCompleted = "onboarding_completed"
+        case onboardingSkipped = "onboarding_skipped"
+        case trialSkipped = "trial_skipped"
+
+        // Notifications
+        case notificationsEnabled = "notifications_enabled"
+        case notificationsDeclined = "notifications_declined"
+
+        // Retention
+        case signoutAttempted = "signout_attempted"
+        case signoutValueShown = "signout_value_shown"
+        case signoutCancelled = "signout_cancelled"
+        case signoutCompleted = "signout_completed"
+        case deleteAccountAttempted = "delete_account_attempted"
+        case deleteAccountValueShown = "delete_account_value_shown"
+        case deleteAccountCancelled = "delete_account_cancelled"
+        case deleteAccountCompleted = "delete_account_completed"
     }
     
     private init() {
@@ -685,7 +709,13 @@ class AnalyticsService {
             "error_message": String(message.prefix(200))
         ])
     }
-    
+
+    func trackPromoCodeApplied(code: String) {
+        track(.promoCodeApplied, properties: [
+            "promo_code": code
+        ])
+    }
+
     // MARK: - Computed Properties (Cached for speed)
     
     var hasReachedValue: Bool {

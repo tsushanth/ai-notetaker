@@ -35,6 +35,8 @@ data class NoteEntity(
     val userId: String,
     val title: String,
     val content: String,
+    val formattedContent: String? = null,
+    val formattingStatus: String? = null,
     val sourceType: String?,
     val sourceUrl: String?,
     val metadata: Map<String, Any>?,
@@ -53,6 +55,8 @@ fun Note.toEntity(userId: String): NoteEntity {
         userId = userId,
         title = this.title,
         content = this.content,
+        formattedContent = this.formattedContent,
+        formattingStatus = this.formattingStatus,
         sourceType = this.sourceType,
         sourceUrl = this.sourceUrl,
         metadata = this.metadata,
@@ -68,6 +72,8 @@ fun NoteEntity.toNote(): Note {
         id = this.id,
         title = this.title,
         content = this.content,
+        formattedContent = this.formattedContent,
+        formattingStatus = this.formattingStatus,
         sourceType = this.sourceType ?: "text",
         sourceUrl = this.sourceUrl,
         metadata = this.metadata,
@@ -122,7 +128,7 @@ interface NoteCacheDao {
  */
 @Database(
     entities = [NoteEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

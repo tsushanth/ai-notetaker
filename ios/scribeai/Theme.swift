@@ -15,5 +15,6 @@ extension Color {
     static let pink80 = Color(red: 0.94, green: 0.69, blue: 0.82)
     static let accentRed = Color(red: 0.94, green: 0.26, blue: 0.26)
     static let accentGreen = Color(red: 0.30, green: 0.69, blue: 0.31)    // #4CAF50
+    static let borderColor = Color(red: 0.25, green: 0.25, blue: 0.32)    // Border color for inputs
 
 }

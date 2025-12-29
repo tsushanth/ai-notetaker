@@ -12,15 +12,46 @@ struct PodcastTabContent: View {
     @State private var errorMessage: String?
     @State private var showRegenerateConfirmation = false
     @State private var showPaywall = false
+    @State private var selectedDuration: String = "short"
+    @State private var selectedVoice: PodcastVoice = .female
+    @State private var specialInstructions: String = ""
+    @State private var showInstructionsField = false
+    @FocusState private var isInstructionsFocused: Bool
 
     // Audio progress tracking
     @State private var currentTime: TimeInterval = 0
-    @State private var duration: TimeInterval = 0
+    @State private var audioDuration: TimeInterval = 0
     @State private var progressTimer: Timer?
     @State private var isDragging = false
 
     // Audio delegate for playback completion
     @StateObject private var audioDelegate = AudioPlayerDelegate()
+
+    private let durationOptions: [(id: String, label: String, description: String)] = [
+        ("short", "Short", "3-5 min"),
+        ("medium", "Medium", "8-12 min"),
+        ("long", "Long", "15-20 min")
+    ]
+
+    // Voice options
+    enum PodcastVoice: String, CaseIterable {
+        case female = "nova"
+        case male = "onyx"
+
+        var displayName: String {
+            switch self {
+            case .female: return "Female"
+            case .male: return "Male"
+            }
+        }
+
+        var icon: String {
+            switch self {
+            case .female: return "figure.stand.dress"
+            case .male: return "figure.stand"
+            }
+        }
+    }
     
     var body: some View {
         VStack(spacing: 20) {
@@ -114,7 +145,7 @@ struct PodcastTabContent: View {
                                         isDragging = true
                                     }
                                 ),
-                                in: 0...max(duration, 1),
+                                in: 0...max(audioDuration, 1),
                                 onEditingChanged: { editing in
                                     if !editing {
                                         audioPlayer?.currentTime = currentTime
@@ -134,7 +165,7 @@ struct PodcastTabContent: View {
                                 
                                 Spacer()
                                 
-                                Text(formatTime(duration))
+                                Text(formatTime(audioDuration))
                                     .font(.system(size: 12, weight: .medium))
                                     .foregroundColor(.textSecondary)
                                     .monospacedDigit()
@@ -241,59 +272,191 @@ struct PodcastTabContent: View {
                     Spacer()
                 }
             } else {
-                // Generate Podcast UI
-                VStack(spacing: 24) {
-                    Spacer()
-                    
-                    Image(systemName: "waveform.circle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.purple80)
-                    
-                    Text("Generate AI Podcast")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.textPrimary)
-                    
-                    Text("Transform your notes into an engaging podcast conversation")
-                        .font(.system(size: 14))
-                        .foregroundColor(.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                    
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.system(size: 13))
-                            .foregroundColor(.accentRed)
-                            .padding()
-                            .background(Color.accentRed.opacity(0.1))
-                            .cornerRadius(8)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    Button(action: {
-                        if let _ = KeychainService.shared.get(Constants.Keychain.accessToken) {
-                            generatePodcast()
+                // Generate Podcast UI with inline options
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        VStack(spacing: 12) {
+                            Image(systemName: "waveform.circle.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.purple80)
+
+                            Text("Create Podcast")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.textPrimary)
+
+                            Text("Transform your notes into an engaging conversation")
+                                .font(.system(size: 14))
+                                .foregroundColor(.textSecondary)
+                                .multilineTextAlignment(.center)
                         }
-                    }) {
-                        HStack(spacing: 8) {
-                            if isGenerating {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(0.8)
-                            } else {
-                                Image(systemName: "sparkles")
+                        .padding(.top, 20)
+
+                        // Duration Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "clock")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.textSecondary)
+                                Text("Duration")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.textPrimary)
                             }
-                            Text(isGenerating ? "Generating..." : "Generate")
+
+                            // Duration options as horizontal buttons
+                            HStack(spacing: 12) {
+                                ForEach(durationOptions, id: \.id) { option in
+                                    DurationOptionButton(
+                                        id: option.id,
+                                        label: option.label,
+                                        description: option.description,
+                                        isSelected: selectedDuration == option.id
+                                    ) {
+                                        selectedDuration = option.id
+                                    }
+                                }
+                            }
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(isGenerating ? Color.purple80.opacity(0.6) : Color.purple80)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .padding(.horizontal, 20)
+
+                        // Voice Selection Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "person.wave.2")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.textSecondary)
+                                Text("Voice")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.textPrimary)
+                            }
+
+                            // Voice options as horizontal buttons
+                            HStack(spacing: 12) {
+                                ForEach(PodcastVoice.allCases, id: \.rawValue) { voice in
+                                    VoiceOptionButton(
+                                        voice: voice,
+                                        isSelected: selectedVoice == voice
+                                    ) {
+                                        selectedVoice = voice
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        // Instructions Button/Field (Expandable)
+                        VStack(alignment: .leading, spacing: 12) {
+                            if showInstructionsField {
+                                HStack {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "square.and.pencil")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.textSecondary)
+                                        Text("Instructions")
+                                            .font(.system(size: 15, weight: .medium))
+                                            .foregroundColor(.textPrimary)
+                                    }
+
+                                    Spacer()
+
+                                    Button {
+                                        withAnimation(.easeInOut(duration: 0.2)) {
+                                            showInstructionsField = false
+                                            specialInstructions = ""
+                                        }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.system(size: 18))
+                                            .foregroundColor(.textTertiary)
+                                    }
+                                }
+
+                                TextField("Describe any specific focus or style...", text: $specialInstructions, axis: .vertical)
+                                    .font(.system(size: 15))
+                                    .foregroundColor(.textPrimary)
+                                    .lineLimit(2...4)
+                                    .padding(14)
+                                    .background(Color.cardBackground)
+                                    .cornerRadius(12)
+                                    .focused($isInstructionsFocused)
+                            } else {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        showInstructionsField = true
+                                    }
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                        isInstructionsFocused = true
+                                    }
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "plus.circle")
+                                            .font(.system(size: 14))
+                                        Text("Add instructions")
+                                            .font(.system(size: 14, weight: .medium))
+
+                                        Spacer()
+
+                                        Text("OPTIONAL")
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundColor(.textTertiary)
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                            .background(Color.darkSurfaceVariant)
+                                            .cornerRadius(4)
+                                    }
+                                    .foregroundColor(.purple80)
+                                    .padding(14)
+                                    .background(Color.cardBackground)
+                                    .cornerRadius(12)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.purple80.opacity(0.3), lineWidth: 1)
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.system(size: 13))
+                                .foregroundColor(.accentRed)
+                                .padding()
+                                .background(Color.accentRed.opacity(0.1))
+                                .cornerRadius(8)
+                                .padding(.horizontal, 20)
+                        }
+
+                        // Generate Button
+                        Button(action: {
+                            if let _ = KeychainService.shared.get(Constants.Keychain.accessToken) {
+                                isInstructionsFocused = false
+                                let instructions = specialInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
+                                generatePodcast(duration: selectedDuration, voice: selectedVoice.rawValue, instructions: instructions.isEmpty ? nil : instructions)
+                            }
+                        }) {
+                            HStack(spacing: 8) {
+                                if isGenerating {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                }
+                                Text(isGenerating ? "Generating..." : "Generate Podcast")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(isGenerating ? Color.purple80.opacity(0.6) : Color.purple80)
+                            .foregroundColor(.white)
+                            .cornerRadius(28)
+                        }
+                        .disabled(isGenerating)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
                     }
-                    .disabled(isGenerating)
-                    .padding(.horizontal, 32)
-                    
-                    Spacer()
                 }
             }
         }
@@ -358,7 +521,7 @@ struct PodcastTabContent: View {
                 AnalyticsService.shared.trackPodcastPlayPaused(
                     podcastId: podcast.id,
                     currentPosition: Int(currentTime),
-                    duration: Int(duration)
+                    duration: Int(audioDuration)
                 )
             } else {
                 player.play()
@@ -404,7 +567,7 @@ struct PodcastTabContent: View {
                 if let podcast = self.podcast {
                     AnalyticsService.shared.trackPodcastPlayCompleted(
                         podcastId: podcast.id,
-                        duration: Int(self.duration)
+                        duration: Int(self.audioDuration)
                     )
                 }
             }
@@ -427,7 +590,7 @@ struct PodcastTabContent: View {
                         player.prepareToPlay()
                         
                         self.audioPlayer = player
-                        self.duration = player.duration
+                        self.audioDuration = player.duration
                         self.currentTime = 0
                         
                         player.play()
@@ -483,7 +646,7 @@ struct PodcastTabContent: View {
             
             currentTime = player.currentTime
             
-            if !player.isPlaying && currentTime >= duration - 0.5 {
+            if !player.isPlaying && currentTime >= audioDuration - 0.5 {
                 isPlaying = false
                 currentTime = 0
                 player.currentTime = 0
@@ -546,8 +709,8 @@ struct PodcastTabContent: View {
     }
     
     // MARK: - Generate Podcast
-    
-    private func generatePodcast() {
+
+    private func generatePodcast(duration: String = "short", voice: String = "nova", instructions: String? = nil) {
         guard let token = KeychainService.shared.get(Constants.Keychain.accessToken) else {
             errorMessage = "Not authenticated"
             return
@@ -557,17 +720,24 @@ struct PodcastTabContent: View {
         isGenerating = true
         errorMessage = nil
 
-        print("🎙️ Starting podcast generation for note: \(note.id)")
-        
+        print("🎙️ Starting podcast generation for note: \(note.id) with voice: \(voice), duration: \(duration)")
+
         Task {
             do {
                 print("📤 Calling generatePodcast API...")
-                let aiContent = try await APIService.shared.generatePodcast(token: token, noteId: note.id, contentLength: note.content.count)
+                let aiContent = try await APIService.shared.generatePodcast(
+                    token: token,
+                    noteId: note.id,
+                    contentLength: note.content.count,
+                    duration: duration,
+                    voice: voice,
+                    instructions: instructions
+                )
                 
                 print("✅ API returned: \(aiContent)")
                 
                 if let audioUrl = aiContent.audioUrl {
-                    let durationSeconds = Int(self.duration)
+                    let durationSeconds = Int(self.audioDuration)
                         AnalyticsService.shared.trackPodcastGenerated(durationSeconds: durationSeconds)
                     await MainActor.run {
                         self.podcast = Podcast(
@@ -615,7 +785,7 @@ struct PodcastTabContent: View {
         audioPlayer = nil
         isPlaying = false
         currentTime = 0
-        duration = 0
+        audioDuration = 0
         
         // Clear current podcast to show generating state
         podcast = nil
@@ -626,17 +796,17 @@ struct PodcastTabContent: View {
     
     private func pollForPodcastCompletion(token: String) async {
         var attempts = 0
-        let maxAttempts = 60
-        
+        let maxAttempts = 90  // Increased to 3 minutes (90 * 2 seconds)
+
         while attempts < maxAttempts {
             attempts += 1
             print("🔄 Polling attempt \(attempts)/\(maxAttempts)...")
-            
+
             do {
                 try await Task.sleep(nanoseconds: 2_000_000_000)
-                
+
                 let aiContent = try await APIService.shared.checkPodcastStatus(token: token, noteId: note.id)
-                
+
                 if let aiContent = aiContent, let audioUrl = aiContent.audioUrl {
                     await MainActor.run {
                         self.podcast = Podcast(
@@ -654,11 +824,24 @@ struct PodcastTabContent: View {
                 }
             } catch {
                 print("⚠️ Poll error: \(error)")
+                // If we get a specific error, stop polling
+                if let apiError = error as? APIError {
+                    switch apiError {
+                    case .unauthorized:
+                        await MainActor.run {
+                            self.errorMessage = "Session expired. Please try again."
+                            self.isGenerating = false
+                        }
+                        return
+                    default:
+                        break
+                    }
+                }
             }
         }
-        
+
         await MainActor.run {
-            self.errorMessage = "Podcast generation timed out. Please try again."
+            self.errorMessage = "Podcast generation is taking longer than expected. Try loading this note again in a few minutes."
             self.isGenerating = false
             print("⏱️ Polling timed out")
         }
@@ -678,13 +861,77 @@ struct PodcastTabContent: View {
 
 class AudioPlayerDelegate: NSObject, ObservableObject, AVAudioPlayerDelegate {
     var onPlaybackFinished: (() -> Void)?
-    
+
     func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         print("✅ Playback finished successfully: \(flag)")
         onPlaybackFinished?()
     }
-    
+
     func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
         print("❌ Audio decode error: \(error?.localizedDescription ?? "unknown")")
+    }
+}
+
+// MARK: - Duration Option Button
+
+struct DurationOptionButton: View {
+    let id: String
+    let label: String
+    let description: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Text(label)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(isSelected ? .purple80 : .textPrimary)
+
+                Text(description)
+                    .font(.system(size: 11))
+                    .foregroundColor(isSelected ? .purple80 : .textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(isSelected ? Color.purple80.opacity(0.15) : Color.cardBackground)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.purple80 : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Voice Option Button
+
+struct VoiceOptionButton: View {
+    let voice: PodcastTabContent.PodcastVoice
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: voice.icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(isSelected ? .purple80 : .textSecondary)
+
+                Text(voice.displayName)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(isSelected ? .purple80 : .textPrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(isSelected ? Color.purple80.opacity(0.15) : Color.cardBackground)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.purple80 : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }

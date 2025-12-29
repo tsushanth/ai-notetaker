@@ -3,167 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Contact Scribe AI - Get in touch with our team for support, feedback, or partnership inquiries.">
-    <title>Contact Us - Scribe AI</title>
-    <link rel="stylesheet" href="css/styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Contact - Scribe AI</title>
+    <meta name="description" content="Contact Scribe AI - Get in touch for support, feedback, or partnership inquiries.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #0a0a0b; color: #fff; }
+        a { color: inherit; text-decoration: none; }
+
+        .wrap { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+        /* Header */
+        header { padding: 20px 0; border-bottom: 1px solid #222; }
+        header .wrap { display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-weight: 700; font-size: 20px; display: flex; align-items: center; gap: 8px; }
+        .logo-icon { background: #9333ea; padding: 6px 10px; border-radius: 8px; }
+        nav a { margin-left: 24px; color: #888; font-size: 14px; }
+        nav a:hover { color: #fff; }
+
+        /* Hero */
+        .hero { text-align: center; padding: 80px 0 60px; }
+        .hero h1 { font-size: 42px; font-weight: 700; margin-bottom: 16px; }
+        .hero p { font-size: 18px; color: #888; }
+
+        /* Main Content */
+        section { padding: 0 0 60px; }
+
+        /* Contact Methods */
+        .contact-methods { display: flex; justify-content: center; gap: 24px; flex-wrap: wrap; margin-bottom: 60px; }
+        .contact-box { background: #111; border: 1px solid #222; border-radius: 12px; padding: 24px 32px; text-align: center; min-width: 200px; }
+        .contact-box .icon { font-size: 28px; margin-bottom: 12px; }
+        .contact-box h3 { font-size: 16px; margin-bottom: 8px; }
+        .contact-box a { color: #a855f7; font-size: 14px; }
+        .contact-box p { color: #888; font-size: 13px; margin-top: 4px; }
+
+        /* Form */
+        .form-card { max-width: 500px; margin: 0 auto; background: #111; border: 1px solid #222; border-radius: 16px; padding: 32px; }
+        .form-card h2 { font-size: 20px; margin-bottom: 24px; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; margin-bottom: 8px; color: #ccc; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 12px; font-size: 14px; font-family: inherit;
+            background: #0a0a0b; border: 1px solid #333; border-radius: 8px; color: #fff;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: #9333ea;
+        }
+        .form-group textarea { resize: vertical; min-height: 120px; }
+        .btn { width: 100%; padding: 14px; font-size: 16px; font-weight: 600; background: #9333ea; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+        .btn:hover { background: #7c22ce; }
+
+        /* FAQ */
+        .faq { max-width: 600px; margin: 60px auto 0; }
+        .faq h2 { font-size: 20px; margin-bottom: 24px; text-align: center; }
+        .faq-item { border-bottom: 1px solid #222; padding: 16px 0; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-item strong { display: block; margin-bottom: 8px; font-size: 15px; }
+        .faq-item p { color: #888; font-size: 14px; }
+
+        /* Footer */
+        footer { border-top: 1px solid #222; padding: 40px 0; }
+        footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 32px; }
+        .footer-links { display: flex; gap: 48px; }
+        .footer-col h4 { font-size: 12px; color: #888; text-transform: uppercase; margin-bottom: 12px; }
+        .footer-col a { display: block; font-size: 14px; color: #ccc; margin-bottom: 8px; }
+        .footer-col a:hover { color: #fff; }
+        .copyright { text-align: center; color: #666; font-size: 13px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #222; }
+
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 32px; }
+            nav { display: none; }
+            .contact-methods { flex-direction: column; align-items: center; }
+            footer .wrap { flex-direction: column; align-items: center; text-align: center; }
+            .footer-links { flex-direction: column; gap: 24px; }
+        }
+    </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="nav">
-        <div class="container nav-content">
-            <a href="index.html" class="logo">
-                <span class="logo-icon">S</span>
-                <span class="logo-text">Scribe AI</span>
-            </a>
-            <div class="nav-links">
-                <a href="creators.html" class="nav-link">Creators</a>
-                <a href="privacy.html" class="nav-link">Privacy</a>
-                <a href="contact.html" class="nav-link active">Contact</a>
-            </div>
-            <button class="mobile-menu-btn" aria-label="Toggle menu">
-                <span></span>
-                <span></span>
-                <span></span>
-            </button>
-        </div>
-    </nav>
 
-    <!-- Mobile Menu -->
-    <div class="mobile-menu">
-        <a href="creators.html" class="mobile-menu-link">Creators</a>
-        <a href="privacy.html" class="mobile-menu-link">Privacy</a>
-        <a href="contact.html" class="mobile-menu-link active">Contact</a>
+<header>
+    <div class="wrap">
+        <a href="index.html" class="logo"><span class="logo-icon">S</span> Scribe AI</a>
+        <nav>
+            <a href="creators.html">Creators</a>
+            <a href="privacy.html">Privacy</a>
+            <a href="contact.html">Contact</a>
+            <a href="https://app.scribeai.online" style="background: #9333ea; color: #fff; padding: 8px 16px; border-radius: 6px; margin-left: 8px;">Login</a>
+        </nav>
     </div>
+</header>
 
-    <!-- Contact Section -->
-    <section class="section">
-        <div class="container">
-            <h1 class="section-title">Get in Touch</h1>
-            <p class="section-subtitle">Have a question, feedback, or partnership inquiry? We'd love to hear from you.</p>
+<div class="hero">
+    <div class="wrap">
+        <h1>Get in Touch</h1>
+        <p>Have a question or feedback? We'd love to hear from you.</p>
+    </div>
+</div>
 
-            <div class="contact-grid">
-                <!-- Contact Form -->
-                <div class="contact-form-container">
-                    <form class="form" id="contactForm" action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
-                        <div class="form-group">
-                            <label for="name">Name *</label>
-                            <input type="text" id="name" name="name" required placeholder="Your name">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="email">Email *</label>
-                            <input type="email" id="email" name="email" required placeholder="you@example.com">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="subject">Subject *</label>
-                            <select id="subject" name="subject" required>
-                                <option value="">Select a topic</option>
-                                <option value="support">App Support</option>
-                                <option value="feedback">Feedback/Suggestion</option>
-                                <option value="bug">Bug Report</option>
-                                <option value="billing">Billing Question</option>
-                                <option value="partnership">Partnership Inquiry</option>
-                                <option value="press">Press/Media</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="message">Message *</label>
-                            <textarea id="message" name="message" rows="5" required placeholder="How can we help you?"></textarea>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary btn-full">Send Message</button>
-                    </form>
-                </div>
-
-                <!-- Contact Info -->
-                <div class="contact-info">
-                    <div class="contact-card">
-                        <div class="contact-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                        </div>
-                        <h3>Email Us</h3>
-                        <p>For general inquiries:</p>
-                        <a href="mailto:hello@scribeai.app">hello@scribeai.app</a>
-                        <p style="margin-top: 1rem;">For support:</p>
-                        <a href="mailto:support@scribeai.app">support@scribeai.app</a>
-                    </div>
-
-                    <div class="contact-card">
-                        <div class="contact-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <polyline points="12 6 12 12 16 14"/>
-                            </svg>
-                        </div>
-                        <h3>Response Time</h3>
-                        <p>We typically respond within 24-48 hours during business days. For urgent issues, please mention "URGENT" in your subject line.</p>
-                    </div>
-
-                    <div class="contact-card">
-                        <div class="contact-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="12" cy="12" r="10"/>
-                                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-                                <line x1="12" y1="17" x2="12.01" y2="17"/>
-                            </svg>
-                        </div>
-                        <h3>FAQs</h3>
-                        <p>Before reaching out, you might find your answer in our frequently asked questions:</p>
-                        <ul class="faq-list">
-                            <li><strong>How do I cancel my subscription?</strong><br>Go to your device's app store settings to manage subscriptions.</li>
-                            <li><strong>Can I export my notes?</strong><br>Yes! Tap the share button on any note to export.</li>
-                            <li><strong>Is my data secure?</strong><br>Yes, we use industry-standard encryption. See our <a href="privacy.html">Privacy Policy</a>.</li>
-                        </ul>
-                    </div>
-                </div>
+<section>
+    <div class="wrap">
+        <div class="contact-methods">
+            <div class="contact-box">
+                <div class="icon">📧</div>
+                <h3>General</h3>
+                <a href="mailto:hello@scribeai.online">hello@scribeai.online</a>
+            </div>
+            <div class="contact-box">
+                <div class="icon">🛠️</div>
+                <h3>Support</h3>
+                <a href="mailto:support@scribeai.online">support@scribeai.online</a>
+            </div>
+            <div class="contact-box">
+                <div class="icon">⏱️</div>
+                <h3>Response</h3>
+                <p>Within 24-48 hours</p>
             </div>
         </div>
-    </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-brand">
-                    <a href="index.html" class="logo">
-                        <span class="logo-icon">S</span>
-                        <span class="logo-text">Scribe AI</span>
-                    </a>
-                    <p class="footer-tagline">Learn smarter, not harder.</p>
-                </div>
-                <div class="footer-links">
-                    <div class="footer-column">
-                        <h4>Product</h4>
-                        <a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602" target="_blank">iOS App</a>
-                        <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai" target="_blank">Android App</a>
-                    </div>
-                    <div class="footer-column">
-                        <h4>Company</h4>
-                        <a href="creators.html">Creator Program</a>
-                        <a href="contact.html">Contact</a>
-                    </div>
-                    <div class="footer-column">
-                        <h4>Legal</h4>
-                        <a href="privacy.html">Privacy Policy</a>
-                        <a href="terms.html">Terms of Service</a>
-                    </div>
-                </div>
+        <div class="form-card" style="text-align: center;">
+            <h2>Send a Message</h2>
+            <p style="color: #888; margin: 16px 0 24px;">Have a question or feedback? We'd love to hear from you.</p>
+            <a href="https://docs.google.com/forms/d/e/1FAIpQLSfynfCWPr0UlQK0qnBFu4MfmW4mWevpNBfDzseLCNv1xrXenw/viewform" target="_blank" class="btn" style="display: inline-block; text-decoration: none;">Open Contact Form</a>
+        </div>
+
+        <div class="faq">
+            <h2>Common Questions</h2>
+            <div class="faq-item">
+                <strong>How do I cancel my subscription?</strong>
+                <p>Go to your device's app store settings to manage subscriptions.</p>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2025 Kreative Koala. All rights reserved.</p>
+            <div class="faq-item">
+                <strong>Can I export my notes?</strong>
+                <p>Yes! Tap the share button on any note to export.</p>
+            </div>
+            <div class="faq-item">
+                <strong>Is my data secure?</strong>
+                <p>Yes, we use industry-standard encryption. See our <a href="privacy.html" style="color: #a855f7;">Privacy Policy</a>.</p>
             </div>
         </div>
-    </footer>
+    </div>
+</section>
 
-    <script src="js/main.js"></script>
+<footer>
+    <div class="wrap">
+        <div class="logo"><span class="logo-icon">S</span> Scribe AI</div>
+        <div class="footer-links">
+            <div class="footer-col">
+                <h4>Product</h4>
+                <a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iOS App</a>
+                <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android App</a>
+                <a href="https://app.scribeai.online">Web App</a>
+            </div>
+            <div class="footer-col">
+                <h4>Company</h4>
+                <a href="creators.html">Creators</a>
+                <a href="contact.html">Contact</a>
+            </div>
+            <div class="footer-col">
+                <h4>Legal</h4>
+                <a href="privacy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+            </div>
+        </div>
+    </div>
+    <div class="wrap">
+        <p class="copyright">© 2025 Kreative Koala. All rights reserved.</p>
+    </div>
+</footer>
+
 </body>
 </html>

@@ -279,7 +279,7 @@ private fun FileSelectionContent(
                 )
                 .clickable(
                     onClick = onSelectFile,
-                    indication = LocalIndication.current,
+                    indication = null,
                     interactionSource = remember { MutableInteractionSource() }
                 ),
             contentAlignment = Alignment.Center

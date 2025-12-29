@@ -14,6 +14,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,8 +28,13 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.data.api.RetrofitClient
+import com.kreativekoala.scribeai.data.models.ApplyPromoCodeRequest
+import com.kreativekoala.scribeai.data.models.ValidatePromoCodeRequest
+import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
+import com.kreativekoala.scribeai.utils.DeviceFingerprint
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 
 @Composable
@@ -40,6 +46,13 @@ fun PaywallScreen(
     var selectedPlan by remember { mutableStateOf(SubscriptionManager.YEARLY_SUB_ID) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Promo code states
+    var showPromoCode by remember { mutableStateOf(false) }
+    var promoCode by remember { mutableStateOf("") }
+    var isValidatingPromo by remember { mutableStateOf(false) }
+    var promoValidation by remember { mutableStateOf<PromoValidationResult?>(null) }
+    var promoError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
     val activity = context as? androidx.activity.ComponentActivity
@@ -225,7 +238,79 @@ fun PaywallScreen(
                 )
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(16.dp))
+
+            // Promo Code Section
+            val coroutineScope = rememberCoroutineScope()
+
+            PromoCodeSection(
+                showPromoCode = showPromoCode,
+                promoCode = promoCode,
+                isValidatingPromo = isValidatingPromo,
+                promoValidation = promoValidation,
+                promoError = promoError,
+                onToggleShow = { showPromoCode = !showPromoCode },
+                onPromoCodeChange = { promoCode = it.uppercase() },
+                onValidate = {
+                    if (promoCode.isNotEmpty()) {
+                        isValidatingPromo = true
+                        promoError = null
+                        coroutineScope.launch {
+                            try {
+                                // Validate the promo code via API
+                                val apiService = RetrofitClient.apiService
+                                val response = apiService.validatePromoCode(
+                                    ValidatePromoCodeRequest(code = promoCode)
+                                )
+
+                                if (response.isSuccessful && response.body()?.success == true) {
+                                    val data = response.body()?.data
+                                    if (data != null && data.valid) {
+                                        promoValidation = PromoValidationResult(
+                                            valid = true,
+                                            code = data.code,
+                                            discountType = data.discountType,
+                                            discountValue = data.discountValue,
+                                            trialExtensionDays = data.trialExtensionDays,
+                                            creatorName = data.creatorName
+                                        )
+                                        // Apply the promo code with device fingerprint
+                                        val deviceFingerprint = DeviceFingerprint.generate(context)
+                                        val authManager = AuthManager(context)
+                                        val token = authManager.authToken.value
+                                        if (token != null) {
+                                            apiService.applyPromoCode(
+                                                token = "Bearer $token",
+                                                request = ApplyPromoCodeRequest(
+                                                    code = promoCode,
+                                                    platform = "android",
+                                                    deviceFingerprint = deviceFingerprint
+                                                )
+                                            )
+                                        }
+                                        AnalyticsService.trackPromoCodeApplied(promoCode)
+                                    } else {
+                                        promoError = "Invalid or expired promo code"
+                                    }
+                                } else {
+                                    promoError = response.body()?.error ?: "Failed to validate code"
+                                }
+                                isValidatingPromo = false
+                            } catch (e: Exception) {
+                                isValidatingPromo = false
+                                promoError = e.message ?: "Failed to validate code"
+                            }
+                        }
+                    }
+                },
+                onClear = {
+                    promoCode = ""
+                    promoValidation = null
+                    promoError = null
+                }
+            )
+
+            Spacer(Modifier.height(16.dp))
 
             // Error message
             AnimatedVisibility(visible = errorMessage != null) {
@@ -326,9 +411,8 @@ fun TermsAndPrivacyText(
 ) {
     val context = LocalContext.current
 
-    // TODO: Replace with your actual URLs
-    val termsUrl = "https://www.sendsmiles.biz/terms-of-service"
-    val privacyUrl = "https://www.sendsmiles.biz/privacy-policy"
+    val termsUrl = "https://scribeai.online/terms"
+    val privacyUrl = "https://scribeai.online/privacy"
 
     val annotatedString = buildAnnotatedString {
         withStyle(style = SpanStyle(color = TextTertiary, fontSize = 11.sp)) {
@@ -567,6 +651,199 @@ fun FeatureItem(
                 color = TextSecondary,
                 lineHeight = 20.sp
             )
+        }
+    }
+}
+
+// MARK: - Promo Code Section
+
+data class PromoValidationResult(
+    val valid: Boolean,
+    val code: String,
+    val discountType: String,
+    val discountValue: Double,
+    val trialExtensionDays: Int,
+    val creatorName: String
+) {
+    val discountDescription: String
+        get() = when (discountType) {
+            "percent" -> "${discountValue.toInt()}% off"
+            "fixed" -> "$${discountValue.toInt()} off"
+            "trial_extension" -> "+$trialExtensionDays extra trial days"
+            else -> ""
+        }
+}
+
+@Composable
+fun PromoCodeSection(
+    showPromoCode: Boolean,
+    promoCode: String,
+    isValidatingPromo: Boolean,
+    promoValidation: PromoValidationResult?,
+    promoError: String?,
+    onToggleShow: () -> Unit,
+    onPromoCodeChange: (String) -> Unit,
+    onValidate: () -> Unit,
+    onClear: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (!showPromoCode) {
+            // Toggle button
+            TextButton(onClick = onToggleShow) {
+                Icon(
+                    Icons.Default.LocalOffer,
+                    contentDescription = null,
+                    tint = Purple80,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Have a promo code?",
+                    color = Purple80,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        } else {
+            // Input field row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = promoCode,
+                    onValueChange = onPromoCodeChange,
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text("Enter promo code", color = TextTertiary)
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = if (promoError != null) AccentRed else if (promoValidation != null) Color(0xFF4CAF50) else Purple80,
+                        unfocusedBorderColor = if (promoError != null) AccentRed else if (promoValidation != null) Color(0xFF4CAF50) else DarkSurfaceVariant,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = Purple80
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(Modifier.width(8.dp))
+
+                Button(
+                    onClick = onValidate,
+                    enabled = promoCode.isNotEmpty() && !isValidatingPromo,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Purple80,
+                        disabledContainerColor = DarkSurfaceVariant
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    if (isValidatingPromo) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Apply", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+
+            // Validation result
+            AnimatedVisibility(visible = promoValidation != null) {
+                promoValidation?.let { validation ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Code applied!",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFF4CAF50)
+                                )
+                                if (validation.discountType != "none") {
+                                    Text(
+                                        validation.discountDescription,
+                                        fontSize = 12.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                                Text(
+                                    "Referred by ${validation.creatorName}",
+                                    fontSize = 12.sp,
+                                    color = TextTertiary
+                                )
+                            }
+                            IconButton(onClick = onClear) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Clear",
+                                    tint = TextTertiary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Error message
+            AnimatedVisibility(visible = promoError != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Error,
+                        contentDescription = null,
+                        tint = AccentRed,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        promoError ?: "",
+                        fontSize = 13.sp,
+                        color = AccentRed
+                    )
+                }
+            }
+
+            // Hide button
+            TextButton(onClick = onToggleShow) {
+                Text(
+                    "Hide",
+                    color = TextTertiary,
+                    fontSize = 13.sp
+                )
+            }
         }
     }
 }

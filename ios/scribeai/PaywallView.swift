@@ -20,14 +20,21 @@ import StoreKit
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var storeManager = StoreKitManager.shared
-    
+
     @State private var selectedProduct: Product?
     @State private var isPurchasing = false
     @State private var showError = false
     @State private var errorMessage = ""
-    
+
+    // Promo code states
+    @State private var showPromoCode = false
+    @State private var promoCode = ""
+    @State private var isValidatingPromo = false
+    @State private var promoValidation: PromoValidationResult?
+    @State private var promoError: String?
+
     let onSubscriptionComplete: (() -> Void)?
-    
+
     init(onSubscriptionComplete: (() -> Void)? = nil) {
         self.onSubscriptionComplete = onSubscriptionComplete
     }
@@ -47,7 +54,10 @@ struct PaywallView: View {
                     
                     // Subscription Options
                     subscriptionOptionsSection
-                    
+
+                    // Promo Code Section
+                    promoCodeSection
+
                     // Subscribe Button
                     subscribeButton
                     
@@ -142,19 +152,20 @@ struct PaywallView: View {
                     .tint(.purple80)
                     .padding()
             } else {
-                // Yearly Option (Best Value)
+                // Yearly Option (Best Value) - Show weekly price prominently
                 if let yearly = storeManager.getYearlyProduct() {
                     SubscriptionOptionCard(
                         product: yearly,
                         isSelected: selectedProduct?.id == yearly.id,
                         isBestValue: true,
                         savingsText: storeManager.savingsPercentage().map { "Save \($0)%" },
-                        monthlyEquivalent: storeManager.monthlyEquivalentPrice(for: yearly)
+                        monthlyEquivalent: storeManager.monthlyEquivalentPrice(for: yearly),
+                        weeklyEquivalent: storeManager.weeklyEquivalentPrice(for: yearly)
                     ) {
                         selectedProduct = yearly
                     }
                 }
-                
+
                 // Monthly Option
                 if let monthly = storeManager.getMonthlyProduct() {
                     SubscriptionOptionCard(
@@ -162,7 +173,8 @@ struct PaywallView: View {
                         isSelected: selectedProduct?.id == monthly.id,
                         isBestValue: false,
                         savingsText: nil,
-                        monthlyEquivalent: nil
+                        monthlyEquivalent: nil,
+                        weeklyEquivalent: nil
                     ) {
                         selectedProduct = monthly
                     }
@@ -173,8 +185,124 @@ struct PaywallView: View {
         .padding(.bottom, 24)
     }
     
+    // MARK: - Promo Code Section
+
+    private var promoCodeSection: some View {
+        VStack(spacing: 12) {
+            // Toggle button to show/hide promo code input
+            if !showPromoCode {
+                Button(action: { withAnimation { showPromoCode = true } }) {
+                    HStack {
+                        Image(systemName: "tag")
+                            .font(.system(size: 14))
+                        Text("Have a promo code?")
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .foregroundColor(.purple80)
+                }
+                .padding(.bottom, 8)
+            } else {
+                VStack(spacing: 12) {
+                    // Input field
+                    HStack {
+                        ZStack(alignment: .leading) {
+                            // Placeholder text
+                            if promoCode.isEmpty {
+                                Text("Enter promo code")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.textTertiary)
+                                    .padding(.horizontal, 16)
+                            }
+
+                            TextField("", text: $promoCode)
+                                .textFieldStyle(PlainTextFieldStyle())
+                                .font(.system(size: 16))
+                                .foregroundColor(.textPrimary)
+                                .autocapitalization(.allCharacters)
+                                .disableAutocorrection(true)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                        }
+                        .background(Color.cardBackground)
+                        .cornerRadius(12)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(promoError != nil ? Color.red : (promoValidation != nil ? Color.accentGreen : Color.borderColor), lineWidth: 1)
+                        )
+
+                        Button(action: validatePromoCode) {
+                            if isValidatingPromo {
+                                ProgressView()
+                                    .tint(.white)
+                                    .frame(width: 44, height: 44)
+                            } else {
+                                Text("Apply")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 70, height: 44)
+                            }
+                        }
+                        .background(promoCode.isEmpty ? Color.gray : Color.purple80)
+                        .cornerRadius(12)
+                        .disabled(promoCode.isEmpty || isValidatingPromo)
+                    }
+
+                    // Validation result
+                    if let validation = promoValidation {
+                        HStack {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundColor(.accentGreen)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Code applied!")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(.accentGreen)
+                                if validation.discountType != "none" {
+                                    Text(validation.discountDescription)
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.textSecondary)
+                                }
+                                Text("Referred by \(validation.creatorName)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.textTertiary)
+                            }
+                            Spacer()
+                            Button(action: clearPromoCode) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.textTertiary)
+                            }
+                        }
+                        .padding(12)
+                        .background(Color.accentGreen.opacity(0.1))
+                        .cornerRadius(12)
+                    }
+
+                    // Error message
+                    if let error = promoError {
+                        HStack {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.system(size: 13))
+                                .foregroundColor(.red)
+                            Spacer()
+                        }
+                    }
+
+                    // Hide button
+                    Button(action: { withAnimation { showPromoCode = false } }) {
+                        Text("Hide")
+                            .font(.system(size: 13))
+                            .foregroundColor(.textTertiary)
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 16)
+    }
+
     // MARK: - Subscribe Button
-    
+
     private var subscribeButton: some View {
         Button(action: purchase) {
             HStack {
@@ -226,7 +354,7 @@ struct PaywallView: View {
                 Text("•")
                     .foregroundColor(.textTertiary)
 
-                if let privacyURL = URL(string: "https://www.sendsmiles.biz/privacy-policy") {
+                if let privacyURL = URL(string: "https://scribeai.online/privacy") {
                     Link("Privacy Policy", destination: privacyURL)
                         .font(.system(size: 12))
                         .foregroundColor(.textTertiary)
@@ -314,6 +442,79 @@ struct PaywallView: View {
             }
         }
     }
+
+    private func validatePromoCode() {
+        guard !promoCode.isEmpty else { return }
+
+        isValidatingPromo = true
+        promoError = nil
+
+        Task {
+            do {
+                let result = try await APIService.shared.validatePromoCode(promoCode.uppercased())
+
+                await MainActor.run {
+                    isValidatingPromo = false
+                    if result.valid {
+                        promoValidation = result
+                        promoError = nil
+                        // Apply the code
+                        applyPromoCode()
+                    } else {
+                        promoError = "Invalid or expired promo code"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isValidatingPromo = false
+                    promoError = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func applyPromoCode() {
+        guard let validation = promoValidation else { return }
+
+        Task {
+            do {
+                try await APIService.shared.applyPromoCode(validation.code, platform: "ios")
+                AnalyticsService.shared.trackPromoCodeApplied(code: validation.code)
+            } catch {
+                print("Failed to apply promo code: \(error)")
+            }
+        }
+    }
+
+    private func clearPromoCode() {
+        promoCode = ""
+        promoValidation = nil
+        promoError = nil
+    }
+}
+
+// MARK: - Promo Validation Result
+
+struct PromoValidationResult {
+    let valid: Bool
+    let code: String
+    let discountType: String
+    let discountValue: Double
+    let trialExtensionDays: Int
+    let creatorName: String
+
+    var discountDescription: String {
+        switch discountType {
+        case "percent":
+            return "\(Int(discountValue))% off"
+        case "fixed":
+            return "$\(Int(discountValue)) off"
+        case "trial_extension":
+            return "+\(trialExtensionDays) extra trial days"
+        default:
+            return ""
+        }
+    }
 }
 
 // MARK: - Feature Row
@@ -361,71 +562,80 @@ struct SubscriptionOptionCard: View {
     let isBestValue: Bool
     let savingsText: String?
     let monthlyEquivalent: String?
+    let weeklyEquivalent: String?
     let onSelect: () -> Void
-    
+
     var body: some View {
         Button(action: onSelect) {
-            HStack {
-                // Radio Button
-                ZStack {
-                    Circle()
-                        .stroke(isSelected ? Color.purple80 : Color.textTertiary, lineWidth: 2)
-                        .frame(width: 24, height: 24)
-                    
-                    if isSelected {
-                        Circle()
-                            .fill(Color.purple80)
-                            .frame(width: 14, height: 14)
-                    }
-                }
-                
-                VStack(alignment: .leading, spacing: 4) {
+            VStack(spacing: 0) {
+                // Best Value Badge at top
+                if isBestValue {
                     HStack {
+                        Text("BEST VALUE")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(Color.accentGreen)
+                }
+
+                HStack {
+                    // Radio Button
+                    ZStack {
+                        Circle()
+                            .stroke(isSelected ? Color.purple80 : Color.textTertiary, lineWidth: 2)
+                            .frame(width: 24, height: 24)
+
+                        if isSelected {
+                            Circle()
+                                .fill(Color.purple80)
+                                .frame(width: 14, height: 14)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(product.displayName)
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.textPrimary)
-                        
-                        if isBestValue {
-                            Text("BEST VALUE")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.accentGreen)
-                                .cornerRadius(4)
+
+                        // Show weekly price prominently for yearly plans
+                        if let weeklyEquivalent = weeklyEquivalent {
+                            Text("Just \(weeklyEquivalent)/week")
+                                .font(.system(size: 15, weight: .bold))
+                                .foregroundColor(.purple80)
+                        } else if let monthlyEquivalent = monthlyEquivalent {
+                            Text("\(monthlyEquivalent)/month")
+                                .font(.system(size: 13))
+                                .foregroundColor(.textSecondary)
                         }
                     }
-                    
-                    if let monthlyEquivalent = monthlyEquivalent {
-                        Text("\(monthlyEquivalent)/month")
-                            .font(.system(size: 13))
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(product.displayPrice)
+                            .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.textSecondary)
+
+                        Text("/\(product.periodDescription)")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textTertiary)
+
+                        if let savingsText = savingsText {
+                            Text(savingsText)
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.accentGreen)
+                        }
                     }
                 }
-                
-                Spacer()
-                
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text(product.displayPrice)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.textPrimary)
-                    
-                    Text("/\(product.periodDescription)")
-                        .font(.system(size: 13))
-                        .foregroundColor(.textSecondary)
-                    
-                    if let savingsText = savingsText {
-                        Text(savingsText)
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.accentGreen)
-                    }
-                }
+                .padding(16)
             }
-            .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(Color.cardBackground)
             )
+            .clipShape(RoundedRectangle(cornerRadius: 16))
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(isSelected ? Color.purple80 : Color.clear, lineWidth: 2)

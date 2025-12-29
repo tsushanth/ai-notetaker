@@ -259,6 +259,8 @@ Return ONLY a JSON array of 3 strings, no other text. Example: ["Question 1?", "
   async generateQuiz(userId, noteId, options = {}) {
     const { difficulty = 'medium', num_questions = 5, language = 'english' } = options;
 
+    logger.info('Generating quiz', { userId, noteId, difficulty, num_questions, language });
+
     try {
       const note = await noteService.getNoteById(userId, noteId);
       if (!note) {
@@ -337,7 +339,11 @@ ${truncateContent(note.content)}`;
    * Generate flashcards from note content
    */
   async generateFlashcards(userId, noteId, options = {}) {
-    const { num_cards = 10, language = 'english' } = options;
+    // Support both 'num_cards' and 'count' for backwards compatibility
+    const { num_cards, count, language = 'english' } = options;
+    const cardCount = num_cards || count || 10;
+
+    logger.info('Generating flashcards', { userId, noteId, options, num_cards, count, cardCount });
 
     try {
       const note = await noteService.getNoteById(userId, noteId);
@@ -345,7 +351,7 @@ ${truncateContent(note.content)}`;
         throw new AppError('Note not found', 404);
       }
 
-      const prompt = `Create ${num_cards} flashcards based on the following content. Each flashcard should have a front (question/term) and back (answer/definition).
+      const prompt = `Create ${cardCount} flashcards based on the following content. Each flashcard should have a front (question/term) and back (answer/definition).
 
 Format your response as a JSON array with this structure:
 [
@@ -358,12 +364,15 @@ Format your response as a JSON array with this structure:
 Content:
 ${truncateContent(note.content)}`;
 
+      // Scale max_tokens based on card count (approximately 100 tokens per card)
+      const maxTokens = Math.min(Math.max(cardCount * 100, 1500), 4000);
+
       const completion = await openai.chat.completions.create({
         model: MODELS.GPT4_MINI,
         messages: [
           {
             role: 'system',
-            content: `You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only.${getLanguageInstruction(language)}`
+            content: `You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only. You MUST create exactly ${cardCount} flashcards - no more, no less.${getLanguageInstruction(language)}`
           },
           {
             role: 'user',
@@ -371,7 +380,7 @@ ${truncateContent(note.content)}`;
           }
         ],
         temperature: 0.7,
-        max_tokens: 2000,
+        max_tokens: maxTokens,
         response_format: { type: 'json_object' }
       });
 
@@ -388,14 +397,14 @@ ${truncateContent(note.content)}`;
       // Save AI content
       const aiContent = await this.saveAIContent(noteId, 'flashcards', {
         flashcards,
-        num_cards,
+        num_cards: cardCount,
         model: MODELS.GPT4_MINI
       });
 
       // Log usage
       await this.logUsage(userId, 'flashcards', completion.usage);
 
-      logger.info('Flashcards generated', { userId, noteId, num_cards });
+      logger.info('Flashcards generated', { userId, noteId, num_cards: cardCount });
 
       return {
         id: aiContent.id,
@@ -493,11 +502,13 @@ ${note.content.substring(0, 3000)}`; // Limit content length
         throw new AppError('Note not found', 404);
       }
 
-      const durationInstructions = {
-        short: '3-5 minute podcast (approximately 400-600 words)',
-        medium: '8-12 minute podcast (approximately 1000-1500 words)',
-        long: '15-20 minute podcast (approximately 2000-3000 words)'
+      const durationConfig = {
+        short: { minutes: '3-5', words: 600, minWords: 500 },
+        medium: { minutes: '8-12', words: 1400, minWords: 1200 },
+        long: { minutes: '15-20', words: 2500, minWords: 2000 }
       };
+
+      const config = durationConfig[duration] || durationConfig.medium;
 
       const styleInstructions = {
         conversational: 'Create a natural, engaging conversation between hosts with back-and-forth dialogue, enthusiasm, and occasional interjections.',
@@ -506,22 +517,25 @@ ${note.content.substring(0, 3000)}`; // Limit content length
         interview: 'Create an interview-style podcast where one host asks insightful questions and the other provides detailed answers.'
       };
 
-      const prompt = `Create a ${duration} podcast script based on the following content. ${styleInstructions[style]}
+      const prompt = `Create a ${config.minutes} minute podcast script based on the following content. ${styleInstructions[style]}
+
+CRITICAL LENGTH REQUIREMENT: The script MUST be approximately ${config.words} words (minimum ${config.minWords} words). This is essential for achieving the ${config.minutes} minute runtime. Do NOT create a shorter script.
 
 The podcast should have ${num_hosts} host(s). Use clear speaker labels like "Host 1:" and "Host 2:".
 
 Guidelines:
-- Make it engaging and natural
+- Make it engaging and natural with rich dialogue
 - Include smooth transitions between topics
 - Add appropriate energy and enthusiasm
-- Use examples and analogies where helpful
-- End with a strong conclusion
-- Target length: ${durationInstructions[duration]}
+- Use examples, analogies, and elaborations to reach the target length
+- Include follow-up questions and detailed explanations
+- End with a strong conclusion summarizing key takeaways
+- IMPORTANT: Write a COMPLETE script that fills the full ${config.minutes} minute runtime
 
 Content to discuss:
 ${truncateContent(note.content)}
 
-Format the script with clear speaker labels and natural dialogue.`;
+Format the script with clear speaker labels and natural dialogue. Remember: the script must be at least ${config.minWords} words to achieve the desired podcast length.`;
 
       const completion = await openai.chat.completions.create({
         model: MODELS.GPT4_MINI,
@@ -536,7 +550,7 @@ Format the script with clear speaker labels and natural dialogue.`;
           }
         ],
         temperature: 0.9,
-        max_tokens: duration === 'long' ? 4000 : duration === 'medium' ? 2500 : 1500
+        max_tokens: duration === 'long' ? 6000 : duration === 'medium' ? 4000 : 2000
       });
 
       const script = completion.choices[0].message.content;

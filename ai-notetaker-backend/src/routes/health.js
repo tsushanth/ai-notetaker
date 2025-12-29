@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
+const { getEnvSummary, requiredEnvVars, optionalEnvVars } = require('../config/envValidation');
 
 /**
  * Health check endpoint
@@ -112,6 +113,38 @@ router.get('/ready', async (req, res) => {
       reason: error.message
     });
   }
+});
+
+/**
+ * Environment configuration status
+ * GET /health/env
+ *
+ * Shows which environment variables are configured (not their values)
+ * Useful for debugging deployment issues
+ */
+router.get('/env', (req, res) => {
+  const summary = getEnvSummary();
+
+  // Count status
+  const requiredCount = Object.keys(summary.required).length;
+  const requiredPresent = Object.values(summary.required).filter(v => v.present).length;
+  const optionalCount = Object.keys(summary.optional).length;
+  const optionalPresent = Object.values(summary.optional).filter(v => v.present).length;
+
+  res.status(200).json({
+    status: requiredPresent === requiredCount ? 'complete' : 'incomplete',
+    required: {
+      total: requiredCount,
+      present: requiredPresent,
+      missing: requiredCount - requiredPresent,
+      variables: summary.required
+    },
+    optional: {
+      total: optionalCount,
+      present: optionalPresent,
+      variables: summary.optional
+    }
+  });
 });
 
 module.exports = router;

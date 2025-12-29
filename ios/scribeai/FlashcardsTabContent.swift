@@ -19,6 +19,16 @@ struct FlashcardsTabContent: View {
     @State private var dragOffset: CGSize = .zero
     @State private var showPaywall = false
     @State private var totalFlips = 0
+    @State private var selectedCardCount: Int = 20
+    @State private var specialInstructions: String = ""
+    @FocusState private var isInstructionsFocused: Bool
+
+    private let cardCountOptions: [(count: Int, label: String, description: String)] = [
+        (10, "10", "Quick review"),
+        (20, "20", "Standard set"),
+        (30, "30", "Comprehensive"),
+        (50, "50", "Deep dive")
+    ]
     
     var body: some View {
         VStack(spacing: 20) {
@@ -139,51 +149,121 @@ struct FlashcardsTabContent: View {
                     .padding(.bottom, 32)
                 }
             } else {
-                // Generate Flashcards UI
-                VStack(spacing: 24) {
-                    Spacer()
-                    
-                    Image(systemName: "rectangle.stack.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.purple80)
-                    
-                    Text("Generate Flashcards")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(.textPrimary)
-                    
-                    Text("Create flashcards for effective studying")
-                        .font(.system(size: 14))
-                        .foregroundColor(.textSecondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
-                    
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.system(size: 13))
-                            .foregroundColor(.accentRed)
-                            .padding()
-                            .background(Color.accentRed.opacity(0.1))
-                            .cornerRadius(8)
-                            .padding(.horizontal, 32)
-                    }
-                    
-                    Button(action: {
-                        generateFlashcards()
-                    }) {
-                        HStack {
-                            Image(systemName: "sparkles")
-                            Text("Generate Flashcards")
-                                .font(.system(size: 16, weight: .semibold))
+                // Generate Flashcards UI with inline options
+                ScrollView {
+                    VStack(spacing: 24) {
+                        // Header
+                        VStack(spacing: 12) {
+                            Image(systemName: "rectangle.stack.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(.purple80)
+
+                            Text("Generate AI Flashcards")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.textPrimary)
+
+                            Text("Create flashcards for effective studying")
+                                .font(.system(size: 14))
+                                .foregroundColor(.textSecondary)
+                                .multilineTextAlignment(.center)
                         }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(Color.purple80)
-                        .foregroundColor(.white)
-                        .cornerRadius(12)
+                        .padding(.top, 20)
+
+                        // Number of Cards Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "square.stack.3d.up")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.textSecondary)
+                                Text("Number of Cards")
+                                    .font(.system(size: 15, weight: .medium))
+                                    .foregroundColor(.textPrimary)
+                            }
+
+                            // 2x2 Grid for card count options
+                            LazyVGrid(columns: [
+                                GridItem(.flexible(), spacing: 12),
+                                GridItem(.flexible(), spacing: 12)
+                            ], spacing: 12) {
+                                ForEach(cardCountOptions, id: \.count) { option in
+                                    CardCountOptionButton(
+                                        count: option.count,
+                                        label: option.label,
+                                        description: option.description,
+                                        isSelected: selectedCardCount == option.count,
+                                        isRecommended: option.count == 20
+                                    ) {
+                                        selectedCardCount = option.count
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 20)
+
+                        // Special Instructions Section
+                        VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "square.and.pencil")
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.textSecondary)
+                                    Text("Special Instructions")
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundColor(.textPrimary)
+                                }
+
+                                Spacer()
+
+                                Text("OPTIONAL")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(.textTertiary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.darkSurfaceVariant)
+                                    .cornerRadius(4)
+                            }
+
+                            TextField("Describe your flashcard focus...", text: $specialInstructions, axis: .vertical)
+                                .font(.system(size: 15))
+                                .foregroundColor(.textPrimary)
+                                .lineLimit(2...4)
+                                .padding(14)
+                                .background(Color.cardBackground)
+                                .cornerRadius(12)
+                                .focused($isInstructionsFocused)
+                        }
+                        .padding(.horizontal, 20)
+
+                        if let error = errorMessage {
+                            Text(error)
+                                .font(.system(size: 13))
+                                .foregroundColor(.accentRed)
+                                .padding()
+                                .background(Color.accentRed.opacity(0.1))
+                                .cornerRadius(8)
+                                .padding(.horizontal, 20)
+                        }
+
+                        // Generate Button
+                        Button(action: {
+                            isInstructionsFocused = false
+                            let instructions = specialInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
+                            generateFlashcards(count: selectedCardCount, instructions: instructions.isEmpty ? nil : instructions)
+                        }) {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                Text("Generate \(selectedCardCount) Flashcards")
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 56)
+                            .background(Color.purple80)
+                            .foregroundColor(.white)
+                            .cornerRadius(28)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 32)
                     }
-                    .padding(.horizontal, 32)
-                    
-                    Spacer()
                 }
             }
         }
@@ -238,7 +318,7 @@ struct FlashcardsTabContent: View {
         }
     }
 
-    private func generateFlashcards() {
+    private func generateFlashcards(count: Int = 20, instructions: String? = nil) {
         guard let token = KeychainService.shared.get(Constants.Keychain.accessToken) else {
             errorMessage = "Not authenticated"
             return
@@ -250,7 +330,13 @@ struct FlashcardsTabContent: View {
 
         Task {
             do {
-                let aiContent = try await APIService.shared.generateFlashcards(token: token, noteId: note.id, contentLength: note.content.count)
+                let aiContent = try await APIService.shared.generateFlashcards(
+                    token: token,
+                    noteId: note.id,
+                    contentLength: note.content.count,
+                    count: count,
+                    instructions: instructions
+                )
                 await MainActor.run {
                     if let flashcards = aiContent.flashcards {
                         self.flashcardSet = FlashcardSet(
@@ -381,29 +467,72 @@ struct FlashcardView: View {
 struct CardSide: View {
     let text: String
     let color: Color
-    
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 20)
                 .fill(color)
                 .shadow(color: Color.black.opacity(0.2), radius: 10, x: 0, y: 5)
-            
+
             VStack {
                 Spacer()
-                
+
                 Text(text)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(color == .cardBackground ? .textPrimary : .white)
                     .multilineTextAlignment(.center)
                     .padding(32)
-                
+
                 Spacer()
-                
+
                 Image(systemName: "arrow.2.squarepath")
                     .font(.system(size: 16))
-                    .foregroundColor((color == .cardBackground ? Color.textPrimary : Color.white).opacity(0.5))  // ✅ Fixed
+                    .foregroundColor((color == .cardBackground ? Color.textPrimary : Color.white).opacity(0.5))
                     .padding(.bottom, 20)
             }
         }
+    }
+}
+
+
+struct CardCountOptionButton: View {
+    let count: Int
+    let label: String
+    let description: String
+    let isSelected: Bool
+    let isRecommended: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                HStack {
+                    Spacer()
+                    if isRecommended && isSelected {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 12))
+                            .foregroundColor(.purple80)
+                    }
+                }
+                .frame(height: 16)
+
+                Text(label)
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(isSelected ? .purple80 : .textPrimary)
+
+                Text(description)
+                    .font(.system(size: 12))
+                    .foregroundColor(isSelected ? .purple80 : .textSecondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(isSelected ? Color.purple80.opacity(0.15) : Color.darkSurfaceVariant)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.purple80 : Color.clear, lineWidth: 2)
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }

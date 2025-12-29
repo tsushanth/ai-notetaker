@@ -13,8 +13,9 @@ router.use(authenticate);
  * POST /api/notes
  */
 router.post('/', validate('createNote'), asyncHandler(async (req, res) => {
+  // Formatting is now triggered automatically in noteService.createNote()
   const note = await noteService.createNote(req.userId, req.validatedBody);
-  
+
   res.status(201).json({
     success: true,
     data: note

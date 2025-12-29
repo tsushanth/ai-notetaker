@@ -1,0 +1,76 @@
+# Cloud Build configuration for Scribe AI Web App
+# Builds and deploys to Cloud Run
+
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/scribe-ai-web:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/scribe-ai-web:latest'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_API_URL=${_NEXT_PUBLIC_API_URL}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_GOOGLE_CLIENT_ID=${_NEXT_PUBLIC_GOOGLE_CLIENT_ID}'
+      - '--build-arg'
+      - 'NEXT_PUBLIC_APPLE_CLIENT_ID=${_NEXT_PUBLIC_APPLE_CLIENT_ID}'
+      - '.'
+    dir: 'web-app'
+
+  # Push the Docker image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/scribe-ai-web:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/scribe-ai-web:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'scribe-ai-web'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/scribe-ai-web:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--memory'
+      - '512Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--port'
+      - '3000'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+
+# Store images in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/scribe-ai-web:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/scribe-ai-web:latest'
+
+# Substitution variables (set in Cloud Build trigger)
+substitutions:
+  _NEXT_PUBLIC_API_URL: 'https://ai-notetaker-backend-917362189743.us-central1.run.app'
+  _NEXT_PUBLIC_GOOGLE_CLIENT_ID: '655434901651-u6bjf9lr0no2e4ust6pok76s0aeusnv6.apps.googleusercontent.com'
+  _NEXT_PUBLIC_APPLE_CLIENT_ID: 'com.kreativekoala.scribeai.web'
+
+# Build timeout
+timeout: '1200s'
+
+# Build options
+options:
+  logging: CLOUD_LOGGING_ONLY

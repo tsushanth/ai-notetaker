@@ -62,12 +62,25 @@ class AuthViewModel: NSObject, ObservableObject {
             if response.success, let data = response.data {
                 self.currentUser = data.user
                 self.isAuthenticated = true
+                // Sync onboarding preferences to backend after successful login
+                OnboardingManager.shared.syncPreferencesToBackendIfNeeded()
             } else {
                 self.errorMessage = response.error ?? "Sign in failed"
             }
         } catch {
             self.errorMessage = error.localizedDescription
-            ErrorReportingService.shared.reportError(flow: .signIn, error: error)
+
+            // Only report actual system errors, not user errors like wrong credentials
+            let errorString = error.localizedDescription.lowercased()
+            let isUserError = errorString.contains("invalid login credentials") ||
+                              errorString.contains("invalid email") ||
+                              errorString.contains("user not found") ||
+                              errorString.contains("email not confirmed") ||
+                              errorString.contains("too many requests")
+
+            if !isUserError {
+                ErrorReportingService.shared.reportError(flow: .signIn, error: error)
+            }
         }
 
         isLoading = false
@@ -95,6 +108,7 @@ class AuthViewModel: NSObject, ObservableObject {
             // Clear all local data
             await MainActor.run {
                 TokenManager.shared.clearTokens()
+                OnboardingManager.shared.reset()  // Reset onboarding for new account
                 self.isAuthenticated = false
                 self.currentUser = nil
                 print("✅ Account deleted successfully")
@@ -116,12 +130,25 @@ class AuthViewModel: NSObject, ObservableObject {
             if response.success, let data = response.data {
                 self.currentUser = data.user
                 self.isAuthenticated = true
+                // Sync onboarding preferences to backend after successful sign up
+                OnboardingManager.shared.syncPreferencesToBackendIfNeeded()
             } else {
                 self.errorMessage = response.error ?? "Sign up failed"
             }
         } catch {
             self.errorMessage = error.localizedDescription
-            ErrorReportingService.shared.reportError(flow: .signUp, error: error)
+
+            // Only report actual system errors, not user errors
+            let errorString = error.localizedDescription.lowercased()
+            let isUserError = errorString.contains("already registered") ||
+                              errorString.contains("user already exists") ||
+                              errorString.contains("invalid email") ||
+                              errorString.contains("password") ||  // password too short/weak
+                              errorString.contains("too many requests")
+
+            if !isUserError {
+                ErrorReportingService.shared.reportError(flow: .signUp, error: error)
+            }
         }
 
         isLoading = false
@@ -179,6 +206,8 @@ class AuthViewModel: NSObject, ObservableObject {
                 self.currentUser = data.user
                 self.isAuthenticated = true
                 print("✅ User authenticated: \(data.user.email)")
+                // Sync onboarding preferences to backend after OAuth success
+                OnboardingManager.shared.syncPreferencesToBackendIfNeeded()
             } else {
                 self.errorMessage = response.error ?? "Authentication failed"
                 print("❌ Authentication failed: \(response.error ?? "unknown")")
@@ -187,7 +216,7 @@ class AuthViewModel: NSObject, ObservableObject {
             self.errorMessage = error.localizedDescription
             print("❌ OAuth callback error: \(error)")
         }
-        
+
         isLoading = false
         print("🔄 OAuth callback handling complete")
     }
@@ -320,6 +349,8 @@ extension AuthViewModel: ASAuthorizationControllerDelegate {
                     self.currentUser = data.user
                     self.isAuthenticated = true
                     print("✅ User authenticated: \(data.user.email)")
+                    // Sync onboarding preferences to backend after Apple Sign In success
+                    OnboardingManager.shared.syncPreferencesToBackendIfNeeded()
                 } else {
                     self.errorMessage = response.error ?? "Apple Sign In failed"
                     print("❌ Authentication failed: \(response.error ?? "unknown")")
@@ -335,17 +366,36 @@ extension AuthViewModel: ASAuthorizationControllerDelegate {
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
+        let nsError = error as NSError
         print("❌ Apple Sign-In error: \(error)")
-        print("❌ Error code: \((error as NSError).code)")
-        print("❌ Error domain: \((error as NSError).domain)")
+        print("❌ Error code: \(nsError.code)")
+        print("❌ Error domain: \(nsError.domain)")
 
-        // Error 1000 is user cancellation or configuration issue
-        if (error as NSError).code == 1000 {
-            errorMessage = "Apple Sign-In cancelled or not properly configured. Please check your Apple Developer settings."
-        } else {
+        // Handle ASAuthorizationError codes:
+        // 1000 = unknown, 1001 = canceled, 1002 = invalidResponse, 1003 = notHandled, 1004 = failed
+        switch nsError.code {
+        case 1001:
+            // User canceled - don't show error or report
+            print("ℹ️ User canceled Apple Sign-In")
+            // Clear any loading state but don't show error message
+            isLoading = false
+            return
+        case 1000:
+            // Unknown error - could be configuration issue
+            errorMessage = "Apple Sign-In encountered an issue. Please try again."
+        case 1002:
+            errorMessage = "Invalid response from Apple. Please try again."
+        case 1003:
+            errorMessage = "Apple Sign-In request was not handled. Please try again."
+        case 1004:
+            errorMessage = "Apple Sign-In failed. Please check your Apple ID settings and try again."
+        default:
             errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
-            ErrorReportingService.shared.reportError(flow: .signInWithApple, error: error)
         }
+
+        // Only report non-cancellation errors
+        ErrorReportingService.shared.reportError(flow: .signInWithApple, error: error)
+        isLoading = false
     }
 }
 

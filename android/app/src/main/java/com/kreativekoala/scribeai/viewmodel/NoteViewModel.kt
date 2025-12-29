@@ -266,18 +266,20 @@ class NoteViewModel(
      * Load single note by ID (with cache)
      */
     fun loadNoteById(token: String, noteId: String) {
+        // Set loading immediately (before launching coroutine) to prevent stale data flash
+        _noteDetailState.value = NoteDetailState.Loading
+
         viewModelScope.launch {
             try {
-                _noteDetailState.value = NoteDetailState.Loading
-
                 Log.d(TAG, "Loading note: $noteId")
 
-                // Try cache first
+                // Try cache first - only for THIS note ID
                 val cachedNote = localRepository.getNoteById(noteId)
                 if (cachedNote != null) {
                     _currentNote.value = cachedNote
                     _noteDetailState.value = NoteDetailState.Success(cachedNote)
                     Log.d(TAG, "📦 Loaded note from cache: ${cachedNote.id}")
+                    Log.d(TAG, "📦 Cache - hasFormattedContent: ${cachedNote.hasFormattedContent}, formattingStatus: ${cachedNote.formattingStatus}, formattedContent length: ${cachedNote.formattedContent?.length ?: 0}")
                 }
 
                 // Fetch fresh data from server
@@ -290,6 +292,7 @@ class NoteViewModel(
                         _currentNote.value = note
                         _noteDetailState.value = NoteDetailState.Success(note)
                         Log.d(TAG, "✅ Note loaded from server: ${note.id} - ${note.title}")
+                        Log.d(TAG, "✅ Server - hasFormattedContent: ${note.hasFormattedContent}, formattingStatus: ${note.formattingStatus}, formattedContent length: ${note.formattedContent?.length ?: 0}")
                     },
                     onFailure = { exception ->
                         // If we have cached data, keep showing it

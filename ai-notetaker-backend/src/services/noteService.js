@@ -5,8 +5,14 @@ const { AppError } = require('../middleware/errorHandler');
 class NoteService {
   /**
    * Create a new note
+   * @param {string} userId - User ID
+   * @param {object} noteData - Note data
+   * @param {object} options - Options
+   * @param {boolean} options.skipFormatting - Skip async formatting (default: false)
    */
-  async createNote(userId, noteData) {
+  async createNote(userId, noteData, options = {}) {
+    const { skipFormatting = false } = options;
+
     try {
       const { data, error } = await supabaseAdmin
         .from('notes')
@@ -20,11 +26,28 @@ class NoteService {
       if (error) throw error;
 
       logger.info('Note created', { userId, noteId: data.id });
+
+      // Trigger async formatting unless skipped
+      if (!skipFormatting && noteData.content && noteData.content.length >= 200) {
+        this.triggerFormatting(data.id).catch(err => {
+          logger.error('Background formatting failed', { noteId: data.id, error: err.message });
+        });
+      }
+
       return data;
     } catch (error) {
       logger.error('Error creating note', { error: error.message, userId });
       throw new AppError('Failed to create note', 500);
     }
+  }
+
+  /**
+   * Trigger async formatting for a note
+   */
+  async triggerFormatting(noteId) {
+    // Lazy import to avoid circular dependencies
+    const formattingService = require('./formattingService');
+    return formattingService.formatNoteById(noteId);
   }
 
   /**

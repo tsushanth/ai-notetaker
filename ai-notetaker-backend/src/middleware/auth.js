@@ -1,14 +1,18 @@
 const { supabase } = require('../config/supabase');
 const { logger } = require('../utils/logger');
+const jwt = require('jsonwebtoken');
+
+// JWT secret for custom tokens (Google sign-in)
+const jwtSecret = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
 
 /**
- * Middleware to authenticate requests using Supabase JWT
- * Enhanced with better token validation and error handling
+ * Middleware to authenticate requests using Supabase JWT or custom JWT
+ * Supports both native Supabase tokens (iOS/Android) and custom JWTs (Google sign-in)
  */
 const authenticate = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     // Check for authorization header
     if (!authHeader) {
       logger.warn('Authentication failed: No authorization header', {
@@ -37,7 +41,7 @@ const authenticate = async (req, res, next) => {
 
     // Extract and validate token
     const token = authHeader.substring(7).trim();
-    
+
     if (!token) {
       logger.warn('Authentication failed: Empty token', {
         path: req.path,
@@ -88,47 +92,59 @@ const authenticate = async (req, res, next) => {
       });
     }
 
-    // Verify the JWT token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // Try Supabase authentication first (for native iOS/Android tokens)
+    let user = null;
+    let authMethod = null;
 
-    if (error) {
-      // Log specific Supabase auth errors
-      logger.warn('Supabase authentication failed', {
+    const { data: supabaseData, error: supabaseError } = await supabase.auth.getUser(token);
+
+    if (!supabaseError && supabaseData?.user) {
+      // Native Supabase token worked
+      user = supabaseData.user;
+      authMethod = 'supabase';
+      logger.debug('Authenticated via Supabase token', { userId: user.id });
+    } else {
+      // Try custom JWT verification (for Google sign-in tokens)
+      try {
+        const decoded = jwt.verify(token, jwtSecret);
+
+        if (decoded && decoded.sub) {
+          user = {
+            id: decoded.sub,
+            email: decoded.email,
+            user_metadata: decoded.user_metadata || {},
+            role: decoded.role || 'authenticated'
+          };
+          authMethod = 'custom_jwt';
+          logger.debug('Authenticated via custom JWT', { userId: user.id, email: user.email });
+        }
+      } catch (jwtError) {
+        // JWT verification failed
+        logger.warn('Custom JWT verification failed', {
+          path: req.path,
+          method: req.method,
+          error: jwtError.message
+        });
+      }
+    }
+
+    // If neither auth method worked, return error
+    if (!user) {
+      logger.warn('Authentication failed: No valid token', {
         path: req.path,
         method: req.method,
-        error: error.message,
-        errorCode: error.code,
-        errorStatus: error.status,
+        supabaseError: supabaseError?.message,
         ip: req.ip
       });
 
-      // Handle specific error cases
-      if (error.message?.includes('expired')) {
+      // Handle specific error cases from Supabase
+      if (supabaseError?.message?.includes('expired')) {
         return res.status(401).json({
           success: false,
           error: 'Token expired'
         });
       }
 
-      if (error.message?.includes('invalid') || error.message?.includes('malformed')) {
-        return res.status(401).json({
-          success: false,
-          error: 'Invalid token'
-        });
-      }
-
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid or expired token'
-      });
-    }
-
-    if (!user) {
-      logger.warn('Authentication failed: No user found', {
-        path: req.path,
-        method: req.method,
-        ip: req.ip
-      });
       return res.status(401).json({
         success: false,
         error: 'Invalid or expired token'
@@ -144,11 +160,13 @@ const authenticate = async (req, res, next) => {
     req.userId = user.id;
     req.userEmail = user.email;
     req.token = token;  // ← Also store at top level for easy access
+    req.authMethod = authMethod;
 
     // Log successful authentication (debug level)
     logger.debug('Authentication successful', {
       userId: req.userId,
       email: req.userEmail,
+      authMethod: authMethod,
       hasToken: !!req.token,
       path: req.path,
       method: req.method
@@ -163,7 +181,7 @@ const authenticate = async (req, res, next) => {
       path: req.path,
       method: req.method
     });
-    
+
     return res.status(500).json({
       success: false,
       error: 'Authentication failed'
@@ -174,10 +192,11 @@ const authenticate = async (req, res, next) => {
 /**
  * Optional authentication middleware
  * Attaches user info if token is valid, but doesn't require it
+ * Supports both native Supabase tokens and custom JWTs
  */
 const optionalAuth = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return next();
   }
@@ -185,13 +204,37 @@ const optionalAuth = async (req, res, next) => {
   try {
     const token = authHeader.substring(7).trim();
     const tokenParts = token.split('.');
-    
+
     // Only proceed if token format looks valid
     if (tokenParts.length === 3) {
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-      
-      if (!error && user) {
-        // ✅ Also store token in optional auth
+      let user = null;
+      let authMethod = null;
+
+      // Try Supabase first
+      const { data: supabaseData, error: supabaseError } = await supabase.auth.getUser(token);
+
+      if (!supabaseError && supabaseData?.user) {
+        user = supabaseData.user;
+        authMethod = 'supabase';
+      } else {
+        // Try custom JWT
+        try {
+          const decoded = jwt.verify(token, jwtSecret);
+          if (decoded && decoded.sub) {
+            user = {
+              id: decoded.sub,
+              email: decoded.email,
+              user_metadata: decoded.user_metadata || {},
+              role: decoded.role || 'authenticated'
+            };
+            authMethod = 'custom_jwt';
+          }
+        } catch (jwtError) {
+          // Silently fail for optional auth
+        }
+      }
+
+      if (user) {
         req.user = {
           ...user,
           token: token
@@ -199,13 +242,14 @@ const optionalAuth = async (req, res, next) => {
         req.userId = user.id;
         req.userEmail = user.email;
         req.token = token;
+        req.authMethod = authMethod;
       }
     }
   } catch (error) {
     // Silently fail for optional auth
     logger.debug('Optional auth failed', { error: error.message });
   }
-  
+
   next();
 };
 

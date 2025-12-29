@@ -18,8 +18,8 @@ android {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 24
         targetSdk = 35
-        versionCode = 20
-        versionName = "20.0"
+        versionCode = 23
+        versionName = "23.0"
 
         // 16KB page size support
         ndk {
@@ -69,10 +69,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
     }
 
     packaging {

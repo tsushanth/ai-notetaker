@@ -77,10 +77,16 @@ class AIViewModel : ViewModel() {
         }
     }
 
-    fun generateFlashcards(token: String, noteId: String, numCards: Int = 10, language: String = "english") {
+    fun generateFlashcards(
+        token: String,
+        noteId: String,
+        numCards: Int = 10,
+        language: String = "english"
+    ) {
         viewModelScope.launch {
             _flashcardsState.value = AIContentState.Loading
-            val options = AIOptions(numCards = numCards, language = language)
+            // Send both numCards and count for compatibility
+            val options = AIOptions(numCards = numCards, count = numCards, language = language)
             repository.generateAIContent(token, noteId, "flashcards", options).fold(
                 onSuccess = { content ->
                     _flashcardsState.value = AIContentState.Success(content)
@@ -94,14 +100,24 @@ class AIViewModel : ViewModel() {
         }
     }
 
-    fun generatePodcast(token: String, noteId: String, generateAudio: Boolean = true, language: String = "english") {
+    fun generatePodcast(
+        token: String,
+        noteId: String,
+        generateAudio: Boolean = true,
+        duration: String = "medium",
+        voice: String = "nova",
+        instructions: String? = null,
+        language: String = "english"
+    ) {
         viewModelScope.launch {
             _podcastState.value = AIContentState.Loading
 
             val options = AIOptions(
-                length = "medium",
+                duration = duration,
                 style = "conversational",
                 generateAudio = generateAudio,
+                voice = voice,
+                instructions = instructions,
                 language = language
             )
 
@@ -110,9 +126,9 @@ class AIViewModel : ViewModel() {
                 val request = GenerateAIRequest(noteId, "podcast", options)
                 repository.startPodcastGeneration(token, request)
 
-                // Poll for completion every 5 seconds, up to 2 minutes
-                repeat(24) { attempt ->
-                    delay(5000) // Wait 5 seconds
+                // Poll for completion every 2 seconds, up to 3 minutes (90 attempts)
+                repeat(90) { attempt ->
+                    delay(2000) // Wait 2 seconds
 
                     val statusResult = repository.getPodcastStatus(token, noteId)
                     statusResult.fold(
@@ -124,7 +140,8 @@ class AIViewModel : ViewModel() {
                                         id = status.id ?: "",
                                         noteId = status.note_id ?: noteId,
                                         script = status.script,
-                                        audioUrl = status.audio_url
+                                        audioUrl = status.audio_url,
+                                        duration = status.duration
                                     )
                                     _podcastState.value = AIContentState.Success(content)
                                     AnalyticsService.trackPodcastGenerated(0) // Duration unknown at this point
@@ -144,8 +161,8 @@ class AIViewModel : ViewModel() {
                     )
                 }
 
-                // Timeout after 2 minutes
-                _podcastState.value = AIContentState.Error("Generation is taking longer than expected. Please try again.")
+                // Timeout after 3 minutes
+                _podcastState.value = AIContentState.Error("Podcast generation is taking longer than expected. Try loading this note again in a few minutes.")
 
             } catch (e: Exception) {
                 _podcastState.value = AIContentState.Error(e.message ?: "Failed to start podcast generation")
@@ -262,6 +279,18 @@ class AIViewModel : ViewModel() {
             "podcast" -> _podcastState.value = AIContentState.Idle
             "diagram" -> _diagramState.value = AIContentState.Idle
         }
+    }
+
+    /**
+     * Reset all AI content states when switching to a different note.
+     * This prevents showing stale content from the previous note.
+     */
+    fun resetAllStates() {
+        _summaryState.value = AIContentState.Idle
+        _quizState.value = AIContentState.Idle
+        _flashcardsState.value = AIContentState.Idle
+        _podcastState.value = AIContentState.Idle
+        _diagramState.value = AIContentState.Idle
     }
 }
 

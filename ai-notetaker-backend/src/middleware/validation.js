@@ -39,14 +39,21 @@ const schemas = {
 
   generateAIContent: Joi.object({
     note_id: Joi.string().uuid().required(),
-    content_type: Joi.string().valid('summary', 'quiz', 'flashcards', 'podcast', 'diagram').required(),
+    // content_type is optional because specific endpoints like /flashcards, /quiz, etc.
+    // already know the type from the URL. Only required for generic /generate endpoint.
+    content_type: Joi.string().valid('summary', 'quiz', 'flashcards', 'podcast', 'diagram'),
     options: Joi.object({
       length: Joi.string().valid('short', 'medium', 'long'),
       difficulty: Joi.string().valid('easy', 'medium', 'hard'),
       num_questions: Joi.number().min(1).max(50),
       num_cards: Joi.number().min(1).max(100),
+      count: Joi.number().min(1).max(100), // Alias for num_cards (iOS uses this)
       style: Joi.string(),
-      language: Joi.string().valid(...SUPPORTED_LANGUAGES).default('english')
+      language: Joi.string().valid(...SUPPORTED_LANGUAGES).default('english'),
+      generate_audio: Joi.boolean(),
+      duration: Joi.string().valid('short', 'medium', 'long'),
+      voice: Joi.string(),
+      instructions: Joi.string().max(500)
     }).default({})
   }),
 

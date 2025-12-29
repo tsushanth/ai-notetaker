@@ -546,7 +546,14 @@ class StoreKitManager: ObservableObject {
         let monthlyPrice = product.price / 12
         return monthlyPrice.formatted(.currency(code: product.priceFormatStyle.currencyCode ?? "USD"))
     }
-    
+
+    /// Calculate weekly equivalent price for yearly subscription
+    func weeklyEquivalentPrice(for product: Product) -> String? {
+        guard product.id == SubscriptionProduct.yearly.rawValue else { return nil }
+        let weeklyPrice = product.price / 52
+        return weeklyPrice.formatted(.currency(code: product.priceFormatStyle.currencyCode ?? "USD"))
+    }
+
     /// Calculate savings percentage for yearly vs monthly
     func savingsPercentage() -> Int? {
         guard let monthly = getMonthlyProduct(),

@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+:root {
+  /* Dark theme colors matching mobile apps */
+  --background: #0a0a0b;
+  --foreground: #ffffff;
+  --card-background: #111111;
+  --surface-variant: #1a1a1a;
+  --border: #222222;
+  --text-primary: #ffffff;
+  --text-secondary: #888888;
+  --text-muted: #666666;
+  --accent-purple: #9333ea;
+  --accent-purple-hover: #7c22ce;
+  --accent-purple-light: #a855f7;
+  --accent-red: #ef4444;
+  --accent-green: #22c55e;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card-background);
+  --color-border: var(--border);
+  --color-accent: var(--accent-purple);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Button styles */
+.btn-primary {
+  background: var(--accent-purple);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: var(--accent-purple-hover);
+}
+
+.btn-secondary {
+  background: var(--card-background);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: border-color 0.2s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-purple);
+}
+
+/* Card styles */
+.card {
+  background: var(--card-background);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+/* Input styles */
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent-purple);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}

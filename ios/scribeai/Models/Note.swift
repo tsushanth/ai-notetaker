@@ -13,15 +13,37 @@ struct Note: Identifiable, Codable {
     let userId: String
     let title: String
     let content: String
+    let formattedContent: String?
+    let formattingStatus: String?
     let sourceType: String?
     let sourceUrl: String?
     let metadata: [String: AnyCodable]?
     let createdAt: String
     let updatedAt: String
-    
+
+    /// Returns the best available content for display (formatted if available, otherwise raw)
+    var displayContent: String {
+        if let formatted = formattedContent, !formatted.isEmpty, formattingStatus == "completed" {
+            return formatted
+        }
+        return content
+    }
+
+    /// Whether formatted content is available
+    var hasFormattedContent: Bool {
+        formattedContent != nil && !formattedContent!.isEmpty && formattingStatus == "completed"
+    }
+
+    /// Whether formatting is in progress
+    var isFormatting: Bool {
+        formattingStatus == "processing"
+    }
+
     enum CodingKeys: String, CodingKey {
         case id, title, content, metadata
         case userId = "user_id"
+        case formattedContent = "formatted_content"
+        case formattingStatus = "formatting_status"
         case sourceType = "source_type"
         case sourceUrl = "source_url"
         case createdAt = "created_at"

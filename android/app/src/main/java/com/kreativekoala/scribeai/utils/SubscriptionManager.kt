@@ -335,6 +335,27 @@ class SubscriptionManager(private val context: Context) {
     }
 
     /**
+     * Calculate yearly price per week (formatted with correct currency)
+     */
+    fun getYearlyPricePerWeek(): String {
+        val yearlyMicros = getPriceAmountMicros(YEARLY_SUB_ID)
+        if (yearlyMicros == 0L) return ""
+
+        val currencyCode = getPriceCurrencyCode(YEARLY_SUB_ID)
+        val weeklyMicros = yearlyMicros / 52
+        val weeklyAmount = weeklyMicros / 1_000_000.0
+
+        return try {
+            val format = NumberFormat.getCurrencyInstance()
+            format.currency = Currency.getInstance(currencyCode)
+            format.format(weeklyAmount)
+        } catch (e: Exception) {
+            // Fallback formatting
+            String.format("%.2f", weeklyAmount)
+        }
+    }
+
+    /**
      * Calculate savings percentage (yearly vs monthly)
      */
     fun getSavingsPercentage(): Int {

@@ -36,9 +36,16 @@ data class AIOptions(
     val numQuestions: Int? = null,
     @SerializedName("num_cards")
     val numCards: Int? = null,
+    // Also support 'count' as alias for num_cards (used by iOS)
+    val count: Int? = null,
     val style: String? = null,
+    @SerializedName("generate_audio")
     val generateAudio: Boolean? = null,
-    val language: String? = null
+    val language: String? = null,
+    // Podcast-specific options
+    val duration: String? = null, // "short", "medium", "long"
+    val voice: String? = null, // "nova" (female), "onyx" (male)
+    val instructions: String? = null
 )
 
 data class AIContentResponse(
@@ -286,4 +293,11 @@ data class ErrorReportRequest(
     val flow: String,
     val error: String,
     val context: Map<String, Any>? = null
+)
+
+data class OnboardingPreferencesRequest(
+    @SerializedName("user_type")
+    val userType: String?,
+    @SerializedName("use_cases")
+    val useCases: List<String>
 )

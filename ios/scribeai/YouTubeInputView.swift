@@ -368,17 +368,26 @@ struct YouTubeInputView: View {
     }
     
     private func handleAPIError(_ error: APIError) {
+        var isUserError = false
+
         switch error {
         case .serverError(let message):
             let lowerMessage = message.lowercased()
             if lowerMessage.contains("transcript") || lowerMessage.contains("caption") || lowerMessage.contains("subtitle") {
                 processingState = .error(message: "This video doesn't have captions/subtitles available.\n\nPlease try a different video with captions enabled.")
+                isUserError = true  // Video limitation, not system error
+            } else if lowerMessage.contains("video id") || lowerMessage.contains("extract") {
+                processingState = .error(message: "Invalid YouTube URL.\n\nPlease enter a valid YouTube video link (e.g., youtube.com/watch?v=xxx or youtu.be/xxx)")
+                isUserError = true  // User entered invalid URL
             } else if lowerMessage.contains("private") || lowerMessage.contains("unavailable") {
                 processingState = .error(message: "This video is private or unavailable.\n\nPlease check the URL and try again.")
+                isUserError = true  // Video is not accessible
             } else if lowerMessage.contains("age") || lowerMessage.contains("restricted") {
                 processingState = .error(message: "This video is age-restricted.\n\nPlease try a different video.")
+                isUserError = true  // Video limitation
             } else if lowerMessage.contains("live") || lowerMessage.contains("stream") {
                 processingState = .error(message: "Live streams are not supported.\n\nPlease try a regular video.")
+                isUserError = true  // Feature limitation
             } else {
                 processingState = .error(message: "Server error: \(message)")
             }
@@ -390,10 +399,15 @@ struct YouTubeInputView: View {
             processingState = .error(message: "Received invalid response from server.\n\nPlease try again.")
         case .timeout:
             processingState = .error(message: "Request timed out.\n\nThe video might be too long. Please try a shorter video.")
+            isUserError = true  // Usually means video is too long
         default:
             processingState = .error(message: "An unexpected error occurred.\n\nPlease try again.")
         }
-        ErrorReportingService.shared.reportError(flow: .youtubeLink, error: error)
+
+        // Only report actual system errors, not user/content errors
+        if !isUserError {
+            ErrorReportingService.shared.reportError(flow: .youtubeLink, error: error)
+        }
     }
     
     @MainActor

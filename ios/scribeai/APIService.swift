@@ -7,6 +7,7 @@
 //
 
 import Foundation
+import UIKit
 
 enum APIError: Error {
     case invalidURL
@@ -869,13 +870,13 @@ class APIService {
         }
     }
 
-    func generatePodcast(token: String, noteId: String, contentLength: Int = 0) async throws -> AIContent {
+    func generatePodcast(token: String, noteId: String, contentLength: Int = 0, duration: String = "short", voice: String = "nova", instructions: String? = nil) async throws -> AIContent {
         return try await executeWithTokenRefresh { validToken in
-            try await self._generatePodcast(token: validToken, noteId: noteId, contentLength: contentLength)
+            try await self._generatePodcast(token: validToken, noteId: noteId, contentLength: contentLength, duration: duration, voice: voice, instructions: instructions)
         }
     }
 
-    private func _generatePodcast(token: String, noteId: String, contentLength: Int) async throws -> AIContent {
+    private func _generatePodcast(token: String, noteId: String, contentLength: Int, duration: String = "short", voice: String = "nova", instructions: String? = nil) async throws -> AIContent {
         guard let url = URL(string: "\(Constants.baseURL)/api/ai/podcast") else {
             throw APIError.invalidURL
         }
@@ -885,13 +886,20 @@ class APIService {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        var options: [String: Any] = [
+            "generate_audio": true,
+            "language": getPreferredLanguage(),
+            "duration": duration,
+            "voice": voice
+        ]
+        if let instructions = instructions, !instructions.isEmpty {
+            options["instructions"] = instructions
+        }
+
         let body: [String: Any] = [
             "note_id": noteId,
             "content_type": "podcast",
-            "options": [
-                "generate_audio": true,
-                "language": getPreferredLanguage()
-            ]
+            "options": options
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -1072,13 +1080,13 @@ class APIService {
         )
     }
 
-    func generateFlashcards(token: String, noteId: String, contentLength: Int = 0) async throws -> AIContent {
+    func generateFlashcards(token: String, noteId: String, contentLength: Int = 0, count: Int = 20, instructions: String? = nil) async throws -> AIContent {
         return try await executeWithTokenRefresh { validToken in
-            try await self._generateFlashcards(token: validToken, noteId: noteId, contentLength: contentLength)
+            try await self._generateFlashcards(token: validToken, noteId: noteId, contentLength: contentLength, count: count, instructions: instructions)
         }
     }
 
-    private func _generateFlashcards(token: String, noteId: String, contentLength: Int) async throws -> AIContent {
+    private func _generateFlashcards(token: String, noteId: String, contentLength: Int, count: Int = 20, instructions: String? = nil) async throws -> AIContent {
         guard let url = URL(string: "\(Constants.baseURL)/api/ai/flashcards") else {
             throw APIError.invalidURL
         }
@@ -1088,12 +1096,18 @@ class APIService {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        var options: [String: Any] = [
+            "language": getPreferredLanguage(),
+            "count": count
+        ]
+        if let instructions = instructions, !instructions.isEmpty {
+            options["instructions"] = instructions
+        }
+
         let body: [String: Any] = [
             "note_id": noteId,
             "content_type": "flashcards",
-            "options": [
-                "language": getPreferredLanguage()
-            ]
+            "options": options
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -1925,4 +1939,208 @@ class APIService {
             
             print("✅ Account deletion successful")
         }
+
+    // MARK: - Onboarding
+
+    /// Save onboarding preferences to backend
+    func saveOnboardingPreferences(token: String, preferences: [String: Any]) async throws {
+        try await executeWithTokenRefresh { validToken in
+            try await self._saveOnboardingPreferences(token: validToken, preferences: preferences)
+        }
+    }
+
+    private func _saveOnboardingPreferences(token: String, preferences: [String: Any]) async throws {
+        guard let url = URL(string: "\(Constants.baseURL)/api/onboarding") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: preferences)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = extractErrorMessage(from: data) ?? "Failed to save preferences"
+            throw APIError.serverError(errorMessage)
+        }
+    }
+
+    // MARK: - User Stats
+
+    /// Get user stats for retention screens
+    func getUserStats(token: String) async throws -> UserStats {
+        try await executeWithTokenRefresh { validToken in
+            try await self._getUserStats(token: validToken)
+        }
+    }
+
+    private func _getUserStats(token: String) async throws -> UserStats {
+        guard let url = URL(string: "\(Constants.baseURL)/api/onboarding/stats") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to get user stats")
+        }
+
+        struct StatsResponse: Codable {
+            let success: Bool
+            let data: StatsData
+        }
+
+        struct StatsData: Codable {
+            let notes_count: Int
+            let quizzes_count: Int
+            let flashcards_count: Int
+            let audio_hours: Double
+        }
+
+        let statsResponse = try JSONDecoder().decode(StatsResponse.self, from: data)
+        return UserStats(
+            notesCount: statsResponse.data.notes_count,
+            quizzesCount: statsResponse.data.quizzes_count,
+            flashcardsCount: statsResponse.data.flashcards_count,
+            audioHours: statsResponse.data.audio_hours
+        )
+    }
+
+    // MARK: - Promo Code
+
+    func validatePromoCode(_ code: String) async throws -> PromoValidationResult {
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/creators/validate-code")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = ["code": code]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode != 200 {
+            // Try to parse error message
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? String {
+                throw APIError.serverError(error)
+            }
+            throw APIError.serverError("Invalid promo code")
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let success = json["success"] as? Bool, success,
+              let resultData = json["data"] as? [String: Any] else {
+            throw APIError.serverError("Invalid response format")
+        }
+
+        return PromoValidationResult(
+            valid: resultData["valid"] as? Bool ?? false,
+            code: resultData["code"] as? String ?? code,
+            discountType: resultData["discountType"] as? String ?? "none",
+            discountValue: resultData["discountValue"] as? Double ?? 0,
+            trialExtensionDays: resultData["trialExtensionDays"] as? Int ?? 0,
+            creatorName: resultData["creatorName"] as? String ?? ""
+        )
+    }
+
+    func applyPromoCode(_ code: String, platform: String = "ios") async throws {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/creators/apply-code")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        // Include device fingerprint for fraud detection
+        let deviceFingerprint = DeviceFingerprint.generate()
+        let body: [String: Any] = [
+            "code": code,
+            "platform": platform,
+            "deviceFingerprint": deviceFingerprint
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        if httpResponse.statusCode != 200 {
+            // Try to parse error message
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? String {
+                throw APIError.serverError(error)
+            }
+            throw APIError.serverError("Failed to apply promo code")
+        }
+    }
+}
+
+// MARK: - Device Fingerprint
+
+/// Generates a unique device fingerprint for fraud detection
+struct DeviceFingerprint {
+    /// Generate a device fingerprint combining multiple device identifiers
+    static func generate() -> String {
+        var components: [String] = []
+
+        // Vendor ID (persists across app reinstalls while device is not reset)
+        if let vendorID = UIDevice.current.identifierForVendor?.uuidString {
+            components.append(vendorID)
+        }
+
+        // Device model and name
+        components.append(UIDevice.current.model)
+        components.append(UIDevice.current.systemName)
+        components.append(UIDevice.current.systemVersion)
+
+        // Screen dimensions (helps identify device type)
+        let screen = UIScreen.main.bounds
+        components.append("\(Int(screen.width))x\(Int(screen.height))")
+
+        // Combine all components into a single fingerprint
+        let combined = components.joined(separator: "|")
+        return combined
+    }
 }

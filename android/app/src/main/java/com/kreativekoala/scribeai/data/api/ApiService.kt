@@ -178,4 +178,23 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: ErrorReportRequest
     ): Response<GenericResponse>
+
+    // Onboarding endpoints
+    @POST("api/onboarding")
+    suspend fun saveOnboardingPreferences(
+        @Header("Authorization") token: String,
+        @Body request: OnboardingPreferencesRequest
+    ): Response<GenericResponse>
+
+    // Promo code endpoints
+    @POST("api/creators/validate-code")
+    suspend fun validatePromoCode(
+        @Body request: ValidatePromoCodeRequest
+    ): Response<ValidatePromoCodeResponse>
+
+    @POST("api/creators/apply-code")
+    suspend fun applyPromoCode(
+        @Header("Authorization") token: String,
+        @Body request: ApplyPromoCodeRequest
+    ): Response<GenericResponse>
 }

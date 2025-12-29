@@ -10,21 +10,24 @@ import SwiftUI
 
 enum NoteDetailTab: String, CaseIterable {
     case notes = "Notes"
-    case summary = "Summary"
-    case podcast = "Podcast"
+    case chat = "Chat"
     case quiz = "Quiz"
     case flashcards = "Flashcards"
-    case chat = "Chat"
-    
+    case podcast = "Podcast"
+
     var icon: String {
         switch self {
         case .notes: return "doc.text.fill"
-        case .summary: return "square.and.arrow.up.on.square"
-        case .podcast: return "waveform"
+        case .chat: return "message.fill"
         case .quiz: return "questionmark.circle.fill"
         case .flashcards: return "rectangle.stack.fill"
-        case .chat: return "message.fill"
+        case .podcast: return "waveform"
         }
+    }
+
+    // Tabs shown in the bottom bar
+    static var bottomBarTabs: [NoteDetailTab] {
+        [.notes, .chat, .quiz, .flashcards, .podcast]
     }
 }
 
@@ -41,38 +44,8 @@ struct NoteDetailTabView: View {
         ZStack {
             Color.darkBackground
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
-                // Tab Bar
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(NoteDetailTab.allCases, id: \.self) { tab in
-                            TabButton(
-                                title: tab.rawValue,
-                                icon: tab.icon,
-                                isSelected: selectedTab == tab
-                            ) {
-                                if selectedTab != tab {
-                                    // Track tab switch
-                                    AnalyticsService.shared.trackTabSwitched(
-                                        fromTab: selectedTab.rawValue,
-                                        toTab: tab.rawValue,
-                                        noteId: note.id
-                                    )
-                                    previousTab = selectedTab
-                                    selectedTab = tab
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 12)
-                }
-                .background(Color.cardBackground)
-                
-                Divider()
-                    .background(Color.darkSurfaceVariant)
-                
                 // Trial Banner (shows when in trial period)
                 TrialBannerView()
 
@@ -81,13 +54,9 @@ struct NoteDetailTabView: View {
                     NotesTabContent(note: note)
                         .tag(NoteDetailTab.notes)
 
-                    SummaryTabContent(note: note)
-                        .subscriptionGated(featureName: "AI Summaries")
-                        .tag(NoteDetailTab.summary)
-
-                    PodcastTabContent(note: note)
-                        .subscriptionGated(featureName: "AI Podcasts")
-                        .tag(NoteDetailTab.podcast)
+                    ChatTabContent(note: note)
+                        .subscriptionGated(featureName: "AI Chat")
+                        .tag(NoteDetailTab.chat)
 
                     QuizTabContent(note: note)
                         .subscriptionGated(featureName: "AI Quizzes")
@@ -97,11 +66,14 @@ struct NoteDetailTabView: View {
                         .subscriptionGated(featureName: "AI Flashcards")
                         .tag(NoteDetailTab.flashcards)
 
-                    ChatTabContent(note: note)
-                        .subscriptionGated(featureName: "AI Chat")
-                        .tag(NoteDetailTab.chat)
+                    PodcastTabContent(note: note)
+                        .subscriptionGated(featureName: "AI Podcasts")
+                        .tag(NoteDetailTab.podcast)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+
+                // Bottom Tab Bar
+                bottomTabBar
             }
         }
         .navigationBarTitleDisplayMode(.inline)
@@ -112,13 +84,13 @@ struct NoteDetailTabView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.textPrimary)
                         .lineLimit(1)
-                    
+
                     Text(formatDate(note.createdAt))
                         .font(.system(size: 12))
                         .foregroundColor(.textSecondary)
                 }
             }
-            
+
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button(action: {
@@ -126,7 +98,7 @@ struct NoteDetailTabView: View {
                     }) {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
-                    
+
                     Button(role: .destructive, action: {
                         showingDeleteAlert = true
                     }) {
@@ -154,7 +126,40 @@ struct NoteDetailTabView: View {
             AnalyticsService.shared.trackNoteViewed(noteId: note.id, sourceType: note.sourceType ?? "unknown")
         }
     }
-    
+
+    // MARK: - Bottom Tab Bar
+
+    private var bottomTabBar: some View {
+        HStack(spacing: 0) {
+            ForEach(NoteDetailTab.bottomBarTabs, id: \.self) { tab in
+                BottomTabButton(
+                    title: tab.rawValue,
+                    icon: tab.icon,
+                    isSelected: selectedTab == tab
+                ) {
+                    if selectedTab != tab {
+                        AnalyticsService.shared.trackTabSwitched(
+                            fromTab: selectedTab.rawValue,
+                            toTab: tab.rawValue,
+                            noteId: note.id
+                        )
+                        previousTab = selectedTab
+                        selectedTab = tab
+                    }
+                }
+            }
+        }
+        .padding(.top, 8)
+        .padding(.bottom, 4)
+        .background(Color.cardBackground)
+        .overlay(
+            Rectangle()
+                .fill(Color.darkSurfaceVariant)
+                .frame(height: 1),
+            alignment: .top
+        )
+    }
+
     private func deleteNote() {
         guard let token = KeychainService.shared.get(Constants.Keychain.accessToken) else {
             return
@@ -168,13 +173,13 @@ struct NoteDetailTabView: View {
             dismiss()
         }
     }
-    
+
     private func formatDate(_ dateString: String) -> String {
         let formatter = ISO8601DateFormatter()
         guard let date = formatter.date(from: dateString) else {
             return "Recently"
         }
-        
+
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         return dateFormatter.string(from: date)
@@ -186,7 +191,7 @@ struct TabButton: View {
     let icon: String
     let isSelected: Bool
     let action: () -> Void
-    
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
@@ -205,5 +210,28 @@ struct TabButton: View {
                     .stroke(isSelected ? Color.clear : Color.darkSurfaceVariant, lineWidth: 1)
             )
         }
+    }
+}
+
+// MARK: - Bottom Tab Button (for fixed bottom navigation)
+struct BottomTabButton: View {
+    let title: String
+    let icon: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .frame(maxWidth: .infinity)
+            .foregroundColor(isSelected ? .purple80 : .textSecondary)
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }

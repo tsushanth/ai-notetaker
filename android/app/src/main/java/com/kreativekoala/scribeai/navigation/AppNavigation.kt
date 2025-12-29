@@ -29,11 +29,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.kreativekoala.scribeai.data.local.ScribeDatabase
+import com.kreativekoala.scribeai.onboarding.OnboardingManager
+import com.kreativekoala.scribeai.onboarding.OnboardingScreen
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import com.kreativekoala.scribeai.viewmodel.NoteDetailState
 import com.kreativekoala.scribeai.data.local.NoteCacheRepository as LocalNoteRepository
 
 sealed class Screen(val route: String) {
+    object Onboarding : Screen("onboarding")
     object Login : Screen("login")
     object SignUp : Screen("signup")
     object Home : Screen("home")
@@ -54,9 +57,18 @@ fun AppNavigation(
     subscriptionManager: SubscriptionManager,
     navController: NavHostController = rememberNavController()
 ) {
+    val context = LocalContext.current
+    val onboardingManager = remember { OnboardingManager.getInstance(context) }
+    val hasCompletedOnboarding by onboardingManager.hasCompletedOnboarding.collectAsState()
+
     // Calculate start destination ONCE at initial composition
+    // Show onboarding for new users who haven't completed it and aren't logged in yet
     val startDestination = remember {
-        if (authManager.authToken.value != null) Screen.Home.route else Screen.Login.route
+        when {
+            authManager.authToken.value != null -> Screen.Home.route
+            !hasCompletedOnboarding -> Screen.Onboarding.route
+            else -> Screen.Login.route
+        }
     }
 
     // Observe auth state for reactive navigation (sign out handling)
@@ -73,10 +85,18 @@ fun AppNavigation(
                 }
             }
         }
+
+        // Sync onboarding preferences to backend after successful authentication
+        if (authState is AuthState.Authenticated) {
+            val token = (authState as AuthState.Authenticated).token
+            if (onboardingManager.needsSync()) {
+                Log.d("AppNavigation", "Syncing onboarding preferences to backend")
+                onboardingManager.syncPreferencesToBackend(token)
+            }
+        }
     }
 
     // Initialize NoteViewModel with dependencies
-    val context = LocalContext.current
     val localNoteRepository = remember {
         LocalNoteRepository(ScribeDatabase.getInstance(context).noteCacheDao())
     }
@@ -92,6 +112,19 @@ fun AppNavigation(
         navController = navController,
         startDestination = startDestination
     ) {
+        // Onboarding Screen
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onboardingManager = onboardingManager,
+                subscriptionManager = subscriptionManager,
+                onComplete = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // Login Screen
         composable(Screen.Login.route) {
             LoginScreen(

@@ -296,23 +296,23 @@ struct ProfileView: View {
         }
         .alert("About Scribe AI", isPresented: $showingAboutAlert) {
             Button("Visit Website", action: {
-                if let url = URL(string: "https://sendsmiles.biz") {
+                if let url = URL(string: "https://scribeai.online") {
                     UIApplication.shared.open(url)
                 }
             })
             Button("Privacy Policy", action: {
-                if let url = URL(string: "https://www.sendsmiles.biz/privacy-policy") {
+                if let url = URL(string: "https://scribeai.online/privacy") {
                     UIApplication.shared.open(url)
                 }
             })
             Button("Terms of Service", action: {
-                if let url = URL(string: "https://www.sendsmiles.biz/terms-of-service") {
+                if let url = URL(string: "https://scribeai.online/terms") {
                     UIApplication.shared.open(url)
                 }
             })
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Scribe AI - Your AI-powered study assistant\n\nVersion 1.0.0\n\n© 2024 Scribe AI. All rights reserved.")
+            Text("Scribe AI - Your AI-powered study assistant\n\nVersion 1.0.0\n\n© 2025 Kreative Koala. All rights reserved.")
         }
         // Delete Account Initial Alert
         .alert("Delete Account", isPresented: $showingDeleteAccountAlert) {
@@ -555,7 +555,7 @@ struct ProfileView: View {
     private func showEmailCopiedAlert() {
         let alert = UIAlertController(
             title: "Email Copied",
-            message: "Our support email (puzzleverseai@gmail.com) has been copied to your clipboard. Please paste it into your email app.",
+            message: "Our support email (support@scribeai.online) has been copied to your clipboard. Please paste it into your email app.",
             preferredStyle: .alert
         )
         alert.addAction(UIAlertAction(title: "OK", style: .default))

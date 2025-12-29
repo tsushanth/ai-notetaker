@@ -122,7 +122,17 @@ object AnalyticsService {
         // Errors
         PROCESSING_ERROR("processing_error"),
         PAYMENT_ERROR("payment_error"),
-        FEATURE_BLOCKED("feature_blocked")
+        FEATURE_BLOCKED("feature_blocked"),
+
+        // Onboarding
+        ONBOARDING_STARTED("onboarding_started"),
+        ONBOARDING_STEP_COMPLETED("onboarding_step_completed"),
+        ONBOARDING_COMPLETED("onboarding_completed"),
+        ONBOARDING_SKIPPED("onboarding_skipped"),
+        TRIAL_SKIPPED("trial_skipped"),
+
+        // Promo codes
+        PROMO_CODE_APPLIED("promo_code_applied")
     }
 
     // Dedicated coroutine scope for background analytics
@@ -793,6 +803,53 @@ object AnalyticsService {
                 Total app time: $totalAppTimeMinutes minutes
             """.trimIndent())
         }
+    }
+
+    // MARK: - Onboarding Events
+
+    fun trackOnboardingStarted() {
+        track(Event.ONBOARDING_STARTED, mapOf(
+            "days_since_install" to daysSinceInstall
+        ))
+    }
+
+    fun trackOnboardingStepCompleted(stepIndex: Int, stepName: String, selection: String? = null) {
+        val properties = mutableMapOf<String, Any>(
+            "step" to stepIndex,
+            "step_name" to stepName
+        )
+        if (selection != null) {
+            properties["selection"] = selection
+        }
+        track(Event.ONBOARDING_STEP_COMPLETED, properties)
+    }
+
+    fun trackOnboardingCompleted(userType: String?, useCases: List<String>) {
+        track(Event.ONBOARDING_COMPLETED, mapOf(
+            "user_type" to (userType ?: "not_selected"),
+            "use_cases" to useCases,
+            "days_since_install" to daysSinceInstall
+        ))
+    }
+
+    fun trackOnboardingSkipped(atStep: Int, stepName: String) {
+        track(Event.ONBOARDING_SKIPPED, mapOf(
+            "at_step" to atStep,
+            "step_name" to stepName
+        ))
+    }
+
+    fun trackTrialSkipped() {
+        track(Event.TRIAL_SKIPPED, mapOf(
+            "days_since_install" to daysSinceInstall
+        ))
+    }
+
+    fun trackPromoCodeApplied(code: String) {
+        track(Event.PROMO_CODE_APPLIED, mapOf(
+            "code" to code,
+            "days_since_install" to daysSinceInstall
+        ))
     }
 
     fun resetForTesting() {

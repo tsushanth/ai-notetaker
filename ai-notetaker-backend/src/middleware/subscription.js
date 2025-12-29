@@ -156,6 +156,7 @@ const recordUsage = async (userId, featureType, metadata = {}) => {
 
 /**
  * Get user's subscription status with server-side trial tracking
+ * Also checks for creator premium access with abuse prevention
  */
 async function getSubscriptionStatus(userId) {
   // Check for active subscription first
@@ -186,6 +187,20 @@ async function getSubscriptionStatus(userId) {
     }
   }
 
+  // Check for creator premium access (before trial check)
+  const creatorAccess = await getCreatorPremiumAccess(userId);
+  if (creatorAccess.hasAccess) {
+    return {
+      hasAccess: true,
+      isSubscribed: false,
+      isInTrial: false,
+      isCreator: true,
+      reason: creatorAccess.reason,
+      creatorGracePeriodEnds: creatorAccess.gracePeriodEnds,
+      conversions: creatorAccess.conversions
+    };
+  }
+
   // No active subscription - check trial status (server-side)
   const trialStatus = await getServerTrialStatus(userId);
 
@@ -208,6 +223,77 @@ async function getSubscriptionStatus(userId) {
     trialExpired: trialStatus.trialExpired,
     reason: trialStatus.trialExpired ? 'trial_expired' : 'no_subscription',
     trialDaysRemaining: 0
+  };
+}
+
+/**
+ * Check if user has creator premium access with abuse prevention
+ * Rules:
+ * - 30-day grace period for new creators (free premium regardless of conversions)
+ * - After 30 days, require at least 1 conversion to maintain free premium
+ * - Creators with no conversions after grace period lose premium until they convert someone
+ */
+async function getCreatorPremiumAccess(userId) {
+  const CREATOR_GRACE_PERIOD_DAYS = 30;
+
+  // Check if user is a creator
+  const { data: creator, error } = await supabase
+    .from('creators')
+    .select('id, status, has_premium_access, created_at')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .single();
+
+  if (error || !creator || !creator.has_premium_access) {
+    return { hasAccess: false };
+  }
+
+  const now = new Date();
+  const createdAt = new Date(creator.created_at);
+  const gracePeriodEnds = new Date(createdAt.getTime() + CREATOR_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000);
+  const isInGracePeriod = now < gracePeriodEnds;
+
+  // During grace period, always grant access
+  if (isInGracePeriod) {
+    const daysRemaining = Math.ceil((gracePeriodEnds - now) / (24 * 60 * 60 * 1000));
+    return {
+      hasAccess: true,
+      reason: 'creator_grace_period',
+      gracePeriodEnds: gracePeriodEnds.toISOString(),
+      gracePeriodDaysRemaining: daysRemaining,
+      conversions: 0
+    };
+  }
+
+  // Grace period expired - check for conversions
+  const { count: conversions } = await supabase
+    .from('promo_redemptions')
+    .select('id', { count: 'exact', head: true })
+    .eq('creator_id', creator.id)
+    .eq('attribution_status', 'attributed');
+
+  const hasConversions = conversions > 0;
+
+  if (hasConversions) {
+    return {
+      hasAccess: true,
+      reason: 'creator_with_conversions',
+      conversions: conversions
+    };
+  }
+
+  // No conversions after grace period - no premium access
+  logger.info('Creator premium access revoked - no conversions after grace period', {
+    userId,
+    creatorId: creator.id,
+    gracePeriodEnded: gracePeriodEnds.toISOString()
+  });
+
+  return {
+    hasAccess: false,
+    reason: 'creator_no_conversions',
+    conversions: 0,
+    gracePeriodEnded: gracePeriodEnds.toISOString()
   };
 }
 
@@ -348,5 +434,6 @@ module.exports = {
   recordUsage,
   requireSubscriptionForPodcast,
   getSubscriptionStatus,
+  getCreatorPremiumAccess,
   FREE_TIER_LIMITS
 };

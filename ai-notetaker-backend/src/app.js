@@ -4,6 +4,13 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+// ============================================
+// CRITICAL: Validate environment variables FIRST
+// Server will exit if required vars are missing
+// ============================================
+const { validateEnvOrExit } = require('./config/envValidation');
+validateEnvOrExit();
+
 const { errorHandler } = require('./middleware/errorHandler');
 const { requestLogger } = require('./utils/logger');
 
@@ -17,6 +24,11 @@ const userRoutes = require('./routes/user');
 const analyticsRoutes = require('./routes/analytics');
 const alertsRoutes = require('./routes/alerts');
 const subscriptionsRoutes = require('./routes/subscriptions');
+const onboardingRoutes = require('./routes/onboarding');
+const formattingRoutes = require('./routes/formatting');
+const authRoutes = require('./routes/auth');
+const creatorsRoutes = require('./routes/creators');
+const { createJobRoutes, initializeCronJobs } = require('./jobs/creatorPayoutJobs');
 
 const app = express();
 
@@ -31,9 +43,18 @@ app.set('trust proxy', true);
 app.use(helmet());
 
 // CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'];
+const allowedOriginsEnv = process.env.ALLOWED_ORIGINS || 'http://localhost:3000';
+const allowAllOrigins = allowedOriginsEnv === '*';
+const allowedOrigins = allowAllOrigins ? [] : allowedOriginsEnv.split(',');
+
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow all origins if ALLOWED_ORIGINS is '*'
+    if (allowAllOrigins) {
+      callback(null, true);
+      return;
+    }
+    // Allow requests with no origin (like mobile apps or curl)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -49,6 +70,11 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging
 app.use(requestLogger);
+
+// Rate limiting allowlist (for testing)
+// Add IPs to RATE_LIMIT_ALLOWLIST env var as comma-separated values
+const rateLimitAllowlist = (process.env.RATE_LIMIT_ALLOWLIST || '').split(',').filter(ip => ip.trim());
+const rateLimitDisabled = process.env.RATE_LIMIT_DISABLED === 'true';
 
 // Rate limiting with proper proxy support
 const limiter = rateLimit({
@@ -68,11 +94,25 @@ const limiter = rateLimit({
     // Fallback to req.ip (which works correctly when trust proxy is enabled)
     return req.ip || req.connection.remoteAddress || 'unknown';
   },
+  // Skip rate limiting for allowlisted IPs or when disabled
+  skip: (req) => {
+    if (rateLimitDisabled) {
+      return true;
+    }
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
+    const isAllowlisted = rateLimitAllowlist.some(ip => clientIp.includes(ip.trim()));
+    if (isAllowlisted) {
+      console.log(`Rate limit bypassed for allowlisted IP: ${clientIp}`);
+    }
+    return isAllowlisted;
+  },
   // Skip failed requests to prevent attackers from bypassing rate limit
   skipFailedRequests: false,
   skipSuccessfulRequests: false,
   // Custom handler for rate limit exceeded
   handler: (req, res) => {
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
+    console.log(`Rate limit exceeded for IP: ${clientIp}`);
     res.status(429).json({
       success: false,
       error: 'Too many requests from this IP, please try again later.'
@@ -91,6 +131,16 @@ app.use('/api/user', userRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/formatting', formattingRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/creators', creatorsRoutes);
+app.use('/api/jobs', createJobRoutes());
+
+// Initialize cron jobs (if node-cron is installed)
+if (process.env.ENABLE_CRON_JOBS === 'true') {
+  initializeCronJobs();
+}
 
 // 404 handler
 app.use('*', (req, res) => {

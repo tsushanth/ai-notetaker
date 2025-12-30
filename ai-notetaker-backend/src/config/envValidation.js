@@ -29,6 +29,11 @@ const requiredEnvVars = [
 
   // YouTube transcript fallback - essential for videos without native captions
   { name: 'SUPADATA_API_KEY', description: 'Supadata API key for YouTube transcript fallback' },
+
+  // Stripe - Required for web subscriptions
+  { name: 'STRIPE_SECRET_KEY', description: 'Stripe secret key for payment processing' },
+  { name: 'STRIPE_PRICE_MONTHLY', description: 'Stripe price ID for monthly subscription' },
+  { name: 'STRIPE_PRICE_YEARLY', description: 'Stripe price ID for yearly subscription' },
 ];
 
 const optionalEnvVars = [
@@ -58,6 +63,10 @@ const optionalEnvVars = [
 
   // Alerts
   { name: 'ALERT_EMAIL_PASS', description: 'Email password for alerts', default: '' },
+
+  // Stripe webhook secret (optional but recommended for production)
+  { name: 'STRIPE_WEBHOOK_SECRET', description: 'Stripe webhook signing secret', default: '' },
+  { name: 'STRIPE_PUBLISHABLE_KEY', description: 'Stripe publishable key (for client)', default: '' },
 ];
 
 /**

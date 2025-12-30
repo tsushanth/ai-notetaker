@@ -182,7 +182,8 @@ async function getSubscriptionStatus(userId) {
         isInTrial: subscription.is_trial,
         reason: 'active_subscription',
         productId: subscription.product_id,
-        expiresAt: subscription.current_period_end
+        expiresAt: subscription.current_period_end,
+        platform: subscription.platform || 'unknown'
       };
     }
   }
@@ -405,13 +406,32 @@ function getFeatureLimit(featureType) {
 const requireSubscriptionForPodcast = async (req, res, next) => {
   try {
     const userId = req.userId;
+
+    logger.info('Podcast subscription check starting', { userId });
+
     const subscriptionStatus = await getSubscriptionStatus(userId);
 
+    logger.info('Podcast subscription check result', {
+      userId,
+      isSubscribed: subscriptionStatus.isSubscribed,
+      isInTrial: subscriptionStatus.isInTrial,
+      isCreator: subscriptionStatus.isCreator,
+      hasAccess: subscriptionStatus.hasAccess,
+      reason: subscriptionStatus.reason
+    });
+
     // Only subscribers and trial users can generate podcasts
-    if (subscriptionStatus.isSubscribed || subscriptionStatus.isInTrial) {
+    // Also allow creators with premium access
+    if (subscriptionStatus.isSubscribed || subscriptionStatus.isInTrial || subscriptionStatus.isCreator) {
       req.subscription = subscriptionStatus;
       return next();
     }
+
+    logger.info('Podcast access denied', {
+      userId,
+      reason: subscriptionStatus.reason,
+      trialExpired: subscriptionStatus.trialExpired
+    });
 
     return res.status(403).json({
       success: false,
@@ -419,11 +439,13 @@ const requireSubscriptionForPodcast = async (req, res, next) => {
       code: 'SUBSCRIPTION_REQUIRED',
       details: {
         feature: 'podcast',
-        upgradeRequired: true
+        upgradeRequired: true,
+        reason: subscriptionStatus.reason,
+        trialExpired: subscriptionStatus.trialExpired
       }
     });
   } catch (error) {
-    logger.error('Podcast subscription check failed', { error: error.message });
+    logger.error('Podcast subscription check failed', { error: error.message, userId: req.userId });
     next();
   }
 };

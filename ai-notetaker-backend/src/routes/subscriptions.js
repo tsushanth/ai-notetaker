@@ -5,11 +5,22 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
 const crypto = require('crypto');
+const Stripe = require('stripe');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Stripe Price IDs - these need to be created in Stripe Dashboard
+// You'll need to set these after creating products in Stripe
+const STRIPE_PRICES = {
+  monthly: process.env.STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
+  yearly: process.env.STRIPE_PRICE_YEARLY || 'price_yearly_placeholder'
+};
 
 // ============================================
 // Subscription Sync Endpoint (from iOS/Android client)
@@ -232,6 +243,7 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
       // Subscription info (if subscribed)
       productId: status.productId || null,
       expiresAt: status.expiresAt || null,
+      platform: status.platform || null,
 
       // Usage (for free tier)
       usage: {
@@ -339,6 +351,437 @@ router.post('/event', authenticate, asyncHandler(async (req, res) => {
 
   res.json({ success: true });
 }));
+
+// ============================================
+// Stripe Checkout - Create checkout session
+// ============================================
+router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const { priceId, plan } = req.body;
+
+  logger.info('Creating Stripe checkout session', { userId, plan, priceId });
+
+  try {
+    // Get user email from auth middleware (already authenticated)
+    const userEmail = req.userEmail || req.user?.email;
+    const userName = req.user?.user_metadata?.name || req.user?.user_metadata?.full_name;
+
+    if (!userEmail) {
+      logger.error('User email not found for checkout', { userId, hasUser: !!req.user });
+      return res.status(400).json({
+        success: false,
+        error: 'User email not found'
+      });
+    }
+
+    logger.info('Found user for checkout', { userId, email: userEmail, name: userName });
+
+    // Check if user already has a Stripe customer ID
+    let { data: existingSubscription } = await supabase
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', userId)
+      .single();
+
+    let customerId = existingSubscription?.stripe_customer_id;
+    logger.info('Existing subscription check', { userId, hasExistingCustomerId: !!customerId });
+
+    // Create or get Stripe customer
+    if (!customerId) {
+      logger.info('Creating new Stripe customer', { userId, email: userEmail });
+      const customer = await stripe.customers.create({
+        email: userEmail,
+        name: userName || undefined,
+        metadata: { userId }
+      });
+      customerId = customer.id;
+      logger.info('Created Stripe customer', { userId, customerId });
+    }
+
+    // Determine price ID
+    const selectedPriceId = priceId || (plan === 'yearly' ? STRIPE_PRICES.yearly : STRIPE_PRICES.monthly);
+    logger.info('Selected price ID', { userId, selectedPriceId, plan });
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items: [{
+        price: selectedPriceId,
+        quantity: 1,
+      }],
+      success_url: `${process.env.WEB_APP_URL || 'https://scribeai.online'}/settings?subscription=success`,
+      cancel_url: `${process.env.WEB_APP_URL || 'https://scribeai.online'}/settings?subscription=cancelled`,
+      subscription_data: {
+        metadata: { userId, platform: 'web' },
+        trial_period_days: 7, // 7-day trial
+      },
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto',
+      customer_update: {
+        address: 'auto',
+        name: 'auto',
+      },
+    });
+
+    logger.info('Stripe checkout session created', { userId, sessionId: session.id });
+
+    res.json({
+      success: true,
+      data: {
+        sessionId: session.id,
+        url: session.url
+      }
+    });
+  } catch (error) {
+    logger.error('Stripe checkout error', {
+      userId,
+      error: error.message,
+      type: error.type,
+      code: error.code,
+      statusCode: error.statusCode,
+      stack: error.stack
+    });
+    return res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to create checkout session'
+    });
+  }
+}));
+
+// ============================================
+// Stripe Checkout - Get available plans/prices
+// ============================================
+router.get('/stripe/prices', asyncHandler(async (req, res) => {
+  try {
+    // Fetch active prices from Stripe
+    const prices = await stripe.prices.list({
+      active: true,
+      expand: ['data.product'],
+      limit: 20
+    });
+
+    // Filter for only Scribe AI Premium prices
+    const scribeAiPriceIds = [
+      process.env.STRIPE_PRICE_MONTHLY,
+      process.env.STRIPE_PRICE_YEARLY
+    ].filter(Boolean);
+
+    const plans = prices.data
+      .filter(price => {
+        // Filter by price ID if configured, otherwise by product name
+        if (scribeAiPriceIds.length > 0) {
+          return scribeAiPriceIds.includes(price.id);
+        }
+        // Fallback: filter by product name containing "Scribe"
+        return price.product && !price.product.deleted &&
+               price.product.name && price.product.name.toLowerCase().includes('scribe');
+      })
+      .map(price => ({
+        id: price.id,
+        name: price.product.name,
+        description: price.product.description,
+        amount: price.unit_amount,
+        currency: price.currency,
+        interval: price.recurring?.interval,
+        intervalCount: price.recurring?.interval_count,
+        trialDays: price.recurring?.trial_period_days || 7
+      }))
+      .sort((a, b) => a.amount - b.amount);
+
+    res.json({
+      success: true,
+      data: plans
+    });
+  } catch (error) {
+    logger.error('Failed to fetch Stripe prices', { error: error.message });
+    res.json({
+      success: true,
+      data: [] // Return empty if Stripe prices not configured yet
+    });
+  }
+}));
+
+// ============================================
+// Stripe Customer Portal - Manage subscription
+// ============================================
+router.post('/stripe/portal', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
+
+  // Get user's Stripe customer ID
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('stripe_customer_id')
+    .eq('user_id', userId)
+    .single();
+
+  if (!subscription?.stripe_customer_id) {
+    return res.status(400).json({
+      success: false,
+      error: 'No subscription found'
+    });
+  }
+
+  // Create portal session
+  const session = await stripe.billingPortal.sessions.create({
+    customer: subscription.stripe_customer_id,
+    return_url: `${process.env.WEB_APP_URL || 'https://scribeai-web-app-917362189743.us-central1.run.app'}/settings`,
+  });
+
+  res.json({
+    success: true,
+    data: { url: session.url }
+  });
+}));
+
+// ============================================
+// Manual Stripe Sync - Pull subscription from Stripe
+// Use this when webhooks fail
+// ============================================
+router.post('/stripe/sync', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const userEmail = req.userEmail || req.user?.email;
+
+  logger.info('Manual Stripe sync requested', { userId, email: userEmail });
+
+  try {
+    // Find customer by email in Stripe
+    const customers = await stripe.customers.list({
+      email: userEmail,
+      limit: 1
+    });
+
+    if (customers.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No Stripe customer found for this email'
+      });
+    }
+
+    const customer = customers.data[0];
+    logger.info('Found Stripe customer', { customerId: customer.id });
+
+    // Get active subscriptions for this customer
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: 'all',
+      limit: 1
+    });
+
+    if (subscriptions.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No subscription found for this customer'
+      });
+    }
+
+    const stripeSubscription = subscriptions.data[0];
+    logger.info('Found Stripe subscription', {
+      subscriptionId: stripeSubscription.id,
+      status: stripeSubscription.status
+    });
+
+    // Update our database
+    const currentPeriodEnd = stripeSubscription.current_period_end
+      ? new Date(stripeSubscription.current_period_end * 1000).toISOString()
+      : null;
+
+    const subscriptionData = {
+      user_id: userId,
+      stripe_subscription_id: stripeSubscription.id,
+      stripe_customer_id: customer.id,
+      product_id: stripeSubscription.items?.data?.[0]?.price?.id || 'stripe_subscription',
+      platform: 'web',
+      status: stripeSubscription.status === 'active' || stripeSubscription.status === 'trialing' ? 'active' : stripeSubscription.status,
+      current_period_start: stripeSubscription.current_period_start
+        ? new Date(stripeSubscription.current_period_start * 1000).toISOString()
+        : null,
+      current_period_end: currentPeriodEnd,
+      is_trial: stripeSubscription.status === 'trialing',
+      trial_end: stripeSubscription.trial_end
+        ? new Date(stripeSubscription.trial_end * 1000).toISOString()
+        : null,
+      auto_renew_enabled: !stripeSubscription.cancel_at_period_end,
+      updated_at: new Date().toISOString()
+    };
+
+    // Upsert subscription
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .upsert(subscriptionData, { onConflict: 'user_id' })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error('Failed to upsert subscription', { error: error.message });
+      throw error;
+    }
+
+    logger.info('Subscription synced successfully', { userId, subscriptionId: data.id });
+
+    res.json({
+      success: true,
+      message: 'Subscription synced from Stripe',
+      data: {
+        status: subscriptionData.status,
+        expiresAt: subscriptionData.current_period_end,
+        isTrial: subscriptionData.is_trial,
+        productId: subscriptionData.product_id
+      }
+    });
+  } catch (error) {
+    logger.error('Stripe sync error', { error: error.message, userId });
+    return res.status(400).json({
+      success: false,
+      error: error.message || 'Failed to sync subscription'
+    });
+  }
+}));
+
+// ============================================
+// Stripe Webhook - Handle subscription events
+// ============================================
+router.post('/webhook/stripe', express.raw({ type: 'application/json' }), asyncHandler(async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    if (webhookSecret) {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } else {
+      // For testing without webhook signature verification
+      event = JSON.parse(req.body.toString());
+      logger.warn('Stripe webhook signature verification skipped - no webhook secret configured');
+    }
+  } catch (err) {
+    logger.error('Stripe webhook signature verification failed', { error: err.message });
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  logger.info('Stripe webhook received', { type: event.type, id: event.id });
+
+  const subscription = event.data.object;
+
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      // New subscription created via checkout
+      const session = event.data.object;
+      if (session.mode === 'subscription' && session.subscription) {
+        const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription);
+        await handleStripeSubscriptionUpdate(stripeSubscription, 'checkout_completed');
+      }
+      break;
+    }
+
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+      await handleStripeSubscriptionUpdate(subscription, event.type);
+      break;
+
+    case 'customer.subscription.deleted':
+      await handleStripeSubscriptionDeleted(subscription);
+      break;
+
+    case 'invoice.payment_succeeded':
+      // Renewal successful
+      if (subscription.subscription) {
+        const sub = await stripe.subscriptions.retrieve(subscription.subscription);
+        await handleStripeSubscriptionUpdate(sub, 'invoice_paid');
+      }
+      break;
+
+    case 'invoice.payment_failed':
+      // Payment failed - subscription may go to past_due
+      logger.info('Stripe payment failed', {
+        customerId: subscription.customer,
+        subscriptionId: subscription.subscription
+      });
+      break;
+  }
+
+  res.json({ received: true });
+}));
+
+// Helper: Handle Stripe subscription updates
+async function handleStripeSubscriptionUpdate(subscription, eventType) {
+  const userId = subscription.metadata?.userId;
+  const customerId = subscription.customer;
+
+  if (!userId) {
+    // Try to find user by customer ID
+    const { data: existingSub } = await supabase
+      .from('subscriptions')
+      .select('user_id')
+      .eq('stripe_customer_id', customerId)
+      .single();
+
+    if (!existingSub) {
+      logger.warn('Stripe subscription update: No user found', { customerId, subscriptionId: subscription.id });
+      return;
+    }
+  }
+
+  const currentPeriodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000).toISOString()
+    : null;
+
+  const subscriptionData = {
+    user_id: userId || undefined,
+    stripe_subscription_id: subscription.id,
+    stripe_customer_id: customerId,
+    product_id: subscription.items?.data?.[0]?.price?.id || 'stripe_subscription',
+    platform: 'web',
+    status: subscription.status === 'active' || subscription.status === 'trialing' ? 'active' : subscription.status,
+    current_period_start: subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000).toISOString()
+      : null,
+    current_period_end: currentPeriodEnd,
+    is_trial: subscription.status === 'trialing',
+    trial_end: subscription.trial_end
+      ? new Date(subscription.trial_end * 1000).toISOString()
+      : null,
+    auto_renew_enabled: !subscription.cancel_at_period_end,
+    updated_at: new Date().toISOString()
+  };
+
+  // Upsert subscription
+  const { error } = await supabase
+    .from('subscriptions')
+    .upsert(subscriptionData, {
+      onConflict: userId ? 'user_id' : 'stripe_subscription_id'
+    });
+
+  if (error) {
+    logger.error('Failed to update subscription from Stripe webhook', { error: error.message });
+  } else {
+    logger.info('Subscription updated from Stripe', {
+      userId,
+      status: subscriptionData.status,
+      eventType
+    });
+  }
+}
+
+// Helper: Handle Stripe subscription deletion
+async function handleStripeSubscriptionDeleted(subscription) {
+  const { error } = await supabase
+    .from('subscriptions')
+    .update({
+      status: 'cancelled',
+      cancellation_date: new Date().toISOString(),
+      cancellation_reason: 'stripe_deleted',
+      updated_at: new Date().toISOString()
+    })
+    .eq('stripe_subscription_id', subscription.id);
+
+  if (error) {
+    logger.error('Failed to mark subscription as cancelled', { error: error.message });
+  } else {
+    logger.info('Subscription marked as cancelled', { subscriptionId: subscription.id });
+  }
+}
 
 // ============================================
 // Apple App Store Server Notifications v2
@@ -674,4 +1117,52 @@ function calculatePlatformBreakdown(subscriptions) {
   return breakdown;
 }
 
+/**
+ * Handle Stripe webhook events - called from app.js
+ * This is exported separately because the webhook route needs to be
+ * defined before the JSON parser middleware in app.js
+ */
+async function handleStripeWebhook(event, stripeClient) {
+  const subscription = event.data.object;
+
+  switch (event.type) {
+    case 'checkout.session.completed': {
+      // New subscription created via checkout
+      const session = event.data.object;
+      if (session.mode === 'subscription' && session.subscription) {
+        const stripeSubscription = await stripeClient.subscriptions.retrieve(session.subscription);
+        await handleStripeSubscriptionUpdate(stripeSubscription, 'checkout_completed');
+      }
+      break;
+    }
+
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated':
+      await handleStripeSubscriptionUpdate(subscription, event.type);
+      break;
+
+    case 'customer.subscription.deleted':
+      await handleStripeSubscriptionDeleted(subscription);
+      break;
+
+    case 'invoice.payment_succeeded':
+      // Renewal successful
+      if (subscription.subscription) {
+        const sub = await stripeClient.subscriptions.retrieve(subscription.subscription);
+        await handleStripeSubscriptionUpdate(sub, 'invoice_paid');
+      }
+      break;
+
+    case 'invoice.payment_failed':
+      // Payment failed - subscription may go to past_due
+      logger.info('Stripe payment failed', {
+        customerId: subscription.customer,
+        subscriptionId: subscription.subscription
+      });
+      break;
+  }
+}
+
+// Export both router and webhook handler
 module.exports = router;
+module.exports.handleStripeWebhook = handleStripeWebhook;

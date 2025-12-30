@@ -64,6 +64,50 @@ app.use(cors({
   credentials: true
 }));
 
+// ============================================
+// IMPORTANT: Stripe webhook needs raw body for signature verification
+// This route MUST be defined BEFORE express.json() middleware
+// ============================================
+const Stripe = require('stripe');
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const { logger } = require('./utils/logger');
+
+app.post('/api/subscriptions/webhook/stripe',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    let event;
+
+    try {
+      if (webhookSecret && sig) {
+        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+      } else {
+        // For testing without webhook signature verification
+        event = JSON.parse(req.body.toString());
+        logger.warn('Stripe webhook signature verification skipped - no webhook secret configured');
+      }
+    } catch (err) {
+      logger.error('Stripe webhook signature verification failed', { error: err.message });
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    logger.info('Stripe webhook received', { type: event.type, id: event.id });
+
+    // Import the handler functions from subscriptions route
+    const { handleStripeWebhook } = require('./routes/subscriptions');
+
+    try {
+      await handleStripeWebhook(event, stripe);
+      res.json({ received: true });
+    } catch (error) {
+      logger.error('Stripe webhook processing error', { error: error.message });
+      res.json({ received: true }); // Still acknowledge to prevent retries
+    }
+  }
+);
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));

@@ -151,17 +151,53 @@ export const notesApi = {
 // AI Content API
 export const aiApi = {
   getContent: async (token: string, noteId: string) => {
-    const response = await apiRequest<{ success: boolean; data: unknown[] }>(`/api/ai/note/${noteId}`, { token });
+    // Use direct fetch with cache-busting to prevent stale content after regeneration
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(7);
+    const url = `${API_BASE_URL}/api/ai/note/${noteId}?t=${timestamp}&r=${random}`;
+
+    console.log('[getContent] Fetching AI content from:', url);
+
+    const fetchResponse = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+      cache: 'no-store', // Next.js specific - prevent caching
+    });
+
+    console.log('[getContent] HTTP status:', fetchResponse.status);
+
+    if (!fetchResponse.ok) {
+      throw new Error(`Failed to fetch AI content: ${fetchResponse.status}`);
+    }
+
+    const response = await fetchResponse.json() as { success: boolean; data: unknown[] };
+
     // Transform array of AI content items into organized object by content_type
+    // Backend returns items ordered by created_at DESC (newest first)
+    // We only keep the first (newest) item of each type
     const aiContentArray = response.data || [];
     const organized: Record<string, unknown> = {};
 
-    for (const item of aiContentArray as Array<{ content_type: string; content: unknown }>) {
+    console.log('[getContent] Raw response item count:', aiContentArray.length);
+
+    for (const item of aiContentArray as Array<{ content_type: string; content: unknown; created_at?: string }>) {
       if (item.content_type && item.content) {
-        organized[item.content_type] = item.content;
+        // Only set if not already set (keep the first/newest one)
+        if (!organized[item.content_type]) {
+          console.log(`[getContent] Setting ${item.content_type} from item created at:`, item.created_at);
+          organized[item.content_type] = item.content;
+        } else {
+          console.log(`[getContent] Skipping older ${item.content_type} created at:`, item.created_at);
+        }
       }
     }
 
+    console.log('[getContent] Organized content types:', Object.keys(organized));
     return { content: organized };
   },
 
@@ -192,16 +228,16 @@ export const aiApi = {
     return { podcast: response.data };
   },
 
-  chat: async (token: string, noteId: string, message: string, history?: unknown[]) => {
-    const response = await apiRequest<{ success: boolean; data: { response: string } | string }>('/api/ai/chat', {
+  chat: async (token: string, noteId: string, message: string, history?: unknown[], language?: string) => {
+    const response = await apiRequest<{ success: boolean; data: { answer?: string; response?: string } | string }>('/api/ai/chat', {
       method: 'POST',
       token,
-      body: { note_id: noteId, question: message, conversation_history: history },
+      body: { note_id: noteId, question: message, conversation_history: history, language },
     });
-    // Handle both nested response and direct string
+    // Handle various response formats: .answer (backend), .response, or direct string
     const chatResponse = typeof response.data === 'string'
       ? response.data
-      : response.data?.response || '';
+      : response.data?.answer || response.data?.response || '';
     return { response: chatResponse };
   },
 };
@@ -379,4 +415,91 @@ export const creatorsApi = {
   },
 };
 
-export default { authApi, notesApi, aiApi, creatorsApi };
+// Subscription API
+export const subscriptionApi = {
+  getAccess: async (token: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        hasAccess: boolean;
+        isSubscribed: boolean;
+        isInTrial: boolean;
+        reason: string;
+        trialDaysRemaining: number;
+        trialExpiresAt: string | null;
+        trialExpired: boolean;
+        productId: string | null;
+        expiresAt: string | null;
+        usage: {
+          current: { notes: number; aiGenerations: number; podcasts: number };
+          limits: { notesPerMonth: number; aiGenerationsPerMonth: number; podcastsPerMonth: number };
+          remaining: { notes: number; aiGenerations: number; podcasts: number };
+        };
+        features: {
+          canCreateNotes: boolean;
+          canUseAI: boolean;
+          canGeneratePodcasts: boolean;
+          unlimitedAccess: boolean;
+        };
+      };
+    }>('/api/subscriptions/access', { token });
+  },
+
+  getStatus: async (token: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        isSubscribed: boolean;
+        status: string;
+        productId?: string;
+        platform?: string;
+        expiresAt?: string;
+        isTrial?: boolean;
+        trialEndsAt?: string;
+        autoRenewEnabled?: boolean;
+      };
+    }>('/api/subscriptions/status', { token });
+  },
+
+  getPrices: async () => {
+    return apiRequest<{
+      success: boolean;
+      data: Array<{
+        id: string;
+        name: string;
+        description: string;
+        amount: number;
+        currency: string;
+        interval: string;
+        intervalCount: number;
+        trialDays: number;
+      }>;
+    }>('/api/subscriptions/stripe/prices');
+  },
+
+  createCheckout: async (token: string, plan: 'monthly' | 'yearly', priceId?: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        sessionId: string;
+        url: string;
+      };
+    }>('/api/subscriptions/stripe/checkout', {
+      method: 'POST',
+      token,
+      body: { plan, priceId },
+    });
+  },
+
+  openPortal: async (token: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: { url: string };
+    }>('/api/subscriptions/stripe/portal', {
+      method: 'POST',
+      token,
+    });
+  },
+};
+
+export default { authApi, notesApi, aiApi, creatorsApi, subscriptionApi };

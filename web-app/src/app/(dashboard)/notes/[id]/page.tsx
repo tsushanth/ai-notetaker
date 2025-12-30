@@ -221,15 +221,23 @@ export default function NoteDetailPage() {
     setIsGeneratingFlashcards(true);
     try {
       const response = await aiApi.generateFlashcards(token, noteId);
+      console.log('Flashcards API response:', JSON.stringify(response, null, 2));
       const flashcardsData = response.flashcards as any;
+      console.log('flashcardsData:', JSON.stringify(flashcardsData, null, 2));
       // Handle various response formats: .flashcards, .cards, or direct array
       const cards = flashcardsData?.flashcards || flashcardsData?.cards || flashcardsData;
+      console.log('Extracted cards:', JSON.stringify(cards, null, 2));
+      console.log('Is array?', Array.isArray(cards));
       if (Array.isArray(cards)) {
         setFlashcards(cards);
+        console.log('Set flashcards state with', cards.length, 'cards');
+      } else {
+        console.log('Cards is not an array, type:', typeof cards);
       }
       setCurrentCardIndex(0);
       setIsFlipped(false);
     } catch (err) {
+      console.error('Flashcards generation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate flashcards');
     } finally {
       setIsGeneratingFlashcards(false);

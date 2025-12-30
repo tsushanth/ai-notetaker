@@ -20,10 +20,6 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  Check,
-  X,
-  Play,
-  Pause,
   Volume2
 } from 'lucide-react';
 import type { Note, ChatMessage, QuizQuestion, FlashcardContent } from '@/types';
@@ -63,7 +59,6 @@ export default function NoteDetailPage() {
 
   // Podcast state
   const [podcastUrl, setPodcastUrl] = useState<string | null>(null);
-  const [isPlayingPodcast, setIsPlayingPodcast] = useState(false);
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
 
   useEffect(() => {
@@ -87,14 +82,14 @@ export default function NoteDetailPage() {
         const aiContentResponse = await aiApi.getContent(token, noteId);
         const content = aiContentResponse.content as any;
         if (content) {
-          // Quiz data - handle both direct array and nested questions
+          // Quiz data - handle various response formats
           if (content.quiz) {
-            const quizData = content.quiz.questions || content.quiz;
+            const quizData = content.quiz.questions || content.quiz.quiz_questions || content.quiz;
             if (Array.isArray(quizData)) setQuizQuestions(quizData);
           }
-          // Flashcards - handle both array and nested cards
+          // Flashcards - handle various response formats
           if (content.flashcards) {
-            const flashcardsData = content.flashcards.cards || content.flashcards;
+            const flashcardsData = content.flashcards.flashcards || content.flashcards.cards || content.flashcards;
             if (Array.isArray(flashcardsData)) setFlashcards(flashcardsData);
           }
           // Podcast - handle both camelCase and snake_case
@@ -182,8 +177,8 @@ export default function NoteDetailPage() {
     try {
       const response = await aiApi.generateQuiz(token, noteId);
       const quiz = response.quiz as any;
-      // Handle both nested questions and direct array
-      const questions = quiz?.questions || quiz;
+      // Handle various response formats: .questions, .quiz_questions, or direct array
+      const questions = quiz?.questions || quiz?.quiz_questions || quiz;
       if (Array.isArray(questions)) {
         setQuizQuestions(questions);
       }
@@ -227,8 +222,8 @@ export default function NoteDetailPage() {
     try {
       const response = await aiApi.generateFlashcards(token, noteId);
       const flashcardsData = response.flashcards as any;
-      // Handle both nested cards and direct array
-      const cards = flashcardsData?.cards || flashcardsData;
+      // Handle various response formats: .flashcards, .cards, or direct array
+      const cards = flashcardsData?.flashcards || flashcardsData?.cards || flashcardsData;
       if (Array.isArray(cards)) {
         setFlashcards(cards);
       }

@@ -21,7 +21,8 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
-  Volume2
+  Volume2,
+  Lightbulb
 } from 'lucide-react';
 import type { Note, ChatMessage, QuizQuestion, FlashcardContent } from '@/types';
 
@@ -44,6 +45,9 @@ export default function NoteDetailPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Quiz state
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
@@ -88,6 +92,8 @@ export default function NoteDetailPage() {
     // Reset chat state
     setChatMessages([]);
     setChatInput('');
+    setSuggestions([]);
+    setShowSuggestions(false);
     // Reset tab to notes
     setActiveTab('notes');
 
@@ -187,14 +193,48 @@ export default function NoteDetailPage() {
     }
   };
 
+  // Fallback suggestions when API fails
+  const FALLBACK_SUGGESTIONS = [
+    "What are the main concepts in these notes?",
+    "Can you summarize the key points?",
+    "What should I focus on for an exam?"
+  ];
+
+  // Load chat suggestions
+  const handleLoadSuggestions = async () => {
+    if (!token || isLoadingSuggestions) return;
+
+    setShowSuggestions(true);
+    setIsLoadingSuggestions(true);
+
+    try {
+      const fetchedSuggestions = await aiApi.getSuggestions(token, noteId, language);
+      setSuggestions(fetchedSuggestions.length > 0 ? fetchedSuggestions : FALLBACK_SUGGESTIONS);
+    } catch (error) {
+      console.error('Failed to load suggestions:', error);
+      setSuggestions(FALLBACK_SUGGESTIONS);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: string) => {
+    // Remove the used suggestion from the list
+    setSuggestions(prev => prev.filter(s => s !== suggestion));
+    setChatInput(suggestion);
+    // Automatically send the message
+    handleSendChatWithMessage(suggestion);
+  };
+
   // Chat handlers
-  const handleSendChat = async () => {
-    if (!token || !chatInput.trim() || isSendingChat) return;
+  const handleSendChatWithMessage = async (message: string) => {
+    if (!token || !message.trim() || isSendingChat) return;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: chatInput.trim(),
+      content: message.trim(),
       timestamp: new Date(),
     };
 
@@ -221,6 +261,11 @@ export default function NoteDetailPage() {
     } finally {
       setIsSendingChat(false);
     }
+  };
+
+  const handleSendChat = async () => {
+    if (!token || !chatInput.trim() || isSendingChat) return;
+    handleSendChatWithMessage(chatInput);
   };
 
   // Quiz handlers
@@ -577,7 +622,7 @@ export default function NoteDetailPage() {
               {chatMessages.length === 0 && (
                 <div className="text-center py-8 text-[var(--text-muted)]">
                   <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>Ask questions about this note</p>
+                  <p className="mb-4">Ask questions about this note</p>
                 </div>
               )}
               {chatMessages.map((message) => (
@@ -603,23 +648,67 @@ export default function NoteDetailPage() {
                   </div>
                 </div>
               )}
+
+              {/* Suggestions Section - shown after messages or in empty state */}
+              {showSuggestions && suggestions.length > 0 && !isSendingChat && (
+                <div className="mt-4 px-4">
+                  <p className="text-xs text-[var(--text-muted)] mb-2 text-center">Suggested questions:</p>
+                  <div className="space-y-2">
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                        className="w-full flex items-center justify-between p-3 bg-[var(--card-background)] hover:bg-[var(--surface-variant)] rounded-lg border border-[var(--border)] transition text-left group"
+                      >
+                        <span className="text-sm text-[var(--text-primary)] line-clamp-2">{suggestion}</span>
+                        <Send className="w-4 h-4 text-[var(--accent-purple)] opacity-0 group-hover:opacity-100 transition flex-shrink-0 ml-2" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Loading suggestions */}
+              {showSuggestions && isLoadingSuggestions && (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <Loader2 className="w-4 h-4 animate-spin text-[var(--accent-purple)]" />
+                  <span className="text-sm text-[var(--text-muted)]">Generating suggestions...</span>
+                </div>
+              )}
             </div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                placeholder="Ask a question..."
-                className="input flex-1"
-              />
-              <button
-                onClick={handleSendChat}
-                disabled={!chatInput.trim() || isSendingChat}
-                className="btn-primary px-4"
-              >
-                <Send size={20} />
-              </button>
+
+            {/* Input area with suggestions button */}
+            <div className="space-y-2">
+              {/* Get Suggestions button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={handleLoadSuggestions}
+                  disabled={isLoadingSuggestions}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm bg-[var(--surface-variant)] hover:bg-[var(--card-background)] text-[var(--text-secondary)] hover:text-[var(--accent-purple)] rounded-full transition border border-[var(--border)]"
+                >
+                  <Lightbulb className="w-4 h-4" />
+                  {isLoadingSuggestions ? 'Loading...' : showSuggestions && suggestions.length > 0 ? 'Get New Suggestions' : 'Get Question Suggestions'}
+                </button>
+              </div>
+
+              {/* Chat input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
+                  placeholder="Ask a question..."
+                  className="input flex-1"
+                />
+                <button
+                  onClick={handleSendChat}
+                  disabled={!chatInput.trim() || isSendingChat}
+                  className="btn-primary px-4"
+                >
+                  <Send size={20} />
+                </button>
+              </div>
             </div>
           </div>
         )}

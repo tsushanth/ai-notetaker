@@ -678,6 +678,19 @@ Format the script with clear speaker labels and natural dialogue. Remember: the 
 
       if (error) throw error;
 
+      // Log the order of content for debugging
+      if (data && data.length > 0) {
+        logger.info('AI content order debug', {
+          noteId,
+          itemCount: data.length,
+          items: data.map(item => ({
+            type: item.content_type,
+            created_at: item.created_at,
+            id: item.id
+          }))
+        });
+      }
+
       return data;
     } catch (error) {
       logger.error('Error fetching AI content', { error: error.message, userId, noteId });

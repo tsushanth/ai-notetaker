@@ -240,6 +240,15 @@ export const aiApi = {
       : response.data?.answer || response.data?.response || '';
     return { response: chatResponse };
   },
+
+  getSuggestions: async (token: string, noteId: string, language?: string) => {
+    const langParam = language ? `?language=${encodeURIComponent(language)}` : '';
+    const response = await apiRequest<{
+      success: boolean;
+      data: { suggestions: string[]; note_id: string }
+    }>(`/api/ai/suggestions/${noteId}${langParam}`, { token });
+    return response.data?.suggestions || [];
+  },
 };
 
 // Creators API

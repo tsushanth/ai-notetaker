@@ -194,7 +194,8 @@ router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (
         script: content.content.script,
         duration: content.content.duration,
         style: content.content.style,
-        note_id: content.note_id
+        note_id: content.note_id,
+        created_at: content.created_at
       }
     });
   } else {
@@ -275,6 +276,13 @@ router.post('/diagram', checkUsageLimits('diagram'), validate('generateAIContent
  */
 router.get('/note/:note_id', asyncHandler(async (req, res) => {
   const content = await aiService.getAIContentForNote(req.userId, req.params.note_id);
+
+  // Prevent caching to ensure fresh content after regeneration
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
 
   res.json({
     success: true,

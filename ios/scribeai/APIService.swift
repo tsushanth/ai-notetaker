@@ -15,6 +15,7 @@ enum APIError: Error {
     case decodingError
     case serverError(String)
     case unauthorized
+    case notFound
     case timeout
     case networkError(String, isRetryable: Bool)
     case subscriptionRequired(reason: String, trialExpired: Bool)
@@ -34,6 +35,8 @@ extension APIError: LocalizedError {
             return message
         case .unauthorized:
             return "Session expired. Please log in again."
+        case .notFound:
+            return "Resource not found"
         case .timeout:
             return "Request timed out. Please try again."
         case .networkError(let message, _):
@@ -431,7 +434,58 @@ class APIService {
             throw APIError.serverError("Failed to delete note")
         }
     }
-    
+
+    func updateNote(token: String, noteId: String, title: String? = nil, content: String? = nil) async throws -> Note {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._updateNote(token: validToken, noteId: noteId, title: title, content: content)
+        }
+    }
+
+    private func _updateNote(token: String, noteId: String, title: String? = nil, content: String? = nil) async throws -> Note {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.notes)/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [:]
+        if let title = title { body["title"] = title }
+        if let content = content { body["content"] = content }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
+               let errorMessage = errorData["error"] {
+                throw APIError.serverError(errorMessage)
+            }
+            throw APIError.serverError("Failed to update note")
+        }
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let noteResponse = try decoder.decode(NoteResponse.self, from: data)
+
+        guard let note = noteResponse.data else {
+            throw APIError.serverError("No note data in response")
+        }
+
+        return note
+    }
+
     // MARK: - Recording Upload & Transcription
 
     func uploadRecording(token: String, fileURL: URL, title: String? = nil) async throws -> Recording {
@@ -2040,6 +2094,11 @@ class APIService {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Include auth token if available to check discount eligibility
+        if let token = await TokenManager.shared.getValidToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
         let body: [String: Any] = ["code": code]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
@@ -2070,7 +2129,8 @@ class APIService {
             discountType: resultData["discountType"] as? String ?? "none",
             discountValue: resultData["discountValue"] as? Double ?? 0,
             trialExtensionDays: resultData["trialExtensionDays"] as? Int ?? 0,
-            creatorName: resultData["creatorName"] as? String ?? ""
+            creatorName: resultData["creatorName"] as? String ?? "",
+            discountEligible: resultData["discountEligible"] as? Bool ?? true
         )
     }
 
@@ -2114,6 +2174,223 @@ class APIService {
             }
             throw APIError.serverError("Failed to apply promo code")
         }
+    }
+
+    // MARK: - Meetings API
+
+    /// Create a new meeting and deploy bot to join
+    func createMeeting(meetingUrl: String, title: String? = nil) async throws -> CreateMeetingResponse {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/meetings")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        var body: [String: Any] = ["meetingUrl": meetingUrl]
+        if let title = title {
+            body["title"] = title
+        }
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        if httpResponse.statusCode == 403 {
+            throw APIError.subscriptionRequired(reason: "Meeting bot requires a premium subscription", trialExpired: false)
+        }
+
+        if httpResponse.statusCode != 201 && httpResponse.statusCode != 200 {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? String {
+                throw APIError.serverError(error)
+            }
+            throw APIError.serverError("Failed to create meeting")
+        }
+
+        return try JSONDecoder().decode(CreateMeetingResponse.self, from: data)
+    }
+
+    /// Get all meetings for the current user
+    func getMeetings(page: Int = 1, limit: Int = 20) async throws -> MeetingsListResponse {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/meetings?page=\(page)&limit=\(limit)")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        if httpResponse.statusCode == 403 {
+            throw APIError.subscriptionRequired(reason: "Meeting bot requires a premium subscription", trialExpired: false)
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to get meetings")
+        }
+
+        return try JSONDecoder().decode(MeetingsListResponse.self, from: data)
+    }
+
+    /// Get status of a specific meeting
+    func getMeetingStatus(meetingId: String) async throws -> MeetingResponse {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/meetings/\(meetingId)")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        if httpResponse.statusCode == 404 {
+            throw APIError.notFound
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to get meeting status")
+        }
+
+        return try JSONDecoder().decode(MeetingResponse.self, from: data)
+    }
+
+    /// Cancel a meeting and stop the bot
+    func cancelMeeting(meetingId: String) async throws {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/meetings/\(meetingId)/cancel")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        if httpResponse.statusCode == 404 {
+            throw APIError.notFound
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? String {
+                throw APIError.serverError(error)
+            }
+            throw APIError.serverError("Failed to cancel meeting")
+        }
+    }
+
+    /// Delete a meeting
+    func deleteMeeting(meetingId: String) async throws {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/meetings/\(meetingId)")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        if httpResponse.statusCode == 404 {
+            throw APIError.notFound
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = json["error"] as? String {
+                throw APIError.serverError(error)
+            }
+            throw APIError.serverError("Failed to delete meeting")
+        }
+    }
+
+    /// Validate a meeting URL
+    func validateMeetingUrl(_ meetingUrl: String) async throws -> ValidateMeetingUrlResponse {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        let baseURL = Bundle.main.infoDictionary?["API_BASE_URL"] as? String ?? "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+        let url = URL(string: "\(baseURL)/api/meetings/validate-url")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let body: [String: Any] = ["meetingUrl": meetingUrl]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to validate meeting URL")
+        }
+
+        return try JSONDecoder().decode(ValidateMeetingUrlResponse.self, from: data)
     }
 }
 

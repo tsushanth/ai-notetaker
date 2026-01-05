@@ -121,6 +121,9 @@ interface NoteCacheDao {
 
     @Query("UPDATE notes_cache SET isDirty = 0 WHERE id = :noteId")
     suspend fun markAsSynced(noteId: String)
+
+    @Query("UPDATE notes_cache SET title = :newTitle, updatedAt = :updatedAt WHERE id = :noteId")
+    suspend fun updateNoteTitle(noteId: String, newTitle: String, updatedAt: String = java.time.Instant.now().toString())
 }
 
 /**
@@ -217,5 +220,12 @@ class NoteCacheRepository(private val dao: NoteCacheDao) {
      */
     suspend fun clearCache(userId: String) {
         dao.deleteAllNotes(userId)
+    }
+
+    /**
+     * Update note title in cache
+     */
+    suspend fun updateNoteTitle(noteId: String, newTitle: String) {
+        dao.updateNoteTitle(noteId, newTitle)
     }
 }

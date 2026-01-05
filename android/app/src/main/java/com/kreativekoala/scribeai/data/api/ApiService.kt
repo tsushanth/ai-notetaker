@@ -33,6 +33,13 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") noteId: String
     ): Response<NoteResponse>
+
+    @PUT("api/notes/{id}")
+    suspend fun updateNote(
+        @Header("Authorization") token: String,
+        @Path("id") noteId: String,
+        @Body request: UpdateNoteRequest
+    ): Response<NoteResponse>
     
     // Recording endpoints
     @Multipart
@@ -165,6 +172,12 @@ interface ApiService {
         @Body request: SubscriptionEventRequest
     ): Response<GenericResponse>
 
+    @POST("api/subscriptions/trial/check")
+    suspend fun checkTrialWithDevice(
+        @Header("Authorization") token: String,
+        @Body request: TrialCheckRequest
+    ): Response<TrialCheckResponse>
+
     // Analytics endpoints
     @POST("api/analytics/batch")
     suspend fun sendAnalyticsBatch(
@@ -197,4 +210,42 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: ApplyPromoCodeRequest
     ): Response<GenericResponse>
+
+    // Meeting bot endpoints
+    @POST("api/meetings")
+    suspend fun createMeeting(
+        @Header("Authorization") token: String,
+        @Body request: CreateMeetingRequest
+    ): Response<CreateMeetingResponse>
+
+    @GET("api/meetings")
+    suspend fun getMeetings(
+        @Header("Authorization") token: String,
+        @Query("page") page: Int = 1,
+        @Query("limit") limit: Int = 20
+    ): Response<MeetingsListResponse>
+
+    @GET("api/meetings/{id}")
+    suspend fun getMeetingStatus(
+        @Header("Authorization") token: String,
+        @Path("id") meetingId: String
+    ): Response<MeetingResponse>
+
+    @POST("api/meetings/{id}/cancel")
+    suspend fun cancelMeeting(
+        @Header("Authorization") token: String,
+        @Path("id") meetingId: String
+    ): Response<GenericResponse>
+
+    @DELETE("api/meetings/{id}")
+    suspend fun deleteMeeting(
+        @Header("Authorization") token: String,
+        @Path("id") meetingId: String
+    ): Response<GenericResponse>
+
+    @POST("api/meetings/validate-url")
+    suspend fun validateMeetingUrl(
+        @Header("Authorization") token: String,
+        @Body request: ValidateMeetingUrlRequest
+    ): Response<ValidateMeetingUrlResponse>
 }

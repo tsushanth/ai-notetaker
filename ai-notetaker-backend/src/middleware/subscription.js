@@ -57,9 +57,13 @@ const requireSubscription = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Subscription check failed', { error: error.message, userId: req.userId });
-    // On error, allow access but log it (fail open for better UX, but monitor)
-    req.subscription = { hasAccess: true, reason: 'error_fallback' };
-    next();
+    // SECURITY FIX: Fail closed - deny access on errors to prevent abuse
+    return res.status(503).json({
+      success: false,
+      error: 'Unable to verify subscription status. Please try again.',
+      code: 'SUBSCRIPTION_CHECK_FAILED',
+      retryable: true
+    });
   }
 };
 
@@ -125,7 +129,13 @@ const checkUsageLimits = (featureType) => {
       next();
     } catch (error) {
       logger.error('Usage limit check failed', { error: error.message, userId: req.userId });
-      next(); // Fail open
+      // SECURITY FIX: Fail closed - deny access on errors
+      return res.status(503).json({
+        success: false,
+        error: 'Unable to verify usage limits. Please try again.',
+        code: 'USAGE_CHECK_FAILED',
+        retryable: true
+      });
     }
   };
 };
@@ -300,8 +310,9 @@ async function getCreatorPremiumAccess(userId) {
 
 /**
  * Get server-side trial status (prevents reinstall bypass)
+ * Now also checks device_id to prevent trial abuse across accounts
  */
-async function getServerTrialStatus(userId) {
+async function getServerTrialStatus(userId, deviceId = null) {
   // Get user's trial record from database
   const { data: trialRecord, error } = await supabase
     .from('user_trials')
@@ -310,6 +321,30 @@ async function getServerTrialStatus(userId) {
     .single();
 
   const now = new Date();
+
+  // If device ID provided, check if this device has already used a trial
+  if (deviceId) {
+    const { data: deviceTrial } = await supabase
+      .from('device_trials')
+      .select('*')
+      .eq('device_id', deviceId)
+      .single();
+
+    if (deviceTrial && deviceTrial.trial_used) {
+      // Device already used trial - check if it's expired
+      const deviceTrialEnd = new Date(deviceTrial.trial_end);
+      if (now > deviceTrialEnd) {
+        logger.info('Device trial already used and expired', { deviceId, userId });
+        return {
+          isInTrial: false,
+          daysRemaining: 0,
+          expiresAt: deviceTrial.trial_end,
+          trialExpired: true,
+          deviceTrialUsed: true
+        };
+      }
+    }
+  }
 
   if (!trialRecord || error) {
     // No trial record - create one (first time user)
@@ -322,8 +357,29 @@ async function getServerTrialStatus(userId) {
         user_id: userId,
         trial_start: trialStart.toISOString(),
         trial_end: trialEnd.toISOString(),
+        device_id: deviceId,
         created_at: now.toISOString()
       }, { onConflict: 'user_id' });
+
+    // Also record device trial if device ID provided
+    if (deviceId) {
+      await supabase
+        .from('device_trials')
+        .upsert({
+          device_id: deviceId,
+          first_user_id: userId,
+          trial_start: trialStart.toISOString(),
+          trial_end: trialEnd.toISOString(),
+          trial_used: true,
+          platform: 'ios',
+          created_at: now.toISOString()
+        }, { onConflict: 'device_id' });
+
+      logger.info('New trial started with device tracking', { userId, deviceId });
+    }
+
+    // Track metric
+    await trackSubscriptionMetric(userId, deviceId, 'trial_started', 'ios', 'auto');
 
     return {
       isInTrial: true,
@@ -344,6 +400,30 @@ async function getServerTrialStatus(userId) {
     expiresAt: trialRecord.trial_end,
     trialExpired: !isInTrial
   };
+}
+
+/**
+ * Track subscription funnel metrics
+ */
+async function trackSubscriptionMetric(userId, deviceId, eventType, platform = 'ios', source = null, metadata = {}) {
+  try {
+    await supabase
+      .from('subscription_metrics')
+      .insert({
+        user_id: userId,
+        device_id: deviceId,
+        event_type: eventType,
+        platform: platform,
+        source: source,
+        metadata: metadata,
+        created_at: new Date().toISOString()
+      });
+
+    logger.debug('Subscription metric tracked', { userId, eventType, source });
+  } catch (error) {
+    // Don't fail on metrics errors
+    logger.error('Failed to track subscription metric', { error: error.message, eventType });
+  }
 }
 
 /**
@@ -446,7 +526,13 @@ const requireSubscriptionForPodcast = async (req, res, next) => {
     });
   } catch (error) {
     logger.error('Podcast subscription check failed', { error: error.message, userId: req.userId });
-    next();
+    // SECURITY FIX: Fail closed - deny access on errors
+    return res.status(503).json({
+      success: false,
+      error: 'Unable to verify subscription status. Please try again.',
+      code: 'SUBSCRIPTION_CHECK_FAILED',
+      retryable: true
+    });
   }
 };
 
@@ -457,5 +543,7 @@ module.exports = {
   requireSubscriptionForPodcast,
   getSubscriptionStatus,
   getCreatorPremiumAccess,
+  getServerTrialStatus,
+  trackSubscriptionMetric,
   FREE_TIER_LIMITS
 };

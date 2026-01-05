@@ -19,6 +19,9 @@ struct NoteListView: View {
     @State private var noteToDelete: Note?
     @State private var showDeletedToast = false      // FIX: Toast state
     @State private var deletedNoteTitle = ""         // FIX: Store deleted note title
+    @State private var showEditTitleAlert = false
+    @State private var noteToEdit: Note?
+    @State private var editedTitle = ""
     
     var refreshTrigger: UUID
     
@@ -99,6 +102,11 @@ struct NoteListView: View {
                                     onDelete: {
                                         noteToDelete = note
                                         showDeleteConfirmation = true
+                                    },
+                                    onEditTitle: {
+                                        noteToEdit = note
+                                        editedTitle = note.title
+                                        showEditTitleAlert = true
                                     }
                                 )
                             }
@@ -171,6 +179,17 @@ struct NoteListView: View {
         } message: { note in
             Text("Are you sure you want to delete '\(note.title)'? This action cannot be undone.")
         }
+        .alert("Edit Title", isPresented: $showEditTitleAlert) {
+            TextField("Title", text: $editedTitle)
+            Button("Cancel", role: .cancel) {}
+            Button("Save") {
+                if let note = noteToEdit, !editedTitle.isEmpty, editedTitle != note.title {
+                    updateNoteTitle(note)
+                }
+            }
+        } message: {
+            Text("Enter a new title for this note")
+        }
         .onAppear {
             loadNotesIfNeeded()
         }
@@ -240,6 +259,25 @@ struct NoteListView: View {
             }
         }
     }
+
+    private func updateNoteTitle(_ note: Note) {
+        Task {
+            guard let token = await TokenManager.shared.getValidToken() else {
+                viewModel.errorMessage = "Session expired. Please sign in again."
+                return
+            }
+
+            let success = await viewModel.updateNoteTitle(
+                token: token,
+                noteId: note.id,
+                newTitle: editedTitle
+            )
+
+            if success {
+                print("✅ Note title updated: \(editedTitle)")
+            }
+        }
+    }
 }
 
 // MARK: - Note Card with Navigation (Menu outside NavigationLink)
@@ -248,7 +286,8 @@ struct NoteCardWithNavigation: View {
     let note: Note
     let viewModel: NoteViewModel
     let onDelete: () -> Void
-    
+    let onEditTitle: () -> Void
+
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             // NavigationLink covers the card content but NOT the menu
@@ -256,9 +295,12 @@ struct NoteCardWithNavigation: View {
                 NoteCardContent(note: note)
             }
             .buttonStyle(PlainButtonStyle())
-            
+
             // Menu is overlaid on top and handles its own taps
             Menu {
+                Button(action: onEditTitle) {
+                    Label("Edit Title", systemImage: "pencil")
+                }
                 Button(role: .destructive, action: onDelete) {
                     Label("Delete", systemImage: "trash")
                 }

@@ -89,18 +89,19 @@ struct BottomNavigationBar: View {
     @State private var showingYouTube = false
     @State private var showingUpload = false
     @State private var showingScanner = false
+    @State private var showingMeetings = false
     @State private var showActionSheet = false
-    
+
     var onContentCreated: () -> Void
-    
+
     var body: some View {
         VStack(spacing: 0) {
             Divider()
                 .background(Color.darkSurfaceVariant)
-            
+
             HStack(spacing: 0) {
                 Spacer()
-                
+
                 // Add Content Button (centered)
                 Button(action: {
                     showActionSheet = true
@@ -117,7 +118,7 @@ struct BottomNavigationBar: View {
                     .background(Color.purple80.opacity(0.15))
                     .cornerRadius(24)
                 }
-                
+
                 Spacer()
             }
             .padding(.vertical, 12)
@@ -127,19 +128,23 @@ struct BottomNavigationBar: View {
             Button("Record Audio") {
                 showingRecording = true
             }
-            
+
             Button("Scan Document") {
                 showingScanner = true
             }
-            
+
             Button("Upload PDF/Audio") {
                 showingUpload = true
             }
-            
+
             Button("YouTube Link") {
                 showingYouTube = true
             }
-            
+
+            Button("Join Meeting") {
+                showingMeetings = true
+            }
+
             Button("Cancel", role: .cancel) {}
         }
         .sheet(isPresented: $showingRecording, onDismiss: {
@@ -174,6 +179,11 @@ struct BottomNavigationBar: View {
                     showingScanner = false
                 }
             )
+        }
+        .sheet(isPresented: $showingMeetings, onDismiss: {
+            onContentCreated()
+        }) {
+            MeetingsView()
         }
     }
 }

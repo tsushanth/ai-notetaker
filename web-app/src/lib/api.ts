@@ -28,8 +28,10 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Request failed' }));
-    throw new Error(error.message || `API Error: ${response.status}`);
+    const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+    // Backend returns errors as { success: false, error: "message" } or { message: "message" }
+    const errorMessage = errorData.error || errorData.message || `API Error: ${response.status}`;
+    throw new Error(errorMessage);
   }
 
   return response.json();
@@ -354,7 +356,7 @@ export const creatorsApi = {
     }>(`/api/creators/payouts?limit=${limit}&offset=${offset}`, { token });
   },
 
-  validatePromoCode: async (code: string) => {
+  validatePromoCode: async (code: string, token?: string) => {
     return apiRequest<{
       success: boolean;
       data: {
@@ -364,10 +366,12 @@ export const creatorsApi = {
         discountValue: number;
         trialExtensionDays: number;
         creatorName: string;
+        discountEligible: boolean;
       };
     }>('/api/creators/validate-code', {
       method: 'POST',
       body: { code },
+      token, // Pass token to check user's discount eligibility
     });
   },
 
@@ -381,6 +385,21 @@ export const creatorsApi = {
       token,
       body: { code, platform },
     });
+  },
+
+  getCurrentCode: async (token: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        code: string;
+        discountType: string;
+        discountValue: number;
+        creatorName: string;
+        status: string;
+        appliedAt: string;
+        discountEligible: boolean;
+      } | null;
+    }>('/api/creators/current-code', { token });
   },
 
   // Stripe Connect
@@ -492,6 +511,7 @@ export const subscriptionApi = {
       data: {
         sessionId: string;
         url: string;
+        discountApplied: boolean;
       };
     }>('/api/subscriptions/stripe/checkout', {
       method: 'POST',
@@ -511,4 +531,74 @@ export const subscriptionApi = {
   },
 };
 
-export default { authApi, notesApi, aiApi, creatorsApi, subscriptionApi };
+// Meetings API
+import { Meeting, MeetingsPagination, BotRun } from '@/types';
+
+export const meetingsApi = {
+  create: async (token: string, meetingUrl: string, title?: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        meeting: Meeting;
+        botRun: BotRun | null;
+        recallBotId: string | null;
+      };
+      error?: string;
+    }>('/api/meetings', {
+      method: 'POST',
+      token,
+      body: { meetingUrl, title },
+    });
+  },
+
+  getAll: async (token: string, page = 1, limit = 20) => {
+    return apiRequest<{
+      success: boolean;
+      data: Meeting[];
+      pagination: MeetingsPagination;
+    }>(`/api/meetings?page=${page}&limit=${limit}`, { token });
+  },
+
+  getById: async (token: string, meetingId: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: Meeting;
+    }>(`/api/meetings/${meetingId}`, { token });
+  },
+
+  cancel: async (token: string, meetingId: string) => {
+    return apiRequest<{
+      success: boolean;
+      message: string;
+    }>(`/api/meetings/${meetingId}/cancel`, {
+      method: 'POST',
+      token,
+    });
+  },
+
+  delete: async (token: string, meetingId: string) => {
+    return apiRequest<{
+      success: boolean;
+      message: string;
+    }>(`/api/meetings/${meetingId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+
+  validateUrl: async (token: string, meetingUrl: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        valid: boolean;
+        platform: string | null;
+      };
+    }>('/api/meetings/validate-url', {
+      method: 'POST',
+      token,
+      body: { meetingUrl },
+    });
+  },
+};
+
+export default { authApi, notesApi, aiApi, creatorsApi, subscriptionApi, meetingsApi };

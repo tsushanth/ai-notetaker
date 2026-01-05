@@ -44,6 +44,7 @@ fun HomeScreen(
     onYouTube: () -> Unit,
     onUploadDocument: () -> Unit,
     onScanDocument: () -> Unit,
+    onMeetings: () -> Unit = {},
     onDebugToken: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
@@ -437,6 +438,22 @@ fun HomeScreen(
                                                     }
                                                 )
                                             }
+                                        },
+                                        onEditTitle = { updatedNote ->
+                                            if (authToken != null) {
+                                                viewModel.updateNoteTitle(
+                                                    token = authToken!!,
+                                                    noteId = updatedNote.id,
+                                                    newTitle = updatedNote.title,
+                                                    onSuccess = {
+                                                        Log.d("HomeScreen", "Note title updated")
+                                                        viewModel.loadNotes(authToken!!)
+                                                    },
+                                                    onError = { error ->
+                                                        Log.e("HomeScreen", "Update failed: $error")
+                                                    }
+                                                )
+                                            }
                                         }
                                     )
                                 }
@@ -561,6 +578,10 @@ fun HomeScreen(
             onScanDocument = {
                 showCreateSheet = false
                 onScanDocument()
+            },
+            onMeetings = {
+                showCreateSheet = false
+                onMeetings()
             }
         )
     }
@@ -750,10 +771,13 @@ fun HomeScreen(
 fun NoteCard(
     note: Note,
     onClick: () -> Unit,
-    onDelete: (Note) -> Unit = {}
+    onDelete: (Note) -> Unit = {},
+    onEditTitle: (Note) -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showEditTitleDialog by remember { mutableStateOf(false) }
+    var editedTitle by remember { mutableStateOf(note.title) }
 
     Card(
         onClick = onClick,
@@ -826,6 +850,21 @@ fun NoteCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
+                        text = { Text("Edit Title") },
+                        onClick = {
+                            showMenu = false
+                            editedTitle = note.title
+                            showEditTitleDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = null,
+                                tint = TextSecondary
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
                         text = { Text("Delete") },
                         onClick = {
                             showMenu = false
@@ -884,6 +923,48 @@ fun NoteCard(
             }
         )
     }
+
+    // Edit title dialog
+    if (showEditTitleDialog) {
+        AlertDialog(
+            onDismissRequest = { showEditTitleDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = Purple80
+                )
+            },
+            title = {
+                Text("Edit Title")
+            },
+            text = {
+                OutlinedTextField(
+                    value = editedTitle,
+                    onValueChange = { editedTitle = it },
+                    label = { Text("Title") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showEditTitleDialog = false
+                        onEditTitle(note.copy(title = editedTitle))
+                    },
+                    enabled = editedTitle.isNotBlank() && editedTitle != note.title
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditTitleDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -893,7 +974,8 @@ fun CreateOptionsBottomSheet(
     onRecordAudio: () -> Unit,
     onYouTube: () -> Unit,
     onUploadDocument: () -> Unit,
-    onScanDocument: () -> Unit
+    onScanDocument: () -> Unit,
+    onMeetings: () -> Unit = {}
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -925,10 +1007,17 @@ fun CreateOptionsBottomSheet(
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
-                icon = Icons.Default.CameraAlt,  // FIXED: Changed from Description to CameraAlt
-                title = "Scan Text",  // FIXED: Capitalized properly
+                icon = Icons.Default.CameraAlt,
+                title = "Scan Text",
                 subtitle = "Any image with text",
                 onClick = onScanDocument
+            )
+            Spacer(Modifier.height(12.dp))
+            CreateOption(
+                icon = Icons.Default.Videocam,
+                title = "Join Meeting",
+                subtitle = "Record Zoom, Meet, Teams, Webex",
+                onClick = onMeetings
             )
             Spacer(Modifier.height(16.dp))
         }
@@ -962,7 +1051,8 @@ fun CreateOption(
                         when(icon) {
                             Icons.Default.Mic -> Purple80.copy(alpha = 0.2f)
                             Icons.Default.VideoLibrary -> AccentRed.copy(alpha = 0.2f)
-                            Icons.Default.CameraAlt -> Color(0xFF4CAF50).copy(alpha = 0.2f)  // Green for scan
+                            Icons.Default.CameraAlt -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                            Icons.Default.Videocam -> Color(0xFF2196F3).copy(alpha = 0.2f)
                             else -> AccentBlue.copy(alpha = 0.2f)
                         }
                     ),
@@ -974,7 +1064,8 @@ fun CreateOption(
                     tint = when(icon) {
                         Icons.Default.Mic -> Purple80
                         Icons.Default.VideoLibrary -> AccentRed
-                        Icons.Default.CameraAlt -> Color(0xFF4CAF50)  // Green for scan
+                        Icons.Default.CameraAlt -> Color(0xFF4CAF50)
+                        Icons.Default.Videocam -> Color(0xFF2196F3)
                         else -> AccentBlue
                     },
                     modifier = Modifier.size(20.dp)

@@ -195,7 +195,26 @@ data class SubscriptionSyncRequest(
     val trialEndDate: String? = null,
     val autoRenewEnabled: Boolean = true,
     val priceAmount: String? = null,
-    val priceCurrency: String? = null
+    val priceCurrency: String? = null,
+    val deviceId: String? = null
+)
+
+// Trial check with device ID (for abuse prevention)
+data class TrialCheckRequest(
+    val deviceId: String
+)
+
+data class TrialCheckResponse(
+    val success: Boolean,
+    val data: TrialCheckData? = null
+)
+
+data class TrialCheckData(
+    val isInTrial: Boolean,
+    val daysRemaining: Int,
+    val expiresAt: String? = null,
+    val trialExpired: Boolean,
+    val deviceTrialUsed: Boolean? = null
 )
 
 data class SubscriptionSyncResponse(

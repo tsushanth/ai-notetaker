@@ -3,10 +3,10 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Globe, Check, Crown, Loader2, AlertCircle, CheckCircle, CreditCard } from 'lucide-react';
+import { ArrowLeft, Globe, Check, Crown, Loader2, AlertCircle, CheckCircle, CreditCard, Tag, Percent } from 'lucide-react';
 import { useSettingsStore, SUPPORTED_LANGUAGES, type LanguageCode } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
-import { subscriptionApi } from '@/lib/api';
+import { subscriptionApi, creatorsApi } from '@/lib/api';
 
 interface SubscriptionAccess {
   hasAccess: boolean;
@@ -70,6 +70,17 @@ function SettingsContent() {
   const [isLoadingCheckout, setIsLoadingCheckout] = useState(false);
   const [subscriptionMessage, setSubscriptionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    creatorName: string;
+    discountValue: number;
+    discountEligible: boolean;
+  } | null>(null);
+  const [promoError, setPromoError] = useState('');
+
   // Check for subscription result from URL
   useEffect(() => {
     const result = searchParams.get('subscription');
@@ -83,7 +94,7 @@ function SettingsContent() {
     }
   }, [searchParams]);
 
-  // Fetch subscription status
+  // Fetch subscription status and any existing promo code
   useEffect(() => {
     const fetchSubscription = async () => {
       if (!token) {
@@ -93,13 +104,15 @@ function SettingsContent() {
 
       try {
         console.log('[Settings] Fetching subscription status...');
-        const [accessResponse, pricesResponse] = await Promise.all([
+        const [accessResponse, pricesResponse, currentCodeResponse] = await Promise.all([
           subscriptionApi.getAccess(token),
           subscriptionApi.getPrices(),
+          creatorsApi.getCurrentCode(token),
         ]);
 
         console.log('[Settings] Access response:', accessResponse);
         console.log('[Settings] Prices response:', pricesResponse);
+        console.log('[Settings] Current code response:', currentCodeResponse);
 
         if (accessResponse.success) {
           setSubscription(accessResponse.data);
@@ -111,6 +124,17 @@ function SettingsContent() {
           // Use fallback plans if Stripe prices couldn't be fetched
           console.log('[Settings] Using fallback plans');
           setPlans(FALLBACK_PLANS);
+        }
+
+        // If user has an existing promo code applied, show it
+        if (currentCodeResponse.success && currentCodeResponse.data) {
+          const codeData = currentCodeResponse.data;
+          setAppliedPromo({
+            code: codeData.code,
+            creatorName: codeData.creatorName,
+            discountValue: codeData.discountValue || 10, // Default to 10% if not set
+            discountEligible: codeData.discountEligible,
+          });
         }
       } catch (error) {
         console.error('[Settings] Failed to fetch subscription:', error);
@@ -155,6 +179,47 @@ function SettingsContent() {
       setSubscriptionMessage({ type: 'error', text: 'Failed to open subscription management. Please try again.' });
     } finally {
       setIsLoadingCheckout(false);
+    }
+  };
+
+  const handleApplyPromoCode = async () => {
+    if (!token || !promoCode.trim()) return;
+
+    setIsApplyingPromo(true);
+    setPromoError('');
+
+    try {
+      // First validate the code
+      const validateResponse = await creatorsApi.validatePromoCode(promoCode.trim(), token);
+
+      if (!validateResponse.success || !validateResponse.data.valid) {
+        setPromoError('Invalid promo code');
+        return;
+      }
+
+      // Then apply it
+      const applyResponse = await creatorsApi.applyPromoCode(token, promoCode.trim(), 'web');
+
+      if (applyResponse.success) {
+        setAppliedPromo({
+          code: validateResponse.data.code,
+          creatorName: validateResponse.data.creatorName,
+          discountValue: validateResponse.data.discountValue,
+          discountEligible: validateResponse.data.discountEligible,
+        });
+        setPromoCode('');
+        setSubscriptionMessage({
+          type: 'success',
+          text: validateResponse.data.discountEligible
+            ? `Promo code applied! You'll get ${validateResponse.data.discountValue}% off your first subscription.`
+            : 'Promo code applied!'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to apply promo code:', error);
+      setPromoError(error instanceof Error ? error.message : 'Failed to apply promo code');
+    } finally {
+      setIsApplyingPromo(false);
     }
   };
 
@@ -350,6 +415,67 @@ function SettingsContent() {
               </div>
             </div>
 
+            {/* Promo Code Section - Only show if not subscribed */}
+            {!subscription.isSubscribed && (
+              <div className="mb-6">
+                {appliedPromo ? (
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Percent size={16} className="text-green-500" />
+                      <span className="font-medium text-green-400">Promo Code Applied</span>
+                    </div>
+                    <p className="text-sm text-[var(--text-muted)]">
+                      Code: <span className="font-mono">{appliedPromo.code}</span>
+                      {appliedPromo.creatorName && ` from ${appliedPromo.creatorName}`}
+                    </p>
+                    {appliedPromo.discountEligible && appliedPromo.discountValue > 0 && (
+                      <p className="text-sm text-green-400 mt-1">
+                        {appliedPromo.discountValue}% off your first subscription!
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Tag size={16} className="text-[var(--text-muted)]" />
+                      <span className="text-sm font-medium text-[var(--text-muted)]">Have a promo code?</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter promo code"
+                        value={promoCode}
+                        onChange={(e) => {
+                          setPromoCode(e.target.value.toUpperCase());
+                          setPromoError('');
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleApplyPromoCode();
+                          }
+                        }}
+                        className="flex-1 px-4 py-2 bg-[var(--surface-variant)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)] focus:border-transparent font-mono text-sm"
+                      />
+                      <button
+                        onClick={handleApplyPromoCode}
+                        disabled={isApplyingPromo || !promoCode.trim()}
+                        className="px-4 py-2 bg-[var(--accent-purple)] text-white rounded-lg hover:bg-[var(--accent-purple-dark)] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+                      >
+                        {isApplyingPromo ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          'Apply'
+                        )}
+                      </button>
+                    </div>
+                    {promoError && (
+                      <p className="text-sm text-red-400 mt-2">{promoError}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Subscribe or Manage */}
             {subscription.isSubscribed && subscription.platform === 'web' ? (
               <button
@@ -375,26 +501,51 @@ function SettingsContent() {
                 {plans.length > 0 ? (
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-[var(--text-muted)]">Upgrade to Premium</h3>
-                    {plans.map((plan) => (
-                      <button
-                        key={plan.id}
-                        onClick={() => handleSubscribe(plan.id)}
-                        disabled={isLoadingCheckout}
-                        className="w-full flex items-center justify-between p-4 rounded-lg border border-[var(--accent-purple)] bg-[var(--accent-purple)]/10 hover:bg-[var(--accent-purple)]/20 transition"
-                      >
-                        <div className="text-left">
-                          <p className="font-medium">{plan.name}</p>
-                          <p className="text-sm text-[var(--text-muted)]">
-                            {formatPrice(plan.amount, plan.currency)}/{plan.interval}
-                          </p>
-                        </div>
-                        {isLoadingCheckout ? (
-                          <Loader2 size={18} className="animate-spin" />
-                        ) : (
-                          <Crown size={20} className="text-[var(--accent-purple)]" />
-                        )}
-                      </button>
-                    ))}
+                    {plans.map((plan) => {
+                      const hasDiscount = appliedPromo?.discountEligible && appliedPromo.discountValue > 0;
+                      const discountedAmount = hasDiscount
+                        ? Math.round(plan.amount * (1 - appliedPromo!.discountValue / 100))
+                        : plan.amount;
+
+                      return (
+                        <button
+                          key={plan.id}
+                          onClick={() => handleSubscribe(plan.id)}
+                          disabled={isLoadingCheckout}
+                          className="w-full flex items-center justify-between p-4 rounded-lg border border-[var(--accent-purple)] bg-[var(--accent-purple)]/10 hover:bg-[var(--accent-purple)]/20 transition"
+                        >
+                          <div className="text-left">
+                            <p className="font-medium">{plan.name}</p>
+                            <div className="flex items-center gap-2">
+                              {hasDiscount ? (
+                                <>
+                                  <p className="text-sm text-[var(--text-muted)] line-through">
+                                    {formatPrice(plan.amount, plan.currency)}
+                                  </p>
+                                  <p className="text-sm text-green-400 font-medium">
+                                    {formatPrice(discountedAmount, plan.currency)}/{plan.interval}
+                                  </p>
+                                </>
+                              ) : (
+                                <p className="text-sm text-[var(--text-muted)]">
+                                  {formatPrice(plan.amount, plan.currency)}/{plan.interval}
+                                </p>
+                              )}
+                            </div>
+                            {hasDiscount && (
+                              <p className="text-xs text-green-400 mt-1">
+                                {appliedPromo!.discountValue}% off first payment
+                              </p>
+                            )}
+                          </div>
+                          {isLoadingCheckout ? (
+                            <Loader2 size={18} className="animate-spin" />
+                          ) : (
+                            <Crown size={20} className="text-[var(--accent-purple)]" />
+                          )}
+                        </button>
+                      );
+                    })}
                     <p className="text-xs text-[var(--text-muted)] text-center">
                       7-day free trial included
                     </p>

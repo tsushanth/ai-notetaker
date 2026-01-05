@@ -6,6 +6,8 @@ const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
 const crypto = require('crypto');
 const Stripe = require('stripe');
+const { trackSubscriptionMetric, getServerTrialStatus } = require('../middleware/subscription');
+const { getUserActiveRedemption } = require('../services/creatorService');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -264,6 +266,52 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
 }));
 
 // ============================================
+// Track subscription funnel metric (from client)
+// ============================================
+router.post('/track', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const { eventType, deviceId, platform, source, metadata } = req.body;
+
+  logger.info('Subscription metric received', { userId, eventType, deviceId, source });
+
+  // Validate event type
+  const validEventTypes = [
+    'app_install', 'onboarding_started', 'onboarding_completed',
+    'paywall_viewed', 'trial_screen_viewed', 'trial_started', 'trial_skipped',
+    'purchase_initiated', 'purchase_completed', 'purchase_failed', 'purchase_cancelled',
+    'trial_reminder_sent', 'trial_expired', 'subscription_renewed', 'subscription_cancelled', 'churn'
+  ];
+
+  if (!validEventTypes.includes(eventType)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid event type. Must be one of: ${validEventTypes.join(', ')}`
+    });
+  }
+
+  await trackSubscriptionMetric(userId, deviceId, eventType, platform || 'ios', source, metadata || {});
+
+  res.json({ success: true });
+}));
+
+// ============================================
+// Get trial status with device tracking
+// ============================================
+router.post('/trial/check', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const { deviceId } = req.body;
+
+  logger.info('Trial check with device ID', { userId, deviceId: deviceId ? 'provided' : 'not provided' });
+
+  const trialStatus = await getServerTrialStatus(userId, deviceId);
+
+  res.json({
+    success: true,
+    data: trialStatus
+  });
+}));
+
+// ============================================
 // Record subscription event (from client)
 // ============================================
 router.post('/event', authenticate, asyncHandler(async (req, res) => {
@@ -355,6 +403,38 @@ router.post('/event', authenticate, asyncHandler(async (req, res) => {
 // ============================================
 // Stripe Checkout - Create checkout session
 // ============================================
+
+// Stripe coupon ID for 10% off promo code discount
+// This needs to be created once in Stripe Dashboard or via API
+const PROMO_CODE_STRIPE_COUPON_ID = process.env.STRIPE_PROMO_COUPON_ID || 'PROMO10';
+
+// Helper to get or create the 10% promo coupon in Stripe
+async function getOrCreatePromoCoupon() {
+  try {
+    // Try to retrieve existing coupon
+    const coupon = await stripe.coupons.retrieve(PROMO_CODE_STRIPE_COUPON_ID);
+    return coupon.id;
+  } catch (error) {
+    if (error.code === 'resource_missing') {
+      // Create the coupon if it doesn't exist
+      logger.info('Creating Stripe promo coupon', { couponId: PROMO_CODE_STRIPE_COUPON_ID });
+      const coupon = await stripe.coupons.create({
+        id: PROMO_CODE_STRIPE_COUPON_ID,
+        percent_off: 10,
+        duration: 'once', // Only applies to first payment
+        name: 'Creator Promo Code - 10% Off First Subscription',
+        metadata: {
+          type: 'creator_promo',
+          description: 'One-time 10% discount for users who applied a creator promo code'
+        }
+      });
+      logger.info('Created Stripe promo coupon', { couponId: coupon.id });
+      return coupon.id;
+    }
+    throw error;
+  }
+}
+
 router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
   const userId = req.userId;
   const { priceId, plan } = req.body;
@@ -402,8 +482,30 @@ router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
     const selectedPriceId = priceId || (plan === 'yearly' ? STRIPE_PRICES.yearly : STRIPE_PRICES.monthly);
     logger.info('Selected price ID', { userId, selectedPriceId, plan });
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Check if user has an active promo code with discount eligibility
+    let discountCouponId = null;
+    try {
+      const redemption = await getUserActiveRedemption(userId);
+      if (redemption && redemption.discount_applied) {
+        // User has a promo code that grants them 10% off
+        discountCouponId = await getOrCreatePromoCoupon();
+        logger.info('Applying promo code discount to checkout', {
+          userId,
+          redemptionId: redemption.id,
+          couponId: discountCouponId,
+          promoCode: redemption.code_used
+        });
+      }
+    } catch (promoError) {
+      // Don't fail checkout if promo check fails - just log and continue
+      logger.warn('Error checking promo code for checkout', {
+        userId,
+        error: promoError.message
+      });
+    }
+
+    // Build checkout session config
+    const sessionConfig = {
       customer: customerId,
       mode: 'subscription',
       line_items: [{
@@ -416,21 +518,40 @@ router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
         metadata: { userId, platform: 'web' },
         trial_period_days: 7, // 7-day trial
       },
-      allow_promotion_codes: true,
       billing_address_collection: 'auto',
       customer_update: {
         address: 'auto',
         name: 'auto',
       },
-    });
+    };
 
-    logger.info('Stripe checkout session created', { userId, sessionId: session.id });
+    // Apply promo discount coupon if user has one
+    if (discountCouponId) {
+      sessionConfig.discounts = [{
+        coupon: discountCouponId,
+      }];
+      // Don't allow additional promotion codes if we're already applying one
+      sessionConfig.allow_promotion_codes = false;
+    } else {
+      // Allow users without our promo code to enter Stripe promotion codes
+      sessionConfig.allow_promotion_codes = true;
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    logger.info('Stripe checkout session created', {
+      userId,
+      sessionId: session.id,
+      hasPromoCoupon: !!discountCouponId
+    });
 
     res.json({
       success: true,
       data: {
         sessionId: session.id,
-        url: session.url
+        url: session.url,
+        discountApplied: !!discountCouponId
       }
     });
   } catch (error) {

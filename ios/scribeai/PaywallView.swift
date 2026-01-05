@@ -143,9 +143,32 @@ struct PaywallView: View {
     }
     
     // MARK: - Subscription Options Section
-    
+
+    /// Discounted price display - not applicable on iOS (App Store prices are fixed)
+    /// Promo codes on iOS extend trial period instead of providing discounts
+    private func discountedPriceText(for product: Product) -> String? {
+        // iOS uses fixed App Store prices - discounts only work on web
+        // Promo codes extend trial period from 7 to 14 days instead
+        return nil
+    }
+
     private var subscriptionOptionsSection: some View {
         VStack(spacing: 12) {
+            // Show trial extension banner when promo code applied
+            if let validation = promoValidation, validation.hasTrialExtension {
+                HStack {
+                    Image(systemName: "gift.fill")
+                        .foregroundColor(.accentGreen)
+                    Text(validation.promoDescription)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.accentGreen)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.accentGreen.opacity(0.15))
+                .cornerRadius(8)
+            }
+
             if storeManager.products.isEmpty {
                 // Loading state
                 ProgressView()
@@ -160,7 +183,8 @@ struct PaywallView: View {
                         isBestValue: true,
                         savingsText: storeManager.savingsPercentage().map { "Save \($0)%" },
                         monthlyEquivalent: storeManager.monthlyEquivalentPrice(for: yearly),
-                        weeklyEquivalent: storeManager.weeklyEquivalentPrice(for: yearly)
+                        weeklyEquivalent: storeManager.weeklyEquivalentPrice(for: yearly),
+                        discountedPrice: discountedPriceText(for: yearly)
                     ) {
                         selectedProduct = yearly
                     }
@@ -174,7 +198,8 @@ struct PaywallView: View {
                         isBestValue: false,
                         savingsText: nil,
                         monthlyEquivalent: nil,
-                        weeklyEquivalent: nil
+                        weeklyEquivalent: nil,
+                        discountedPrice: discountedPriceText(for: monthly)
                     ) {
                         selectedProduct = monthly
                     }
@@ -257,7 +282,7 @@ struct PaywallView: View {
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.accentGreen)
                                 if validation.discountType != "none" {
-                                    Text(validation.discountDescription)
+                                    Text(validation.promoDescription)
                                         .font(.system(size: 12))
                                         .foregroundColor(.textSecondary)
                                 }
@@ -502,18 +527,23 @@ struct PromoValidationResult {
     let discountValue: Double
     let trialExtensionDays: Int
     let creatorName: String
+    let discountEligible: Bool  // Whether user gets 10% off on web (not applicable on iOS)
 
-    var discountDescription: String {
-        switch discountType {
-        case "percent":
-            return "\(Int(discountValue))% off"
-        case "fixed":
-            return "$\(Int(discountValue)) off"
-        case "trial_extension":
-            return "+\(trialExtensionDays) extra trial days"
-        default:
-            return ""
+    var promoDescription: String {
+        // On iOS, promo codes extend trial period (discounts only work on web)
+        if trialExtensionDays > 0 {
+            return "Trial extended to 14 days!"
         }
+        return "Code applied!"
+    }
+
+    var hasTrialExtension: Bool {
+        return trialExtensionDays > 0
+    }
+
+    // For backwards compatibility - but on iOS we show trial extension, not discount
+    var hasDiscount: Bool {
+        return trialExtensionDays > 0  // Treat trial extension as a "benefit"
     }
 }
 
@@ -563,6 +593,7 @@ struct SubscriptionOptionCard: View {
     let savingsText: String?
     let monthlyEquivalent: String?
     let weeklyEquivalent: String?
+    let discountedPrice: String?  // Shows discounted price when promo applied
     let onSelect: () -> Void
 
     var body: some View {
@@ -614,9 +645,22 @@ struct SubscriptionOptionCard: View {
                     Spacer()
 
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text(product.displayPrice)
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.textSecondary)
+                        // Show discounted price if available
+                        if let discounted = discountedPrice {
+                            HStack(spacing: 6) {
+                                Text(product.displayPrice)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.textTertiary)
+                                    .strikethrough()
+                                Text(discounted)
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.accentGreen)
+                            }
+                        } else {
+                            Text(product.displayPrice)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.textSecondary)
+                        }
 
                         Text("/\(product.periodDescription)")
                             .font(.system(size: 12))

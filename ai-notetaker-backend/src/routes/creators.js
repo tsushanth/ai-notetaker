@@ -1023,6 +1023,8 @@ router.delete('/content/:id', authenticate, requireCreator, asyncHandler(async (
  */
 router.post('/validate-code', optionalAuth, asyncHandler(async (req, res) => {
   const { code } = req.body;
+  // Get userId if authenticated (to check discount eligibility)
+  const userId = req.user?.id || null;
 
   if (!code) {
     return res.status(400).json({
@@ -1031,7 +1033,7 @@ router.post('/validate-code', optionalAuth, asyncHandler(async (req, res) => {
     });
   }
 
-  const result = await creatorService.validatePromoCode(code);
+  const result = await creatorService.validatePromoCode(code, userId);
 
   if (!result.valid) {
     return res.status(400).json({
@@ -1049,6 +1051,8 @@ router.post('/validate-code', optionalAuth, asyncHandler(async (req, res) => {
       discountValue: result.promoCode.discountValue,
       trialExtensionDays: result.promoCode.trialExtensionDays,
       creatorName: result.creator.name,
+      // Let client know if discount will be applied (10% off first subscription)
+      discountEligible: result.discountEligible,
     },
   });
 }));
@@ -1092,8 +1096,12 @@ router.post('/apply-code', authenticate, asyncHandler(async (req, res) => {
         discountType: result.promoCode.discountType,
         discountValue: result.promoCode.discountValue,
         creatorName: result.creator.name,
+        // Indicates if 10% discount was applied (one-time per user)
+        discountEligible: result.discountEligible,
       },
-      message: 'Promo code applied successfully!',
+      message: result.discountEligible
+        ? 'Promo code applied! You\'ll get 10% off your first subscription.'
+        : 'Promo code applied! (Discount already used on a previous subscription)',
     });
   } catch (error) {
     res.status(400).json({
@@ -1128,6 +1136,7 @@ router.get('/current-code', authenticate, asyncHandler(async (req, res) => {
       creatorName: redemption.creators?.name,
       status: redemption.attribution_status,
       appliedAt: redemption.redeemed_at,
+      discountEligible: redemption.discount_applied === true, // User gets 10% off if this is true
     },
   });
 }));

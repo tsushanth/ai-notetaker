@@ -30,15 +30,20 @@ data class PromoCodeData(
     @SerializedName("trialExtensionDays")
     val trialExtensionDays: Int,
     @SerializedName("creatorName")
-    val creatorName: String
+    val creatorName: String,
+    @SerializedName("discountEligible")
+    val discountEligible: Boolean = true  // Whether user gets 10% off on web (not applicable on Android)
 ) {
-    val discountDescription: String
-        get() = when (discountType) {
-            "percent" -> "${discountValue.toInt()}% off first month"
-            "fixed" -> "$${discountValue.toInt()} off"
-            "trial_extension" -> "+$trialExtensionDays extra trial days"
-            else -> ""
+    // On Android, promo codes extend trial period (discounts only work on web)
+    val promoDescription: String
+        get() = if (trialExtensionDays > 0) {
+            "Trial extended to 14 days!"
+        } else {
+            "Code applied!"
         }
+
+    val hasTrialExtension: Boolean
+        get() = trialExtensionDays > 0
 }
 
 // Request to apply a promo code

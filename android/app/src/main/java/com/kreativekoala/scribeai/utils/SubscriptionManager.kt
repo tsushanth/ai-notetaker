@@ -1,13 +1,17 @@
 package com.kreativekoala.scribeai.utils
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import android.provider.Settings
 import android.util.Log
 import com.android.billingclient.api.*
 import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.models.AccessStatusData
 import com.kreativekoala.scribeai.data.models.SubscriptionEventRequest
 import com.kreativekoala.scribeai.data.models.SubscriptionSyncRequest
+import com.kreativekoala.scribeai.data.models.TrialCheckRequest
+import com.kreativekoala.scribeai.data.models.TrialCheckData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -21,6 +25,7 @@ import java.util.Currency
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.UUID
 
 /**
  * Manages Google Play Billing and subscription state
@@ -40,9 +45,34 @@ class SubscriptionManager(private val context: Context) {
         // SharedPreferences keys
         private const val PREFS_NAME = "scribe_ai_prefs"
         private const val KEY_LIFETIME_NOTEBOOKS = "lifetime_notebooks_created"
+        private const val KEY_DEVICE_ID = "device_id"
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    // Device ID for trial abuse prevention (persisted across app installs where possible)
+    @get:SuppressLint("HardwareIds")
+    val deviceId: String by lazy {
+        // Try to get existing device ID from prefs
+        prefs.getString(KEY_DEVICE_ID, null) ?: run {
+            // Generate a device ID based on Android ID + fallback UUID
+            val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+            val newDeviceId = if (androidId != null && androidId != "9774d56d682e549c") {
+                // Use Android ID if available and not the known emulator ID
+                "android_$androidId"
+            } else {
+                // Fallback to UUID (will change on reinstall)
+                "uuid_${UUID.randomUUID()}"
+            }
+            // Persist it
+            prefs.edit().putString(KEY_DEVICE_ID, newDeviceId).apply()
+            newDeviceId
+        }
+    }
+
+    // Track if this device has already used and expired a trial
+    private val _deviceTrialExpired = MutableStateFlow(false)
+    val deviceTrialExpired: StateFlow<Boolean> = _deviceTrialExpired.asStateFlow()
 
     private var billingClient: BillingClient? = null
     private var authManager: AuthManager? = null
@@ -314,6 +344,28 @@ class SubscriptionManager(private val context: Context) {
     }
 
     /**
+     * Get raw price as Double for calculations (e.g., applying discounts)
+     */
+    fun getRawPrice(productId: String): Double {
+        val micros = getPriceAmountMicros(productId)
+        return micros / 1_000_000.0
+    }
+
+    /**
+     * Format a price amount with the correct currency for a product
+     */
+    fun formatPrice(amount: Double, productId: String): String {
+        val currencyCode = getPriceCurrencyCode(productId)
+        return try {
+            val format = NumberFormat.getCurrencyInstance()
+            format.currency = Currency.getInstance(currencyCode)
+            format.format(amount)
+        } catch (e: Exception) {
+            String.format("%.2f", amount)
+        }
+    }
+
+    /**
      * Calculate yearly price per month (formatted with correct currency)
      */
     fun getYearlyPricePerMonth(): String {
@@ -463,7 +515,8 @@ class SubscriptionManager(private val context: Context) {
                     isTrial = false, // Google Play doesn't expose trial status directly
                     autoRenewEnabled = true,
                     priceAmount = getFormattedPrice(productId).replace(Regex("[^0-9.]"), ""),
-                    priceCurrency = getPriceCurrencyCode(productId)
+                    priceCurrency = getPriceCurrencyCode(productId),
+                    deviceId = deviceId
                 )
 
                 val response = RetrofitClient.apiService.syncSubscription(
@@ -493,6 +546,22 @@ class SubscriptionManager(private val context: Context) {
             try {
                 val token = authManager?.getFreshToken() ?: return@launch
 
+                // First, check trial status with device ID for abuse prevention
+                try {
+                    val trialResponse = RetrofitClient.apiService.checkTrialWithDevice(
+                        "Bearer $token",
+                        TrialCheckRequest(deviceId = deviceId)
+                    )
+                    if (trialResponse.isSuccessful) {
+                        val trialData = trialResponse.body()?.data
+                        _deviceTrialExpired.value = trialData?.deviceTrialUsed == true && trialData.trialExpired
+                        Log.d(TAG, "📱 Device trial check: used=${trialData?.deviceTrialUsed}, expired=${trialData?.trialExpired}")
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error checking trial with device", e)
+                }
+
+                // Then get full access status
                 val response = RetrofitClient.apiService.getAccessStatus("Bearer $token")
 
                 if (response.isSuccessful) {
@@ -527,23 +596,42 @@ class SubscriptionManager(private val context: Context) {
 
     /**
      * Check if user can use AI features (server-authoritative)
+     * SECURITY: Fail-closed - if server status unavailable, only allow if Google Play confirms subscription
      */
     fun canUseAI(): Boolean {
+        // SECURITY: If device trial already expired, deny unless subscribed via Google Play
+        if (_deviceTrialExpired.value && !isSubscribed()) {
+            return false
+        }
+
         val serverStatus = _serverAccessStatus.value
-        return serverStatus?.features?.canUseAI == true ||
-               serverStatus?.hasAccess == true ||
-               isSubscribed() // Fall back to local state if server status not available
+        // Prefer server status if available
+        if (serverStatus != null) {
+            return serverStatus.features?.canUseAI == true || serverStatus.hasAccess
+        }
+        // SECURITY: Only fall back to Google Play verified subscription (not local trial)
+        return isSubscribed()
     }
 
     /**
      * Check if user can generate podcasts (server-authoritative)
+     * SECURITY: Fail-closed - if server status unavailable, only allow if Google Play confirms subscription
      */
     fun canGeneratePodcasts(): Boolean {
+        // SECURITY: If device trial already expired, deny unless subscribed via Google Play
+        if (_deviceTrialExpired.value && !isSubscribed()) {
+            return false
+        }
+
         val serverStatus = _serverAccessStatus.value
-        return serverStatus?.features?.canGeneratePodcasts == true ||
-               serverStatus?.isSubscribed == true ||
-               serverStatus?.isInTrial == true ||
-               isSubscribed()
+        // Prefer server status if available
+        if (serverStatus != null) {
+            return serverStatus.features?.canGeneratePodcasts == true ||
+                   serverStatus.isSubscribed ||
+                   serverStatus.isInTrial
+        }
+        // SECURITY: Only fall back to Google Play verified subscription (not local trial)
+        return isSubscribed()
     }
 
     /**

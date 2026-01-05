@@ -1,0 +1,29 @@
+{
+  "project": "summarizerproxy",
+  "region": "us-central1",
+  "services": {
+    "backend": {
+      "name": "ai-notetaker-backend",
+      "source": "ai-notetaker-backend",
+      "url": "https://ai-notetaker-backend-917362189743.us-central1.run.app",
+      "description": "Node.js Express backend API for ScribeAI"
+    },
+    "web": {
+      "name": "scribe-ai-web",
+      "source": "web-app",
+      "url": "https://scribe-ai-web-917362189743.us-central1.run.app",
+      "description": "Next.js web application for ScribeAI"
+    }
+  },
+  "deprecated_services": [
+    {
+      "name": "scribeai-web-app",
+      "reason": "Accidentally created duplicate - use scribe-ai-web instead"
+    }
+  ],
+  "notes": [
+    "Always deploy web-app to 'scribe-ai-web' service, NOT 'scribeai-web-app'",
+    "Backend source is in ai-notetaker-backend folder",
+    "Web app source is in web-app folder"
+  ]
+}

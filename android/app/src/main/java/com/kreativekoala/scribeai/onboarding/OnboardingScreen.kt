@@ -125,7 +125,6 @@ fun OnboardingScreen(
                         )
                         OnboardingStep.TRIAL -> TrialScreen(
                             subscriptionManager = subscriptionManager,
-                            onSkip = { onboardingManager.skipTrial() },
                             onSuccess = { onboardingManager.nextStep() }
                         )
                         OnboardingStep.NOTIFICATIONS -> NotificationsScreen(
@@ -636,7 +635,6 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
 @Composable
 private fun TrialScreen(
     subscriptionManager: SubscriptionManager,
-    onSkip: () -> Unit,
     onSuccess: () -> Unit
 ) {
     val context = LocalContext.current
@@ -891,19 +889,48 @@ private fun TrialScreen(
             )
         }
 
-        // Skip button
-        TextButton(
-            onClick = onSkip,
+        // Reassurance messaging (no skip - payment required)
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp)
+                .padding(horizontal = 24.dp, vertical = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                "Skip for now",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextSecondary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Notifications,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = TextTertiary
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "We'll remind you 2 days before trial ends",
+                    fontSize = 13.sp,
+                    color = TextTertiary
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    Icons.Default.Cancel,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = TextTertiary
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Cancel anytime in Google Play - no charge",
+                    fontSize = 13.sp,
+                    color = TextTertiary
+                )
+            }
         }
 
         // Terms

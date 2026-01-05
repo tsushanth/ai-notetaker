@@ -41,12 +41,23 @@ class SubscriptionGateManager: ObservableObject {
         isLoadingStatus = true
         defer { isLoadingStatus = false }
 
+        // First, check trial status with device ID for abuse prevention
+        if let trialResult = await SubscriptionSyncService.shared.checkTrialWithDevice() {
+            // Store device trial info for local checks
+            deviceTrialExpired = trialResult.deviceTrialUsed == true && trialResult.trialExpired
+            print("📱 Device trial check: used=\(trialResult.deviceTrialUsed ?? false), expired=\(trialResult.trialExpired)")
+        }
+
+        // Then get full access status
         if let status = await SubscriptionSyncService.shared.getAccessStatus() {
             serverAccessStatus = status
             cacheStatus(status)
             print("✅ Access status refreshed from server")
         }
     }
+
+    /// Track if this device has already used and expired a trial (prevents reinstall abuse)
+    @Published private(set) var deviceTrialExpired = false
 
     /// Cache the access status for offline use
     private func cacheStatus(_ status: ServerAccessStatus) {
@@ -131,6 +142,12 @@ class SubscriptionGateManager: ObservableObject {
             return serverStatus.hasAccess
         }
 
+        // SECURITY: If device has already used and expired a trial, deny access
+        // This prevents reinstall abuse where users create new accounts on same device
+        if deviceTrialExpired && !StoreKitManager.shared.isSubscribed {
+            return false
+        }
+
         // Fall back to client-side check
         // If subscribed, always allow
         if StoreKitManager.shared.isSubscribed {
@@ -187,6 +204,11 @@ class SubscriptionGateManager: ObservableObject {
             }
         }
 
+        // Device-level trial abuse detection
+        if deviceTrialExpired && !StoreKitManager.shared.isSubscribed {
+            return "Your free trial has already been used on this device. Subscribe to continue using all features."
+        }
+
         if hasTrialExpired && !StoreKitManager.shared.isSubscribed {
             return "Your 7-day free trial has ended. Subscribe to continue using all features."
         }
@@ -217,6 +239,8 @@ class SubscriptionGateManager: ObservableObject {
         Can access premium: \(canAccessPremiumFeatures)
         Server status available: \(serverAccessStatus != nil)
         Cache stale: \(isCacheStale)
+        Device trial expired: \(deviceTrialExpired)
+        Device ID: \(SubscriptionSyncService.shared.deviceId)
         """)
         #endif
     }

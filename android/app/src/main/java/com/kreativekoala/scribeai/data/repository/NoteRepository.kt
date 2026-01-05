@@ -107,6 +107,24 @@ class NoteRepository {
         }
     }
 
+    suspend fun updateNote(token: String, noteId: String, request: UpdateNoteRequest): Result<Note> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.updateNote("Bearer $token", noteId, request)
+                if (response.isSuccessful && response.body()?.data != null) {
+                    Result.success(response.body()!!.data!!)
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    Log.e(TAG, "Update note failed: ${response.code()} - $errorBody")
+                    Result.failure(Exception("Failed to update note"))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception updating note", e)
+                Result.failure(e)
+            }
+        }
+    }
+
     /**
      * Upload audio recording
      */

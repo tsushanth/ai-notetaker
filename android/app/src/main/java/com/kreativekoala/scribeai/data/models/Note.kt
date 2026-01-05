@@ -65,6 +65,12 @@ data class CreateNoteRequest(
     val metadata: Map<String, Any>? = null
 )
 
+data class UpdateNoteRequest(
+    val title: String? = null,
+    val content: String? = null,
+    val metadata: Map<String, Any>? = null
+)
+
 data class NoteResponse(
     val success: Boolean,
     val data: Note? = null,

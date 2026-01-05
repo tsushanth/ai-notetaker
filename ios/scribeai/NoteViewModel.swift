@@ -127,6 +127,27 @@ class NoteViewModel: ObservableObject {
         }
     }
 
+    func updateNoteTitle(token: String, noteId: String, newTitle: String) async -> Bool {
+        do {
+            let updatedNote = try await APIService.shared.updateNote(token: token, noteId: noteId, title: newTitle)
+
+            // Update in local array
+            if let index = self.notes.firstIndex(where: { $0.id == noteId }) {
+                self.notes[index] = updatedNote
+            }
+            #if DEBUG
+            print("✅ Note title updated")
+            #endif
+            return true
+        } catch APIError.unauthorized {
+            self.errorMessage = "Session expired. Please log in again."
+            return false
+        } catch {
+            self.errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
     func refreshNotes(token: String) async {
         await loadNotes(token: token)
     }

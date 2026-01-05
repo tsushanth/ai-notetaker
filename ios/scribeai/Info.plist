@@ -8,7 +8,7 @@
 <key>NSCameraUsageDescription</key>
 <string>We need access to your camera to scan documents</string>
 <key>CFBundleDisplayName</key>
-<string>Scribe AI Learn</string>
+<string>ScribeAI Pro</string>
 <key>CFBundleURLTypes</key>
 <array>
     <dict>

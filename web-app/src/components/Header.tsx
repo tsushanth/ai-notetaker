@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { LogOut, User, Settings } from 'lucide-react';
+import { LogOut, User, Settings, Video } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Header() {
@@ -46,6 +46,14 @@ export default function Header() {
                     <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
                     <p className="text-xs text-[var(--text-muted)] truncate">{user?.email}</p>
                   </div>
+                  <Link
+                    href="/meetings"
+                    onClick={() => setShowMenu(false)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-[var(--surface-variant)] transition"
+                  >
+                    <Video size={16} />
+                    Meetings
+                  </Link>
                   <Link
                     href="/settings"
                     onClick={() => setShowMenu(false)}

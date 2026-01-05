@@ -809,6 +809,39 @@ class NoteViewModel(
     }
 
     /**
+     * Update note title
+     */
+    fun updateNoteTitle(
+        token: String,
+        noteId: String,
+        newTitle: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                repository.updateNote(token, noteId, UpdateNoteRequest(title = newTitle)).fold(
+                    onSuccess = { updatedNote ->
+                        Log.d(TAG, "✅ Note title updated")
+                        // Update local cache
+                        localRepository.updateNoteTitle(noteId, newTitle)
+                        // Update current note state
+                        _noteDetailState.value = NoteDetailState.Success(updatedNote)
+                        onSuccess()
+                    },
+                    onFailure = { exception ->
+                        Log.e(TAG, "Failed to update note title", exception)
+                        onError(exception.message ?: "Failed to update title")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating note title", e)
+                onError(e.message ?: "Failed to update title")
+            }
+        }
+    }
+
+    /**
      * Refresh notes (pull-to-refresh)
      */
     fun refreshNotes(token: String) {

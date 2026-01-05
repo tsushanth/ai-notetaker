@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.kreativekoala.scribeai.ui.screens.*
+import com.kreativekoala.scribeai.ui.meetings.MeetingsScreen
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.viewmodel.AuthViewModel
 import com.kreativekoala.scribeai.viewmodel.AuthState
@@ -47,6 +48,7 @@ sealed class Screen(val route: String) {
     object YouTube : Screen("youtube")
     object PDFUpload : Screen("pdf-upload")
     object Scan : Screen("scan")
+    object Meetings : Screen("meetings")
     object DebugToken : Screen("debug-token")
 }
 
@@ -172,6 +174,9 @@ fun AppNavigation(
                 },
                 onScanDocument = {
                     navController.navigate(Screen.Scan.route)
+                },
+                onMeetings = {
+                    navController.navigate(Screen.Meetings.route)
                 },
                 onDebugToken = {
                     navController.navigate(Screen.DebugToken.route)
@@ -330,6 +335,20 @@ fun AppNavigation(
                     }
                 },
                 onSuccess = { navController.popBackStack() }
+            )
+        }
+
+        // Meetings Screen
+        composable(Screen.Meetings.route) {
+            MeetingsScreen(
+                authManager = authManager,
+                subscriptionManager = subscriptionManager,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToNote = { noteId ->
+                    navController.navigate(Screen.NoteDetail.createRoute(noteId)) {
+                        popUpTo(Screen.Home.route)
+                    }
+                }
             )
         }
 

@@ -28,6 +28,7 @@ const onboardingRoutes = require('./routes/onboarding');
 const formattingRoutes = require('./routes/formatting');
 const authRoutes = require('./routes/auth');
 const creatorsRoutes = require('./routes/creators');
+const meetingsRoutes = require('./routes/meetings');
 const { createJobRoutes, initializeCronJobs } = require('./jobs/creatorPayoutJobs');
 
 const app = express();
@@ -65,13 +66,77 @@ app.use(cors({
 }));
 
 // ============================================
-// IMPORTANT: Stripe webhook needs raw body for signature verification
-// This route MUST be defined BEFORE express.json() middleware
+// IMPORTANT: Webhooks need raw body for signature verification
+// These routes MUST be defined BEFORE express.json() middleware
 // ============================================
 const Stripe = require('stripe');
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const { logger } = require('./utils/logger');
+const crypto = require('crypto');
+const meetingService = require('./services/meetingService');
 
+// Recall.ai webhook - needs raw body for signature verification
+const RECALL_WEBHOOK_SECRET = process.env.RECALL_WEBHOOK_SECRET;
+
+function verifyRecallSignature(signature, body) {
+  if (!RECALL_WEBHOOK_SECRET || !signature) {
+    logger.warn('Recall webhook signature verification skipped - missing secret or signature');
+    return true; // Allow through in development if not configured
+  }
+
+  try {
+    const expectedSignature = crypto
+      .createHmac('sha256', RECALL_WEBHOOK_SECRET)
+      .update(body, 'utf8')
+      .digest('hex');
+
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch (error) {
+    logger.error('Recall webhook signature verification error', { error: error.message });
+    return false;
+  }
+}
+
+app.post('/api/meetings/webhook/recall',
+  express.raw({ type: 'application/json' }),
+  async (req, res) => {
+    const rawBody = req.body.toString();
+    const signature = req.headers['x-recall-signature'] || req.headers['x-webhook-signature'];
+
+    // Verify webhook signature
+    if (RECALL_WEBHOOK_SECRET && !verifyRecallSignature(signature, rawBody)) {
+      logger.warn('Invalid Recall webhook signature received');
+      return res.status(401).json({ error: 'Invalid webhook signature' });
+    }
+
+    let payload;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch (err) {
+      logger.error('Failed to parse Recall webhook payload', { error: err.message });
+      return res.status(400).json({ error: 'Invalid JSON payload' });
+    }
+
+    // Log full payload to understand structure
+    logger.info('Recall webhook received', {
+      event: payload.event,
+      fullPayload: JSON.stringify(payload),
+    });
+
+    try {
+      await meetingService.handleBotStatusWebhook(payload);
+      res.json({ received: true });
+    } catch (error) {
+      logger.error('Recall webhook processing error', { error: error.message });
+      res.json({ received: true }); // Still acknowledge to prevent retries
+    }
+  }
+);
+
+// Stripe webhook
 app.post('/api/subscriptions/webhook/stripe',
   express.raw({ type: 'application/json' }),
   async (req, res) => {
@@ -179,6 +244,7 @@ app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/formatting', formattingRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/creators', creatorsRoutes);
+app.use('/api/meetings', meetingsRoutes);
 app.use('/api/jobs', createJobRoutes());
 
 // Initialize cron jobs (if node-cron is installed)

@@ -58,19 +58,19 @@ struct OnboardingTrialView: View {
 
                 // Day 5
                 TimelineItem(
-                    icon: "envelope.fill",
+                    icon: "bell.badge.fill",
                     iconColor: .blue,
                     title: trialReminderDate,
-                    subtitle: "We'll let you know when your trial is ending",
+                    subtitle: "We'll send a reminder - cancel before this if you don't want to continue",
                     isLast: false
                 )
 
                 // Day 7
                 TimelineItem(
-                    icon: "heart.fill",
-                    iconColor: .red,
+                    icon: "creditcard.fill",
+                    iconColor: .purple80,
                     title: trialEndDate,
-                    subtitle: "Your trial ends unless canceled. Enjoy!",
+                    subtitle: "First charge only if you haven't canceled",
                     isLast: true
                 )
             }
@@ -150,25 +150,38 @@ struct OnboardingTrialView: View {
             .disabled(isPurchasing)
             .padding(.horizontal, 24)
 
+            // Reassurance message about trial
+            VStack(spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "bell.badge")
+                        .font(.system(size: 14))
+                        .foregroundColor(.accentGreen)
+                    Text("We'll remind you 2 days before your trial ends")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.textSecondary)
+                }
+
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark.circle")
+                        .font(.system(size: 14))
+                        .foregroundColor(.accentGreen)
+                    Text("Cancel anytime in App Store settings - no charge")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.textSecondary)
+                }
+            }
+            .padding(.top, 12)
+            .padding(.horizontal, 24)
+
             // App Store badge
             HStack(spacing: 6) {
                 Image(systemName: "applelogo")
                     .font(.system(size: 12))
-                Text("Cancel anytime. Secure with App Store.")
+                Text("Secure payment via App Store")
                     .font(.system(size: 13))
             }
             .foregroundColor(.textTertiary)
             .padding(.top, 12)
-
-            // Skip button
-            Button {
-                manager.skipTrial()
-            } label: {
-                Text("Skip for now")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.textSecondary)
-            }
-            .padding(.top, 16)
 
             // Terms
             VStack(spacing: 4) {
@@ -197,6 +210,8 @@ struct OnboardingTrialView: View {
                 selectedProduct = storeManager.getYearlyProduct()
             }
             AnalyticsService.shared.trackPaywallViewed(source: "onboarding")
+            // Track trial screen view for funnel metrics
+            SubscriptionSyncService.shared.trackMetric(eventType: .trialScreenViewed, source: "onboarding")
         }
     }
 
@@ -227,11 +242,29 @@ struct OnboardingTrialView: View {
 
         isPurchasing = true
 
+        // Track purchase initiated
+        SubscriptionSyncService.shared.trackMetric(
+            eventType: .purchaseInitiated,
+            source: "onboarding",
+            metadata: ["productId": product.id]
+        )
+
         Task {
             do {
                 try await storeManager.purchase(product)
                 await MainActor.run {
                     isPurchasing = false
+                    // Track successful purchase/trial start
+                    SubscriptionSyncService.shared.trackMetric(
+                        eventType: .purchaseCompleted,
+                        source: "onboarding",
+                        metadata: ["productId": product.id]
+                    )
+                    SubscriptionSyncService.shared.trackMetric(
+                        eventType: .trialStarted,
+                        source: "onboarding",
+                        metadata: ["productId": product.id]
+                    )
                     // Double-check subscription status updated
                     if storeManager.isSubscribed {
                         manager.nextStep()
@@ -243,10 +276,22 @@ struct OnboardingTrialView: View {
             } catch PurchaseError.purchaseCancelled {
                 await MainActor.run {
                     isPurchasing = false
+                    // Track cancelled purchase
+                    SubscriptionSyncService.shared.trackMetric(
+                        eventType: .purchaseCancelled,
+                        source: "onboarding",
+                        metadata: ["productId": product.id]
+                    )
                 }
             } catch {
                 await MainActor.run {
                     isPurchasing = false
+                    // Track failed purchase
+                    SubscriptionSyncService.shared.trackMetric(
+                        eventType: .purchaseFailed,
+                        source: "onboarding",
+                        metadata: ["productId": product.id, "error": error.localizedDescription]
+                    )
                     // Check if already subscribed (e.g., restored or previous purchase)
                     if storeManager.isSubscribed {
                         manager.nextStep()
@@ -318,12 +363,19 @@ struct OnboardingTrialView: View {
 
                     // Validation result or error
                     if let validation = promoValidation {
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .foregroundColor(.accentGreen)
-                            Text("Code applied! \(validation.creatorName.isEmpty ? "" : "via \(validation.creatorName)")")
-                                .font(.system(size: 13))
-                                .foregroundColor(.accentGreen)
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "gift.fill")
+                                    .foregroundColor(.accentGreen)
+                                Text(validation.promoDescription)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.accentGreen)
+                            }
+                            if !validation.creatorName.isEmpty {
+                                Text("via \(validation.creatorName)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.textTertiary)
+                            }
                         }
                     } else if let error = promoError {
                         HStack(spacing: 6) {

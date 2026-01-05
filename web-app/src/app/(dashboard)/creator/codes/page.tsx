@@ -86,15 +86,9 @@ export default function PromoCodesPage() {
     }
   };
 
-  const formatDiscount = (type: string, value: number) => {
-    switch (type) {
-      case 'percent':
-        return `${value}% off first month`;
-      case 'trial_extension':
-        return 'Extended trial';
-      default:
-        return 'No discount';
-    }
+  const formatDiscount = () => {
+    // All promo codes now provide 10% off
+    return '10% off first subscription';
   };
 
   if (isLoading) {
@@ -163,7 +157,7 @@ export default function PromoCodesPage() {
                     </code>
                   </td>
                   <td className="px-6 py-4 text-sm">
-                    {formatDiscount(code.discountType, code.discountValue)}
+                    {formatDiscount()}
                     {code.trialExtensionDays > 0 && (
                       <span className="block text-xs text-[var(--text-muted)]">
                         +{code.trialExtensionDays} trial days
@@ -210,53 +204,21 @@ export default function PromoCodesPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--card-background)] border border-[var(--border)] rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-6">Create New Promo Code</h2>
-            <form onSubmit={handleCreateCode} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Discount Type</label>
-                <select
-                  value={createForm.discountType}
-                  onChange={e => setCreateForm(prev => ({ ...prev, discountType: e.target.value }))}
-                  className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border)] rounded-lg"
-                >
-                  <option value="none">No Discount (Attribution Only)</option>
-                  <option value="percent">Percentage Off (First Month)</option>
-                </select>
-              </div>
 
-              {createForm.discountType === 'percent' && (
+            {/* Discount Info Banner */}
+            <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <Tag className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                 <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Discount Percentage (max 10%)
-                  </label>
-                  <input
-                    type="number"
-                    value={createForm.discountValue}
-                    onChange={e => setCreateForm(prev => ({ ...prev, discountValue: e.target.value }))}
-                    placeholder="10"
-                    min="0"
-                    max="10"
-                    className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border)] rounded-lg"
-                  />
+                  <p className="text-sm font-medium text-green-400">All promo codes include 10% off</p>
                   <p className="text-xs text-[var(--text-muted)] mt-1">
-                    Discounts apply to the first month only. Discount costs are deducted from your earnings.
+                    Users who apply your code get 10% off their first subscription. This is a one-time discount per user.
                   </p>
                 </div>
-              )}
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Extra Trial Days (optional)
-                </label>
-                <input
-                  type="number"
-                  value={createForm.trialExtensionDays}
-                  onChange={e => setCreateForm(prev => ({ ...prev, trialExtensionDays: e.target.value }))}
-                  placeholder="7"
-                  min="0"
-                  className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border)] rounded-lg"
-                />
               </div>
+            </div>
 
+            <form onSubmit={handleCreateCode} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Max Redemptions (optional)
@@ -264,11 +226,29 @@ export default function PromoCodesPage() {
                 <input
                   type="number"
                   value={createForm.maxRedemptions}
-                  onChange={e => setCreateForm(prev => ({ ...prev, maxRedemptions: e.target.value }))}
+                  onChange={e => {
+                    const value = e.target.value;
+                    // Validate: only allow positive integers
+                    if (value === '' || (parseInt(value) > 0 && parseInt(value) <= 100000)) {
+                      setCreateForm(prev => ({ ...prev, maxRedemptions: value }));
+                    }
+                  }}
                   placeholder="Leave empty for unlimited"
                   min="1"
+                  max="100000"
                   className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border)] rounded-lg"
                 />
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  Limit how many users can use this code. Max 100,000.
+                </p>
+              </div>
+
+              {/* Fraud Prevention Notice */}
+              <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                <p className="text-xs text-yellow-400">
+                  <strong>Fraud Protection:</strong> Our system tracks devices, IPs, and payment methods to prevent abuse.
+                  Users can only receive the discount once, even with multiple codes.
+                </p>
               </div>
 
               <div className="flex gap-3 pt-4">

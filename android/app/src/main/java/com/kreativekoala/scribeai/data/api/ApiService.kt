@@ -112,7 +112,19 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: GenerateAIRequest
     ): Response<AIContentResponse>
-    
+
+    @POST("api/ai/mindmap")
+    suspend fun generateMindMap(
+        @Header("Authorization") token: String,
+        @Body request: GenerateAIRequest
+    ): Response<MindMapGenerateResponse>
+
+    @POST("api/ai/infographic")
+    suspend fun generateInfographic(
+        @Header("Authorization") token: String,
+        @Body request: GenerateAIRequest
+    ): Response<InfographicGenerateResponse>
+
     @GET("api/ai/note/{note_id}")
     suspend fun getAIContent(
         @Header("Authorization") token: String,
@@ -248,4 +260,17 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Body request: ValidateMeetingUrlRequest
     ): Response<ValidateMeetingUrlResponse>
+
+    // User stats endpoint (for retention screens)
+    @GET("api/onboarding/stats")
+    suspend fun getUserStats(
+        @Header("Authorization") token: String
+    ): Response<UserStatsResponse>
+
+    // Delete account endpoint
+    @DELETE("api/users/account")
+    suspend fun deleteAccount(
+        @Header("Authorization") token: String,
+        @Body request: DeleteAccountRequest
+    ): Response<GenericResponse>
 }

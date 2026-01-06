@@ -26,7 +26,7 @@ const schemas = {
   createNote: Joi.object({
     title: Joi.string().min(1).max(500).required(),
     content: Joi.string().min(1).required(),
-    source_type: Joi.string().valid('recording', 'pdf', 'video', 'slideshow', 'manual'),
+    source_type: Joi.string().valid('recording', 'pdf', 'video', 'slideshow', 'manual', 'scan', 'meeting', 'docx', 'txt', 'document', 'text', 'tutorial'),
     source_url: Joi.string().uri().allow('', null),
     metadata: Joi.object().default({})
   }),
@@ -41,19 +41,20 @@ const schemas = {
     note_id: Joi.string().uuid().required(),
     // content_type is optional because specific endpoints like /flashcards, /quiz, etc.
     // already know the type from the URL. Only required for generic /generate endpoint.
-    content_type: Joi.string().valid('summary', 'quiz', 'flashcards', 'podcast', 'diagram'),
+    content_type: Joi.string().valid('summary', 'quiz', 'flashcards', 'podcast', 'diagram', 'mindmap', 'infographic'),
     options: Joi.object({
       length: Joi.string().valid('short', 'medium', 'long'),
       difficulty: Joi.string().valid('easy', 'medium', 'hard'),
       num_questions: Joi.number().min(1).max(50),
       num_cards: Joi.number().min(1).max(100),
       count: Joi.number().min(1).max(100), // Alias for num_cards (iOS uses this)
-      style: Joi.string(),
+      style: Joi.string().valid('flowchart', 'mindmap', 'sequenceDiagram', 'modern', 'colorful', 'minimal', 'professional'), // diagram and infographic styles
       language: Joi.string().valid(...SUPPORTED_LANGUAGES).default('english'),
       generate_audio: Joi.boolean(),
       duration: Joi.string().valid('short', 'medium', 'long'),
       voice: Joi.string(),
-      instructions: Joi.string().max(500)
+      instructions: Joi.string().max(500),
+      includeExploration: Joi.boolean() // Mind map option
     }).default({})
   }),
 

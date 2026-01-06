@@ -70,6 +70,7 @@ struct SignOutConfirmationView: View {
                     // Stay signed in (primary)
                     Button {
                         AnalyticsService.shared.track(.signoutCancelled, properties: [:])
+                        FirebaseAnalyticsHelper.shared.logSignOutCancelled()
                         dismiss()
                     } label: {
                         Text("Stay Signed In")
@@ -87,6 +88,7 @@ struct SignOutConfirmationView: View {
                             "notes_count": stats.notesCount,
                             "quizzes_count": stats.quizzesCount
                         ])
+                        FirebaseAnalyticsHelper.shared.logSignOutCompleted()
                         onSignOut()
                         dismiss()
                     } label: {
@@ -101,6 +103,7 @@ struct SignOutConfirmationView: View {
         }
         .onAppear {
             AnalyticsService.shared.track(.signoutAttempted, properties: [:])
+            FirebaseAnalyticsHelper.shared.logSignOutAttempted()
             loadStats()
         }
     }
@@ -160,6 +163,7 @@ struct DeleteAccountConfirmationView: View {
         }
         .onAppear {
             AnalyticsService.shared.track(.deleteAccountAttempted, properties: [:])
+            FirebaseAnalyticsHelper.shared.logDeleteAccountAttempted()
             loadStats()
         }
     }
@@ -205,6 +209,7 @@ struct DeleteAccountConfirmationView: View {
                 // Keep account (primary)
                 Button {
                     AnalyticsService.shared.track(.deleteAccountCancelled, properties: [:])
+                    FirebaseAnalyticsHelper.shared.logDeleteAccountCancelled()
                     dismiss()
                 } label: {
                     Text("Keep My Account")
@@ -357,6 +362,10 @@ struct DeleteAccountConfirmationView: View {
                     "reason": reason.rawValue,
                     "notes_count": stats.notesCount
                 ])
+                FirebaseAnalyticsHelper.shared.logDeleteAccountCompleted(
+                    reason: reason.rawValue,
+                    notesCount: stats.notesCount
+                )
 
                 try await onDelete()
 

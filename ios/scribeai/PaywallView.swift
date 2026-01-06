@@ -281,7 +281,7 @@ struct PaywallView: View {
                                 Text("Code applied!")
                                     .font(.system(size: 14, weight: .semibold))
                                     .foregroundColor(.accentGreen)
-                                if validation.discountType != "none" {
+                                if validation.hasTrialExtension {
                                     Text(validation.promoDescription)
                                         .font(.system(size: 12))
                                         .foregroundColor(.textSecondary)
@@ -523,27 +523,19 @@ struct PaywallView: View {
 struct PromoValidationResult {
     let valid: Bool
     let code: String
-    let discountType: String
-    let discountValue: Double
     let trialExtensionDays: Int
     let creatorName: String
-    let discountEligible: Bool  // Whether user gets 10% off on web (not applicable on iOS)
 
     var promoDescription: String {
-        // On iOS, promo codes extend trial period (discounts only work on web)
+        // Promo codes extend trial period (discounts not supported on iOS/Android)
         if trialExtensionDays > 0 {
-            return "Trial extended to 14 days!"
+            return "Trial extended by \(trialExtensionDays) days!"
         }
         return "Code applied!"
     }
 
     var hasTrialExtension: Bool {
         return trialExtensionDays > 0
-    }
-
-    // For backwards compatibility - but on iOS we show trial extension, not discount
-    var hasDiscount: Bool {
-        return trialExtensionDays > 0  // Treat trial extension as a "benefit"
     }
 }
 

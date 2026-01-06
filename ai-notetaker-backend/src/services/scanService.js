@@ -90,6 +90,14 @@ class ScanService {
       const metadata = await this.extractMetadata(finalText);
 
       // Create note with scanned document
+      logger.info('Creating note for scanned document', {
+        userId,
+        documentTitle,
+        contentLength: finalText.length,
+        pdfUrl,
+        storagePath
+      });
+
       const note = await noteService.createNote(userId, {
         title: documentTitle,
         content: finalText,

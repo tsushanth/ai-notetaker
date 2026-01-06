@@ -36,8 +36,18 @@ class NoteService {
 
       return data;
     } catch (error) {
-      logger.error('Error creating note', { error: error.message, userId });
-      throw new AppError('Failed to create note', 500);
+      logger.error('Error creating note', {
+        error: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        userId,
+        noteDataKeys: Object.keys(noteData),
+        titleLength: noteData.title?.length,
+        contentLength: noteData.content?.length,
+        sourceType: noteData.source_type
+      });
+      throw new AppError(`Failed to create note: ${error.message}`, 500);
     }
   }
 

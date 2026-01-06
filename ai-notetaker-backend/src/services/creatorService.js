@@ -10,8 +10,8 @@ const earningMaturityService = require('./earningMaturityService');
 const trialAbuseService = require('./trialAbuseService');
 const commissionCapService = require('./commissionCapService');
 
-// Standard discount for all valid promo codes - 10% off first subscription
-const PROMO_CODE_DISCOUNT_PERCENT = 10;
+// Note: Discounts removed - iOS/Android app stores don't allow external discount codes
+// Promo codes now only extend trial period
 
 /**
  * Generate a unique promo code for a creator
@@ -110,9 +110,9 @@ async function registerCreator({
         creator_id: creator.id,
         code: promoCode,
         is_active: true,
-        discount_type: 'none',
+        discount_type: 'none', // Discounts not supported on iOS/Android
         discount_value: 0,
-        trial_extension_days: 7, // Extend trial from 7 to 14 days on mobile
+        trial_extension_days: 7, // Extend trial from 7 to 14 days total
       })
       .select()
       .single();
@@ -192,21 +192,20 @@ async function getCreatorById(creatorId) {
 }
 
 /**
- * Check if user has already used their one-time promo discount
- * Users can only receive the 10% discount ONCE in their lifetime
+ * Check if user has already used a promo code
+ * Users can only use one promo code
  */
-async function hasUserUsedPromoDiscount(userId) {
+async function hasUserUsedPromoCode(userId) {
   const { data: redemption, error } = await supabaseAdmin
     .from('promo_redemptions')
-    .select('id, discount_applied')
+    .select('id')
     .eq('user_id', userId)
-    .eq('discount_applied', true)
     .limit(1)
     .maybeSingle();
 
   if (error) {
-    logger.error('Error checking user discount usage', { error, userId });
-    return false; // Fail open for this check to not block legitimate users
+    logger.error('Error checking user promo usage', { error, userId });
+    return false;
   }
 
   return !!redemption;
@@ -214,7 +213,7 @@ async function hasUserUsedPromoDiscount(userId) {
 
 /**
  * Validate a promo code
- * Optionally checks if user is eligible for the discount (hasn't used one before)
+ * Promo codes extend trial period (no discounts - not allowed by iOS/Android stores)
  */
 async function validatePromoCode(code, userId = null) {
   const normalizedCode = code.toUpperCase().trim();
@@ -280,26 +279,22 @@ async function validatePromoCode(code, userId = null) {
     };
   }
 
-  // Check if user has already used their one-time discount (if userId provided)
-  let discountEligible = true;
+  // Check if user has already used a promo code (if userId provided)
   if (userId) {
-    const alreadyUsedDiscount = await hasUserUsedPromoDiscount(userId);
-    if (alreadyUsedDiscount) {
-      discountEligible = false;
-      logger.info('User already used promo discount', { userId, code: normalizedCode });
+    const alreadyUsedPromo = await hasUserUsedPromoCode(userId);
+    if (alreadyUsedPromo) {
+      return {
+        valid: false,
+        error: 'You have already used a promo code',
+      };
     }
   }
-
-  // All promo codes provide the standard 10% discount (if user is eligible)
-  const effectiveDiscountValue = discountEligible ? PROMO_CODE_DISCOUNT_PERCENT : 0;
 
   return {
     valid: true,
     promoCode: {
       id: promoCode.id,
       code: promoCode.code,
-      discountType: discountEligible ? 'percent' : 'none',
-      discountValue: effectiveDiscountValue,
       trialExtensionDays: promoCode.trial_extension_days,
     },
     creator: {
@@ -307,7 +302,6 @@ async function validatePromoCode(code, userId = null) {
       name: promoCode.creators.name,
       username: promoCode.creators.username,
     },
-    discountEligible, // Let caller know if user can receive discount
   };
 }
 
@@ -407,7 +401,7 @@ async function applyPromoCode(userId, code, platform = 'web', fingerprints = {})
     : null;
 
   // Create redemption record with fingerprints
-  // Track discount_applied = true if user is eligible for the 10% discount
+  // Note: No discount tracking - discounts not allowed by iOS/Android stores
   const { data: redemption, error } = await supabaseAdmin
     .from('promo_redemptions')
     .insert({
@@ -416,9 +410,9 @@ async function applyPromoCode(userId, code, platform = 'web', fingerprints = {})
       creator_id: validation.creator.id,
       code_used: code.toUpperCase().trim(),
       platform,
-      discount_type: validation.promoCode.discountType,
-      discount_value: validation.promoCode.discountValue,
-      discount_applied: validation.discountEligible, // Track if 10% discount was given
+      discount_type: 'none',
+      discount_value: 0,
+      discount_applied: false,
       attribution_status: 'pending',
       device_fingerprint: deviceFingerprint,
       ip_address: ipAddress,
@@ -467,15 +461,13 @@ async function applyPromoCode(userId, code, platform = 'web', fingerprints = {})
     creatorId: validation.creator.id,
     redemptionId: redemption.id,
     trialAbuseScore: trialCheck.abuseScore,
-    discountApplied: validation.discountEligible,
-    discountPercent: validation.discountEligible ? PROMO_CODE_DISCOUNT_PERCENT : 0,
+    trialExtensionDays: validation.promoCode.trialExtensionDays,
   });
 
   return {
     redemption,
     promoCode: validation.promoCode,
     creator: validation.creator,
-    discountEligible: validation.discountEligible,
   };
 }
 

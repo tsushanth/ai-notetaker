@@ -96,3 +96,36 @@ data class Pagination(
     val hasMore: Boolean
         get() = page < pages
 }
+
+// User Stats for retention screens
+data class UserStats(
+    @SerializedName("notes_count")
+    val notesCount: Int = 0,
+    @SerializedName("quizzes_count")
+    val quizzesCount: Int = 0,
+    @SerializedName("flashcards_count")
+    val flashcardsCount: Int = 0,
+    @SerializedName("audio_hours")
+    val audioHours: Double = 0.0
+)
+
+data class UserStatsResponse(
+    val success: Boolean,
+    val data: UserStats? = null,
+    val error: String? = null
+)
+
+data class DeleteAccountRequest(
+    val reason: String
+)
+
+// Deletion reasons for account deletion
+enum class DeletionReason(val displayName: String) {
+    NOT_USEFUL("App isn't useful for me"),
+    TOO_EXPENSIVE("Too expensive"),
+    FOUND_ALTERNATIVE("Found a better alternative"),
+    PRIVACY_CONCERNS("Privacy concerns"),
+    TOO_COMPLICATED("Too complicated to use"),
+    BUGS_ISSUES("Too many bugs/issues"),
+    OTHER("Other reason")
+}

@@ -22,11 +22,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Volume2,
-  Lightbulb
+  Lightbulb,
+  Image as ImageIcon,
+  Download,
+  ZoomIn,
+  X
 } from 'lucide-react';
-import type { Note, ChatMessage, QuizQuestion, FlashcardContent } from '@/types';
+import type { Note, ChatMessage, QuizQuestion, FlashcardContent, InfographicContent } from '@/types';
 
-type TabType = 'notes' | 'chat' | 'quiz' | 'flashcards' | 'podcast';
+type TabType = 'notes' | 'chat' | 'quiz' | 'flashcards' | 'infographic' | 'podcast';
 
 export default function NoteDetailPage() {
   const params = useParams();
@@ -68,6 +72,12 @@ export default function NoteDetailPage() {
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
   const [podcastGenerationStartTime, setPodcastGenerationStartTime] = useState<number | null>(null);
 
+  // Infographic state
+  const [infographicUrl, setInfographicUrl] = useState<string | null>(null);
+  const [isGeneratingInfographic, setIsGeneratingInfographic] = useState(false);
+  const [selectedStyle, setSelectedStyle] = useState<string>('modern');
+  const [showFullscreenInfographic, setShowFullscreenInfographic] = useState(false);
+
   // Track last fetch time to force re-fetch when navigating back
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
@@ -89,6 +99,8 @@ export default function NoteDetailPage() {
     setIsFlipped(false);
     // Reset podcast state
     setPodcastUrl(null);
+    // Reset infographic state
+    setInfographicUrl(null);
     // Reset chat state
     setChatMessages([]);
     setChatInput('');
@@ -156,6 +168,13 @@ export default function NoteDetailPage() {
             const audioUrl = content.podcast.audio_url || content.podcast.audioUrl;
             console.log('[NoteDetail] Podcast URL:', audioUrl);
             if (audioUrl) setPodcastUrl(audioUrl);
+          }
+          // Infographic - handle both camelCase and snake_case
+          if (content.infographic) {
+            console.log('[NoteDetail] Has infographic content');
+            const imageUrl = content.infographic.image_url || content.infographic.imageUrl;
+            console.log('[NoteDetail] Infographic URL:', imageUrl);
+            if (imageUrl) setInfographicUrl(imageUrl);
           }
         }
       } catch {
@@ -521,7 +540,60 @@ export default function NoteDetailPage() {
     { id: 'chat' as TabType, label: 'Chat', icon: MessageSquare },
     { id: 'quiz' as TabType, label: 'Quiz', icon: HelpCircle },
     { id: 'flashcards' as TabType, label: 'Flashcards', icon: Layers },
+    { id: 'infographic' as TabType, label: 'Infographic', icon: ImageIcon },
     { id: 'podcast' as TabType, label: 'Podcast', icon: Radio },
+  ];
+
+  // Infographic handlers
+  const handleGenerateInfographic = async () => {
+    if (!token || isGeneratingInfographic) return;
+
+    setIsGeneratingInfographic(true);
+    setError(null);
+
+    try {
+      console.log('Starting infographic generation with style:', selectedStyle);
+      const response = await aiApi.generateInfographic(token, noteId, selectedStyle);
+      console.log('Infographic API response:', JSON.stringify(response, null, 2));
+      const infographic = response.infographic as InfographicContent;
+      const imageUrl = infographic?.image_url || infographic?.imageUrl;
+      console.log('Extracted image URL:', imageUrl);
+
+      if (imageUrl) {
+        setInfographicUrl(imageUrl);
+      }
+    } catch (err) {
+      console.error('Infographic generation error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate infographic');
+    } finally {
+      setIsGeneratingInfographic(false);
+    }
+  };
+
+  const handleDownloadInfographic = async () => {
+    if (!infographicUrl) return;
+
+    try {
+      const response = await fetch(infographicUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `infographic-${noteId}.png`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Failed to download infographic:', err);
+    }
+  };
+
+  const infographicStyles = [
+    { value: 'modern', label: 'Modern' },
+    { value: 'colorful', label: 'Colorful' },
+    { value: 'minimal', label: 'Minimal' },
+    { value: 'professional', label: 'Professional' },
   ];
 
   if (isLoading) {
@@ -902,6 +974,124 @@ export default function NoteDetailPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Infographic Tab */}
+        {activeTab === 'infographic' && (
+          <div>
+            {!infographicUrl ? (
+              <div className="text-center py-8">
+                <ImageIcon className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)] opacity-50" />
+                <p className="text-[var(--text-muted)] mb-4">Generate a visual infographic summary of this note</p>
+
+                {/* Style selector */}
+                <div className="max-w-xs mx-auto mb-6">
+                  <label className="block text-sm text-[var(--text-muted)] mb-2">Style</label>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {infographicStyles.map((style) => (
+                      <button
+                        key={style.value}
+                        onClick={() => setSelectedStyle(style.value)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                          selectedStyle === style.value
+                            ? 'bg-[var(--accent-purple)] text-white'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                        }`}
+                      >
+                        {style.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGenerateInfographic}
+                  disabled={isGeneratingInfographic}
+                  className="btn-primary"
+                >
+                  {isGeneratingInfographic ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Generating... (this may take a minute)
+                    </>
+                  ) : (
+                    'Generate Infographic'
+                  )}
+                </button>
+              </div>
+            ) : (
+              <div className="text-center py-4">
+                {/* Infographic image */}
+                <div
+                  className="relative inline-block cursor-pointer group mb-4"
+                  onClick={() => setShowFullscreenInfographic(true)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={infographicUrl}
+                    alt="Generated infographic"
+                    className="max-w-full max-h-[500px] rounded-lg shadow-lg transition group-hover:opacity-90"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                    <div className="bg-black/50 rounded-full p-3">
+                      <ZoomIn className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                </div>
+
+                <p className="text-sm text-[var(--text-muted)] mb-4">Click image to view fullscreen</p>
+
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={handleDownloadInfographic}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    <Download size={18} />
+                    Download
+                  </button>
+                  <button
+                    onClick={handleGenerateInfographic}
+                    disabled={isGeneratingInfographic}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    {isGeneratingInfographic ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={18} />
+                        Regenerate
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Fullscreen Infographic Modal */}
+        {showFullscreenInfographic && infographicUrl && (
+          <div
+            className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setShowFullscreenInfographic(false)}
+          >
+            <button
+              onClick={() => setShowFullscreenInfographic(false)}
+              className="absolute top-4 right-4 p-2 bg-white/10 rounded-full hover:bg-white/20 transition"
+            >
+              <X className="w-6 h-6 text-white" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={infographicUrl}
+              alt="Generated infographic fullscreen"
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         )}
 

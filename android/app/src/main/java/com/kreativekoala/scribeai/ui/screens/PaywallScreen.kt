@@ -199,35 +199,37 @@ fun PaywallScreen(
                     color = TextPrimary
                 )
 
-                // Show discount banner when promo code applied
-                if (promoValidation?.hasDiscount == true) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = AccentGreen.copy(alpha = 0.15f)
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 10.dp, horizontal = 12.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
+                // Show trial extension banner when promo code applied
+                promoValidation?.let { promo ->
+                    if (promo.hasTrialExtension) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = AccentGreen.copy(alpha = 0.15f)
+                            ),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(
-                                Icons.Default.LocalOffer,
-                                contentDescription = null,
-                                tint = AccentGreen,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                "${promoValidation?.discountValue?.toInt()}% off applied!",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = AccentGreen
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 10.dp, horizontal = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.LocalOffer,
+                                    contentDescription = null,
+                                    tint = AccentGreen,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    "Trial extended by ${promo.trialExtensionDays} days!",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = AccentGreen
+                                )
+                            }
                         }
                     }
                 }
@@ -243,25 +245,6 @@ fun PaywallScreen(
                     add("Cancel anytime")
                 }
 
-                // Calculate discounted prices if promo applied
-                val yearlyDiscountedPrice = if (promoValidation?.hasDiscount == true) {
-                    val discountMultiplier = 1.0 - (promoValidation!!.discountValue / 100.0)
-                    val rawPrice = subscriptionManager.getRawPrice(SubscriptionManager.YEARLY_SUB_ID)
-                    if (rawPrice > 0) {
-                        val discounted = rawPrice * discountMultiplier
-                        subscriptionManager.formatPrice(discounted, SubscriptionManager.YEARLY_SUB_ID)
-                    } else null
-                } else null
-
-                val monthlyDiscountedPrice = if (promoValidation?.hasDiscount == true) {
-                    val discountMultiplier = 1.0 - (promoValidation!!.discountValue / 100.0)
-                    val rawPrice = subscriptionManager.getRawPrice(SubscriptionManager.MONTHLY_SUB_ID)
-                    if (rawPrice > 0) {
-                        val discounted = rawPrice * discountMultiplier
-                        subscriptionManager.formatPrice(discounted, SubscriptionManager.MONTHLY_SUB_ID)
-                    } else null
-                } else null
-
                 // Yearly plan (recommended)
                 SubscriptionPlanCard(
                     title = "Yearly",
@@ -271,7 +254,6 @@ fun PaywallScreen(
                     features = yearlyFeatures,
                     isSelected = selectedPlan == SubscriptionManager.YEARLY_SUB_ID,
                     isRecommended = true,
-                    discountedPrice = yearlyDiscountedPrice,
                     onClick = { selectedPlan = SubscriptionManager.YEARLY_SUB_ID }
                 )
 
@@ -287,7 +269,6 @@ fun PaywallScreen(
                     ),
                     isSelected = selectedPlan == SubscriptionManager.MONTHLY_SUB_ID,
                     isRecommended = false,
-                    discountedPrice = monthlyDiscountedPrice,
                     onClick = { selectedPlan = SubscriptionManager.MONTHLY_SUB_ID }
                 )
             }
@@ -323,11 +304,8 @@ fun PaywallScreen(
                                         promoValidation = PromoValidationResult(
                                             valid = true,
                                             code = data.code,
-                                            discountType = data.discountType,
-                                            discountValue = data.discountValue,
                                             trialExtensionDays = data.trialExtensionDays,
-                                            creatorName = data.creatorName,
-                                            discountEligible = data.discountEligible
+                                            creatorName = data.creatorName
                                         )
                                         // Apply the promo code with device fingerprint
                                         val deviceFingerprint = DeviceFingerprint.generate(context)
@@ -536,7 +514,6 @@ fun SubscriptionPlanCard(
     features: List<String>,
     isSelected: Boolean,
     isRecommended: Boolean,
-    discountedPrice: String? = null,  // Shows discounted price when promo applied
     onClick: () -> Unit
 ) {
     Card(
@@ -588,45 +565,19 @@ fun SubscriptionPlanCard(
 
                     Spacer(Modifier.height(4.dp))
 
-                    // Show discounted price if available
-                    if (discountedPrice != null) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                price.ifEmpty { "..." },
-                                fontSize = 18.sp,
-                                color = TextTertiary,
-                                textDecoration = TextDecoration.LineThrough
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                discountedPrice,
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AccentGreen
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                period,
-                                fontSize = 14.sp,
-                                color = TextSecondary
-                            )
-                        }
-                    } else {
-                        Row(verticalAlignment = Alignment.Bottom) {
-                            Text(
-                                price.ifEmpty { "..." },
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Purple80
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                period,
-                                fontSize = 14.sp,
-                                color = TextSecondary
-                            )
-                        }
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            price.ifEmpty { "..." },
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Purple80
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            period,
+                            fontSize = 14.sp,
+                            color = TextSecondary
+                        )
                     }
 
                     if (savings != null) {
@@ -742,25 +693,19 @@ fun FeatureItem(
 data class PromoValidationResult(
     val valid: Boolean,
     val code: String,
-    val discountType: String,
-    val discountValue: Double,
     val trialExtensionDays: Int,
-    val creatorName: String,
-    val discountEligible: Boolean = true  // Whether user gets 10% off on web (not applicable on Android)
+    val creatorName: String
 ) {
-    // On Android, promo codes extend trial period (discounts only work on web)
+    // Promo codes extend trial period (discounts not supported on iOS/Android)
     val promoDescription: String
         get() = if (trialExtensionDays > 0) {
-            "Trial extended to 14 days!"
+            "Trial extended by $trialExtensionDays days!"
         } else {
             "Code applied!"
         }
 
     val hasTrialExtension: Boolean
         get() = trialExtensionDays > 0
-
-    val hasDiscount: Boolean
-        get() = discountValue > 0 && discountEligible
 }
 
 @Composable

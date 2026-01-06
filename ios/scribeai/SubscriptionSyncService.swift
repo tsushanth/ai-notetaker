@@ -342,6 +342,93 @@ class SubscriptionSyncService {
             return nil
         }
     }
+
+    // MARK: - Reconcile Subscription Status
+
+    /// Reconcile local subscription status with server
+    /// This helps recover from missed webhook events
+    func reconcileSubscription(
+        productId: String,
+        originalTransactionId: String,
+        transactionId: String,
+        expirationDate: Date?,
+        purchaseDate: Date?,
+        isSubscribed: Bool,
+        offerType: String?, // "introductory", "promotional", "code", or nil
+        autoRenewEnabled: Bool,
+        priceAmount: Double?,
+        priceCurrency: String?
+    ) async -> ReconciliationResult? {
+        guard let token = KeychainService.shared.get(Constants.Keychain.accessToken),
+              let url = URL(string: "\(Constants.baseURL)/api/subscriptions/reconcile") else {
+            print("❌ Reconcile: No auth token or invalid URL")
+            return nil
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 15
+
+        var body: [String: Any] = [
+            "productId": productId,
+            "originalTransactionId": originalTransactionId,
+            "transactionId": transactionId,
+            "isSubscribed": isSubscribed,
+            "autoRenewEnabled": autoRenewEnabled
+        ]
+
+        if let expDate = expirationDate {
+            body["expirationDate"] = expDate.ISO8601Format()
+        }
+        if let purchDate = purchaseDate {
+            body["purchaseDate"] = purchDate.ISO8601Format()
+        }
+        if let offer = offerType {
+            body["offerType"] = offer
+        }
+        if let price = priceAmount {
+            body["priceAmount"] = price
+        }
+        if let currency = priceCurrency {
+            body["priceCurrency"] = currency
+        }
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: body)
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                print("❌ Reconcile: Server returned non-200")
+                return nil
+            }
+
+            let decoder = JSONDecoder()
+            decoder.keyDecodingStrategy = .convertFromSnakeCase
+            let result = try decoder.decode(ReconciliationResponse.self, from: data)
+            print("✅ Reconcile: status=\(result.data.status), trialConverted=\(result.data.trialConverted)")
+            return result.data
+        } catch {
+            print("❌ Reconcile: Failed - \(error)")
+            return nil
+        }
+    }
+}
+
+// MARK: - Reconciliation Models
+
+struct ReconciliationResponse: Codable {
+    let success: Bool
+    let data: ReconciliationResult
+}
+
+struct ReconciliationResult: Codable {
+    let subscriptionId: String
+    let status: String
+    let isActive: Bool
+    let trialConverted: Bool
 }
 
 // MARK: - Event Types

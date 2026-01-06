@@ -1,7 +1,7 @@
 import Foundation
 
 struct Constants {
-    static let baseURL = "https://ai-notetaker-backend-3t2vweivqa-uc.a.run.app"
+    static let baseURL = "https://ai-notetaker-backend-917362189743.us-central1.run.app"
     
     // Supabase Configuration
     static let supabaseURL = "https://shufmkocfnjnlwshqrue.supabase.co"

@@ -53,6 +53,32 @@ export interface PodcastSegment {
   timestamp?: number;
 }
 
+export interface InfographicContent {
+  image_url?: string;
+  imageUrl?: string;
+  extracted_data?: InfographicExtractedData;
+  style?: string;
+}
+
+export interface InfographicExtractedData {
+  title?: string;
+  subtitle?: string;
+  key_stats?: InfographicStat[];
+  main_sections?: InfographicSection[];
+  key_takeaway?: string;
+}
+
+export interface InfographicStat {
+  label: string;
+  value: string;
+  description?: string;
+}
+
+export interface InfographicSection {
+  title: string;
+  points: string[];
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';

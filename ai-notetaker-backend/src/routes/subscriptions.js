@@ -401,6 +401,145 @@ router.post('/event', authenticate, asyncHandler(async (req, res) => {
 }));
 
 // ============================================
+// Reconcile iOS subscription with client-reported status
+// Called when iOS app detects subscription status from StoreKit
+// ============================================
+router.post('/reconcile', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.userId;
+  const {
+    productId,
+    originalTransactionId,
+    transactionId,
+    expirationDate,
+    purchaseDate,
+    isSubscribed,
+    offerType, // 'introductory', 'promotional', 'code', or null
+    autoRenewEnabled,
+    priceAmount,
+    priceCurrency
+  } = req.body;
+
+  logger.info('Subscription reconciliation request', {
+    userId,
+    productId,
+    originalTransactionId,
+    isSubscribed,
+    offerType
+  });
+
+  if (!originalTransactionId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing originalTransactionId'
+    });
+  }
+
+  try {
+    // Find existing subscription
+    const { data: existingSubscription, error: fetchError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      throw fetchError;
+    }
+
+    const now = new Date();
+    const expDate = expirationDate ? new Date(expirationDate) : null;
+    const isActive = isSubscribed && expDate && expDate > now;
+    const isInTrial = offerType === 'introductory';
+
+    // Determine if this is a trial conversion
+    // If we had is_trial=true and now offerType is not introductory, trial converted
+    const wasInTrial = existingSubscription?.is_trial === true;
+    const trialConverted = wasInTrial && !isInTrial && isActive;
+
+    if (trialConverted) {
+      logger.info('Reconciliation detected trial conversion', {
+        userId,
+        productId,
+        originalTransactionId
+      });
+
+      // Log the trial_converted event
+      await logSubscriptionEvent(userId, existingSubscription?.id, {
+        eventType: 'trial_converted',
+        platform: 'ios',
+        productId,
+        transactionId,
+        originalTransactionId,
+        priceAmount,
+        priceCurrency,
+        environment: 'production',
+        metadata: { source: 'client_reconciliation' }
+      });
+    }
+
+    // Update subscription record
+    const subscriptionData = {
+      user_id: userId,
+      product_id: productId,
+      platform: 'ios',
+      status: isActive ? 'active' : (isSubscribed ? 'grace_period' : 'expired'),
+      original_transaction_id: originalTransactionId,
+      current_period_start: purchaseDate ? new Date(purchaseDate).toISOString() : null,
+      current_period_end: expDate ? expDate.toISOString() : null,
+      is_trial: isInTrial,
+      trial_end: isInTrial && expDate ? expDate.toISOString() : existingSubscription?.trial_end,
+      auto_renew_enabled: autoRenewEnabled !== false,
+      price_amount: priceAmount || existingSubscription?.price_amount,
+      price_currency: priceCurrency || existingSubscription?.price_currency || 'USD',
+      updated_at: now.toISOString()
+    };
+
+    let subscription;
+    if (existingSubscription) {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .update(subscriptionData)
+        .eq('user_id', userId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      subscription = data;
+    } else {
+      subscriptionData.created_at = now.toISOString();
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .insert(subscriptionData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      subscription = data;
+    }
+
+    logger.info('Subscription reconciled', {
+      userId,
+      subscriptionId: subscription.id,
+      status: subscription.status,
+      trialConverted
+    });
+
+    res.json({
+      success: true,
+      data: {
+        subscriptionId: subscription.id,
+        status: subscription.status,
+        isActive,
+        trialConverted
+      }
+    });
+  } catch (error) {
+    logger.error('Subscription reconciliation failed', { error: error.message, userId });
+    throw error;
+  }
+}));
+
+// ============================================
 // Stripe Checkout - Create checkout session
 // ============================================
 
@@ -956,9 +1095,11 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
     const userId = subscription.user_id;
 
     // Map Apple notification types to our event types
-    const eventMapping = {
+    // Note: DID_RENEW can mean trial converted (first payment) or regular renewal
+    // We determine this by checking if subscription was previously in trial
+    let eventType;
+    const baseEventMapping = {
       'SUBSCRIBED': 'subscription_started',
-      'DID_RENEW': 'subscription_renewed',
       'DID_FAIL_TO_RENEW': 'billing_issue',
       'EXPIRED': 'subscription_expired',
       'GRACE_PERIOD_EXPIRED': 'subscription_expired',
@@ -971,7 +1112,22 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
       'DID_CHANGE_RENEWAL_STATUS': null, // Handle separately
     };
 
-    const eventType = eventMapping[payload.notificationType];
+    // Special handling for DID_RENEW - check if this is trial conversion or regular renewal
+    if (payload.notificationType === 'DID_RENEW') {
+      // If subscription was in trial, this is the first payment (trial converted)
+      if (subscription.is_trial) {
+        eventType = 'trial_converted';
+        logger.info('Apple webhook: Trial converted to paid subscription', {
+          userId,
+          subscriptionId: subscription.id,
+          productId: transactionInfo.productId
+        });
+      } else {
+        eventType = 'subscription_renewed';
+      }
+    } else {
+      eventType = baseEventMapping[payload.notificationType];
+    }
 
     // Handle subscription status changes
     let statusUpdate = {};
@@ -1037,7 +1193,8 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
 
     // Log event
     if (eventType) {
-      await logSubscriptionEvent(userId, subscription.id, {
+      // For trial_converted events, include price info for revenue tracking
+      const eventData = {
         eventType,
         platform: 'ios',
         productId: transactionInfo.productId,
@@ -1045,7 +1202,15 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
         originalTransactionId: transactionInfo.originalTransactionId,
         environment: payload.data?.environment || 'production',
         rawNotification: payload
-      });
+      };
+
+      // Add price from subscription record for revenue events
+      if (eventType === 'trial_converted' || eventType === 'subscription_renewed') {
+        eventData.priceAmount = subscription.price_amount;
+        eventData.priceCurrency = subscription.price_currency || 'USD';
+      }
+
+      await logSubscriptionEvent(userId, subscription.id, eventData);
     }
 
     res.json({ success: true });
@@ -1089,6 +1254,244 @@ router.get('/metrics', authenticate, asyncHandler(async (req, res) => {
   };
 
   res.json({ success: true, data: metrics });
+}));
+
+// ============================================
+// Request Apple Notification History (Admin endpoint)
+// Use this to recover missed webhook notifications
+// ============================================
+router.post('/apple/request-history', authenticate, asyncHandler(async (req, res) => {
+  const { startDate, endDate, notificationType } = req.body;
+
+  logger.info('Requesting Apple notification history', {
+    startDate,
+    endDate,
+    notificationType
+  });
+
+  // This requires App Store Server API credentials
+  // You need to set up these environment variables:
+  // - APPLE_ISSUER_ID: From App Store Connect > Users and Access > Keys
+  // - APPLE_KEY_ID: The key ID from the .p8 file
+  // - APPLE_PRIVATE_KEY: The contents of the .p8 file (base64 encoded)
+  // - APPLE_BUNDLE_ID: Your app's bundle ID
+
+  const requiredEnvVars = ['APPLE_ISSUER_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY', 'APPLE_BUNDLE_ID'];
+  const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+
+  if (missingVars.length > 0) {
+    return res.status(400).json({
+      success: false,
+      error: `Missing required environment variables: ${missingVars.join(', ')}`,
+      setup: {
+        instructions: 'To use the App Store Server API:',
+        steps: [
+          '1. Go to App Store Connect > Users and Access > Keys > In-App Purchase',
+          '2. Generate a new key and download the .p8 file',
+          '3. Set APPLE_ISSUER_ID, APPLE_KEY_ID (from key), APPLE_PRIVATE_KEY (base64 of .p8 contents)',
+          '4. Set APPLE_BUNDLE_ID to your app bundle ID (e.g., com.kreativekoala.scribeai)'
+        ]
+      }
+    });
+  }
+
+  try {
+    const jwt = require('jsonwebtoken');
+
+    // Generate JWT token for Apple
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      iss: process.env.APPLE_ISSUER_ID,
+      iat: now,
+      exp: now + 3600, // 1 hour
+      aud: 'appstoreconnect-v1',
+      bid: process.env.APPLE_BUNDLE_ID
+    };
+
+    const privateKey = Buffer.from(process.env.APPLE_PRIVATE_KEY, 'base64').toString('utf8');
+    const token = jwt.sign(payload, privateKey, {
+      algorithm: 'ES256',
+      header: {
+        alg: 'ES256',
+        kid: process.env.APPLE_KEY_ID,
+        typ: 'JWT'
+      }
+    });
+
+    // Request notification history from Apple
+    const fetch = require('node-fetch');
+    const requestBody = {
+      startDate: startDate ? new Date(startDate).getTime() : Date.now() - 90 * 24 * 60 * 60 * 1000, // Default: 90 days ago
+      endDate: endDate ? new Date(endDate).getTime() : Date.now()
+    };
+
+    if (notificationType) {
+      requestBody.notificationType = notificationType;
+    }
+
+    const response = await fetch(
+      `https://api.storekit.itunes.apple.com/inApps/v1/notifications/history`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('Apple API error', { status: response.status, error: errorText });
+      return res.status(response.status).json({
+        success: false,
+        error: `Apple API error: ${response.status}`,
+        details: errorText
+      });
+    }
+
+    const data = await response.json();
+    logger.info('Apple notification history received', {
+      paginationToken: data.paginationToken,
+      notificationCount: data.notificationHistory?.length || 0
+    });
+
+    // Process each notification
+    const results = [];
+    if (data.notificationHistory) {
+      for (const signedNotification of data.notificationHistory) {
+        try {
+          const notification = decodeAppleJWS(signedNotification.signedPayload);
+          results.push({
+            notificationType: notification.notificationType,
+            subtype: notification.subtype,
+            environment: notification.data?.environment
+          });
+        } catch (e) {
+          logger.warn('Failed to decode notification', { error: e.message });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        paginationToken: data.paginationToken,
+        notificationCount: results.length,
+        notifications: results
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to request Apple notification history', { error: error.message });
+    throw error;
+  }
+}));
+
+// ============================================
+// Get transaction history for a user (Admin endpoint)
+// Pulls directly from Apple for reconciliation
+// ============================================
+router.post('/apple/transaction-history', authenticate, asyncHandler(async (req, res) => {
+  const { originalTransactionId } = req.body;
+
+  if (!originalTransactionId) {
+    return res.status(400).json({
+      success: false,
+      error: 'Missing originalTransactionId'
+    });
+  }
+
+  logger.info('Getting Apple transaction history', { originalTransactionId });
+
+  const requiredEnvVars = ['APPLE_ISSUER_ID', 'APPLE_KEY_ID', 'APPLE_PRIVATE_KEY', 'APPLE_BUNDLE_ID'];
+  const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+
+  if (missingVars.length > 0) {
+    return res.status(400).json({
+      success: false,
+      error: `Missing required environment variables: ${missingVars.join(', ')}`
+    });
+  }
+
+  try {
+    const jwt = require('jsonwebtoken');
+
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      iss: process.env.APPLE_ISSUER_ID,
+      iat: now,
+      exp: now + 3600,
+      aud: 'appstoreconnect-v1',
+      bid: process.env.APPLE_BUNDLE_ID
+    };
+
+    const privateKey = Buffer.from(process.env.APPLE_PRIVATE_KEY, 'base64').toString('utf8');
+    const token = jwt.sign(payload, privateKey, {
+      algorithm: 'ES256',
+      header: {
+        alg: 'ES256',
+        kid: process.env.APPLE_KEY_ID,
+        typ: 'JWT'
+      }
+    });
+
+    const fetch = require('node-fetch');
+    const response = await fetch(
+      `https://api.storekit.itunes.apple.com/inApps/v1/history/${originalTransactionId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return res.status(response.status).json({
+        success: false,
+        error: `Apple API error: ${response.status}`,
+        details: errorText
+      });
+    }
+
+    const data = await response.json();
+
+    // Decode transactions
+    const transactions = [];
+    if (data.signedTransactions) {
+      for (const signedTransaction of data.signedTransactions) {
+        try {
+          const transaction = decodeAppleJWS(signedTransaction);
+          transactions.push({
+            transactionId: transaction.transactionId,
+            originalTransactionId: transaction.originalTransactionId,
+            productId: transaction.productId,
+            purchaseDate: transaction.purchaseDate ? new Date(transaction.purchaseDate).toISOString() : null,
+            expiresDate: transaction.expiresDate ? new Date(transaction.expiresDate).toISOString() : null,
+            offerType: transaction.offerType,
+            environment: transaction.environment
+          });
+        } catch (e) {
+          logger.warn('Failed to decode transaction', { error: e.message });
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        bundleId: data.bundleId,
+        environment: data.environment,
+        transactionCount: transactions.length,
+        transactions
+      }
+    });
+  } catch (error) {
+    logger.error('Failed to get Apple transaction history', { error: error.message });
+    throw error;
+  }
 }));
 
 // ============================================

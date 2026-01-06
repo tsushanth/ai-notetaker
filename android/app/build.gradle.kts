@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp") version "2.0.0-1.0.21"
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -18,8 +19,8 @@ android {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 24
         targetSdk = 35
-        versionCode = 25
-        versionName = "25.0"
+        versionCode = 28
+        versionName = "28.0"
 
         // 16KB page size support
         ndk {
@@ -37,7 +38,7 @@ android {
         }
 
         // Add your API base URL here
-        buildConfigField("String", "BASE_URL", "\"https://ai-notetaker-backend-3t2vweivqa-uc.a.run.app/\"")
+        buildConfigField("String", "BASE_URL", "\"https://ai-notetaker-backend-917362189743.us-central1.run.app/\"")
         buildConfigField("boolean", "DEBUG", "true")
     }
 
@@ -115,6 +116,13 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // Google Play In-App Review
+    implementation(libs.play.review.ktx)
+
+    // Firebase Analytics (free, unlimited)
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-analytics")
 
     // Testing
     testImplementation(libs.junit)

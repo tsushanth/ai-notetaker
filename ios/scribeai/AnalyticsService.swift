@@ -107,6 +107,17 @@ class AnalyticsService {
         case summaryGenerated = "summary_generated"
         case diagramGenerated = "diagram_generated"
 
+        // AI Feature - Mind Map
+        case mindmapTabViewed = "mindmap_tab_viewed"
+        case mindmapGenerateStarted = "mindmap_generate_started"
+        case mindmapGenerated = "mindmap_generated"
+
+        // AI Feature - Infographic
+        case infographicTabViewed = "infographic_tab_viewed"
+        case infographicGenerateStarted = "infographic_generate_started"
+        case infographicGenerated = "infographic_generated"
+        case infographicSaved = "infographic_saved"
+
         // Feature discovery
         case featureDiscovered = "feature_discovered"
         case tabSwitched = "tab_switched"
@@ -348,6 +359,11 @@ class AnalyticsService {
         
         // Notify review helper (also non-blocking)
         StoreReviewHelper.shared.recordSuccessfulAction()
+
+        // Check if we should prompt for review after this success
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            StoreReviewHelper.shared.checkAndShowPromptIfEligible()
+        }
     }
     
     func trackPaywallViewed(source: String) {
@@ -590,6 +606,24 @@ class AnalyticsService {
             "diagram_type": diagramType
         ])
         trackReachedValue(contentType: "diagram")
+    }
+
+    // MARK: - Mind Map Events
+
+    func trackMindMapTabViewed(noteId: String) {
+        track(.mindmapTabViewed, properties: ["note_id": noteId])
+    }
+
+    func trackMindMapGenerateStarted(noteId: String) {
+        track(.mindmapGenerateStarted, properties: ["note_id": noteId])
+    }
+
+    func trackMindMapGenerated(noteId: String, nodeCount: Int) {
+        track(.mindmapGenerated, properties: [
+            "note_id": noteId,
+            "node_count": nodeCount
+        ])
+        trackReachedValue(contentType: "mindmap")
     }
 
     // MARK: - Note Events

@@ -248,6 +248,27 @@ router.get('/podcast/:id/audio', requireSubscription, asyncHandler(async (req, r
 }));
 
 /**
+ * Generate interactive mind map
+ * POST /api/ai/mindmap
+ * Body: { note_id, options: { includeExploration } }
+ *
+ * PROTECTED: Requires subscription or trial, with usage limits for free tier
+ */
+router.post('/mindmap', checkUsageLimits('mindmap'), validate('generateAIContent'), asyncHandler(async (req, res) => {
+  const { note_id, options } = req.validatedBody;
+
+  const mindmap = await aiService.generateMindMap(req.userId, note_id, options);
+
+  // Record usage
+  await recordUsage(req.userId, 'mindmap', { note_id });
+
+  res.json({
+    success: true,
+    data: mindmap
+  });
+}));
+
+/**
  * Generate visual learning diagram (Mermaid format)
  * POST /api/ai/diagram
  * Body: { note_id, options: { style } }
@@ -265,6 +286,33 @@ router.post('/diagram', checkUsageLimits('diagram'), validate('generateAIContent
   res.json({
     success: true,
     data: diagram
+  });
+}));
+
+/**
+ * Generate infographic image using DALL-E 3
+ * POST /api/ai/infographic
+ * Body: { note_id, options: { style: 'modern'|'colorful'|'minimal'|'professional' } }
+ *
+ * PROTECTED: Requires active subscription (premium feature due to DALL-E cost)
+ */
+router.post('/infographic', requireSubscriptionForPodcast, validate('generateAIContent'), asyncHandler(async (req, res) => {
+  const { note_id, options } = req.validatedBody;
+
+  logger.info('Starting infographic generation', {
+    userId: req.userId,
+    noteId: note_id,
+    style: options?.style || 'modern'
+  });
+
+  const infographic = await aiService.generateInfographic(req.userId, note_id, options);
+
+  // Record usage
+  await recordUsage(req.userId, 'infographic', { note_id });
+
+  res.json({
+    success: true,
+    data: infographic
   });
 }));
 

@@ -23,10 +23,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.kreativekoala.scribeai" />
+                  <option name="mobileSdkAppId" value="1:917362189743:android:2bfdcae1e1aff0f1647b5a" />
+                  <option name="projectId" value="summarizerproxy" />
+                  <option name="projectNumber" value="917362189743" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

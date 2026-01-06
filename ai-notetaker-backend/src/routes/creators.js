@@ -286,41 +286,19 @@ router.get('/promo-codes', authenticate, requireCreator, asyncHandler(async (req
  * POST /api/creators/promo-codes
  * Create a new promo code
  *
- * IMPORTANT: Discounts are limited to a maximum of 10% on the first month only.
- * This is enforced to prevent creators from offering excessive discounts that
- * would reduce platform revenue. The discount cost is absorbed by the creator
- * (their earnings are calculated on the discounted amount).
+ * Note: Discounts are not supported (iOS/Android app stores don't allow external discount codes).
+ * Promo codes only extend trial period.
  */
 router.post('/promo-codes', authenticate, requireCreator, asyncHandler(async (req, res) => {
   const {
-    discountType = 'none',
-    discountValue = 0,
-    trialExtensionDays = 0,
+    trialExtensionDays = 7,
     validUntil,
     maxRedemptions,
   } = req.body;
 
-  // Validate discount - maximum 10% allowed, first month only
-  if (discountType === 'percent') {
-    if (discountValue < 0 || discountValue > 10) {
-      return res.status(400).json({
-        success: false,
-        error: 'Discount percentage must be between 0 and 10%. Discounts apply to the first month only.',
-      });
-    }
-  }
-
-  // Fixed amount discounts are not allowed - only percentage discounts up to 10%
-  if (discountType === 'fixed') {
-    return res.status(400).json({
-      success: false,
-      error: 'Fixed amount discounts are not supported. Please use percentage discount (max 10%).',
-    });
-  }
-
   const promoCode = await creatorService.createPromoCode(req.creator.id, {
-    discountType,
-    discountValue: parseFloat(discountValue),
+    discountType: 'none',
+    discountValue: 0,
     trialExtensionDays: parseInt(trialExtensionDays),
     validUntil: validUntil || null,
     maxRedemptions: maxRedemptions ? parseInt(maxRedemptions) : null,
@@ -331,8 +309,7 @@ router.post('/promo-codes', authenticate, requireCreator, asyncHandler(async (re
     data: {
       id: promoCode.id,
       code: promoCode.code,
-      discountType: promoCode.discount_type,
-      discountValue: parseFloat(promoCode.discount_value),
+      trialExtensionDays: promoCode.trial_extension_days,
     },
     message: 'Promo code created successfully',
   });
@@ -341,28 +318,12 @@ router.post('/promo-codes', authenticate, requireCreator, asyncHandler(async (re
 /**
  * PUT /api/creators/promo-codes/:id
  * Update a promo code
+ *
+ * Note: Discounts not supported (iOS/Android stores don't allow external discount codes)
  */
 router.put('/promo-codes/:id', authenticate, requireCreator, asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { isActive, discountType, discountValue, validUntil, maxRedemptions } = req.body;
-
-  // Validate discount - maximum 10% allowed
-  if (discountType === 'percent' && discountValue !== undefined) {
-    if (discountValue < 0 || discountValue > 10) {
-      return res.status(400).json({
-        success: false,
-        error: 'Discount percentage must be between 0 and 10%. Discounts apply to the first month only.',
-      });
-    }
-  }
-
-  // Fixed amount discounts are not allowed
-  if (discountType === 'fixed') {
-    return res.status(400).json({
-      success: false,
-      error: 'Fixed amount discounts are not supported. Please use percentage discount (max 10%).',
-    });
-  }
+  const { isActive, trialExtensionDays, validUntil, maxRedemptions } = req.body;
 
   // Verify ownership
   const promoCodes = await creatorService.getCreatorPromoCodes(req.creator.id);
@@ -379,8 +340,7 @@ router.put('/promo-codes/:id', authenticate, requireCreator, asyncHandler(async 
 
   const updates = {};
   if (isActive !== undefined) updates.is_active = isActive;
-  if (discountType) updates.discount_type = discountType;
-  if (discountValue !== undefined) updates.discount_value = parseFloat(discountValue);
+  if (trialExtensionDays !== undefined) updates.trial_extension_days = parseInt(trialExtensionDays);
   if (validUntil !== undefined) updates.valid_until = validUntil;
   if (maxRedemptions !== undefined) updates.max_redemptions = maxRedemptions ? parseInt(maxRedemptions) : null;
 
@@ -1020,10 +980,12 @@ router.delete('/content/:id', authenticate, requireCreator, asyncHandler(async (
 /**
  * POST /api/promo-codes/validate
  * Validate a promo code (public endpoint)
+ *
+ * Note: Discounts not supported (iOS/Android stores don't allow external discount codes)
+ * Promo codes only extend trial period
  */
 router.post('/validate-code', optionalAuth, asyncHandler(async (req, res) => {
   const { code } = req.body;
-  // Get userId if authenticated (to check discount eligibility)
   const userId = req.user?.id || null;
 
   if (!code) {
@@ -1047,12 +1009,8 @@ router.post('/validate-code', optionalAuth, asyncHandler(async (req, res) => {
     data: {
       valid: true,
       code: result.promoCode.code,
-      discountType: result.promoCode.discountType,
-      discountValue: result.promoCode.discountValue,
       trialExtensionDays: result.promoCode.trialExtensionDays,
       creatorName: result.creator.name,
-      // Let client know if discount will be applied (10% off first subscription)
-      discountEligible: result.discountEligible,
     },
   });
 }));
@@ -1060,6 +1018,9 @@ router.post('/validate-code', optionalAuth, asyncHandler(async (req, res) => {
 /**
  * POST /api/promo-codes/apply
  * Apply a promo code to user account
+ *
+ * Note: Discounts not supported (iOS/Android stores don't allow external discount codes)
+ * Promo codes only extend trial period
  *
  * Accepts optional fingerprint data for fraud detection:
  * - deviceFingerprint: Unique device identifier
@@ -1093,15 +1054,10 @@ router.post('/apply-code', authenticate, asyncHandler(async (req, res) => {
       data: {
         redemptionId: result.redemption.id,
         code: result.promoCode.code,
-        discountType: result.promoCode.discountType,
-        discountValue: result.promoCode.discountValue,
+        trialExtensionDays: result.promoCode.trialExtensionDays,
         creatorName: result.creator.name,
-        // Indicates if 10% discount was applied (one-time per user)
-        discountEligible: result.discountEligible,
       },
-      message: result.discountEligible
-        ? 'Promo code applied! You\'ll get 10% off your first subscription.'
-        : 'Promo code applied! (Discount already used on a previous subscription)',
+      message: `Promo code applied! Your trial has been extended by ${result.promoCode.trialExtensionDays} days.`,
     });
   } catch (error) {
     res.status(400).json({
@@ -1131,12 +1087,10 @@ router.get('/current-code', authenticate, asyncHandler(async (req, res) => {
     success: true,
     data: {
       code: redemption.code_used,
-      discountType: redemption.promo_codes?.discount_type,
-      discountValue: redemption.promo_codes?.discount_value ? parseFloat(redemption.promo_codes.discount_value) : 0,
+      trialExtensionDays: redemption.promo_codes?.trial_extension_days || 0,
       creatorName: redemption.creators?.name,
       status: redemption.attribution_status,
       appliedAt: redemption.redeemed_at,
-      discountEligible: redemption.discount_applied === true, // User gets 10% off if this is true
     },
   });
 }));

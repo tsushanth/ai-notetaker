@@ -11,8 +11,14 @@ import GoogleSignIn
 @main
 struct ScribeAIApp: App {
     @StateObject private var authViewModel = AuthViewModel()
+    @StateObject private var themeManager = ThemeManager.shared
     @State private var showingSplash = true
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        // Initialize Firebase Analytics (free, unlimited)
+        FirebaseAnalyticsHelper.shared.initialize()
+    }
 
     var body: some Scene {
         WindowGroup {
@@ -22,10 +28,10 @@ struct ScribeAIApp: App {
                     .environmentObject(authViewModel)
                     .onOpenURL { url in
                         print("📱 Received URL: \(url)")
-                        
+
                         // Handle Google Sign-In callback (for native flow)
                         GIDSignIn.sharedInstance.handle(url)
-                        
+
                         // Handle Supabase OAuth callback (for web-based flows)
                         if url.scheme == "kreativekoala.scribeai" {
                             print("✅ Handling Supabase callback")
@@ -34,7 +40,7 @@ struct ScribeAIApp: App {
                             }
                         }
                     }
-                
+
                 // Splash screen overlay
                 if showingSplash {
                     SplashScreenView()
@@ -42,10 +48,14 @@ struct ScribeAIApp: App {
                         .zIndex(1)
                 }
             }
+            .preferredColorScheme(themeManager.colorScheme)
             .onAppear {
                 // Track app launch
                 AnalyticsService.shared.trackAppLaunch()
                 AnalyticsService.shared.startSession()
+
+                // Firebase: Log app open for DAU tracking
+                FirebaseAnalyticsHelper.shared.logAppOpen()
 
                 // Dismiss splash after animation completes
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {

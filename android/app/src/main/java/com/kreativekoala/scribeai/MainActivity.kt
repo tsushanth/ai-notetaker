@@ -16,7 +16,10 @@ import com.kreativekoala.scribeai.ui.theme.AINotetakerTheme
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.ErrorReportingService
+import com.kreativekoala.scribeai.utils.FirebaseAnalyticsHelper
+import com.kreativekoala.scribeai.utils.InAppReviewHelper
 import com.kreativekoala.scribeai.utils.SubscriptionManager
+import com.kreativekoala.scribeai.utils.ThemeManager
 import com.kreativekoala.scribeai.utils.TutorialManager
 import com.kreativekoala.scribeai.viewmodel.AuthViewModel
 import com.kreativekoala.scribeai.viewmodel.AuthViewModelFactory
@@ -40,6 +43,16 @@ class MainActivity : ComponentActivity() {
         // Initialize analytics service and track app launch
         AnalyticsService.initialize(applicationContext, authManager)
         AnalyticsService.trackAppLaunch()
+
+        // Initialize in-app review helper
+        InAppReviewHelper.initialize(applicationContext)
+
+        // Initialize theme manager
+        ThemeManager.initialize(applicationContext)
+
+        // Initialize Firebase Analytics (free, unlimited)
+        FirebaseAnalyticsHelper.initialize(applicationContext)
+        FirebaseAnalyticsHelper.logAppOpen()
 
         // Initialize TutorialManager
         val database = ScribeDatabase.getInstance(applicationContext)

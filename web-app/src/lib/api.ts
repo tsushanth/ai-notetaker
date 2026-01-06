@@ -230,6 +230,15 @@ export const aiApi = {
     return { podcast: response.data };
   },
 
+  generateInfographic: async (token: string, noteId: string, style?: string) => {
+    const response = await apiRequest<{ success: boolean; data: unknown }>('/api/ai/infographic', {
+      method: 'POST',
+      token,
+      body: { note_id: noteId, options: { style: style || 'modern' } },
+    });
+    return { infographic: response.data };
+  },
+
   chat: async (token: string, noteId: string, message: string, history?: unknown[], language?: string) => {
     const response = await apiRequest<{ success: boolean; data: { answer?: string; response?: string } | string }>('/api/ai/chat', {
       method: 'POST',
@@ -362,23 +371,24 @@ export const creatorsApi = {
       data: {
         valid: boolean;
         code: string;
-        discountType: string;
-        discountValue: number;
         trialExtensionDays: number;
         creatorName: string;
-        discountEligible: boolean;
       };
     }>('/api/creators/validate-code', {
       method: 'POST',
       body: { code },
-      token, // Pass token to check user's discount eligibility
+      token,
     });
   },
 
   applyPromoCode: async (token: string, code: string, platform = 'web') => {
     return apiRequest<{
       success: boolean;
-      data: unknown;
+      data: {
+        code: string;
+        trialExtensionDays: number;
+        creatorName: string;
+      };
       message: string;
     }>('/api/creators/apply-code', {
       method: 'POST',
@@ -392,12 +402,10 @@ export const creatorsApi = {
       success: boolean;
       data: {
         code: string;
-        discountType: string;
-        discountValue: number;
+        trialExtensionDays: number;
         creatorName: string;
         status: string;
         appliedAt: string;
-        discountEligible: boolean;
       } | null;
     }>('/api/creators/current-code', { token });
   },

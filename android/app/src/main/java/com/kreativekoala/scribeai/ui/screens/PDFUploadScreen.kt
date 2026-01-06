@@ -47,7 +47,7 @@ import java.util.concurrent.TimeUnit
 private const val MAX_FILE_SIZE_MB = 50
 private const val MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024L
 private const val TAG = "PDFUploadScreen"
-private const val BASE_URL = "https://ai-notetaker-backend-3t2vweivqa-uc.a.run.app"
+private const val BASE_URL = "https://ai-notetaker-backend-917362189743.us-central1.run.app"
 
 // Upload states
 sealed class UploadScreenState {

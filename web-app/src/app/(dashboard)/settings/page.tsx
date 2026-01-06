@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Globe, Check, Crown, Loader2, AlertCircle, CheckCircle, CreditCard, Tag, Percent } from 'lucide-react';
+import { ArrowLeft, Globe, Check, Crown, Loader2, AlertCircle, CheckCircle, CreditCard, Tag } from 'lucide-react';
 import { useSettingsStore, SUPPORTED_LANGUAGES, type LanguageCode } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
 import { subscriptionApi, creatorsApi } from '@/lib/api';
@@ -76,8 +76,7 @@ function SettingsContent() {
   const [appliedPromo, setAppliedPromo] = useState<{
     code: string;
     creatorName: string;
-    discountValue: number;
-    discountEligible: boolean;
+    trialExtensionDays: number;
   } | null>(null);
   const [promoError, setPromoError] = useState('');
 
@@ -132,8 +131,7 @@ function SettingsContent() {
           setAppliedPromo({
             code: codeData.code,
             creatorName: codeData.creatorName,
-            discountValue: codeData.discountValue || 10, // Default to 10% if not set
-            discountEligible: codeData.discountEligible,
+            trialExtensionDays: codeData.trialExtensionDays || 0,
           });
         }
       } catch (error) {
@@ -204,14 +202,13 @@ function SettingsContent() {
         setAppliedPromo({
           code: validateResponse.data.code,
           creatorName: validateResponse.data.creatorName,
-          discountValue: validateResponse.data.discountValue,
-          discountEligible: validateResponse.data.discountEligible,
+          trialExtensionDays: validateResponse.data.trialExtensionDays,
         });
         setPromoCode('');
         setSubscriptionMessage({
           type: 'success',
-          text: validateResponse.data.discountEligible
-            ? `Promo code applied! You'll get ${validateResponse.data.discountValue}% off your first subscription.`
+          text: validateResponse.data.trialExtensionDays > 0
+            ? `Promo code applied! Your trial has been extended by ${validateResponse.data.trialExtensionDays} days.`
             : 'Promo code applied!'
         });
       }
@@ -421,16 +418,16 @@ function SettingsContent() {
                 {appliedPromo ? (
                   <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
-                      <Percent size={16} className="text-green-500" />
+                      <Tag size={16} className="text-green-500" />
                       <span className="font-medium text-green-400">Promo Code Applied</span>
                     </div>
                     <p className="text-sm text-[var(--text-muted)]">
                       Code: <span className="font-mono">{appliedPromo.code}</span>
                       {appliedPromo.creatorName && ` from ${appliedPromo.creatorName}`}
                     </p>
-                    {appliedPromo.discountEligible && appliedPromo.discountValue > 0 && (
+                    {appliedPromo.trialExtensionDays > 0 && (
                       <p className="text-sm text-green-400 mt-1">
-                        {appliedPromo.discountValue}% off your first subscription!
+                        Trial extended by {appliedPromo.trialExtensionDays} days!
                       </p>
                     )}
                   </div>
@@ -501,51 +498,26 @@ function SettingsContent() {
                 {plans.length > 0 ? (
                   <div className="space-y-3">
                     <h3 className="text-sm font-medium text-[var(--text-muted)]">Upgrade to Premium</h3>
-                    {plans.map((plan) => {
-                      const hasDiscount = appliedPromo?.discountEligible && appliedPromo.discountValue > 0;
-                      const discountedAmount = hasDiscount
-                        ? Math.round(plan.amount * (1 - appliedPromo!.discountValue / 100))
-                        : plan.amount;
-
-                      return (
-                        <button
-                          key={plan.id}
-                          onClick={() => handleSubscribe(plan.id)}
-                          disabled={isLoadingCheckout}
-                          className="w-full flex items-center justify-between p-4 rounded-lg border border-[var(--accent-purple)] bg-[var(--accent-purple)]/10 hover:bg-[var(--accent-purple)]/20 transition"
-                        >
-                          <div className="text-left">
-                            <p className="font-medium">{plan.name}</p>
-                            <div className="flex items-center gap-2">
-                              {hasDiscount ? (
-                                <>
-                                  <p className="text-sm text-[var(--text-muted)] line-through">
-                                    {formatPrice(plan.amount, plan.currency)}
-                                  </p>
-                                  <p className="text-sm text-green-400 font-medium">
-                                    {formatPrice(discountedAmount, plan.currency)}/{plan.interval}
-                                  </p>
-                                </>
-                              ) : (
-                                <p className="text-sm text-[var(--text-muted)]">
-                                  {formatPrice(plan.amount, plan.currency)}/{plan.interval}
-                                </p>
-                              )}
-                            </div>
-                            {hasDiscount && (
-                              <p className="text-xs text-green-400 mt-1">
-                                {appliedPromo!.discountValue}% off first payment
-                              </p>
-                            )}
-                          </div>
-                          {isLoadingCheckout ? (
-                            <Loader2 size={18} className="animate-spin" />
-                          ) : (
-                            <Crown size={20} className="text-[var(--accent-purple)]" />
-                          )}
-                        </button>
-                      );
-                    })}
+                    {plans.map((plan) => (
+                      <button
+                        key={plan.id}
+                        onClick={() => handleSubscribe(plan.id)}
+                        disabled={isLoadingCheckout}
+                        className="w-full flex items-center justify-between p-4 rounded-lg border border-[var(--accent-purple)] bg-[var(--accent-purple)]/10 hover:bg-[var(--accent-purple)]/20 transition"
+                      >
+                        <div className="text-left">
+                          <p className="font-medium">{plan.name}</p>
+                          <p className="text-sm text-[var(--text-muted)]">
+                            {formatPrice(plan.amount, plan.currency)}/{plan.interval}
+                          </p>
+                        </div>
+                        {isLoadingCheckout ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <Crown size={20} className="text-[var(--accent-purple)]" />
+                        )}
+                      </button>
+                    ))}
                     <p className="text-xs text-[var(--text-muted)] text-center">
                       7-day free trial included
                     </p>

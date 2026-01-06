@@ -486,6 +486,75 @@ class APIService {
         return note
     }
 
+    func createNote(token: String, title: String, content: String, sourceType: String = "manual", sourceUrl: String? = nil, metadata: [String: Any]? = nil) async throws -> Note {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._createNote(token: validToken, title: title, content: content, sourceType: sourceType, sourceUrl: sourceUrl, metadata: metadata)
+        }
+    }
+
+    private func _createNote(token: String, title: String, content: String, sourceType: String, sourceUrl: String?, metadata: [String: Any]?) async throws -> Note {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.notes)") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        var body: [String: Any] = [
+            "title": title,
+            "content": content,
+            "source_type": sourceType
+        ]
+        if let sourceUrl = sourceUrl { body["source_url"] = sourceUrl }
+        if let metadata = metadata { body["metadata"] = metadata }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        // Log response for debugging
+        if let responseString = String(data: data, encoding: .utf8) {
+            print("📝 Create note response: \(responseString)")
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        print("📝 Create note status: \(httpResponse.statusCode)")
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 201 || httpResponse.statusCode == 200 else {
+            if let errorData = try? JSONDecoder().decode([String: String].self, from: data),
+               let errorMessage = errorData["error"] {
+                print("❌ Create note error: \(errorMessage)")
+                throw APIError.serverError(errorMessage)
+            }
+            throw APIError.serverError("Failed to create note")
+        }
+
+        do {
+            let decoder = JSONDecoder()
+            // Note: Don't use .convertFromSnakeCase since Note model has explicit CodingKeys
+            let noteResponse = try decoder.decode(NoteResponse.self, from: data)
+
+            guard let note = noteResponse.data else {
+                throw APIError.serverError("No note data in response")
+            }
+
+            print("✅ Note created successfully: \(note.id)")
+            return note
+        } catch {
+            print("❌ Failed to decode note response: \(error)")
+            throw error
+        }
+    }
+
     // MARK: - Recording Upload & Transcription
 
     func uploadRecording(token: String, fileURL: URL, title: String? = nil) async throws -> Recording {
@@ -840,9 +909,12 @@ class APIService {
             let status: String?
             let summary: String?
             let length: String?
-            
+            // Mind map fields
+            let title: String?
+            let nodes: [MindMapNode]?
+
             enum CodingKeys: String, CodingKey {
-                case model, questions, flashcards, duration, style, script, difficulty, status, summary, length
+                case model, questions, flashcards, duration, style, script, difficulty, status, summary, length, title, nodes
                 case audioUrl = "audio_url"
                 case numHosts = "num_hosts"
                 case numQuestions = "num_questions"
@@ -916,6 +988,8 @@ class APIService {
                 questions: quizWrapper,
                 flashcards: flashcards,
                 summary: item.content.summary,
+                mindMapTitle: item.content.title,
+                mindMapNodes: item.content.nodes,
                 createdAt: item.createdAt
             )
         } catch {
@@ -1238,6 +1312,265 @@ class APIService {
         )
     }
     
+    // MARK: - Mind Map Generation
+
+    func generateMindMap(token: String, noteId: String, contentLength: Int = 0, includeExploration: Bool = true) async throws -> AIContent {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._generateMindMap(token: validToken, noteId: noteId, contentLength: contentLength, includeExploration: includeExploration)
+        }
+    }
+
+    private func _generateMindMap(token: String, noteId: String, contentLength: Int, includeExploration: Bool) async throws -> AIContent {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/mindmap") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let options: [String: Any] = [
+            "language": getPreferredLanguage(),
+            "includeExploration": includeExploration
+        ]
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "content_type": "mindmap",
+            "options": options
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("📤 POST \(url)")
+        print("📦 Body: \(String(data: request.httpBody!, encoding: .utf8) ?? "")")
+
+        let session = contentLength > 0 ? sessionForContent(length: contentLength) : longRunningSession
+        let (data, response) = try await session.data(for: request)
+
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📦 Mind Map Response: \(jsonString)")
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        try checkForSubscriptionError(statusCode: httpResponse.statusCode, data: data)
+
+        guard httpResponse.statusCode == 200 else {
+            let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+            throw APIError.serverError(errorData?["error"] ?? errorData?["details"] ?? "Failed to generate mind map")
+        }
+
+        struct MindMapGenerateResponse: Codable {
+            let success: Bool
+            let data: MindMapGenerateData?
+            let error: String?
+        }
+
+        struct MindMapGenerateData: Codable {
+            let id: String
+            let noteId: String
+            let title: String
+            let nodes: [MindMapNodeData]
+
+            enum CodingKeys: String, CodingKey {
+                case id
+                case noteId = "note_id"
+                case title
+                case nodes
+            }
+        }
+
+        struct MindMapNodeData: Codable {
+            let id: String
+            let label: String
+            let content: String
+            let level: Int
+            let parentId: String?
+            let color: String?
+            let isExploratory: Bool?
+        }
+
+        let mindMapResponse: MindMapGenerateResponse
+        do {
+            mindMapResponse = try JSONDecoder().decode(MindMapGenerateResponse.self, from: data)
+        } catch let decodingError {
+            print("❌ Mind Map decoding error: \(decodingError)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("❌ Raw response that failed to decode: \(jsonString)")
+            }
+            throw APIError.decodingError
+        }
+
+        // Check for error in response
+        if let error = mindMapResponse.error {
+            print("❌ Mind Map API error: \(error)")
+            throw APIError.serverError(error)
+        }
+
+        guard let responseData = mindMapResponse.data else {
+            print("❌ Mind Map response missing data")
+            throw APIError.serverError("Failed to generate mind map - no data returned")
+        }
+
+        print("✅ Decoded mind map response: \(responseData.nodes.count) nodes")
+
+        let nodes = responseData.nodes.map { nodeData in
+            MindMapNode(
+                id: nodeData.id,
+                label: nodeData.label,
+                content: nodeData.content,
+                level: nodeData.level,
+                parentId: nodeData.parentId,
+                color: nodeData.color,
+                isExploratory: nodeData.isExploratory
+            )
+        }
+
+        return AIContent(
+            id: responseData.id,
+            noteId: noteId,
+            audioUrl: nil,
+            duration: nil,
+            status: nil,
+            questions: nil,
+            flashcards: nil,
+            summary: nil,
+            mindMapTitle: responseData.title,
+            mindMapNodes: nodes,
+            createdAt: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    // MARK: - Infographic Generation
+
+    func generateInfographic(token: String, noteId: String, contentLength: Int = 0, style: String = "modern") async throws -> AIContent {
+        return try await executeWithTokenRefresh { validToken in
+            try await self._generateInfographic(token: validToken, noteId: noteId, contentLength: contentLength, style: style)
+        }
+    }
+
+    private func _generateInfographic(token: String, noteId: String, contentLength: Int, style: String) async throws -> AIContent {
+        guard let url = URL(string: "\(Constants.baseURL)/api/ai/infographic") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let options: [String: Any] = [
+            "language": getPreferredLanguage(),
+            "style": style
+        ]
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "content_type": "infographic",
+            "options": options
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("📤 POST \(url)")
+        print("📦 Body: \(String(data: request.httpBody!, encoding: .utf8) ?? "")")
+
+        // Use a longer timeout for DALL-E image generation (can take 30-60 seconds)
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 120 // 2 minutes for image generation
+        config.timeoutIntervalForResource = 180 // 3 minutes total
+        let session = URLSession(configuration: config)
+
+        let (data, response) = try await session.data(for: request)
+
+        if let jsonString = String(data: data, encoding: .utf8) {
+            print("📦 Infographic Response: \(jsonString)")
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        try checkForSubscriptionError(statusCode: httpResponse.statusCode, data: data)
+
+        guard httpResponse.statusCode == 200 else {
+            let errorData = try? JSONDecoder().decode([String: String].self, from: data)
+            throw APIError.serverError(errorData?["error"] ?? errorData?["details"] ?? "Failed to generate infographic")
+        }
+
+        struct InfographicGenerateResponse: Codable {
+            let success: Bool
+            let data: InfographicGenerateData?
+            let error: String?
+        }
+
+        struct InfographicGenerateData: Codable {
+            let id: String
+            let noteId: String
+            let imageUrl: String
+            let extractedData: InfographicExtractedData?
+            let style: String?
+
+            enum CodingKeys: String, CodingKey {
+                case id
+                case noteId = "note_id"
+                case imageUrl = "image_url"
+                case extractedData = "extracted_data"
+                case style
+            }
+        }
+
+        let infographicResponse: InfographicGenerateResponse
+        do {
+            infographicResponse = try JSONDecoder().decode(InfographicGenerateResponse.self, from: data)
+        } catch let decodingError {
+            print("❌ Infographic decoding error: \(decodingError)")
+            if let jsonString = String(data: data, encoding: .utf8) {
+                print("❌ Raw response that failed to decode: \(jsonString)")
+            }
+            throw APIError.decodingError
+        }
+
+        if let error = infographicResponse.error {
+            print("❌ Infographic API error: \(error)")
+            throw APIError.serverError(error)
+        }
+
+        guard let responseData = infographicResponse.data else {
+            print("❌ Infographic response missing data")
+            throw APIError.serverError("Failed to generate infographic - no data returned")
+        }
+
+        print("✅ Decoded infographic response: \(responseData.imageUrl)")
+
+        return AIContent(
+            id: responseData.id,
+            noteId: noteId,
+            audioUrl: nil,
+            duration: nil,
+            status: nil,
+            questions: nil,
+            flashcards: nil,
+            summary: nil,
+            mindMapTitle: nil,
+            mindMapNodes: nil,
+            infographicImageUrl: responseData.imageUrl,
+            infographicExtractedData: responseData.extractedData,
+            infographicStyle: responseData.style,
+            createdAt: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
     func generateSummary(token: String, noteId: String, length: String, contentLength: Int = 0) async throws -> AIContent {
         return try await executeWithTokenRefresh { validToken in
             try await self._generateSummary(token: validToken, noteId: noteId, length: length, contentLength: contentLength)
@@ -2126,11 +2459,8 @@ class APIService {
         return PromoValidationResult(
             valid: resultData["valid"] as? Bool ?? false,
             code: resultData["code"] as? String ?? code,
-            discountType: resultData["discountType"] as? String ?? "none",
-            discountValue: resultData["discountValue"] as? Double ?? 0,
             trialExtensionDays: resultData["trialExtensionDays"] as? Int ?? 0,
-            creatorName: resultData["creatorName"] as? String ?? "",
-            discountEligible: resultData["discountEligible"] as? Bool ?? true
+            creatorName: resultData["creatorName"] as? String ?? ""
         )
     }
 

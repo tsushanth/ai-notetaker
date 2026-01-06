@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kreativekoala.scribeai.data.models.Note
+import com.kreativekoala.scribeai.data.models.CreateNoteRequest
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
@@ -45,12 +46,20 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.rememberLazyListState
 import com.kreativekoala.scribeai.viewmodel.ChatMessage
 import com.kreativekoala.scribeai.viewmodel.NoteViewModel
 import com.kreativekoala.scribeai.data.repository.NoteRepository
 import com.kreativekoala.scribeai.ui.components.FormattedNoteView
+import com.kreativekoala.scribeai.data.models.MindMapNode
+import com.kreativekoala.scribeai.data.models.AIContentData
+import com.kreativekoala.scribeai.data.models.InfographicData
+import com.kreativekoala.scribeai.data.models.InfographicExtractedData
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +71,7 @@ fun NoteDetailScreen(
     onNavigateBack: () -> Unit,
     onNoteDeleted: () -> Unit = onNavigateBack
 ) {
-    // Tab indices: 0 = Notes, 1 = Chat, 2 = Quiz, 3 = Flashcards, 4 = Podcast
+    // Tab indices: 0 = Notes, 1 = Chat, 2 = Quiz, 3 = Flashcards, 4 = MindMap, 5 = Podcast
     var selectedTab by remember { mutableStateOf(0) }
     val authToken by authManager.authToken.collectAsState(initial = null)
     val context = LocalContext.current
@@ -93,7 +102,8 @@ fun NoteDetailScreen(
             1 -> AnalyticsService.trackChatTabViewed(note.id)
             2 -> AnalyticsService.trackQuizTabViewed(note.id)
             3 -> AnalyticsService.trackFlashcardsTabViewed(note.id)
-            4 -> AnalyticsService.trackPodcastTabViewed(note.id)
+            4 -> AnalyticsService.trackMindMapTabViewed(note.id)
+            5 -> AnalyticsService.trackPodcastTabViewed(note.id)
         }
     }
 
@@ -225,7 +235,8 @@ fun NoteDetailScreen(
                     1 -> ChatTab(note, aiViewModel, authToken, preferredLanguage)
                     2 -> QuizTab(note, aiViewModel, authToken, preferredLanguage)
                     3 -> FlashcardsTab(note, aiViewModel, authToken, preferredLanguage)
-                    4 -> PodcastTab(note, aiViewModel, authToken, preferredLanguage)
+                    4 -> MindMapTab(note, aiViewModel, authToken, preferredLanguage)
+                    5 -> PodcastTab(note, aiViewModel, authToken, preferredLanguage)
                 }
             }
 
@@ -240,7 +251,7 @@ fun NoteDetailScreen(
 }
 
 /**
- * Bottom tab bar component (like iOS)
+ * Bottom tab bar component - fits all tabs without scrolling
  */
 @Composable
 private fun BottomTabBar(
@@ -251,7 +262,7 @@ private fun BottomTabBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(CardBackground)
-            .padding(top = 8.dp, bottom = 4.dp),
+            .padding(top = 8.dp, bottom = 6.dp, start = 4.dp, end = 4.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         // Notes tab
@@ -259,35 +270,48 @@ private fun BottomTabBar(
             icon = Icons.Default.Description,
             label = "Notes",
             isSelected = selectedTab == 0,
-            onClick = { onTabSelected(0) }
+            onClick = { onTabSelected(0) },
+            modifier = Modifier.weight(1f)
         )
         // Chat tab
         BottomTabItem(
             icon = Icons.Default.Message,
             label = "Chat",
             isSelected = selectedTab == 1,
-            onClick = { onTabSelected(1) }
+            onClick = { onTabSelected(1) },
+            modifier = Modifier.weight(1f)
         )
         // Quiz tab
         BottomTabItem(
             icon = Icons.Default.Quiz,
             label = "Quiz",
             isSelected = selectedTab == 2,
-            onClick = { onTabSelected(2) }
+            onClick = { onTabSelected(2) },
+            modifier = Modifier.weight(1f)
         )
         // Flashcards tab
         BottomTabItem(
             icon = Icons.Default.Style,
-            label = "Flashcards",
+            label = "Cards",
             isSelected = selectedTab == 3,
-            onClick = { onTabSelected(3) }
+            onClick = { onTabSelected(3) },
+            modifier = Modifier.weight(1f)
+        )
+        // Mind Map tab
+        BottomTabItem(
+            icon = Icons.Default.Hub,
+            label = "Map",
+            isSelected = selectedTab == 4,
+            onClick = { onTabSelected(4) },
+            modifier = Modifier.weight(1f)
         )
         // Podcast tab
         BottomTabItem(
             icon = Icons.Default.Podcasts,
-            label = "Podcast",
-            isSelected = selectedTab == 4,
-            onClick = { onTabSelected(4) }
+            label = "Audio",
+            isSelected = selectedTab == 5,
+            onClick = { onTabSelected(5) },
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -297,31 +321,35 @@ private fun BottomTabItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     isSelected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Column(
-        modifier = Modifier
-            .padding(horizontal = 12.dp)
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isSelected) Purple80.copy(alpha = 0.15f) else Color.Transparent)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
-            ),
+            )
+            .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
             tint = if (isSelected) Purple80 else TextSecondary,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(20.dp)
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(2.dp))
         Text(
             text = label,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             fontWeight = FontWeight.Medium,
-            color = if (isSelected) Purple80 else TextSecondary
+            color = if (isSelected) Purple80 else TextSecondary,
+            maxLines = 1
         )
     }
 }
@@ -651,8 +679,8 @@ private fun SummarySection(
     summaryState: AIContentState,
     onGenerateSummary: () -> Unit
 ) {
-    val hasSummary = summaryState is AIContentState.Success &&
-                     (summaryState as? AIContentState.Success)?.content?.summary != null
+    val hasSummary = summaryState is AIContentState.Success<*> &&
+                     ((summaryState as AIContentState.Success<*>).content as? AIContentData)?.summary != null
 
     Column {
         // Summary header/toggle button
@@ -737,8 +765,8 @@ private fun SummarySection(
                                 )
                             }
                         }
-                        is AIContentState.Success -> {
-                            val summary = summaryState.content.summary
+                        is AIContentState.Success<*> -> {
+                            val summary = (summaryState.content as? AIContentData)?.summary
                             if (summary != null) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -885,7 +913,8 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
             is AIContentState.Loading -> {
                 LoadingContent("Generating summary...")
             }
-            is AIContentState.Success -> {
+            is AIContentState.Success<*> -> {
+                val aiContent = state.content as? AIContentData
                 Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -920,7 +949,7 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                             }
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                state.content.summary ?: "No summary available",
+                                aiContent?.summary ?: "No summary available",
                                 fontSize = 15.sp,
                                 lineHeight = 22.sp,
                                 color = TextPrimary
@@ -1593,6 +1622,539 @@ private fun sendChatMessage(
 
 
 
+// MARK: - Infographic Tab
+
+// Style options for infographic
+enum class InfographicStyle(val value: String, val displayName: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    MODERN("modern", "Modern", Icons.Default.AutoAwesome),
+    COLORFUL("colorful", "Colorful", Icons.Default.Palette),
+    MINIMAL("minimal", "Minimal", Icons.Default.GridOn),
+    PROFESSIONAL("professional", "Pro", Icons.Default.BusinessCenter)
+}
+
+@Composable
+fun InfographicTab(
+    note: Note,
+    aiViewModel: AIViewModel,
+    authToken: String?,
+    preferredLanguage: String
+) {
+    val infographicState by aiViewModel.infographicState.collectAsState()
+    var timeElapsed by remember { mutableStateOf(0) }
+    var selectedStyle by remember { mutableStateOf(InfographicStyle.MODERN) }
+    var showFullScreen by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    LaunchedEffect(infographicState) {
+        if (infographicState is AIContentState.Loading) {
+            while (true) {
+                delay(1000)
+                timeElapsed++
+            }
+        } else {
+            timeElapsed = 0
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        when (val state = infographicState) {
+            is AIContentState.Idle -> {
+                // Infographic generation options UI
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.Image,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Purple80
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        "Generate Infographic",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Create a visual summary of your notes using AI",
+                        fontSize = 14.sp,
+                        color = TextSecondary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Style selection
+                    Text(
+                        "Style",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = TextPrimary,
+                        modifier = Modifier.align(Alignment.Start)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        InfographicStyle.entries.forEach { style ->
+                            InfographicStyleCard(
+                                style = style,
+                                isSelected = selectedStyle == style,
+                                onClick = { selectedStyle = style },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Feature list
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        InfographicFeatureRow(Icons.Default.AutoAwesome, "AI-generated visual design")
+                        InfographicFeatureRow(Icons.Default.DataUsage, "Key statistics highlighted")
+                        InfographicFeatureRow(Icons.Default.FormatListBulleted, "Main points summarized")
+                        InfographicFeatureRow(Icons.Default.Share, "Save and share anywhere")
+                    }
+
+                    Spacer(Modifier.height(8.dp))
+
+                    // Premium note
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Star,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Premium feature - requires subscription",
+                            fontSize = 12.sp,
+                            color = TextTertiary
+                        )
+                    }
+
+                    Spacer(Modifier.height(24.dp))
+
+                    Button(
+                        onClick = {
+                            if (authToken != null) {
+                                aiViewModel.generateInfographic(
+                                    authToken,
+                                    note.id,
+                                    style = selectedStyle.value,
+                                    language = preferredLanguage
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Purple80),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(22.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Generate Infographic", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            is AIContentState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = Purple80)
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Creating your infographic...",
+                            fontSize = 16.sp,
+                            color = TextSecondary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "This may take 30-60 seconds",
+                            fontSize = 14.sp,
+                            color = TextTertiary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Time elapsed: ${timeElapsed}s",
+                            fontSize = 12.sp,
+                            color = TextTertiary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            "AI is extracting key points and generating visuals",
+                            fontSize = 12.sp,
+                            color = TextTertiary
+                        )
+                    }
+                }
+            }
+            is AIContentState.Success<*> -> {
+                val data = state.content
+                if (data is InfographicData) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Header with regenerate button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "AI Infographic",
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            TextButton(
+                                onClick = {
+                                    aiViewModel.resetState("infographic")
+                                    if (authToken != null) {
+                                        aiViewModel.generateInfographic(authToken, note.id, language = preferredLanguage)
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Default.Refresh,
+                                    contentDescription = null,
+                                    tint = Purple80,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Regenerate", color = Purple80, fontSize = 13.sp)
+                            }
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Infographic image
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showFullScreen = true },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                        ) {
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(data.imageUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = "Generated Infographic",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 300.dp),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+                            )
+                        }
+
+                        Spacer(Modifier.height(8.dp))
+
+                        Text(
+                            "Tap image to view full screen",
+                            fontSize = 12.sp,
+                            color = TextTertiary
+                        )
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Extracted data summary (if available)
+                        data.extractedData?.let { extractedData ->
+                            InfographicExtractedDataCard(extractedData)
+                        }
+
+                        Spacer(Modifier.height(16.dp))
+
+                        // Share/Save buttons
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, data.imageUrl)
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Share Infographic"))
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                shape = RoundedCornerShape(22.dp)
+                            ) {
+                                Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Share", fontSize = 14.sp)
+                            }
+
+                            Button(
+                                onClick = {
+                                    // Open URL in browser to download
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(data.imageUrl))
+                                    context.startActivity(intent)
+                                    Toast.makeText(context, "Opening image...", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(44.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Purple80),
+                                shape = RoundedCornerShape(22.dp)
+                            ) {
+                                Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Save", fontSize = 14.sp)
+                            }
+                        }
+                    }
+                } else {
+                    // Fallback for unexpected data type
+                    Text("Infographic generated but couldn't display.", color = TextSecondary)
+                }
+            }
+            is AIContentState.Error -> {
+                ErrorContent(state.message) {
+                    if (authToken != null) {
+                        aiViewModel.generateInfographic(authToken, note.id, language = preferredLanguage)
+                    }
+                }
+            }
+        }
+    }
+
+    // Full screen dialog
+    if (showFullScreen) {
+        val data = (infographicState as? AIContentState.Success<*>)?.content as? InfographicData
+        data?.let {
+            InfographicFullScreenDialog(
+                imageUrl = it.imageUrl,
+                onDismiss = { showFullScreen = false }
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfographicStyleCard(
+    style: InfographicStyle,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) Purple80.copy(alpha = 0.2f) else DarkSurfaceVariant
+        ),
+        border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Purple80) else null
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(vertical = 10.dp, horizontal = 4.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                style.icon,
+                contentDescription = null,
+                tint = if (isSelected) Purple80 else TextSecondary,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                style.displayName,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (isSelected) Purple80 else TextSecondary
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfographicFeatureRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = Purple80, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(text, fontSize = 14.sp, color = TextSecondary)
+    }
+}
+
+@Composable
+private fun InfographicExtractedDataCard(data: InfographicExtractedData) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBackground)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Title
+            data.title?.let { title ->
+                Text(
+                    "Title",
+                    fontSize = 12.sp,
+                    color = TextTertiary
+                )
+                Text(
+                    title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // Key Stats
+            data.keyStats?.takeIf { it.isNotEmpty() }?.let { stats ->
+                Text(
+                    "Key Statistics",
+                    fontSize = 12.sp,
+                    color = TextTertiary
+                )
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    stats.take(3).forEach { stat ->
+                        Card(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    stat.value,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Purple80
+                                )
+                                Text(
+                                    stat.label,
+                                    fontSize = 10.sp,
+                                    color = TextSecondary,
+                                    maxLines = 2,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+
+            // Key Takeaway
+            data.keyTakeaway?.let { takeaway ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = CardDefaults.cardColors(containerColor = AccentGreen.copy(alpha = 0.1f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Lightbulb,
+                                contentDescription = null,
+                                tint = AccentGreen,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "Key Takeaway",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = AccentGreen
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            takeaway,
+                            fontSize = 14.sp,
+                            color = TextPrimary,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfographicFullScreenDialog(
+    imageUrl: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    androidx.compose.ui.window.Dialog(
+        onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(DarkBackground)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Full Screen Infographic",
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+            )
+
+            // Close button
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = TextPrimary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
 // Voice options enum (like iOS)
 enum class PodcastVoice(val value: String, val displayName: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
     FEMALE("nova", "Female", Icons.Default.Face),
@@ -1914,8 +2476,8 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                     }
                 }
             }
-            is AIContentState.Success -> {
-                state.content.audioUrl?.let { audioUrl ->
+            is AIContentState.Success<*> -> {
+                (state.content as? AIContentData)?.audioUrl?.let { audioUrl ->
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -2138,7 +2700,7 @@ fun QuizTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
 
     // Reset state when quiz changes
     LaunchedEffect(quizState) {
-        if (quizState is AIContentState.Success) {
+        if (quizState is AIContentState.Success<*>) {
             currentQuestionIndex = 0
             selectedAnswer = null
             showExplanation = false
@@ -2168,8 +2730,8 @@ fun QuizTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
             is AIContentState.Loading -> {
                 LoadingContent("Generating quiz questions...")
             }
-            is AIContentState.Success -> {
-                val questions = state.content.questions?.quizQuestions
+            is AIContentState.Success<*> -> {
+                val questions = (state.content as? AIContentData)?.questions?.quizQuestions
                     ?.filter { it.question.isNotBlank() && it.options.isNotEmpty() }
 
                 if (questions.isNullOrEmpty()) {
@@ -2759,8 +3321,8 @@ fun FlashcardsTab(
                     }
                 }
             }
-            is AIContentState.Success -> {
-                val flashcards = state.content.flashcards
+            is AIContentState.Success<*> -> {
+                val flashcards = (state.content as? AIContentData)?.flashcards
                 if (flashcards.isNullOrEmpty()) {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -2819,6 +3381,1204 @@ fun FlashcardsTab(
                     }
                 }
             }
+        }
+    }
+}
+
+// MARK: - Mind Map Tab (Simplified 2-Level Tree)
+
+@Composable
+fun MindMapTab(
+    note: Note,
+    aiViewModel: AIViewModel,
+    authToken: String?,
+    preferredLanguage: String
+) {
+    val mindMapState by aiViewModel.mindMapState.collectAsState()
+    var timeElapsed by remember { mutableStateOf(0) }
+    var includeExploration by remember { mutableStateOf(true) }
+    var expandedNodes by remember { mutableStateOf(setOf<String>()) }
+    var selectedNode by remember { mutableStateOf<MindMapNode?>(null) }
+    var selectedParentNode by remember { mutableStateOf<MindMapNode?>(null) }
+    var selectedExploratoryNode by remember { mutableStateOf<MindMapNode?>(null) }
+    var createdNoteId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(mindMapState) {
+        if (mindMapState is AIContentState.Loading) {
+            while (true) {
+                delay(1000)
+                timeElapsed++
+            }
+        } else {
+            timeElapsed = 0
+        }
+    }
+
+    // Node detail dialog with AI chat query
+    selectedNode?.let { node ->
+        NodeDetailDialog(
+            node = node,
+            parentNode = selectedParentNode,
+            noteId = note.id,
+            authToken = authToken,
+            aiViewModel = aiViewModel,
+            preferredLanguage = preferredLanguage,
+            onDismiss = {
+                selectedNode = null
+                selectedParentNode = null
+            }
+        )
+    }
+
+    // Exploratory resources dialog
+    selectedExploratoryNode?.let { node ->
+        ExploratoryResourcesDialog(
+            topic = node.label,
+            topicDescription = node.content,
+            noteId = note.id,
+            authToken = authToken,
+            aiViewModel = aiViewModel,
+            preferredLanguage = preferredLanguage,
+            onDismiss = { selectedExploratoryNode = null },
+            onNoteCreated = { newNoteId ->
+                selectedExploratoryNode = null
+                createdNoteId = newNoteId
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        when (val state = mindMapState) {
+            is AIContentState.Idle -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Header
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .background(Purple80.copy(alpha = 0.2f), RoundedCornerShape(50.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Hub,
+                            contentDescription = null,
+                            modifier = Modifier.size(50.dp),
+                            tint = Purple80
+                        )
+                    }
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        "Generate Mind Map",
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Visualize concepts and their connections",
+                        fontSize = 14.sp,
+                        color = TextSecondary
+                    )
+
+                    Spacer(Modifier.height(24.dp))
+
+                    // Include Exploration Toggle
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = CardBackground),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Include Exploration",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextPrimary
+                                )
+                                Text(
+                                    "Add suggested topics to deepen understanding",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                            Switch(
+                                checked = includeExploration,
+                                onCheckedChange = { includeExploration = it },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Purple80,
+                                    checkedTrackColor = Purple80.copy(alpha = 0.5f)
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Feature list
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        MindMapFeatureRow(Icons.Default.AccountTree, "Visual hierarchy of concepts")
+                        MindMapFeatureRow(Icons.Default.TouchApp, "Tap nodes to see details")
+                        MindMapFeatureRow(Icons.Default.AutoAwesome, "AI-suggested topics to explore")
+                        MindMapFeatureRow(Icons.Default.Palette, "Color-coded branches")
+                    }
+
+                    Spacer(Modifier.height(32.dp))
+
+                    Button(
+                        onClick = {
+                            if (authToken != null) {
+                                aiViewModel.generateMindMap(
+                                    authToken,
+                                    note.id,
+                                    includeExploration = includeExploration,
+                                    language = preferredLanguage
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Purple80),
+                        shape = RoundedCornerShape(28.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Generate Mind Map", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            is AIContentState.Loading -> {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = Purple80, modifier = Modifier.size(64.dp))
+                        Spacer(Modifier.height(24.dp))
+                        Text("Creating your mind map...", fontSize = 18.sp, color = TextPrimary)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Analyzing content and building connections", fontSize = 14.sp, color = TextSecondary)
+                        Spacer(Modifier.height(16.dp))
+                        Text("${timeElapsed}s elapsed", fontSize = 12.sp, color = TextTertiary)
+                    }
+                }
+            }
+            is AIContentState.Success<*> -> {
+                val content = state.content as? AIContentData
+                val title = content?.title
+                val nodes = content?.nodes
+
+                val nodesList = nodes ?: emptyList()
+                if (nodesList.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No mind map generated", color = TextSecondary)
+                    }
+                } else {
+                    // Initialize expanded nodes on first load
+                    LaunchedEffect(nodesList) {
+                        expandedNodes = nodesList.filter { it.level == 0 }.map { it.id }.toSet()
+                    }
+
+                    // Separate main branches and exploratory nodes
+                    val mainBranches = nodesList.filter { it.level == 0 && it.isExploratory != true }
+                    val exploratoryNodes = nodesList.filter { it.isExploratory == true }
+
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Header
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    title ?: "Mind Map",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary
+                                )
+                                TextButton(
+                                    onClick = {
+                                        aiViewModel.resetState("mindmap")
+                                        if (authToken != null) {
+                                            aiViewModel.generateMindMap(authToken, note.id, language = preferredLanguage)
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        tint = Purple80,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Regenerate", color = Purple80, fontSize = 13.sp)
+                                }
+                            }
+                        }
+
+                        // Main branches (2-level tree)
+                        items(mainBranches) { branch ->
+                            val children = nodesList.filter { it.parentId == branch.id && it.isExploratory != true }
+                            BranchCard(
+                                branch = branch,
+                                children = children,
+                                isExpanded = expandedNodes.contains(branch.id),
+                                onToggle = {
+                                    expandedNodes = if (expandedNodes.contains(branch.id)) {
+                                        expandedNodes - branch.id
+                                    } else {
+                                        expandedNodes + branch.id
+                                    }
+                                },
+                                onBranchClick = {
+                                    // Parent node clicked - no parent context
+                                    selectedNode = branch
+                                    selectedParentNode = null
+                                },
+                                onChildClick = { child ->
+                                    // Child node clicked - pass branch as parent
+                                    selectedNode = child
+                                    selectedParentNode = branch
+                                }
+                            )
+                        }
+
+                        // Explore Further Section
+                        if (exploratoryNodes.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(8.dp))
+                                ExploreFurtherSection(
+                                    nodes = exploratoryNodes,
+                                    onNodeClick = { node ->
+                                        // Open exploratory resources dialog instead of node detail
+                                        selectedExploratoryNode = node
+                                    }
+                                )
+                            }
+                        }
+
+                        item {
+                            Spacer(Modifier.height(16.dp))
+                        }
+                    }
+                }
+            }
+            is AIContentState.Error -> {
+                ErrorContent(state.message) {
+                    if (authToken != null) {
+                        aiViewModel.generateMindMap(authToken, note.id, language = preferredLanguage)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MindMapFeatureRow(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = Purple80, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
+        Text(text, fontSize = 14.sp, color = TextSecondary)
+    }
+}
+
+// MARK: - Branch Card (Main topic with expandable children)
+
+@Composable
+private fun BranchCard(
+    branch: MindMapNode,
+    children: List<MindMapNode>,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    onBranchClick: () -> Unit,
+    onChildClick: (MindMapNode) -> Unit
+) {
+    val nodeColor = try {
+        androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(branch.color ?: "#BB86FC"))
+    } catch (e: Exception) {
+        Purple80
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, nodeColor.copy(alpha = 0.3f))
+    ) {
+        Column {
+            // Main branch header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Color bar
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .height(48.dp)
+                        .background(nodeColor, RoundedCornerShape(3.dp))
+                )
+                Spacer(Modifier.width(12.dp))
+
+                // Tappable content area - triggers AI query
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onBranchClick() }
+                ) {
+                    Text(
+                        branch.label,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        branch.content,
+                        fontSize = 13.sp,
+                        color = TextSecondary,
+                        maxLines = if (isExpanded) Int.MAX_VALUE else 2
+                    )
+                }
+
+                // Expand/collapse button
+                if (children.isNotEmpty()) {
+                    IconButton(
+                        onClick = onToggle,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (isExpanded) "Collapse" else "Expand",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+
+            // Children (level 1)
+            AnimatedVisibility(visible = isExpanded && children.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.padding(start = 22.dp, bottom = 12.dp)
+                ) {
+                    children.forEach { child ->
+                        ChildNodeRow(
+                            node = child,
+                            parentColor = branch.color ?: "#BB86FC",
+                            onTap = { onChildClick(child) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Child Node Row
+
+@Composable
+private fun ChildNodeRow(
+    node: MindMapNode,
+    parentColor: String,
+    onTap: () -> Unit
+) {
+    val nodeColor = try {
+        androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(parentColor))
+    } catch (e: Exception) {
+        Purple80
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onTap() }
+            .padding(vertical = 6.dp, horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Connection line indicator
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .width(2.dp)
+                    .height(40.dp)
+                    .background(nodeColor.copy(alpha = 0.3f))
+            )
+            Box(
+                modifier = Modifier
+                    .width(12.dp)
+                    .height(2.dp)
+                    .background(nodeColor.copy(alpha = 0.3f))
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+
+        // Bullet
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(nodeColor.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+        )
+        Spacer(Modifier.width(10.dp))
+
+        // Content
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                node.label,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextPrimary
+            )
+            Text(
+                node.content,
+                fontSize = 12.sp,
+                color = TextSecondary,
+                maxLines = 2
+            )
+        }
+
+        Icon(
+            Icons.Default.ChevronRight,
+            contentDescription = "View details",
+            tint = TextTertiary,
+            modifier = Modifier.size(16.dp)
+        )
+    }
+}
+
+// MARK: - Explore Further Section
+
+@Composable
+private fun ExploreFurtherSection(
+    nodes: List<MindMapNode>,
+    onNodeClick: (MindMapNode) -> Unit
+) {
+    Column {
+        // Section Header
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 8.dp)
+        ) {
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                tint = AccentGreen,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                "Explore Further",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
+        }
+
+        Text(
+            "Tap a topic to discover learning resources",
+            fontSize = 13.sp,
+            color = TextSecondary,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        // Exploratory nodes as cards
+        nodes.forEach { node ->
+            ExploratoryTopicCard(node = node, onClick = { onNodeClick(node) })
+            Spacer(Modifier.height(10.dp))
+        }
+    }
+}
+
+// MARK: - Exploratory Topic Card
+
+@Composable
+private fun ExploratoryTopicCard(
+    node: MindMapNode,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = AccentGreen.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(10.dp),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = AccentGreen.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    node.label,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.MenuBook,
+                        contentDescription = null,
+                        tint = AccentGreen,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "Resources",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AccentGreen
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                node.content,
+                fontSize = 13.sp,
+                color = TextSecondary,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+// MARK: - Node Detail Dialog (with AI Chat Query)
+
+@Composable
+private fun NodeDetailDialog(
+    node: MindMapNode,
+    parentNode: MindMapNode?,
+    noteId: String,
+    authToken: String?,
+    aiViewModel: AIViewModel,
+    preferredLanguage: String,
+    onDismiss: () -> Unit
+) {
+    var aiResponse by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    // Build the question based on context
+    val question = if (parentNode != null) {
+        "What do the sources say about \"${node.label}\" in the context of \"${parentNode.label}\"? Please provide a focused, detailed explanation."
+    } else {
+        "What do the sources say about \"${node.label}\"? Please provide a focused, detailed explanation."
+    }
+
+    // Fetch AI response when dialog opens
+    LaunchedEffect(node.id) {
+        if (authToken != null) {
+            isLoading = true
+            errorMessage = null
+            try {
+                val response = aiViewModel.chatWithNote(
+                    authToken = authToken,
+                    noteId = noteId,
+                    question = question,
+                    language = preferredLanguage
+                )
+                aiResponse = response
+                isLoading = false
+            } catch (e: Exception) {
+                errorMessage = "Failed to get response. Please try again."
+                isLoading = false
+            }
+        } else {
+            errorMessage = "Not authenticated"
+            isLoading = false
+        }
+    }
+
+    val nodeColor = try {
+        androidx.compose.ui.graphics.Color(android.graphics.Color.parseColor(node.color ?: "#BB86FC"))
+    } catch (e: Exception) {
+        Purple80
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Column {
+                // Color bar
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .background(nodeColor, RoundedCornerShape(2.dp))
+                )
+                Spacer(Modifier.height(16.dp))
+
+                // Title row
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        node.label,
+                        color = TextPrimary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (node.isExploratory == true) {
+                        Spacer(Modifier.width(8.dp))
+                        Surface(
+                            color = AccentGreen.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = AccentGreen,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(Modifier.width(4.dp))
+                                Text("Explore", fontSize = 10.sp, color = AccentGreen)
+                            }
+                        }
+                    }
+                }
+
+                // Context indicator
+                if (parentNode != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.SubdirectoryArrowRight,
+                            contentDescription = null,
+                            tint = TextTertiary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "In context of: ${parentNode.label}",
+                            fontSize = 12.sp,
+                            color = TextTertiary
+                        )
+                    }
+                }
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                when {
+                    isLoading -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(
+                                color = Purple80,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Analyzing sources...",
+                                fontSize = 14.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    errorMessage != null -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = AccentRed,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                errorMessage ?: "An error occurred",
+                                fontSize = 14.sp,
+                                color = TextSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            TextButton(
+                                onClick = {
+                                    if (authToken != null) {
+                                        scope.launch {
+                                            isLoading = true
+                                            errorMessage = null
+                                            try {
+                                                val response = aiViewModel.chatWithNote(
+                                                    authToken = authToken,
+                                                    noteId = noteId,
+                                                    question = question,
+                                                    language = preferredLanguage
+                                                )
+                                                aiResponse = response
+                                                isLoading = false
+                                            } catch (e: Exception) {
+                                                errorMessage = "Failed to get response. Please try again."
+                                                isLoading = false
+                                            }
+                                        }
+                                    }
+                                }
+                            ) {
+                                Text("Try Again", color = Purple80)
+                            }
+                        }
+                    }
+                    else -> {
+                        // AI Response
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.ChatBubble,
+                                contentDescription = null,
+                                tint = Purple80,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                "From your notes",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Purple80
+                            )
+                        }
+                        Text(
+                            aiResponse,
+                            color = TextPrimary,
+                            lineHeight = 22.sp,
+                            fontSize = 15.sp
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Done", color = Purple80)
+            }
+        },
+        containerColor = CardBackground
+    )
+}
+
+// MARK: - Exploratory Resources Dialog
+
+data class LearningResource(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    val title: String,
+    val type: String,  // "Book", "Article", "Video", "Course"
+    val description: String
+) {
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+        get() = when (type.lowercase()) {
+            "book" -> Icons.Default.Book
+            "article" -> Icons.Default.Article
+            "video" -> Icons.Default.PlayCircle
+            "course" -> Icons.Default.School
+            else -> Icons.Default.Link
+        }
+}
+
+@Composable
+private fun ExploratoryResourcesDialog(
+    topic: String,
+    topicDescription: String,
+    noteId: String,
+    authToken: String?,
+    aiViewModel: AIViewModel,
+    preferredLanguage: String,
+    onDismiss: () -> Unit,
+    onNoteCreated: (String) -> Unit
+) {
+    var resources by remember { mutableStateOf<List<LearningResource>>(emptyList()) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isCreatingNote by remember { mutableStateOf(false) }
+    var selectedResourceId by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Fetch resources when dialog opens
+    LaunchedEffect(topic) {
+        if (authToken != null) {
+            isLoading = true
+            errorMessage = null
+
+            val question = """
+                I want to learn more about "$topic". Please suggest exactly 3 learning resources in this exact JSON format:
+                [
+                  {"title": "Resource Name", "type": "Book|Article|Video|Course", "description": "Brief description of why this resource is helpful"}
+                ]
+                Only respond with the JSON array, no other text.
+            """.trimIndent()
+
+            try {
+                val response = aiViewModel.chatWithNote(
+                    authToken = authToken,
+                    noteId = noteId,
+                    question = question,
+                    language = preferredLanguage
+                )
+
+                // Parse JSON response
+                try {
+                    val jsonArray = org.json.JSONArray(response)
+                    val parsedResources = mutableListOf<LearningResource>()
+                    for (i in 0 until jsonArray.length()) {
+                        val obj = jsonArray.getJSONObject(i)
+                        parsedResources.add(
+                            LearningResource(
+                                title = obj.optString("title", ""),
+                                type = obj.optString("type", "Article"),
+                                description = obj.optString("description", "")
+                            )
+                        )
+                    }
+                    resources = parsedResources
+                } catch (e: Exception) {
+                    // Fallback: parse from text
+                    val lines = response.split("\n").filter { it.isNotBlank() }.take(3)
+                    resources = lines.map { line ->
+                        val type = when {
+                            line.lowercase().contains("book") -> "Book"
+                            line.lowercase().contains("video") || line.lowercase().contains("youtube") -> "Video"
+                            line.lowercase().contains("course") -> "Course"
+                            else -> "Article"
+                        }
+                        LearningResource(
+                            title = line.take(100),
+                            type = type,
+                            description = "Suggested resource for learning about $topic"
+                        )
+                    }
+                }
+
+                if (resources.isEmpty()) {
+                    errorMessage = "Couldn't find resources. Please try again."
+                }
+                isLoading = false
+            } catch (e: Exception) {
+                errorMessage = "Failed to fetch resources. Please try again."
+                isLoading = false
+            }
+        } else {
+            errorMessage = "Not authenticated"
+            isLoading = false
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!isCreatingNote) onDismiss() },
+        title = {
+            Column {
+                // Topic header
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Lightbulb,
+                        contentDescription = null,
+                        tint = AccentGreen,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Explore Topic",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = AccentGreen
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    topic,
+                    color = TextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    topicDescription,
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                    lineHeight = 18.sp
+                )
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState())
+            ) {
+                when {
+                    isLoading -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator(
+                                color = Purple80,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Finding learning resources...",
+                                fontSize = 14.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    errorMessage != null -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = null,
+                                tint = AccentRed,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                errorMessage ?: "An error occurred",
+                                fontSize = 14.sp,
+                                color = TextSecondary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                    }
+                    else -> {
+                        // Resources list
+                        Text(
+                            "Suggested Resources",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            "Tap a resource to create a note from it",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                        Spacer(Modifier.height(12.dp))
+
+                        resources.forEach { resource ->
+                            ResourceCard(
+                                resource = resource,
+                                isCreating = isCreatingNote && selectedResourceId == resource.id,
+                                onClick = {
+                                    if (!isCreatingNote && authToken != null) {
+                                        selectedResourceId = resource.id
+                                        isCreatingNote = true
+
+                                        scope.launch {
+                                            try {
+                                                // Generate content
+                                                val contentQuestion = """
+                                                    Create comprehensive study notes about "${resource.title}" in the context of learning about "$topic".
+                                                    Include:
+                                                    - Key concepts and definitions
+                                                    - Main ideas and takeaways
+                                                    - Practical applications
+                                                    Format it as well-structured study notes with clear headings.
+                                                """.trimIndent()
+
+                                                val content = aiViewModel.chatWithNote(
+                                                    authToken = authToken,
+                                                    noteId = noteId,
+                                                    question = contentQuestion,
+                                                    language = preferredLanguage
+                                                )
+
+                                                // Create note via repository
+                                                val repository = NoteRepository()
+                                                val request = CreateNoteRequest(
+                                                    title = "$topic: ${resource.title}",
+                                                    content = content,
+                                                    sourceType = "tutorial",
+                                                    metadata = mapOf(
+                                                        "derived_from" to noteId,
+                                                        "resource_type" to resource.type,
+                                                        "original_topic" to topic
+                                                    )
+                                                )
+                                                val result = repository.createNote(
+                                                    token = authToken,
+                                                    request = request
+                                                )
+
+                                                result.fold(
+                                                    onSuccess = { note ->
+                                                        isCreatingNote = false
+                                                        Toast.makeText(context, "Note created! Find it on the home screen.", Toast.LENGTH_LONG).show()
+                                                        onNoteCreated(note.id)
+                                                    },
+                                                    onFailure = {
+                                                        isCreatingNote = false
+                                                        errorMessage = "Failed to create note"
+                                                    }
+                                                )
+                                            } catch (e: Exception) {
+                                                isCreatingNote = false
+                                                errorMessage = "Failed to create note"
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.height(10.dp))
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isCreatingNote
+            ) {
+                Text("Done", color = if (isCreatingNote) TextTertiary else Purple80)
+            }
+        },
+        containerColor = CardBackground
+    )
+}
+
+@Composable
+private fun ResourceCard(
+    resource: LearningResource,
+    isCreating: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !isCreating) { onClick() },
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.2f))
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icon
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(Purple80.copy(alpha = 0.2f), RoundedCornerShape(20.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isCreating) {
+                    CircularProgressIndicator(
+                        color = Purple80,
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        resource.icon,
+                        contentDescription = null,
+                        tint = Purple80,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+
+            // Content
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    resource.title,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    maxLines = 2
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = Purple80.copy(alpha = 0.15f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            resource.type,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Purple80,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        resource.description,
+                        fontSize = 11.sp,
+                        color = TextTertiary,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+
+            // Add icon
+            Icon(
+                Icons.Default.AddCircle,
+                contentDescription = "Create note",
+                tint = Purple80,
+                modifier = Modifier.size(24.dp)
+            )
         }
     }
 }

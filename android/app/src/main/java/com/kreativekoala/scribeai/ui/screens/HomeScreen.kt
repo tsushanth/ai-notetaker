@@ -23,7 +23,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.data.api.RetrofitClient
+import com.kreativekoala.scribeai.data.models.DeletionReason
 import com.kreativekoala.scribeai.data.models.Note
+import com.kreativekoala.scribeai.data.models.UserStats
+import com.kreativekoala.scribeai.ui.components.DeleteAccountRetentionDialog
+import com.kreativekoala.scribeai.ui.components.SignOutRetentionDialog
+import com.kreativekoala.scribeai.ui.components.ThemeSelectionDialog
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.viewmodel.NoteUiState
@@ -51,8 +57,15 @@ fun HomeScreen(
     var showCreateSheet by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showPaywall by remember { mutableStateOf(false) }
-    var showSignOutDialog by remember { mutableStateOf(false) }  // NEW: Sign out confirmation
+    var showSignOutDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
+
+    // Retention dialog state
+    var userStats by remember { mutableStateOf<UserStats?>(null) }
+    var isLoadingStats by remember { mutableStateOf(false) }
+    var isDeletingAccount by remember { mutableStateOf(false) }
 
 
     val context = LocalContext.current  // NEW: For Toast
@@ -210,13 +223,49 @@ fun HomeScreen(
                         HorizontalDivider()
 
                         DropdownMenuItem(
+                            text = { Text("Appearance") },
+                            onClick = {
+                                showMenu = false
+                                showThemeDialog = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Palette, contentDescription = null, tint = Purple80)
+                            }
+                        )
+                        HorizontalDivider()
+
+                        DropdownMenuItem(
                             text = { Text("Sign Out") },
                             onClick = {
                                 showMenu = false
-                                showSignOutDialog = true  // FIXED: Show confirmation instead of direct sign out
+                                // Load stats and show retention dialog
+                                coroutineScope.launch {
+                                    loadUserStats(authToken) { stats ->
+                                        userStats = stats
+                                    }
+                                }
+                                showSignOutDialog = true
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Logout, contentDescription = null)
+                            }
+                        )
+                        HorizontalDivider()
+
+                        DropdownMenuItem(
+                            text = { Text("Delete Account", color = AccentRed) },
+                            onClick = {
+                                showMenu = false
+                                // Load stats and show retention dialog
+                                coroutineScope.launch {
+                                    loadUserStats(authToken) { stats ->
+                                        userStats = stats
+                                    }
+                                }
+                                showDeleteAccountDialog = true
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.DeleteForever, contentDescription = null, tint = AccentRed)
                             }
                         )
                     }
@@ -611,39 +660,44 @@ fun HomeScreen(
         )
     }
 
-    // NEW: Sign Out Confirmation Dialog
+    // Sign Out Retention Dialog
     if (showSignOutDialog) {
-        AlertDialog(
-            onDismissRequest = { showSignOutDialog = false },
-            icon = {
-                Icon(
-                    Icons.Default.Logout,
-                    contentDescription = null,
-                    tint = AccentRed
-                )
-            },
-            title = {
-                Text("Sign Out?")
-            },
-            text = {
-                Text("Are you sure you want to sign out of your account?")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showSignOutDialog = false
+        SignOutRetentionDialog(
+            stats = userStats,
+            isLoading = isLoadingStats,
+            onDismiss = { showSignOutDialog = false },
+            onStaySignedIn = { showSignOutDialog = false },
+            onSignOut = {
+                showSignOutDialog = false
+                onSignOut()
+            }
+        )
+    }
+
+    // Delete Account Retention Dialog
+    if (showDeleteAccountDialog) {
+        DeleteAccountRetentionDialog(
+            stats = userStats,
+            isLoading = isLoadingStats,
+            isDeleting = isDeletingAccount,
+            onDismiss = { showDeleteAccountDialog = false },
+            onKeepAccount = { showDeleteAccountDialog = false },
+            onDelete = { reason ->
+                isDeletingAccount = true
+                coroutineScope.launch {
+                    try {
+                        // TODO: Call delete account API when backend supports it
+                        // For now, just sign out after collecting reason
+                        Log.d("HomeScreen", "Delete account reason: ${reason.name}")
+                        isDeletingAccount = false
+                        showDeleteAccountDialog = false
+                        Toast.makeText(context, "Account deletion requested. You will be signed out.", Toast.LENGTH_LONG).show()
                         onSignOut()
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentRed
-                    )
-                ) {
-                    Text("Sign Out")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSignOutDialog = false }) {
-                    Text("Cancel")
+                    } catch (e: Exception) {
+                        Log.e("HomeScreen", "Delete account failed", e)
+                        isDeletingAccount = false
+                        Toast.makeText(context, "Failed to delete account: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
         )
@@ -763,6 +817,13 @@ fun HomeScreen(
                     Text("Cancel")
                 }
             }
+        )
+    }
+
+    // Theme Selection Dialog
+    if (showThemeDialog) {
+        ThemeSelectionDialog(
+            onDismiss = { showThemeDialog = false }
         )
     }
 }
@@ -977,15 +1038,21 @@ fun CreateOptionsBottomSheet(
     onScanDocument: () -> Unit,
     onMeetings: () -> Unit = {}
 ) {
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        sheetState = sheetState,
         containerColor = DarkSurface,
         contentColor = TextPrimary
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .navigationBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
         ) {
             CreateOption(
                 icon = Icons.Default.Mic,
@@ -1019,7 +1086,6 @@ fun CreateOptionsBottomSheet(
                 subtitle = "Record Zoom, Meet, Teams, Webex",
                 onClick = onMeetings
             )
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -1107,5 +1173,28 @@ fun formatDate(dateString: String): String {
         outputFormat.format(date ?: Date())
     } catch (e: Exception) {
         dateString
+    }
+}
+
+/**
+ * Load user stats for retention dialogs
+ */
+private suspend fun loadUserStats(token: String?, onResult: (UserStats?) -> Unit) {
+    if (token == null) {
+        onResult(null)
+        return
+    }
+
+    try {
+        val response = RetrofitClient.apiService.getUserStats("Bearer $token")
+        if (response.isSuccessful && response.body()?.success == true) {
+            onResult(response.body()?.data)
+        } else {
+            Log.e("HomeScreen", "Failed to load user stats: ${response.errorBody()?.string()}")
+            onResult(null)
+        }
+    } catch (e: Exception) {
+        Log.e("HomeScreen", "Error loading user stats", e)
+        onResult(null)
     }
 }

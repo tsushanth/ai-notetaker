@@ -13,6 +13,8 @@ enum NoteDetailTab: String, CaseIterable {
     case chat = "Chat"
     case quiz = "Quiz"
     case flashcards = "Flashcards"
+    case mindMap = "Mind Map"
+    case infographic = "Infographic"
     case podcast = "Podcast"
 
     var icon: String {
@@ -21,13 +23,15 @@ enum NoteDetailTab: String, CaseIterable {
         case .chat: return "message.fill"
         case .quiz: return "questionmark.circle.fill"
         case .flashcards: return "rectangle.stack.fill"
+        case .mindMap: return "brain.head.profile"
+        case .infographic: return "chart.bar.doc.horizontal.fill"
         case .podcast: return "waveform"
         }
     }
 
     // Tabs shown in the bottom bar
     static var bottomBarTabs: [NoteDetailTab] {
-        [.notes, .chat, .quiz, .flashcards, .podcast]
+        [.notes, .chat, .quiz, .flashcards, .mindMap, .podcast]
     }
 }
 
@@ -66,11 +70,20 @@ struct NoteDetailTabView: View {
                         .subscriptionGated(featureName: "AI Flashcards")
                         .tag(NoteDetailTab.flashcards)
 
+                    MindMapTabContent(note: note)
+                        .subscriptionGated(featureName: "AI Mind Maps")
+                        .tag(NoteDetailTab.mindMap)
+
+                    InfographicTabContent(note: note)
+                        .subscriptionGated(featureName: "AI Infographics")
+                        .tag(NoteDetailTab.infographic)
+
                     PodcastTabContent(note: note)
                         .subscriptionGated(featureName: "AI Podcasts")
                         .tag(NoteDetailTab.podcast)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                .environmentObject(viewModel)
 
                 // Bottom Tab Bar
                 bottomTabBar
@@ -130,27 +143,30 @@ struct NoteDetailTabView: View {
     // MARK: - Bottom Tab Bar
 
     private var bottomTabBar: some View {
-        HStack(spacing: 0) {
-            ForEach(NoteDetailTab.bottomBarTabs, id: \.self) { tab in
-                BottomTabButton(
-                    title: tab.rawValue,
-                    icon: tab.icon,
-                    isSelected: selectedTab == tab
-                ) {
-                    if selectedTab != tab {
-                        AnalyticsService.shared.trackTabSwitched(
-                            fromTab: selectedTab.rawValue,
-                            toTab: tab.rawValue,
-                            noteId: note.id
-                        )
-                        previousTab = selectedTab
-                        selectedTab = tab
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 12) {
+                ForEach(NoteDetailTab.bottomBarTabs, id: \.self) { tab in
+                    BottomTabButton(
+                        title: tab.rawValue,
+                        icon: tab.icon,
+                        isSelected: selectedTab == tab
+                    ) {
+                        if selectedTab != tab {
+                            AnalyticsService.shared.trackTabSwitched(
+                                fromTab: selectedTab.rawValue,
+                                toTab: tab.rawValue,
+                                noteId: note.id
+                            )
+                            previousTab = selectedTab
+                            selectedTab = tab
+                        }
                     }
                 }
             }
+            .padding(.horizontal, 16)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 4)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
         .background(Color.cardBackground)
         .overlay(
             Rectangle()
@@ -224,12 +240,16 @@ struct BottomTabButton: View {
         Button(action: action) {
             VStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 20))
+                    .font(.system(size: 22))
 
                 Text(title)
                     .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
             }
-            .frame(maxWidth: .infinity)
+            .frame(width: 72)
+            .padding(.vertical, 8)
+            .background(isSelected ? Color.purple80.opacity(0.15) : Color.clear)
+            .cornerRadius(10)
             .foregroundColor(isSelected ? .purple80 : .textSecondary)
         }
         .buttonStyle(PlainButtonStyle())

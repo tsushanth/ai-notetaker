@@ -27,7 +27,7 @@ CREATE TABLE notes (
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
   content TEXT NOT NULL,
-  source_type TEXT CHECK (source_type IN ('recording', 'pdf', 'video', 'slideshow', 'manual')),
+  source_type TEXT, -- No CHECK constraint - validation handled by application layer (validation.js)
   source_url TEXT,
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -52,7 +52,7 @@ CREATE TABLE recordings (
 CREATE TABLE ai_content (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   note_id UUID REFERENCES notes(id) ON DELETE CASCADE NOT NULL,
-  content_type TEXT CHECK (content_type IN ('summary', 'quiz', 'flashcards', 'podcast', 'diagram')) NOT NULL,
+  content_type TEXT CHECK (content_type IN ('summary', 'quiz', 'flashcards', 'podcast', 'diagram', 'mindmap')) NOT NULL,
   content JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

@@ -327,15 +327,26 @@ class StoreKitManager: ObservableObject {
                 }
 
                 // Track subscription lifecycle events
-                let hasTrialOffer = product.subscription?.introductoryOffer != nil
                 let isNewPurchase = transaction.originalID == transaction.id
 
+                // Check if user is actually in a trial by examining the transaction's offer type
+                // This is more reliable than checking if product has trial offer configured
+                let isInTrial: Bool
+                if #available(iOS 17.0, *) {
+                    // iOS 17+ has offerType property
+                    isInTrial = transaction.offerType == .introductory
+                } else {
+                    // Fallback: check if product has intro offer and this is a new purchase
+                    // Note: This isn't 100% accurate as user may have used trial before
+                    isInTrial = product.subscription?.introductoryOffer != nil && isNewPurchase
+                }
+
                 if isNewPurchase {
-                    if hasTrialOffer {
+                    if isInTrial {
                         // User started a trial
                         handleTrialStart(product: product, transaction: transaction)
                     } else {
-                        // Direct purchase without trial
+                        // Direct purchase without trial (or trial not eligible)
                         handleSuccessfulBilling(product: product, transaction: transaction)
                     }
                 } else {
@@ -413,6 +424,9 @@ class StoreKitManager: ObservableObject {
                                 expirationDate: expirationDate
                             )
                             print("✅ Active subscription: \(transaction.productID), expires: \(expirationDate)")
+
+                            // Reconcile with server to catch missed webhook events
+                            await reconcileWithServer(transaction: transaction)
                             return
                         } else {
                             print("⚠️ Subscription expired: \(transaction.productID)")
@@ -427,6 +441,45 @@ class StoreKitManager: ObservableObject {
         // No active subscription found
         subscriptionState = .notSubscribed
         print("ℹ️ No active subscription")
+    }
+
+    /// Reconcile subscription status with server to recover from missed webhooks
+    private func reconcileWithServer(transaction: Transaction) async {
+        // Determine offer type
+        var offerType: String? = nil
+        if #available(iOS 17.0, *) {
+            switch transaction.offerType {
+            case .introductory:
+                offerType = "introductory"
+            case .promotional:
+                offerType = "promotional"
+            case .code:
+                offerType = "code"
+            default:
+                offerType = nil
+            }
+        }
+
+        // Get product for price info
+        let product = products.first { $0.id == transaction.productID }
+        let price = product != nil ? NSDecimalNumber(decimal: product!.price).doubleValue : nil
+        let currency = product?.priceFormatStyle.currencyCode
+
+        // Determine auto-renew status (not directly available, assume true if not revoked)
+        let autoRenewEnabled = transaction.revocationDate == nil
+
+        _ = await SubscriptionSyncService.shared.reconcileSubscription(
+            productId: transaction.productID,
+            originalTransactionId: String(transaction.originalID),
+            transactionId: String(transaction.id),
+            expirationDate: transaction.expirationDate,
+            purchaseDate: transaction.purchaseDate,
+            isSubscribed: true,
+            offerType: offerType,
+            autoRenewEnabled: autoRenewEnabled,
+            priceAmount: price,
+            priceCurrency: currency
+        )
     }
 
     /// Timeout helper for async operations

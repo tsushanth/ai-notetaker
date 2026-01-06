@@ -45,7 +45,9 @@ data class AIOptions(
     // Podcast-specific options
     val duration: String? = null, // "short", "medium", "long"
     val voice: String? = null, // "nova" (female), "onyx" (male)
-    val instructions: String? = null
+    val instructions: String? = null,
+    // Mind Map options
+    val includeExploration: Boolean? = true
 )
 
 data class AIContentResponse(
@@ -136,7 +138,89 @@ data class AIContentData(
     val numQuestions: Int? = null,
     @SerializedName("num_cards")
     val numCards: Int? = null,
-    val model: String? = null
+    val model: String? = null,
+    // Mind Map fields
+    val title: String? = null,
+    val nodes: List<MindMapNode>? = null,
+    // Infographic fields
+    @SerializedName("image_url")
+    val imageUrl: String? = null,
+    @SerializedName("extracted_data")
+    val extractedData: InfographicExtractedData? = null
+)
+
+// MARK: - Mind Map Models
+
+data class MindMapNode(
+    val id: String,
+    val label: String,
+    val content: String,
+    val level: Int,
+    val parentId: String? = null,
+    val color: String? = null,
+    val isExploratory: Boolean? = false
+)
+
+data class MindMap(
+    val id: String,
+    val noteId: String,
+    val title: String,
+    val nodes: List<MindMapNode>,
+    val createdAt: String
+)
+
+data class MindMapGenerateResponse(
+    val success: Boolean,
+    val data: MindMapData? = null,
+    val error: String? = null
+)
+
+data class MindMapData(
+    val id: String,
+    @SerializedName("note_id")
+    val noteId: String,
+    val title: String,
+    val nodes: List<MindMapNode>
+)
+
+// MARK: - Infographic Models
+
+data class InfographicGenerateResponse(
+    val success: Boolean,
+    val data: InfographicData? = null,
+    val error: String? = null
+)
+
+data class InfographicData(
+    val id: String,
+    @SerializedName("note_id")
+    val noteId: String,
+    @SerializedName("image_url")
+    val imageUrl: String,
+    @SerializedName("extracted_data")
+    val extractedData: InfographicExtractedData? = null,
+    val style: String? = null
+)
+
+data class InfographicExtractedData(
+    val title: String? = null,
+    val subtitle: String? = null,
+    @SerializedName("key_stats")
+    val keyStats: List<InfographicStat>? = null,
+    @SerializedName("main_sections")
+    val mainSections: List<InfographicSection>? = null,
+    @SerializedName("key_takeaway")
+    val keyTakeaway: String? = null
+)
+
+data class InfographicStat(
+    val value: String,
+    val label: String
+)
+
+data class InfographicSection(
+    val title: String,
+    val points: List<String>
 )
 
 data class QuizQuestionsWrapper(

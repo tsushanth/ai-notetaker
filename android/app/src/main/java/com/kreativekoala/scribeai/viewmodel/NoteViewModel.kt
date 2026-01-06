@@ -90,7 +90,7 @@ class NoteViewModel(
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    private val baseUrl = "https://ai-notetaker-backend-3t2vweivqa-uc.a.run.app"
+    private val baseUrl = "https://ai-notetaker-backend-917362189743.us-central1.run.app"
 
     private val _currentNote = MutableStateFlow<Note?>(null)
     val currentNote: StateFlow<Note?> = _currentNote.asStateFlow()

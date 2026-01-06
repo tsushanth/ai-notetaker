@@ -31,7 +31,7 @@ struct JoinMeetingView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color(.systemGroupedBackground)
+                Color.darkBackground
                     .ignoresSafeArea()
 
                 ScrollView {
@@ -52,7 +52,7 @@ struct JoinMeetingView: View {
                         if let error = errorMessage {
                             Text(error)
                                 .font(.caption)
-                                .foregroundColor(.red)
+                                .foregroundColor(.accentRed)
                                 .multilineTextAlignment(.center)
                         }
 
@@ -70,10 +70,11 @@ struct JoinMeetingView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(.blue)
+                    .foregroundColor(.purple80)
                 }
             }
         }
+        .preferredColorScheme(.dark)
     }
 
     // MARK: - Header Section
@@ -82,15 +83,16 @@ struct JoinMeetingView: View {
         VStack(spacing: 12) {
             Image(systemName: "video.badge.plus")
                 .font(.system(size: 56))
-                .foregroundColor(.blue)
+                .foregroundColor(.purple80)
 
             Text("Join a Meeting")
                 .font(.title2)
                 .fontWeight(.semibold)
+                .foregroundColor(.textPrimary)
 
             Text("Paste your meeting link and our bot will join to record and transcribe.")
                 .font(.body)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
                 .multilineTextAlignment(.center)
         }
         .padding(.top, 20)
@@ -102,12 +104,18 @@ struct JoinMeetingView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Meeting Link")
                 .font(.headline)
+                .foregroundColor(.textPrimary)
 
             TextField("https://zoom.us/j/...", text: $meetingUrl)
                 .textFieldStyle(.plain)
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.cardBackground)
+                .foregroundColor(.textPrimary)
                 .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.borderColor, lineWidth: 1)
+                )
                 .autocapitalization(.none)
                 .keyboardType(.URL)
                 .textContentType(.URL)
@@ -128,17 +136,17 @@ struct JoinMeetingView: View {
         case .invalid:
             HStack {
                 Image(systemName: "exclamationmark.circle.fill")
-                    .foregroundColor(.red)
+                    .foregroundColor(.accentRed)
                 Text("Please enter a valid Zoom, Google Meet, or Teams link")
-                    .foregroundColor(.red)
+                    .foregroundColor(.accentRed)
             }
             .font(.caption)
         case .valid(let platform):
             HStack {
                 Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.green)
+                    .foregroundColor(.accentGreen)
                 Text("\(platform.displayName) meeting detected")
-                    .foregroundColor(.green)
+                    .foregroundColor(.accentGreen)
             }
             .font(.caption)
         }
@@ -150,12 +158,18 @@ struct JoinMeetingView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Meeting Title (optional)")
                 .font(.headline)
+                .foregroundColor(.textPrimary)
 
             TextField("e.g., Team Standup", text: $title)
                 .textFieldStyle(.plain)
                 .padding()
-                .background(Color(.secondarySystemGroupedBackground))
+                .background(Color.cardBackground)
+                .foregroundColor(.textPrimary)
                 .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(Color.borderColor, lineWidth: 1)
+                )
         }
     }
 
@@ -165,12 +179,12 @@ struct JoinMeetingView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Supported Platforms")
                 .font(.caption)
-                .foregroundColor(.secondary)
+                .foregroundColor(.textSecondary)
 
             HStack(spacing: 12) {
                 platformBadge("Zoom", color: .blue)
-                platformBadge("Google Meet", color: .green)
-                platformBadge("Teams", color: .purple)
+                platformBadge("Google Meet", color: .accentGreen)
+                platformBadge("Teams", color: .purple80)
             }
         }
     }
@@ -181,7 +195,7 @@ struct JoinMeetingView: View {
             .fontWeight(.medium)
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(color.opacity(0.15))
+            .background(color.opacity(0.2))
             .foregroundColor(color)
             .cornerRadius(8)
     }
@@ -205,7 +219,7 @@ struct JoinMeetingView: View {
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)
             .padding()
-            .background(urlValidation.isValid ? Color.blue : Color.gray)
+            .background(urlValidation.isValid ? Color.purple80 : Color.textTertiary)
             .cornerRadius(12)
         }
         .disabled(!urlValidation.isValid || isLoading)

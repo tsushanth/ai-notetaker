@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.kreativekoala.scribeai.data.models.AIContentData
 import com.kreativekoala.scribeai.data.models.AIOptions
 import com.kreativekoala.scribeai.data.models.GenerateAIRequest
+import com.kreativekoala.scribeai.data.models.InfographicData
 import com.kreativekoala.scribeai.data.repository.NoteRepository
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.ErrorReportingService
+import com.kreativekoala.scribeai.utils.TutorialContent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,7 +22,7 @@ import kotlinx.coroutines.withContext
 sealed class AIContentState {
     object Idle : AIContentState()
     object Loading : AIContentState()
-    data class Success(val content: AIContentData) : AIContentState()
+    data class Success<T>(val content: T) : AIContentState()
     data class Error(val message: String) : AIContentState()
 }
 
@@ -43,9 +45,24 @@ class AIViewModel : ViewModel() {
     private val _diagramState = MutableStateFlow<AIContentState>(AIContentState.Idle)
     val diagramState: StateFlow<AIContentState> = _diagramState.asStateFlow()
 
+    private val _mindMapState = MutableStateFlow<AIContentState>(AIContentState.Idle)
+    val mindMapState: StateFlow<AIContentState> = _mindMapState.asStateFlow()
+
+    private val _infographicState = MutableStateFlow<AIContentState>(AIContentState.Idle)
+    val infographicState: StateFlow<AIContentState> = _infographicState.asStateFlow()
+
     fun generateSummary(token: String, noteId: String, length: String = "medium", language: String = "english") {
         viewModelScope.launch {
             _summaryState.value = AIContentState.Loading
+
+            // Use pre-generated content for tutorial note
+            if (noteId == TutorialContent.TUTORIAL_ID) {
+                val content = TutorialContent.createSummaryContent(length)
+                _summaryState.value = AIContentState.Success(content)
+                AnalyticsService.trackSummaryGenerated(noteId, content.summary?.length ?: 0)
+                return@launch
+            }
+
             val options = AIOptions(length = length, language = language)
             repository.generateAIContent(token, noteId, "summary", options).fold(
                 onSuccess = { content ->
@@ -63,6 +80,15 @@ class AIViewModel : ViewModel() {
     fun generateQuiz(token: String, noteId: String, difficulty: String = "medium", numQuestions: Int = 5, language: String = "english") {
         viewModelScope.launch {
             _quizState.value = AIContentState.Loading
+
+            // Use pre-generated content for tutorial note
+            if (noteId == TutorialContent.TUTORIAL_ID) {
+                val content = TutorialContent.createQuizContent()
+                _quizState.value = AIContentState.Success(content)
+                AnalyticsService.trackQuizGenerated(content.questions?.quizQuestions?.size ?: 0)
+                return@launch
+            }
+
             val options = AIOptions(difficulty = difficulty, numQuestions = numQuestions, language = language)
             repository.generateAIContent(token, noteId, "quiz", options).fold(
                 onSuccess = { content ->
@@ -85,6 +111,15 @@ class AIViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             _flashcardsState.value = AIContentState.Loading
+
+            // Use pre-generated content for tutorial note
+            if (noteId == TutorialContent.TUTORIAL_ID) {
+                val content = TutorialContent.createFlashcardsContent()
+                _flashcardsState.value = AIContentState.Success(content)
+                AnalyticsService.trackFlashcardsGenerated(content.flashcards?.size ?: 0)
+                return@launch
+            }
+
             // Send both numCards and count for compatibility
             val options = AIOptions(numCards = numCards, count = numCards, language = language)
             repository.generateAIContent(token, noteId, "flashcards", options).fold(
@@ -95,6 +130,50 @@ class AIViewModel : ViewModel() {
                 onFailure = { exception ->
                     ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_FLASHCARDS, exception)
                     _flashcardsState.value = AIContentState.Error(exception.message ?: "Failed to generate flashcards")
+                }
+            )
+        }
+    }
+
+    fun generateMindMap(
+        token: String,
+        noteId: String,
+        includeExploration: Boolean = true,
+        language: String = "english"
+    ) {
+        viewModelScope.launch {
+            _mindMapState.value = AIContentState.Loading
+
+            val options = AIOptions(includeExploration = includeExploration, language = language)
+            repository.generateMindMap(token, noteId, options).fold(
+                onSuccess = { content ->
+                    _mindMapState.value = AIContentState.Success(content)
+                    AnalyticsService.trackMindMapGenerated(noteId, content.nodes?.size ?: 0)
+                },
+                onFailure = { exception ->
+                    _mindMapState.value = AIContentState.Error(exception.message ?: "Failed to generate mind map")
+                }
+            )
+        }
+    }
+
+    fun generateInfographic(
+        token: String,
+        noteId: String,
+        style: String = "modern",
+        language: String = "english"
+    ) {
+        viewModelScope.launch {
+            _infographicState.value = AIContentState.Loading
+
+            val options = AIOptions(style = style, language = language)
+            repository.generateInfographic(token, noteId, options).fold(
+                onSuccess = { data ->
+                    _infographicState.value = AIContentState.Success(data)
+                    Log.d("AIViewModel", "Infographic generated for note: $noteId, style: $style")
+                },
+                onFailure = { exception ->
+                    _infographicState.value = AIContentState.Error(exception.message ?: "Failed to generate infographic")
                 }
             )
         }
@@ -111,6 +190,14 @@ class AIViewModel : ViewModel() {
     ) {
         viewModelScope.launch {
             _podcastState.value = AIContentState.Loading
+
+            // Use pre-generated content for tutorial note (script only, no audio)
+            if (noteId == TutorialContent.TUTORIAL_ID) {
+                val content = TutorialContent.createPodcastContent()
+                _podcastState.value = AIContentState.Success(content)
+                AnalyticsService.trackPodcastGenerated(0)
+                return@launch
+            }
 
             val options = AIOptions(
                 duration = duration,
@@ -199,22 +286,16 @@ class AIViewModel : ViewModel() {
                             .filter { it.contentType == "flashcards" }
                             .maxByOrNull { it.createdAt }
 
-                        // Update states
-                        summary?.let {
-                            _summaryState.value = AIContentState.Success(it.content)
-                        }
+                        val mindmap = aiContentList
+                            .filter { it.contentType == "mindmap" }
+                            .maxByOrNull { it.createdAt }
 
-                        podcast?.let {
-                            _podcastState.value = AIContentState.Success(it.content)
-                        }
-
-                        quiz?.let {
-                            _quizState.value = AIContentState.Success(it.content)
-                        }
-
-                        flashcards?.let {
-                            _flashcardsState.value = AIContentState.Success(it.content)
-                        }
+                        // Update states - set to Success if content exists, otherwise keep as Idle
+                        _summaryState.value = summary?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
+                        _podcastState.value = podcast?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
+                        _quizState.value = quiz?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
+                        _flashcardsState.value = flashcards?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
+                        _mindMapState.value = mindmap?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
                     },
                     onFailure = {
                         // Silently fail - just means no content exists yet
@@ -278,6 +359,8 @@ class AIViewModel : ViewModel() {
             "flashcards" -> _flashcardsState.value = AIContentState.Idle
             "podcast" -> _podcastState.value = AIContentState.Idle
             "diagram" -> _diagramState.value = AIContentState.Idle
+            "mindmap" -> _mindMapState.value = AIContentState.Idle
+            "infographic" -> _infographicState.value = AIContentState.Idle
         }
     }
 
@@ -291,6 +374,8 @@ class AIViewModel : ViewModel() {
         _flashcardsState.value = AIContentState.Idle
         _podcastState.value = AIContentState.Idle
         _diagramState.value = AIContentState.Idle
+        _mindMapState.value = AIContentState.Idle
+        _infographicState.value = AIContentState.Idle
     }
 }
 

@@ -419,6 +419,110 @@ ${truncateContent(note.content)}`;
   }
 
   /**
+   * Generate interactive mind map from note content
+   * Returns a structured JSON mind map with nodes and connections
+   */
+  async generateMindMap(userId, noteId, options = {}) {
+    const { language = 'english', includeExploration = true } = options;
+
+    try {
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      const explorationInstruction = includeExploration
+        ? `Additionally, for some key concepts, suggest 1-2 "exploratory" child nodes that go beyond the source material to help deepen understanding. Mark these with "isExploratory": true.`
+        : '';
+
+      const prompt = `Analyze the following content and create an interactive mind map structure. The mind map should:
+1. Have a central topic node representing the main subject
+2. Have 3-6 main branches representing key themes/topics
+3. Each main branch should have 2-4 child nodes with supporting details
+4. Keep labels concise (2-5 words) but include a longer "content" field for detail
+5. Assign each main branch a different color from this palette: ["#BB86FC", "#03DAC6", "#CF6679", "#FF7597", "#FFB74D", "#81C784"]
+${explorationInstruction}
+
+Return ONLY valid JSON in this exact structure:
+{
+  "title": "Central Topic",
+  "nodes": [
+    {
+      "id": "1",
+      "label": "Short Label",
+      "content": "Detailed explanation of this concept",
+      "level": 0,
+      "parentId": null,
+      "color": "#BB86FC",
+      "isExploratory": false
+    },
+    {
+      "id": "1.1",
+      "label": "Child Label",
+      "content": "More detail about this subtopic",
+      "level": 1,
+      "parentId": "1",
+      "color": "#BB86FC",
+      "isExploratory": false
+    }
+  ]
+}
+
+Content to analyze:
+${truncateContent(note.content)}`;
+
+      const completion = await openai.chat.completions.create({
+        model: MODELS.GPT4_MINI,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert educator who creates clear, visually organized mind maps for studying. Create hierarchical structures that help visual learners understand and remember content. Always respond with valid JSON only.${getLanguageInstruction(language)}`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 3000,
+        response_format: { type: 'json_object' }
+      });
+
+      const responseContent = completion.choices[0].message.content;
+      let mindMapData;
+
+      try {
+        mindMapData = JSON.parse(responseContent);
+      } catch {
+        throw new AppError('Failed to parse mind map data', 500);
+      }
+
+      // Save AI content
+      const aiContent = await this.saveAIContent(noteId, 'mindmap', {
+        title: mindMapData.title,
+        nodes: mindMapData.nodes,
+        model: MODELS.GPT4_MINI
+      });
+
+      // Log usage
+      await this.logUsage(userId, 'mindmap', completion.usage);
+
+      logger.info('Mind map generated', { userId, noteId, nodeCount: mindMapData.nodes?.length });
+
+      return {
+        id: aiContent.id,
+        title: mindMapData.title,
+        nodes: mindMapData.nodes,
+        note_id: noteId
+      };
+
+    } catch (error) {
+      logger.error('Error generating mind map', { error: error.message, userId, noteId });
+      throw new AppError('Failed to generate mind map', 500);
+    }
+  }
+
+  /**
    * Generate visual learning diagram in Mermaid format
    */
   async generateDiagram(userId, noteId, options = {}) {
@@ -621,6 +725,239 @@ Format the script with clear speaker labels and natural dialogue. Remember: the 
         noteId 
       });
       throw new AppError('Failed to generate podcast', 500);
+    }
+  }
+
+  /**
+   * Generate infographic image using DALL-E 3
+   * Creates a visually rich infographic summarizing key concepts
+   */
+  async generateInfographic(userId, noteId, options = {}) {
+    const { style = 'modern', language = 'english' } = options;
+
+    try {
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      // Step 1: Extract key information for the infographic using GPT
+      const extractionPrompt = `Analyze the following content and extract the most important information for creating a visual infographic.
+
+Return a JSON object with:
+{
+  "title": "A compelling, concise title (max 8 words)",
+  "subtitle": "A brief subtitle or tagline (max 12 words)",
+  "key_stats": [{"value": "number or short text", "label": "description"}], // 2-4 important statistics or facts
+  "main_sections": [{"title": "section title", "points": ["point 1", "point 2"]}], // 2-3 main topic sections with 2-3 bullet points each
+  "key_takeaway": "The single most important conclusion or insight (1 sentence)"
+}
+
+Content to analyze:
+${truncateContent(note.content, 8000)}`;
+
+      const extractionCompletion = await openai.chat.completions.create({
+        model: MODELS.GPT4_MINI,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert at distilling complex information into clear, visual-friendly summaries for infographics. Extract only the most impactful information. Always respond with valid JSON only.${getLanguageInstruction(language)}`
+          },
+          {
+            role: 'user',
+            content: extractionPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' }
+      });
+
+      let extractedData;
+      try {
+        extractedData = JSON.parse(extractionCompletion.choices[0].message.content);
+      } catch {
+        throw new AppError('Failed to extract infographic data', 500);
+      }
+
+      // Log extraction usage
+      await this.logUsage(userId, 'infographic_extraction', extractionCompletion.usage);
+
+      // Step 2: Generate the infographic image using DALL-E 3
+      const styleDescriptions = {
+        modern: 'clean modern design with gradient backgrounds, rounded shapes, and sans-serif typography',
+        colorful: 'vibrant colorful design with bold colors, playful icons, and dynamic layouts',
+        minimal: 'minimalist design with plenty of white space, subtle colors, and elegant typography',
+        professional: 'professional corporate style with structured layout, muted colors, and clear hierarchy'
+      };
+
+      const styleDesc = styleDescriptions[style] || styleDescriptions.modern;
+
+      // Build the DALL-E prompt
+      const dallePrompt = `Create a professional educational infographic with ${styleDesc}.
+
+Title: "${extractedData.title}"
+${extractedData.subtitle ? `Subtitle: "${extractedData.subtitle}"` : ''}
+
+The infographic should include:
+- A clear visual hierarchy with the title at the top
+- ${extractedData.key_stats?.length || 0} highlighted statistics/facts shown as large numbers with icons
+- ${extractedData.main_sections?.length || 0} distinct sections with icons representing each topic
+- Visual elements like icons, simple illustrations, arrows, and connecting lines
+- A "Key Takeaway" section at the bottom
+
+Design requirements:
+- Use a cohesive color palette (2-3 main colors plus accent)
+- Include relevant simple icons/illustrations for each section
+- Text should be readable and well-spaced
+- Professional infographic layout similar to NotebookLM or Canva infographics
+- Portrait orientation (taller than wide)
+- High contrast for readability
+
+Style: Educational study material infographic, clean and modern`;
+
+      logger.info('Generating infographic with DALL-E 3', { userId, noteId, style });
+
+      let imageResponse;
+      try {
+        imageResponse = await openai.images.generate({
+          model: MODELS.DALLE3,
+          prompt: dallePrompt,
+          n: 1,
+          size: '1024x1792', // Portrait orientation for infographics
+          quality: 'hd',
+          style: 'vivid'
+        });
+      } catch (dalleError) {
+        logger.error('DALL-E 3 image generation failed', {
+          error: dalleError.message,
+          code: dalleError.code,
+          userId,
+          noteId
+        });
+        throw dalleError;
+      }
+
+      const imageUrl = imageResponse.data[0].url;
+      const revisedPrompt = imageResponse.data[0].revised_prompt;
+      logger.info('DALL-E 3 image generated successfully', { userId, noteId, imageUrl: imageUrl.substring(0, 50) + '...' });
+
+      // Step 3: Upload the image to Supabase storage for persistence
+      // DALL-E URLs expire, so we need to download and store
+      const fetch = require('node-fetch');
+      let imageResponseData;
+      try {
+        imageResponseData = await fetch(imageUrl);
+        if (!imageResponseData.ok) {
+          throw new Error(`Failed to download image: ${imageResponseData.status}`);
+        }
+      } catch (fetchError) {
+        logger.error('Failed to download DALL-E image', { error: fetchError.message, userId, noteId });
+        throw new AppError('Failed to download generated image', 500);
+      }
+
+      const imageBuffer = Buffer.from(await imageResponseData.arrayBuffer());
+
+      const { supabaseAdmin } = require('../config/supabase');
+      const fileName = `infographics/${userId}/${noteId}/${Date.now()}.png`;
+
+      const { error: uploadError } = await supabaseAdmin
+        .storage
+        .from('notetaker-files')
+        .upload(fileName, imageBuffer, {
+          contentType: 'image/png',
+          upsert: true
+        });
+
+      if (uploadError) {
+        logger.error('Failed to upload infographic to storage', { error: uploadError.message });
+        throw new AppError('Failed to save infographic', 500);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabaseAdmin
+        .storage
+        .from('notetaker-files')
+        .getPublicUrl(fileName);
+
+      const permanentUrl = urlData.publicUrl;
+
+      // Save AI content
+      const aiContent = await this.saveAIContent(noteId, 'infographic', {
+        image_url: permanentUrl,
+        extracted_data: extractedData,
+        style,
+        revised_prompt: revisedPrompt,
+        model: MODELS.DALLE3
+      });
+
+      // Log image generation usage
+      await this.logImageUsage(userId, 'infographic', '1024x1792');
+
+      logger.info('Infographic generated successfully', {
+        userId,
+        noteId,
+        style,
+        contentId: aiContent.id
+      });
+
+      return {
+        id: aiContent.id,
+        image_url: permanentUrl,
+        extracted_data: extractedData,
+        style,
+        note_id: noteId
+      };
+
+    } catch (error) {
+      logger.error('Error generating infographic', {
+        error: error.message,
+        stack: error.stack,
+        userId,
+        noteId,
+        errorCode: error.code,
+        errorType: error.constructor.name
+      });
+      if (error instanceof AppError) throw error;
+
+      // Provide more specific error messages
+      if (error.code === 'content_policy_violation') {
+        throw new AppError('Content not suitable for image generation', 400);
+      }
+      if (error.code === 'rate_limit_exceeded') {
+        throw new AppError('Too many requests. Please try again later.', 429);
+      }
+      if (error.message?.includes('billing') || error.message?.includes('quota')) {
+        throw new AppError('Image generation service temporarily unavailable', 503);
+      }
+
+      throw new AppError(`Failed to generate infographic: ${error.message}`, 500);
+    }
+  }
+
+  /**
+   * Log image generation usage for tracking
+   */
+  async logImageUsage(userId, actionType, size) {
+    try {
+      const pricing = PRICING[MODELS.DALLE3]?.perImage || {};
+      const cost = pricing[size] || 0.04;
+
+      await supabaseAdmin
+        .from('usage_logs')
+        .insert({
+          user_id: userId,
+          action_type: actionType,
+          tokens_used: 0, // Images don't use tokens
+          cost_usd: cost,
+          metadata: {
+            model: MODELS.DALLE3,
+            size,
+            type: 'image_generation'
+          }
+        });
+    } catch (error) {
+      logger.warn('Failed to log image usage', { error: error.message });
     }
   }
 

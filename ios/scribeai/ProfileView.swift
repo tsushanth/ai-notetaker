@@ -24,7 +24,9 @@ struct ProfileView: View {
     @State private var deleteError: String?
     @State private var showingPaywall = false
     @State private var showingLanguageSheet = false
+    @State private var showingThemeSheet = false
     @State private var selectedLanguage: String = UserDefaults.standard.string(forKey: "preferred_language") ?? "english"
+    @StateObject private var themeManager = ThemeManager.shared
     
     private let languages: [(code: String, name: String)] = [
         // Major World Languages
@@ -136,6 +138,19 @@ struct ProfileView: View {
                         
                         // MARK: - Settings Section
                         VStack(spacing: 0) {
+                            // Appearance
+                            ProfileRow(
+                                icon: themeManager.currentTheme.icon,
+                                title: "Appearance",
+                                subtitle: themeManager.currentTheme.displayName
+                            ) {
+                                showingThemeSheet = true
+                            }
+
+                            Divider()
+                                .background(Color.darkSurfaceVariant)
+                                .padding(.leading, 56)
+
                             // Language Selection
                             ProfileRow(
                                 icon: "globe",
@@ -144,11 +159,11 @@ struct ProfileView: View {
                             ) {
                                 showingLanguageSheet = true
                             }
-                            
+
                             Divider()
                                 .background(Color.darkSurfaceVariant)
                                 .padding(.leading, 56)
-                            
+
                             ProfileRow(
                                 icon: "questionmark.circle",
                                 title: "Help & Support",
@@ -156,11 +171,11 @@ struct ProfileView: View {
                             ) {
                                 openHelpAndSupport()
                             }
-                            
+
                             Divider()
                                 .background(Color.darkSurfaceVariant)
                                 .padding(.leading, 56)
-                            
+
                             ProfileRow(
                                 icon: "info.circle",
                                 title: "About",
@@ -261,8 +276,11 @@ struct ProfileView: View {
                 }
             }
         }
-        // FIX: Force dark mode to prevent light mode flashes
-        .preferredColorScheme(.dark)
+        // Apply user's theme preference
+        .preferredColorScheme(themeManager.colorScheme)
+        .sheet(isPresented: $showingThemeSheet) {
+            ThemeSelectionSheet()
+        }
         .sheet(isPresented: $showingPaywall) {
             NavigationView {
                 PaywallView {

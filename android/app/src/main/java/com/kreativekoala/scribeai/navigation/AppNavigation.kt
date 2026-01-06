@@ -34,6 +34,7 @@ import com.kreativekoala.scribeai.onboarding.OnboardingManager
 import com.kreativekoala.scribeai.onboarding.OnboardingScreen
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import com.kreativekoala.scribeai.viewmodel.NoteDetailState
+import com.kreativekoala.scribeai.ui.components.ReviewPromptDialog
 import com.kreativekoala.scribeai.data.local.NoteCacheRepository as LocalNoteRepository
 
 sealed class Screen(val route: String) {
@@ -110,10 +111,11 @@ fun AppNavigation(
         )
     )
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination
+        ) {
         // Onboarding Screen
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
@@ -359,5 +361,9 @@ fun AppNavigation(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+        }
+
+        // Review prompt dialog (shown on top of navigation)
+        ReviewPromptDialog()
     }
 }

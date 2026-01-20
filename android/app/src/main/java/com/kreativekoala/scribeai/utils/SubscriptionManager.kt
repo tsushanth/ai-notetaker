@@ -123,7 +123,12 @@ class SubscriptionManager(private val context: Context) {
                     handlePurchases(purchases)
                 }
             }
-            .enablePendingPurchases()
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder()
+                    .enableOneTimeProducts()
+                    .enablePrepaidPlans()
+                    .build()
+            )
             .build()
 
         startConnection(onReady)

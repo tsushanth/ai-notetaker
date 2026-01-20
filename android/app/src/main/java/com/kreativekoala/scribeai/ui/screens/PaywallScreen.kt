@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -423,6 +424,11 @@ fun PaywallScreen(
                 }
             }
 
+            Spacer(Modifier.height(12.dp))
+
+            // Web discount option
+            WebDiscountCard()
+
             Spacer(Modifier.height(16.dp))
 
             // Terms & Privacy - CLICKABLE LINKS
@@ -431,6 +437,99 @@ fun PaywallScreen(
             )
 
             Spacer(Modifier.height(24.dp))
+        }
+    }
+}
+
+/**
+ * Web discount card - 30% off when subscribing on web
+ */
+@Composable
+private fun WebDiscountCard() {
+    val context = LocalContext.current
+    val greenColor = Color(0xFF16A34A)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .clickable {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://scribeai.online/subscription"))
+                context.startActivity(intent)
+            }
+            .border(
+                width = 1.dp,
+                color = greenColor.copy(alpha = 0.3f),
+                shape = RoundedCornerShape(12.dp)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = greenColor.copy(alpha = 0.08f)
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Globe icon
+            Icon(
+                imageVector = Icons.Default.Language,
+                contentDescription = null,
+                tint = greenColor,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Text content
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Subscribe on Web",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "$69.99",
+                        fontSize = 12.sp,
+                        color = TextTertiary,
+                        textDecoration = TextDecoration.LineThrough
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "$48.99/yr",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = greenColor
+                    )
+                }
+            }
+
+            // Save badge
+            Surface(
+                color = greenColor,
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text(
+                    text = "30% OFF",
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            Spacer(modifier = Modifier.width(6.dp))
+
+            Icon(
+                imageVector = Icons.Default.ArrowOutward,
+                contentDescription = "Open web",
+                tint = greenColor,
+                modifier = Modifier.size(14.dp)
+            )
         }
     }
 }

@@ -329,34 +329,89 @@ struct PaywallView: View {
     // MARK: - Subscribe Button
 
     private var subscribeButton: some View {
-        Button(action: purchase) {
-            HStack {
-                if isPurchasing {
-                    ProgressView()
-                        .tint(.white)
-                } else {
-                    Text(buttonText)
-                        .font(.system(size: 18, weight: .semibold))
+        VStack(spacing: 12) {
+            Button(action: purchase) {
+                HStack {
+                    if isPurchasing {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text(buttonText)
+                            .font(.system(size: 18, weight: .semibold))
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(Color.purple80)
+                .foregroundColor(.white)
+                .cornerRadius(16)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(Color.purple80)
-            .foregroundColor(.white)
-            .cornerRadius(16)
+            .disabled(selectedProduct == nil || isPurchasing)
+
+            // Web discount option
+            webDiscountButton
         }
-        .disabled(selectedProduct == nil || isPurchasing)
         .padding(.horizontal, 24)
         .padding(.bottom, 16)
     }
-    
+
+    // MARK: - Web Discount Button
+
+    private var webDiscountButton: some View {
+        Link(destination: URL(string: "https://scribeai.online/subscription")!) {
+            HStack {
+                Image(systemName: "globe")
+                    .font(.system(size: 16))
+                    .foregroundColor(.accentGreen)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Subscribe on Web")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+
+                    HStack(spacing: 4) {
+                        Text("$69.99")
+                            .font(.system(size: 12))
+                            .foregroundColor(.textTertiary)
+                            .strikethrough()
+
+                        Text("$48.99/yr")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.accentGreen)
+                    }
+                }
+
+                Spacer()
+
+                Text("30% OFF")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.accentGreen)
+                    .cornerRadius(6)
+
+                Image(systemName: "arrow.up.right")
+                    .font(.system(size: 12))
+                    .foregroundColor(.accentGreen)
+            }
+            .padding(12)
+            .background(Color.accentGreen.opacity(0.1))
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.accentGreen.opacity(0.3), lineWidth: 1)
+            )
+        }
+    }
+
     private var buttonText: String {
         guard let product = selectedProduct else {
             return "Select a Plan"
         }
         return "Subscribe for \(product.displayPrice)/\(product.periodDescription)"
     }
-    
+
     // MARK: - Footer Section
     
     private var footerSection: some View {

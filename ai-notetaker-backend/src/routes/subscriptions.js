@@ -651,8 +651,8 @@ router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
         price: selectedPriceId,
         quantity: 1,
       }],
-      success_url: `${process.env.WEB_APP_URL || 'https://scribeai.online'}/settings?subscription=success`,
-      cancel_url: `${process.env.WEB_APP_URL || 'https://scribeai.online'}/settings?subscription=cancelled`,
+      success_url: `${process.env.WEB_APP_URL || 'https://scribeai.online'}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.WEB_APP_URL || 'https://scribeai.online'}/subscription?cancelled=true`,
       subscription_data: {
         metadata: { userId, platform: 'web' },
         trial_period_days: 7, // 7-day trial
@@ -1078,16 +1078,69 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
       return res.json({ success: true }); // Acknowledge receipt
     }
 
+    // Log full transaction info for debugging
+    logger.info('Apple webhook transaction info', {
+      originalTransactionId: transactionInfo.originalTransactionId,
+      transactionId: transactionInfo.transactionId,
+      productId: transactionInfo.productId,
+      expiresDate: transactionInfo.expiresDate,
+      offerType: transactionInfo.offerType
+    });
+
     // Find user by original transaction ID
-    const { data: subscription } = await supabase
-      .from('subscriptions')
-      .select('*, user_id')
-      .eq('original_transaction_id', transactionInfo.originalTransactionId)
-      .single();
+    let subscription = null;
+
+    // First try exact match on original_transaction_id
+    if (transactionInfo.originalTransactionId && transactionInfo.originalTransactionId !== '0') {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('*, user_id')
+        .eq('original_transaction_id', transactionInfo.originalTransactionId)
+        .single();
+      subscription = data;
+    }
+
+    // Fallback: try to find by product_id for iOS platform (for sandbox testing where txn_id = 0)
+    if (!subscription && transactionInfo.productId) {
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('*, user_id')
+        .eq('platform', 'ios')
+        .eq('product_id', transactionInfo.productId)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (data) {
+        subscription = data;
+        logger.info('Apple webhook: Found subscription via product_id fallback', {
+          subscriptionId: data.id,
+          userId: data.user_id
+        });
+
+        // Update the subscription with the real transaction ID for future webhooks
+        if (transactionInfo.originalTransactionId && transactionInfo.originalTransactionId !== '0') {
+          await supabase
+            .from('subscriptions')
+            .update({
+              original_transaction_id: transactionInfo.originalTransactionId,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', data.id);
+          logger.info('Apple webhook: Updated subscription with original_transaction_id', {
+            subscriptionId: data.id,
+            originalTransactionId: transactionInfo.originalTransactionId
+          });
+        }
+      }
+    }
 
     if (!subscription) {
       logger.warn('Apple webhook: No subscription found for transaction', {
-        originalTransactionId: transactionInfo.originalTransactionId
+        originalTransactionId: transactionInfo.originalTransactionId,
+        productId: transactionInfo.productId,
+        notificationType: payload.notificationType
       });
       return res.json({ success: true }); // Acknowledge receipt
     }
@@ -1254,6 +1307,120 @@ router.get('/metrics', authenticate, asyncHandler(async (req, res) => {
   };
 
   res.json({ success: true, data: metrics });
+}));
+
+// ============================================
+// Fix Stale Trials (Scheduled Job Endpoint)
+// Called by Cloud Scheduler to auto-fix stale trials
+// ============================================
+router.post('/fix-stale-trials', asyncHandler(async (req, res) => {
+  // Verify this is called by Cloud Scheduler or has admin auth
+  const authHeader = req.headers.authorization;
+  const schedulerHeader = req.headers['x-cloudscheduler'] || req.headers['x-appengine-cron'];
+
+  // Allow if it's from Cloud Scheduler OR has valid auth token
+  if (!schedulerHeader && !authHeader) {
+    logger.warn('Fix stale trials: Unauthorized request');
+    return res.status(401).json({ success: false, error: 'Unauthorized' });
+  }
+
+  const now = new Date();
+  const nowISO = now.toISOString();
+
+  logger.info('Starting stale trials fix job');
+
+  try {
+    // Find stale trials: is_trial=true, trial_end passed, status=active
+    const { data: staleTrials, error: fetchError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('is_trial', true)
+      .eq('status', 'active')
+      .lt('trial_end', nowISO);
+
+    if (fetchError) throw fetchError;
+
+    if (!staleTrials || staleTrials.length === 0) {
+      logger.info('No stale trials found');
+      return res.json({ success: true, data: { fixed: 0, message: 'No stale trials found' } });
+    }
+
+    logger.info(`Found ${staleTrials.length} stale trials to fix`);
+
+    let fixed = 0;
+    let errors = 0;
+    const results = [];
+
+    for (const subscription of staleTrials) {
+      try {
+        // Update subscription
+        const { error: updateError } = await supabase
+          .from('subscriptions')
+          .update({
+            is_trial: false,
+            updated_at: nowISO
+          })
+          .eq('id', subscription.id);
+
+        if (updateError) throw updateError;
+
+        // Log trial_converted event
+        await logSubscriptionEvent(subscription.user_id, subscription.id, {
+          eventType: 'trial_converted',
+          platform: subscription.platform,
+          productId: subscription.product_id,
+          priceAmount: subscription.price_amount,
+          priceCurrency: subscription.price_currency || 'USD',
+          environment: 'production',
+          metadata: {
+            source: 'scheduled_stale_trial_fix',
+            trial_end: subscription.trial_end,
+            fixed_at: nowISO
+          }
+        });
+
+        fixed++;
+        results.push({
+          userId: subscription.user_id,
+          subscriptionId: subscription.id,
+          status: 'fixed'
+        });
+
+        logger.info('Fixed stale trial', {
+          userId: subscription.user_id,
+          subscriptionId: subscription.id,
+          platform: subscription.platform
+        });
+      } catch (err) {
+        errors++;
+        results.push({
+          userId: subscription.user_id,
+          subscriptionId: subscription.id,
+          status: 'error',
+          error: err.message
+        });
+        logger.error('Failed to fix stale trial', {
+          subscriptionId: subscription.id,
+          error: err.message
+        });
+      }
+    }
+
+    logger.info('Stale trials fix job completed', { fixed, errors, total: staleTrials.length });
+
+    res.json({
+      success: true,
+      data: {
+        total: staleTrials.length,
+        fixed,
+        errors,
+        results
+      }
+    });
+  } catch (error) {
+    logger.error('Stale trials fix job failed', { error: error.message });
+    throw error;
+  }
 }));
 
 // ============================================

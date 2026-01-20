@@ -150,6 +150,11 @@ struct OnboardingTrialView: View {
             .disabled(isPurchasing)
             .padding(.horizontal, 24)
 
+            // Web discount option
+            webDiscountSection
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+
             // Reassurance message about trial
             VStack(spacing: 8) {
                 HStack(spacing: 6) {
@@ -301,6 +306,90 @@ struct OnboardingTrialView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Web Discount Section
+    private var webDiscountSection: some View {
+        VStack(spacing: 8) {
+            // Web subscription link
+            Link(destination: URL(string: "https://scribeai.online/subscription")!) {
+                HStack {
+                    Image(systemName: "globe")
+                        .font(.system(size: 14))
+                        .foregroundColor(.accentGreen)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Subscribe on Web")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(.textPrimary)
+
+                        HStack(spacing: 4) {
+                            Text("$69.99")
+                                .font(.system(size: 11))
+                                .foregroundColor(.textTertiary)
+                                .strikethrough()
+
+                            Text("$48.99/yr")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.accentGreen)
+                        }
+                    }
+
+                    Spacer()
+
+                    Text("30% OFF")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 3)
+                        .background(Color.accentGreen)
+                        .cornerRadius(4)
+
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 10))
+                        .foregroundColor(.accentGreen)
+                }
+                .padding(10)
+                .background(Color.accentGreen.opacity(0.1))
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.accentGreen.opacity(0.3), lineWidth: 1)
+                )
+            }
+
+            // Platform availability
+            HStack(spacing: 12) {
+                HStack(spacing: 4) {
+                    Image(systemName: "desktopcomputer")
+                        .font(.system(size: 11))
+                    Text("Desktop")
+                        .font(.system(size: 11))
+                }
+
+                HStack(spacing: 4) {
+                    Image(systemName: "iphone")
+                        .font(.system(size: 11))
+                    Text("iPhone")
+                        .font(.system(size: 11))
+                }
+
+                HStack(spacing: 4) {
+                    Image(systemName: "ipad")
+                        .font(.system(size: 11))
+                    Text("iPad")
+                        .font(.system(size: 11))
+                }
+
+                HStack(spacing: 4) {
+                    Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.system(size: 11))
+                    Text("Android")
+                        .font(.system(size: 11))
+                }
+            }
+            .foregroundColor(.textTertiary)
         }
     }
 

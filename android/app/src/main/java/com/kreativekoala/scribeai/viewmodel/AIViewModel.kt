@@ -64,16 +64,26 @@ class AIViewModel : ViewModel() {
             }
 
             val options = AIOptions(length = length, language = language)
-            repository.generateAIContent(token, noteId, "summary", options).fold(
-                onSuccess = { content ->
-                    _summaryState.value = AIContentState.Success(content)
-                    AnalyticsService.trackSummaryGenerated(noteId, content.summary?.length ?: 0)
-                },
-                onFailure = { exception ->
-                    ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_SUMMARY, exception)
-                    _summaryState.value = AIContentState.Error(exception.message ?: "Failed to generate summary")
-                }
-            )
+            try {
+                repository.generateAIContent(token, noteId, "summary", options).fold(
+                    onSuccess = { content ->
+                        _summaryState.value = AIContentState.Success(content)
+                        try {
+                            AnalyticsService.trackSummaryGenerated(noteId, content.summary?.length ?: 0)
+                        } catch (e: Exception) {
+                            Log.e("AIViewModel", "Error tracking summary analytics", e)
+                        }
+                    },
+                    onFailure = { exception ->
+                        ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_SUMMARY, exception)
+                        _summaryState.value = AIContentState.Error(exception.message ?: "Failed to generate summary")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AIViewModel", "Unexpected error generating summary", e)
+                ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_SUMMARY, e)
+                _summaryState.value = AIContentState.Error("Failed to generate summary. Please try again.")
+            }
         }
     }
 
@@ -291,11 +301,51 @@ class AIViewModel : ViewModel() {
                             .maxByOrNull { it.createdAt }
 
                         // Update states - set to Success if content exists, otherwise keep as Idle
-                        _summaryState.value = summary?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
-                        _podcastState.value = podcast?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
-                        _quizState.value = quiz?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
-                        _flashcardsState.value = flashcards?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
-                        _mindMapState.value = mindmap?.let { AIContentState.Success(it.content) } ?: AIContentState.Idle
+                        // Wrap content safely to ensure proper type handling
+                        _summaryState.value = summary?.let {
+                            try {
+                                AIContentState.Success(it.content)
+                            } catch (e: Exception) {
+                                Log.e("AIViewModel", "Error casting summary content", e)
+                                AIContentState.Idle
+                            }
+                        } ?: AIContentState.Idle
+
+                        _podcastState.value = podcast?.let {
+                            try {
+                                AIContentState.Success(it.content)
+                            } catch (e: Exception) {
+                                Log.e("AIViewModel", "Error casting podcast content", e)
+                                AIContentState.Idle
+                            }
+                        } ?: AIContentState.Idle
+
+                        _quizState.value = quiz?.let {
+                            try {
+                                AIContentState.Success(it.content)
+                            } catch (e: Exception) {
+                                Log.e("AIViewModel", "Error casting quiz content", e)
+                                AIContentState.Idle
+                            }
+                        } ?: AIContentState.Idle
+
+                        _flashcardsState.value = flashcards?.let {
+                            try {
+                                AIContentState.Success(it.content)
+                            } catch (e: Exception) {
+                                Log.e("AIViewModel", "Error casting flashcards content", e)
+                                AIContentState.Idle
+                            }
+                        } ?: AIContentState.Idle
+
+                        _mindMapState.value = mindmap?.let {
+                            try {
+                                AIContentState.Success(it.content)
+                            } catch (e: Exception) {
+                                Log.e("AIViewModel", "Error casting mindmap content", e)
+                                AIContentState.Idle
+                            }
+                        } ?: AIContentState.Idle
                     },
                     onFailure = {
                         // Silently fail - just means no content exists yet

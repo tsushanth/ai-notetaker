@@ -128,6 +128,32 @@ class NoteService {
         throw error;
       }
 
+      // Transform ai_content to ensure the content field is properly structured
+      // for Android/iOS clients that expect AIContentData format
+      if (data && data.ai_content && Array.isArray(data.ai_content)) {
+        data.ai_content = data.ai_content.map(item => {
+          // Ensure content is a valid object
+          const content = item.content || {};
+
+          // For quiz content, ensure questions are properly wrapped
+          if (item.content_type === 'quiz' && content.questions) {
+            // If questions is a direct array, wrap it
+            if (Array.isArray(content.questions)) {
+              content.questions = { quiz_questions: content.questions };
+            }
+          }
+
+          // Add note_id to content for consistency with generation responses
+          content.note_id = content.note_id || item.note_id;
+          content.id = content.id || item.id;
+
+          return {
+            ...item,
+            content
+          };
+        });
+      }
+
       return data;
     } catch (error) {
       logger.error('Error fetching note', { error: error.message, userId, noteId });

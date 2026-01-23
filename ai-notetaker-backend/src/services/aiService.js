@@ -1028,7 +1028,28 @@ Style: Educational study material infographic, clean and modern`;
         });
       }
 
-      return data;
+      // Transform ai_content to ensure proper structure for Android/iOS clients
+      const transformedData = (data || []).map(item => {
+        const content = item.content || {};
+
+        // For quiz content, ensure questions are properly wrapped
+        if (item.content_type === 'quiz' && content.questions) {
+          if (Array.isArray(content.questions)) {
+            content.questions = { quiz_questions: content.questions };
+          }
+        }
+
+        // Add note_id and id to content for consistency
+        content.note_id = content.note_id || item.note_id;
+        content.id = content.id || item.id;
+
+        return {
+          ...item,
+          content
+        };
+      });
+
+      return transformedData;
     } catch (error) {
       logger.error('Error fetching AI content', { error: error.message, userId, noteId });
       throw new AppError('Failed to fetch AI content', 500);

@@ -254,8 +254,15 @@ class NoteRepository {
                     else -> return@withContext Result.failure(Exception("Invalid content type"))
                 }
 
-                if (response.isSuccessful && response.body()?.data != null) {
-                    Result.success(response.body()!!.data!!)
+                if (response.isSuccessful) {
+                    val body = response.body()
+                    val data = body?.data
+                    if (data != null) {
+                        Result.success(data)
+                    } else {
+                        Log.e(TAG, "❌ generateAIContent: response successful but data is null")
+                        Result.failure(Exception("No content received from server"))
+                    }
                 } else {
                     // Handle subscription-related errors
                     val errorBody = response.errorBody()?.string() ?: ""
@@ -282,6 +289,9 @@ class NoteRepository {
                     Log.e(TAG, "❌ generateAIContent failed: ${response.code()} - $errorBody")
                     Result.failure(SubscriptionException(errorMessage, response.code()))
                 }
+            } catch (e: ClassCastException) {
+                Log.e(TAG, "❌ generateAIContent ClassCastException - possible API response format mismatch", e)
+                Result.failure(Exception("Unexpected response format. Please try again."))
             } catch (e: Exception) {
                 Log.e(TAG, "❌ generateAIContent exception", e)
                 Result.failure(e)

@@ -254,7 +254,7 @@ struct InfographicTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView {
+                PaywallView(source: "infographic_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()

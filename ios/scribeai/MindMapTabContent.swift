@@ -192,7 +192,7 @@ struct MindMapTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView {
+                PaywallView(source: "mindmap_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()

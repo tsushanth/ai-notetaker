@@ -33,9 +33,14 @@ struct PaywallView: View {
     @State private var promoValidation: PromoValidationResult?
     @State private var promoError: String?
 
+    // Analytics tracking
+    @State private var paywallOpenTime: Date = Date()
+    private let paywallSource: String
+
     let onSubscriptionComplete: (() -> Void)?
 
-    init(onSubscriptionComplete: (() -> Void)? = nil) {
+    init(source: String = "profile", onSubscriptionComplete: (() -> Void)? = nil) {
+        self.paywallSource = source
         self.onSubscriptionComplete = onSubscriptionComplete
     }
     
@@ -72,6 +77,13 @@ struct PaywallView: View {
             }
         }
         .navigationBarItems(leading: Button {
+            // Track paywall dismissed with time spent
+            let timeSpent = Int(Date().timeIntervalSince(paywallOpenTime))
+            AnalyticsService.shared.trackPaywallDismissed(
+                source: paywallSource,
+                timeSpentSeconds: timeSpent,
+                selectedPlan: selectedProduct?.id
+            )
             dismiss()
         } label: {
             Image(systemName: "xmark")
@@ -92,8 +104,10 @@ struct PaywallView: View {
             if selectedProduct == nil, let yearly = storeManager.getYearlyProduct() {
                 selectedProduct = yearly
             }
-        }.onAppear {
-            AnalyticsService.shared.trackPaywallViewed(source: "profile")
+        }
+        .onAppear {
+            paywallOpenTime = Date()
+            AnalyticsService.shared.trackPaywallViewed(source: paywallSource)
         }
     }
     
@@ -187,6 +201,11 @@ struct PaywallView: View {
                         discountedPrice: discountedPriceText(for: yearly)
                     ) {
                         selectedProduct = yearly
+                        AnalyticsService.shared.trackPlanSelected(
+                            planType: "yearly",
+                            price: yearly.displayPrice,
+                            source: paywallSource
+                        )
                     }
                 }
 
@@ -202,6 +221,32 @@ struct PaywallView: View {
                         discountedPrice: discountedPriceText(for: monthly)
                     ) {
                         selectedProduct = monthly
+                        AnalyticsService.shared.trackPlanSelected(
+                            planType: "monthly",
+                            price: monthly.displayPrice,
+                            source: paywallSource
+                        )
+                    }
+                }
+
+                // Lifetime Option (if available) - Decoy pricing strategy
+                if let lifetime = storeManager.getLifetimeProduct() {
+                    SubscriptionOptionCard(
+                        product: lifetime,
+                        isSelected: selectedProduct?.id == lifetime.id,
+                        isBestValue: false,
+                        savingsText: "One-time",
+                        monthlyEquivalent: nil,
+                        weeklyEquivalent: nil,
+                        discountedPrice: nil,
+                        isLifetime: true
+                    ) {
+                        selectedProduct = lifetime
+                        AnalyticsService.shared.trackPlanSelected(
+                            planType: "lifetime",
+                            price: lifetime.displayPrice,
+                            source: paywallSource
+                        )
                     }
                 }
             }
@@ -216,7 +261,10 @@ struct PaywallView: View {
         VStack(spacing: 12) {
             // Toggle button to show/hide promo code input
             if !showPromoCode {
-                Button(action: { withAnimation { showPromoCode = true } }) {
+                Button(action: {
+                    withAnimation { showPromoCode = true }
+                    AnalyticsService.shared.trackPromoCodeExpanded(source: paywallSource)
+                }) {
                     HStack {
                         Image(systemName: "tag")
                             .font(.system(size: 14))
@@ -403,6 +451,12 @@ struct PaywallView: View {
                     .stroke(Color.accentGreen.opacity(0.3), lineWidth: 1)
             )
         }
+        .simultaneousGesture(TapGesture().onEnded {
+            AnalyticsService.shared.trackWebDiscountClicked(
+                source: paywallSource,
+                currentSelectedPlan: selectedProduct?.id
+            )
+        })
     }
 
     private var buttonText: String {
@@ -417,7 +471,10 @@ struct PaywallView: View {
     private var footerSection: some View {
         VStack(spacing: 16) {
             // Restore Purchases
-            Button(action: restorePurchases) {
+            Button(action: {
+                AnalyticsService.shared.trackRestorePurchasesTapped(source: paywallSource)
+                restorePurchases()
+            }) {
                 Text("Restore Purchases")
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.purple80)
@@ -641,12 +698,13 @@ struct SubscriptionOptionCard: View {
     let monthlyEquivalent: String?
     let weeklyEquivalent: String?
     let discountedPrice: String?  // Shows discounted price when promo applied
+    var isLifetime: Bool = false  // For one-time purchase option
     let onSelect: () -> Void
 
     var body: some View {
         Button(action: onSelect) {
             VStack(spacing: 0) {
-                // Best Value Badge at top
+                // Best Value Badge at top (or Lifetime badge)
                 if isBestValue {
                     HStack {
                         Text("BEST VALUE")
@@ -656,6 +714,17 @@ struct SubscriptionOptionCard: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
                     .background(Color.accentGreen)
+                } else if isLifetime {
+                    HStack {
+                        Image(systemName: "infinity")
+                            .font(.system(size: 10, weight: .bold))
+                        Text("FOREVER")
+                            .font(.system(size: 11, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                    .background(Color.purple80)
                 }
 
                 HStack {
@@ -709,14 +778,20 @@ struct SubscriptionOptionCard: View {
                                 .foregroundColor(.textSecondary)
                         }
 
-                        Text("/\(product.periodDescription)")
-                            .font(.system(size: 12))
-                            .foregroundColor(.textTertiary)
+                        if isLifetime {
+                            Text("one-time")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textTertiary)
+                        } else {
+                            Text("/\(product.periodDescription)")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textTertiary)
+                        }
 
                         if let savingsText = savingsText {
                             Text(savingsText)
                                 .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.accentGreen)
+                                .foregroundColor(isLifetime ? .purple80 : .accentGreen)
                         }
                     }
                 }

@@ -283,7 +283,7 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingPaywall) {
             NavigationView {
-                PaywallView {
+                PaywallView(source: "profile") {
                     showingPaywall = false
                 }
             }

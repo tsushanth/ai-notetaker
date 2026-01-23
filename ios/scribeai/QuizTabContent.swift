@@ -163,7 +163,7 @@ struct QuizTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView {
+                PaywallView(source: "quiz_feature_gate") {
                     showPaywall = false
                     // Refresh access status after purchase
                     Task {
@@ -173,7 +173,7 @@ struct QuizTabContent: View {
             }
         }
     }
-    
+
     private func loadQuiz() {
         guard let token = KeychainService.shared.get(Constants.Keychain.accessToken) else {
             print("❌ No auth token found")

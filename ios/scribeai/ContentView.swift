@@ -16,6 +16,7 @@ struct ContentView: View {
             if authViewModel.isAuthenticated {
                 if onboardingManager.hasCompletedOnboarding {
                     HomeView()
+                        .postValueTrialPrompt() // Shows trial prompt after user experiences AI value
                 } else {
                     OnboardingView()
                 }

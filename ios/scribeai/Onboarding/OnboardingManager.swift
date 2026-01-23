@@ -168,8 +168,12 @@ class OnboardingManager: ObservableObject {
         completeOnboarding()
     }
 
-    func skipTrial() {
-        AnalyticsService.shared.track(.trialSkipped, properties: [:])
+    func skipTrial(timeSpentSeconds: Int = 0, selectedPlan: String? = nil) {
+        AnalyticsService.shared.trackTrialScreenSkipped(
+            source: "onboarding",
+            timeSpentSeconds: timeSpentSeconds,
+            selectedPlan: selectedPlan
+        )
         // Move to notifications or complete
         if currentStep == .trial {
             nextStep()

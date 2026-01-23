@@ -292,7 +292,7 @@ struct SubscriptionGatedModifier: ViewModifier {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView {
+                PaywallView(source: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))") {
                     showPaywall = false
                     // Refresh access status after purchase attempt
                     Task {
@@ -398,7 +398,7 @@ struct TrialBannerView: View {
             )
             .sheet(isPresented: $showPaywall) {
                 NavigationView {
-                    PaywallView {
+                    PaywallView(source: "trial_banner") {
                         showPaywall = false
                     }
                 }

@@ -21,18 +21,28 @@ import StoreKit
 enum SubscriptionProduct: String, CaseIterable {
     case monthly = "com.kreativekoala.scribeai.monthly"
     case yearly = "com.kreativekoala.scribeai.yearly"
-    
+    case lifetime = "com.kreativekoala.scribeai.lifetime1"  // Non-consumable, one-time purchase
+
     var displayName: String {
         switch self {
         case .monthly: return "Monthly"
         case .yearly: return "Yearly"
+        case .lifetime: return "Lifetime"
         }
     }
-    
+
     var description: String {
         switch self {
         case .monthly: return "Billed monthly"
         case .yearly: return "Billed yearly - Save 75%"
+        case .lifetime: return "One-time purchase"
+        }
+    }
+
+    var isSubscription: Bool {
+        switch self {
+        case .monthly, .yearly: return true
+        case .lifetime: return false
         }
     }
 }
@@ -128,20 +138,34 @@ class StoreKitManager: ObservableObject {
     private func fetchProducts() async {
         do {
             let productIds = SubscriptionProduct.allCases.map { $0.rawValue }
+            print("🔍 Requesting products: \(productIds)")
+
             let storeProducts = try await Product.products(for: productIds)
 
-            // Sort products: monthly first, then yearly
+            // Log which products were NOT returned
+            let returnedIds = Set(storeProducts.map { $0.id })
+            let requestedIds = Set(productIds)
+            let missingIds = requestedIds.subtracting(returnedIds)
+            if !missingIds.isEmpty {
+                print("⚠️ Products NOT returned by StoreKit: \(missingIds)")
+                print("   - Check App Store Connect: Product ID must match exactly")
+                print("   - Non-consumables may need to be in 'Ready to Submit' or approved status")
+            }
+
+            // Sort products: monthly first, then yearly, then lifetime
             products = storeProducts.sorted { product1, product2 in
                 let order: [String: Int] = [
                     SubscriptionProduct.monthly.rawValue: 0,
-                    SubscriptionProduct.yearly.rawValue: 1
+                    SubscriptionProduct.yearly.rawValue: 1,
+                    SubscriptionProduct.lifetime.rawValue: 2
                 ]
                 return (order[product1.id] ?? 99) < (order[product2.id] ?? 99)
             }
 
             print("✅ Loaded \(products.count) subscription products")
             for product in products {
-                print("   - \(product.id): \(product.displayPrice)")
+                let productType = product.type == .nonConsumable ? "(non-consumable)" : "(subscription)"
+                print("   - \(product.id): \(product.displayPrice) \(productType)")
             }
 
         } catch {
@@ -161,6 +185,9 @@ class StoreKitManager: ObservableObject {
             productId: product.id,
             trialDuration: trialDays
         )
+
+        // Schedule trial reminder notifications
+        NotificationService.shared.scheduleTrialReminders()
 
         // Sync to server
         SubscriptionSyncService.shared.syncSubscription(
@@ -185,6 +212,9 @@ class StoreKitManager: ObservableObject {
     func handleSuccessfulBilling(product: Product, transaction: Transaction) {
         let price = NSDecimalNumber(decimal: product.price).doubleValue
         let currency = product.priceFormatStyle.currencyCode ?? "USD"
+
+        // Cancel trial reminder notifications (user converted)
+        NotificationService.shared.cancelTrialReminders()
 
         // Track in analytics
         AnalyticsService.shared.trackSubscriptionBilled(
@@ -574,7 +604,11 @@ class StoreKitManager: ObservableObject {
     func getYearlyProduct() -> Product? {
         return getProduct(for: .yearly)
     }
-    
+
+    func getLifetimeProduct() -> Product? {
+        return getProduct(for: .lifetime)
+    }
+
     var isSubscribed: Bool {
         return subscriptionState.isSubscribed
     }

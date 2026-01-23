@@ -137,6 +137,13 @@ class AnalyticsService {
         case onboardingSkipped = "onboarding_skipped"
         case trialSkipped = "trial_skipped"
 
+        // Paywall engagement (conversion optimization)
+        case paywallDismissed = "paywall_dismissed"
+        case planSelected = "plan_selected"
+        case webDiscountClicked = "web_discount_clicked"
+        case promoCodeExpanded = "promo_code_expanded"
+        case restorePurchasesTapped = "restore_purchases_tapped"
+
         // Notifications
         case notificationsEnabled = "notifications_enabled"
         case notificationsDeclined = "notifications_declined"
@@ -363,6 +370,11 @@ class AnalyticsService {
         // Check if we should prompt for review after this success
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             StoreReviewHelper.shared.checkAndShowPromptIfEligible()
+        }
+
+        // Check if we should show post-value trial prompt (for users who skipped onboarding trial)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            PostValueTrialManager.shared.checkAndTriggerPrompt()
         }
     }
     
@@ -747,6 +759,64 @@ class AnalyticsService {
     func trackPromoCodeApplied(code: String) {
         track(.promoCodeApplied, properties: [
             "promo_code": code
+        ])
+    }
+
+    // MARK: - Paywall Engagement Events (Conversion Optimization)
+
+    /// Track when user dismisses paywall without taking action
+    func trackPaywallDismissed(source: String, timeSpentSeconds: Int, selectedPlan: String?) {
+        track(.paywallDismissed, properties: [
+            "source": source,
+            "time_spent_seconds": timeSpentSeconds,
+            "selected_plan": selectedPlan ?? "none",
+            "days_since_install": daysSinceInstall,
+            "success_actions": successActionsCount
+        ])
+    }
+
+    /// Track when user selects a plan (before purchase)
+    func trackPlanSelected(planType: String, price: String, source: String) {
+        track(.planSelected, properties: [
+            "plan_type": planType,  // "yearly" or "monthly"
+            "price": price,
+            "source": source,
+            "days_since_install": daysSinceInstall
+        ])
+    }
+
+    /// Track when user taps the web discount link
+    func trackWebDiscountClicked(source: String, currentSelectedPlan: String?) {
+        track(.webDiscountClicked, properties: [
+            "source": source,
+            "current_selected_plan": currentSelectedPlan ?? "none",
+            "days_since_install": daysSinceInstall
+        ])
+    }
+
+    /// Track when user expands promo code field (shows price sensitivity)
+    func trackPromoCodeExpanded(source: String) {
+        track(.promoCodeExpanded, properties: [
+            "source": source,
+            "days_since_install": daysSinceInstall
+        ])
+    }
+
+    /// Track when user taps restore purchases
+    func trackRestorePurchasesTapped(source: String) {
+        track(.restorePurchasesTapped, properties: [
+            "source": source,
+            "days_since_install": daysSinceInstall
+        ])
+    }
+
+    /// Track when user skips the trial screen specifically (not just onboarding)
+    func trackTrialScreenSkipped(source: String, timeSpentSeconds: Int, selectedPlan: String?) {
+        track(.trialSkipped, properties: [
+            "source": source,
+            "time_spent_seconds": timeSpentSeconds,
+            "selected_plan": selectedPlan ?? "none",
+            "days_since_install": daysSinceInstall
         ])
     }
 

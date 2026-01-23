@@ -480,7 +480,7 @@ struct PodcastTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView {
+                PaywallView(source: "podcast_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()
@@ -489,7 +489,7 @@ struct PodcastTabContent: View {
             }
         }
     }
-    
+
     // MARK: - Audio Session Setup
     
     private func setupAudioSession() {

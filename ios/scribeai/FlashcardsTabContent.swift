@@ -52,101 +52,119 @@ struct FlashcardsTabContent: View {
                 }
                 .frame(maxHeight: .infinity)
             } else if let flashcardSet = flashcardSet, !flashcardSet.cards.isEmpty {
-                // Flashcards UI
-                VStack(spacing: 0) {
-                    // Header with count and regenerate button
-                    HStack {
-                        Text("Card \(currentCardIndex + 1) of \(flashcardSet.cards.count)")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.textSecondary)
-
-                        Spacer()
-
-                        Button(action: {
-                            // Reset and generate new flashcards
-                            self.flashcardSet = nil
-                            self.currentCardIndex = 0
-                            self.isFlipped = false
-                            generateFlashcards()
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "sparkles")
-                                    .font(.system(size: 12))
-                                Text("Generate More")
+                // Flashcards UI with preview gate
+                ZStack {
+                    VStack(spacing: 0) {
+                        // Header with count and regenerate button
+                        HStack {
+                            HStack(spacing: 8) {
+                                Text("Card \(currentCardIndex + 1) of \(flashcardSet.cards.count)")
                                     .font(.system(size: 14, weight: .medium))
-                            }
-                            .foregroundColor(.purple80)
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                                    .foregroundColor(.textSecondary)
 
-                    // Progress bar
-                    VStack(spacing: 8) {
-                        
-                        GeometryReader { geometry in
-                            ZStack(alignment: .leading) {
-                                Rectangle()
-                                    .fill(Color.darkSurfaceVariant)
-                                    .frame(height: 4)
-                                
-                                Rectangle()
-                                    .fill(Color.purple80)
-                                    .frame(width: geometry.size.width * CGFloat(currentCardIndex + 1) / CGFloat(flashcardSet.cards.count), height: 4)
+                                // Show preview badge if in preview mode
+                                PreviewBadge()
+                            }
+
+                            Spacer()
+
+                            Button(action: {
+                                // Reset and generate new flashcards
+                                self.flashcardSet = nil
+                                self.currentCardIndex = 0
+                                self.isFlipped = false
+                                generateFlashcards()
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 12))
+                                    Text("Generate More")
+                                        .font(.system(size: 14, weight: .medium))
+                                }
+                                .foregroundColor(.purple80)
                             }
                         }
-                        .frame(height: 4)
+                        .padding(.horizontal)
+                        .padding(.top, 8)
+
+                        // Progress bar
+                        VStack(spacing: 8) {
+
+                            GeometryReader { geometry in
+                                ZStack(alignment: .leading) {
+                                    Rectangle()
+                                        .fill(Color.darkSurfaceVariant)
+                                        .frame(height: 4)
+
+                                    Rectangle()
+                                        .fill(Color.purple80)
+                                        .frame(width: geometry.size.width * CGFloat(currentCardIndex + 1) / CGFloat(flashcardSet.cards.count), height: 4)
+                                }
+                            }
+                            .frame(height: 4)
+                        }
+                        .padding()
+
+                        Spacer()
+
+                        // Flashcard
+                        FlashcardView(
+                            card: flashcardSet.cards[currentCardIndex],
+                            isFlipped: $isFlipped,
+                            dragOffset: $dragOffset,
+                            onFlip: { trackFlip() }
+                        )
+                        .padding(.horizontal, 24)
+
+                        Spacer()
+
+                        // Navigation Buttons
+                        HStack(spacing: 16) {
+                            Button(action: previousCard) {
+                                Image(systemName: "chevron.left.circle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(currentCardIndex > 0 ? .purple80 : .textTertiary)
+                            }
+                            .disabled(currentCardIndex == 0)
+
+                            Spacer()
+
+                            Button(action: { isFlipped.toggle() }) {
+                                HStack {
+                                    Image(systemName: "arrow.2.squarepath")
+                                    Text("Flip Card")
+                                        .font(.system(size: 16, weight: .medium))
+                                }
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Color.purple80)
+                                .foregroundColor(.white)
+                                .cornerRadius(20)
+                            }
+
+                            Spacer()
+
+                            Button(action: nextCard) {
+                                Image(systemName: "chevron.right.circle.fill")
+                                    .font(.system(size: 40))
+                                    .foregroundColor(currentCardIndex < flashcardSet.cards.count - 1 ? .purple80 : .textTertiary)
+                            }
+                            .disabled(currentCardIndex >= flashcardSet.cards.count - 1)
+                        }
+                        .padding(.horizontal, 32)
+                        .padding(.bottom, 32)
                     }
-                    .padding()
-                    
-                    Spacer()
-                    
-                    // Flashcard
-                    FlashcardView(
-                        card: flashcardSet.cards[currentCardIndex],
-                        isFlipped: $isFlipped,
-                        dragOffset: $dragOffset,
-                        onFlip: { trackFlip() }
+
+                    // Preview gate overlay - shows after free limit reached
+                    FlashcardPreviewOverlay(
+                        currentIndex: currentCardIndex,
+                        totalCards: flashcardSet.cards.count,
+                        freeLimit: FeaturePreviewGateManager.shared.freeFlashcardsCount,
+                        onSubscribe: {
+                            AnalyticsService.shared.trackPaywallViewed(source: "flashcard_preview_gate")
+                            showPaywall = true
+                        }
                     )
-                    .padding(.horizontal, 24)
-                    
-                    Spacer()
-                    
-                    // Navigation Buttons
-                    HStack(spacing: 16) {
-                        Button(action: previousCard) {
-                            Image(systemName: "chevron.left.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(currentCardIndex > 0 ? .purple80 : .textTertiary)
-                        }
-                        .disabled(currentCardIndex == 0)
-                        
-                        Spacer()
-                        
-                        Button(action: { isFlipped.toggle() }) {
-                            HStack {
-                                Image(systemName: "arrow.2.squarepath")
-                                Text("Flip Card")
-                                    .font(.system(size: 16, weight: .medium))
-                            }
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(Color.purple80)
-                            .foregroundColor(.white)
-                            .cornerRadius(20)
-                        }
-                        
-                        Spacer()
-                        
-                        Button(action: nextCard) {
-                            Image(systemName: "chevron.right.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(currentCardIndex < flashcardSet.cards.count - 1 ? .purple80 : .textTertiary)
-                        }
-                        .disabled(currentCardIndex >= flashcardSet.cards.count - 1)
-                    }
-                    .padding(.horizontal, 32)
-                    .padding(.bottom, 32)
                 }
             } else {
                 // Generate Flashcards UI with inline options
@@ -273,7 +291,7 @@ struct FlashcardsTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView {
+                PaywallView(source: "flashcards_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()

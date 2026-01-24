@@ -739,7 +739,11 @@ router.get('/templates', authenticate, requireAdmin, asyncHandler(async (req, re
   <li>Generate practice quizzes from any material</li>
   <li>Create flashcards from textbook chapters</li>
   <li>Summarize long readings quickly</li>
+  <li>Turn any content into a podcast to learn on the go</li>
+  <li>Explore similar topics to deepen understanding</li>
+  <li>Create mind maps to visualize concepts</li>
 </ul>
+<p><em>...and more features coming soon!</em></p>
 
 <p>Would you be open to sharing it with your class? I can set up free access for everyone.</p>
 

@@ -8,7 +8,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const { supabaseAdmin } = require('../config/supabase');
-const sesOutreachService = require('../services/sesOutreachService');
+const emailOutreachService = require('../services/sendgridOutreachService');
 const universityScraperService = require('../services/universityScraperService');
 
 // Async handler wrapper
@@ -43,7 +43,7 @@ const requireAdmin = async (req, res, next) => {
  * Get warmup status for the outreach domain
  */
 router.get('/warmup-status', authenticate, requireAdmin, asyncHandler(async (req, res) => {
-  const status = await sesOutreachService.getWarmupStatus();
+  const status = await emailOutreachService.getWarmupStatus();
 
   res.json({
     success: true,
@@ -56,8 +56,8 @@ router.get('/warmup-status', authenticate, requireAdmin, asyncHandler(async (req
  * Advance warmup to next day (call daily)
  */
 router.post('/warmup/advance', authenticate, requireAdmin, asyncHandler(async (req, res) => {
-  await sesOutreachService.updateWarmupProgress();
-  const status = await sesOutreachService.getWarmupStatus();
+  await emailOutreachService.updateWarmupProgress();
+  const status = await emailOutreachService.getWarmupStatus();
 
   res.json({
     success: true,
@@ -72,7 +72,7 @@ router.post('/warmup/advance', authenticate, requireAdmin, asyncHandler(async (r
  */
 router.get('/ses-status', authenticate, requireAdmin, asyncHandler(async (req, res) => {
   try {
-    const status = await sesOutreachService.getAccountStatus();
+    const status = await emailOutreachService.getAccountStatus();
     res.json({
       success: true,
       data: status,
@@ -509,12 +509,12 @@ router.post('/campaigns/:id/queue', authenticate, requireAdmin, asyncHandler(asy
       contact_id: contact.id,
       to_email: contact.email,
       to_name: contact.name,
-      subject: sesOutreachService.personalizeTemplate(
+      subject: emailOutreachService.personalizeTemplate(
         campaign.subject_template,
         contact,
         university
       ),
-      body_html: sesOutreachService.personalizeTemplate(
+      body_html: emailOutreachService.personalizeTemplate(
         campaign.body_template,
         contact,
         university
@@ -607,7 +607,7 @@ router.post('/campaigns/:id/send', authenticate, requireAdmin, asyncHandler(asyn
     contactId: e.contact_id,
   }));
 
-  const result = await sesOutreachService.sendBatch(emailsToSend, id);
+  const result = await emailOutreachService.sendBatch(emailsToSend, id);
 
   // Update contact statuses
   for (const email of emails) {
@@ -647,7 +647,7 @@ router.post('/send-test', authenticate, requireAdmin, asyncHandler(async (req, r
     });
   }
 
-  const result = await sesOutreachService.sendEmail({
+  const result = await emailOutreachService.sendEmail({
     to,
     subject,
     bodyHtml: body,
@@ -690,18 +690,18 @@ router.post('/webhook/ses', asyncHandler(async (req, res) => {
       const notification = JSON.parse(message.Message);
 
       if (notification.notificationType === 'Bounce') {
-        await sesOutreachService.handleBounce({
+        await emailOutreachService.handleBounce({
           messageId: notification.mail.messageId,
           bounceType: notification.bounce.bounceType,
           bouncedRecipients: notification.bounce.bouncedRecipients,
         });
       } else if (notification.notificationType === 'Complaint') {
-        await sesOutreachService.handleComplaint({
+        await emailOutreachService.handleComplaint({
           messageId: notification.mail.messageId,
           complainedRecipients: notification.complaint.complainedRecipients,
         });
       } else if (notification.notificationType === 'Delivery') {
-        await sesOutreachService.handleDelivery({
+        await emailOutreachService.handleDelivery({
           messageId: notification.mail.messageId,
         });
       }

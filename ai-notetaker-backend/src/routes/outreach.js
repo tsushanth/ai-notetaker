@@ -743,13 +743,16 @@ router.get('/templates', authenticate, requireAdmin, asyncHandler(async (req, re
 
 <p>Would you be open to sharing it with your class? I can set up free access for everyone.</p>
 
+<p>Students can download it here:</p>
+<ul>
+  <li><a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iPhone/iPad App Store</a></li>
+  <li><a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android Play Store</a></li>
+  <li><a href="https://scribeai.online">Web App</a></li>
+</ul>
+
 <p>Best,<br>
 Sushanth<br>
-Scribe AI</p>
-
-<p style="font-size: 12px; color: #666;">
-P.S. Here's a quick 2-min demo: [link]
-</p>
+Founder, <a href="https://scribeai.online">Scribe AI</a></p>
       `.trim(),
     },
     {
@@ -769,6 +772,11 @@ P.S. Here's a quick 2-min demo: [link]
 
 <p>Happy to give you a personal walkthrough if you're interested, or just set up free access for your class directly.</p>
 
+<p>Here are the download links to share:</p>
+<ul>
+  <li><a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iOS</a> | <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android</a> | <a href="https://scribeai.online">Web</a></li>
+</ul>
+
 <p>Let me know!</p>
 
 <p>Best,<br>
@@ -784,6 +792,8 @@ Sushanth</p>
 <p>Wanted to send one last note - I know how busy the semester gets.</p>
 
 <p>If Scribe AI could help your students this term, I'm happy to set up free access anytime. Just reply "interested" and I'll send the details.</p>
+
+<p>Quick links: <a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iOS</a> | <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android</a> | <a href="https://scribeai.online">Web</a></p>
 
 <p>If not, no worries at all - I appreciate your time!</p>
 

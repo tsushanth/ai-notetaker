@@ -162,11 +162,14 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
     logger.error('Failed to create podcast placeholder', {
       error: placeholderResult.error.message,
       code: placeholderResult.error.code,
+      details: placeholderResult.error.details,
+      hint: placeholderResult.error.hint,
       noteId: note_id
     });
+    // Return actual error for debugging
     return res.status(500).json({
       success: false,
-      error: 'Failed to start podcast generation'
+      error: `Failed to start podcast generation: ${placeholderResult.error.message}`
     });
   }
 

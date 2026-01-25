@@ -998,13 +998,13 @@ class APIService {
         }
     }
 
-    func generatePodcast(token: String, noteId: String, contentLength: Int = 0, duration: String = "short", voice: String = "nova", instructions: String? = nil) async throws -> AIContent {
+    func generatePodcast(token: String, noteId: String, contentLength: Int = 0, duration: String = "short", gender: String = "female", instructions: String? = nil) async throws -> AIContent {
         return try await executeWithTokenRefresh { validToken in
-            try await self._generatePodcast(token: validToken, noteId: noteId, contentLength: contentLength, duration: duration, voice: voice, instructions: instructions)
+            try await self._generatePodcast(token: validToken, noteId: noteId, contentLength: contentLength, duration: duration, gender: gender, instructions: instructions)
         }
     }
 
-    private func _generatePodcast(token: String, noteId: String, contentLength: Int, duration: String = "short", voice: String = "nova", instructions: String? = nil) async throws -> AIContent {
+    private func _generatePodcast(token: String, noteId: String, contentLength: Int, duration: String = "short", gender: String = "female", instructions: String? = nil) async throws -> AIContent {
         guard let url = URL(string: "\(Constants.baseURL)/api/ai/podcast") else {
             throw APIError.invalidURL
         }
@@ -1018,7 +1018,7 @@ class APIService {
             "generate_audio": true,
             "language": getPreferredLanguage(),
             "duration": duration,
-            "voice": voice
+            "gender": gender
         ]
         if let instructions = instructions, !instructions.isEmpty {
             options["instructions"] = instructions

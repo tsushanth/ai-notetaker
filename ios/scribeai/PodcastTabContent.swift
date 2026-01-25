@@ -502,7 +502,7 @@ struct PodcastTabContent: View {
                             if let _ = KeychainService.shared.get(Constants.Keychain.accessToken) {
                                 isInstructionsFocused = false
                                 let instructions = specialInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
-                                generatePodcast(duration: selectedDuration, voice: selectedVoice.rawValue, instructions: instructions.isEmpty ? nil : instructions)
+                                generatePodcast(duration: selectedDuration, gender: selectedGender.rawValue, instructions: instructions.isEmpty ? nil : instructions)
                             }
                         }) {
                             HStack(spacing: 8) {
@@ -779,7 +779,7 @@ struct PodcastTabContent: View {
     
     // MARK: - Generate Podcast
 
-    private func generatePodcast(duration: String = "short", voice: String = "nova", instructions: String? = nil) {
+    private func generatePodcast(duration: String = "short", gender: String = "female", instructions: String? = nil) {
         guard let token = KeychainService.shared.get(Constants.Keychain.accessToken) else {
             errorMessage = "Not authenticated"
             return
@@ -789,7 +789,7 @@ struct PodcastTabContent: View {
         isGenerating = true
         errorMessage = nil
 
-        print("🎙️ Starting podcast generation for note: \(note.id) with voice: \(voice), duration: \(duration)")
+        print("🎙️ Starting podcast generation for note: \(note.id) with gender: \(gender), duration: \(duration)")
 
         Task {
             do {
@@ -799,7 +799,7 @@ struct PodcastTabContent: View {
                     noteId: note.id,
                     contentLength: note.content.count,
                     duration: duration,
-                    voice: voice,
+                    gender: gender,
                     instructions: instructions
                 )
                 
@@ -858,9 +858,10 @@ struct PodcastTabContent: View {
         
         // Clear current podcast to show generating state
         podcast = nil
-        
-        // Generate new podcast
-        generatePodcast()
+
+        // Generate new podcast with current selection
+        let instructions = specialInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
+        generatePodcast(duration: selectedDuration, gender: selectedGender.rawValue, instructions: instructions.isEmpty ? nil : instructions)
     }
     
     private func pollForPodcastCompletion(token: String) async {

@@ -466,31 +466,31 @@ struct NotesTabContent: View {
 
             // Expanded TTS content
             if showTTS {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Built-in Voice selection
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Built-in Voices")
-                            .font(.system(size: 12, weight: .medium))
+                VStack(alignment: .leading, spacing: 12) {
+                    // Voice selection
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Voice")
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.textSecondary)
 
                         ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
+                            HStack(spacing: 6) {
                                 ForEach(APIService.ttsVoices, id: \.id) { voice in
                                     Button {
                                         selectedVoice = voice.id
                                     } label: {
-                                        VStack(spacing: 4) {
+                                        VStack(spacing: 2) {
                                             Text(voice.name)
-                                                .font(.system(size: 13, weight: .medium))
+                                                .font(.system(size: 11, weight: .medium))
                                             Text(voice.gender)
-                                                .font(.system(size: 10))
-                                                .foregroundColor(.textSecondary)
+                                                .font(.system(size: 9))
+                                                .foregroundColor(selectedVoice == voice.id ? .white.opacity(0.7) : .textTertiary)
                                         }
-                                        .padding(.horizontal, 12)
-                                        .padding(.vertical, 8)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
                                         .background(selectedVoice == voice.id ? Color.purple80 : Color.darkSurfaceVariant)
                                         .foregroundColor(selectedVoice == voice.id ? .white : .textPrimary)
-                                        .cornerRadius(8)
+                                        .cornerRadius(6)
                                     }
                                 }
                             }

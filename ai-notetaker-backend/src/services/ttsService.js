@@ -187,16 +187,16 @@ class TTSService {
   }
 
   /**
-   * Get available voices
+   * Get available voices (human-friendly names, OpenAI voice IDs)
    */
   getVoices() {
     return [
-      { id: 'alloy', name: 'Alloy', gender: 'neutral', description: 'Balanced and versatile' },
-      { id: 'echo', name: 'Echo', gender: 'male', description: 'Warm and engaging' },
-      { id: 'fable', name: 'Fable', gender: 'male', description: 'Expressive storyteller' },
-      { id: 'onyx', name: 'Onyx', gender: 'male', description: 'Deep and authoritative' },
-      { id: 'nova', name: 'Nova', gender: 'female', description: 'Friendly and upbeat' },
-      { id: 'shimmer', name: 'Shimmer', gender: 'female', description: 'Clear and professional' },
+      { id: 'nova', name: 'Sarah', gender: 'Female', description: 'Friendly and upbeat' },
+      { id: 'shimmer', name: 'Emily', gender: 'Female', description: 'Clear and professional' },
+      { id: 'alloy', name: 'Alex', gender: 'Neutral', description: 'Balanced and versatile' },
+      { id: 'echo', name: 'James', gender: 'Male', description: 'Warm and engaging' },
+      { id: 'fable', name: 'Daniel', gender: 'Male', description: 'Expressive storyteller' },
+      { id: 'onyx', name: 'Marcus', gender: 'Male', description: 'Deep and authoritative' },
     ];
   }
 

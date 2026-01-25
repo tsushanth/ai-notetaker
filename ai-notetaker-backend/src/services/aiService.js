@@ -726,10 +726,169 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
       };
 
     } catch (error) {
-      logger.error('Error generating podcast', { 
-        error: error.message, 
-        userId, 
-        noteId 
+      logger.error('Error generating podcast', {
+        error: error.message,
+        userId,
+        noteId
+      });
+      throw new AppError('Failed to generate podcast', 500);
+    }
+  }
+
+  /**
+   * Generate podcast with a pre-created placeholder record
+   * Updates the placeholder instead of creating a new record
+   */
+  async generatePodcastWithPlaceholder(userId, noteId, placeholderId, options = {}) {
+    const {
+      duration = 'medium',
+      style = 'conversational',
+      num_hosts = 2,
+      generate_audio = true,
+      voice = 'nova',
+      gender = 'female',
+      language = 'english'
+    } = options;
+
+    try {
+      const note = await noteService.getNoteById(userId, noteId);
+      if (!note) {
+        throw new AppError('Note not found', 404);
+      }
+
+      const durationConfig = {
+        short: { minutes: '3-5', words: 600, minWords: 500 },
+        medium: { minutes: '8-12', words: 1400, minWords: 1200 },
+        long: { minutes: '15-20', words: 2500, minWords: 2000 }
+      };
+
+      const config = durationConfig[duration] || durationConfig.medium;
+
+      const styleInstructions = {
+        conversational: 'Create a natural, engaging conversation between hosts with back-and-forth dialogue, enthusiasm, and occasional interjections.',
+        educational: 'Create an educational podcast with clear explanations, examples, and teaching moments.',
+        storytelling: 'Create a narrative-driven podcast that tells a compelling story around the content.',
+        interview: 'Create an interview-style podcast where one host asks insightful questions and the other provides detailed answers.'
+      };
+
+      const prompt = `Create a ${config.minutes} minute podcast script with TWO HOSTS having a conversation. ${styleInstructions[style]}
+
+CRITICAL REQUIREMENTS:
+1. LENGTH: The script MUST be approximately ${config.words} words (minimum ${config.minWords} words) for the ${config.minutes} minute runtime.
+2. FORMAT: EVERY line of dialogue MUST start with either "Host 1:" or "Host 2:" on its own line. No other format.
+3. TWO DISTINCT VOICES: Host 1 and Host 2 must alternate frequently throughout the entire script. Both hosts should speak roughly equal amounts.
+
+Example format (follow this exactly):
+Host 1: Welcome to our podcast! Today we're discussing...
+Host 2: That's right! I'm really excited about this topic because...
+Host 1: Let me start by explaining the first concept...
+Host 2: That's a great point. I'd add that...
+
+Guidelines:
+- Make it a natural back-and-forth CONVERSATION between two people
+- Include reactions, follow-up questions, and interjections from both hosts
+- Both hosts should contribute insights and examples
+- Add energy and enthusiasm from both speakers
+- End with both hosts summarizing key takeaways
+
+Content to discuss:
+${truncateContent(note.content)}
+
+IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a monologue. Every paragraph must start with "Host 1:" or "Host 2:".`;
+
+      const completion = await openai.chat.completions.create({
+        model: MODELS.GPT4_MINI,
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert podcast scriptwriter who creates engaging, natural-sounding podcast scripts. Write dialogue that sounds authentic and conversational.${getLanguageInstruction(language)}`
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.9,
+        max_tokens: duration === 'long' ? 6000 : duration === 'medium' ? 4000 : 2000
+      });
+
+      const script = completion.choices[0].message.content;
+
+      // Prepare content object
+      const contentData = {
+        script,
+        duration,
+        style,
+        num_hosts,
+        model: MODELS.GPT4_MINI
+      };
+
+      // Generate audio if requested
+      if (generate_audio) {
+        try {
+          logger.info('Generating podcast audio', { userId, noteId, gender, placeholderId });
+
+          const ttsService = require('./ttsService');
+
+          // Generate multi-voice audio from script (different voices for Host 1 & Host 2)
+          const audioBuffer = await ttsService.generatePodcastAudio(script, { gender });
+
+          // Upload to Supabase storage
+          const audioUrl = await ttsService.uploadAudio(audioBuffer, userId, noteId);
+
+          contentData.audio_url = audioUrl;
+          contentData.gender = gender;
+
+          logger.info('Podcast audio generated', { userId, noteId, audioUrl, gender });
+        } catch (audioError) {
+          logger.error('Failed to generate podcast audio', {
+            error: audioError.message,
+            userId,
+            noteId
+          });
+          contentData.audio_generation_failed = true;
+          contentData.error = audioError.message;
+        }
+      }
+
+      // UPDATE the placeholder record instead of creating new
+      const { error: updateError } = await supabaseAdmin
+        .from('ai_content')
+        .update({ content: contentData })
+        .eq('id', placeholderId);
+
+      if (updateError) {
+        logger.error('Failed to update podcast placeholder', { error: updateError.message, placeholderId });
+        throw updateError;
+      }
+
+      // Log usage
+      await this.logUsage(userId, 'podcast', completion.usage);
+
+      logger.info('Podcast generation completed (placeholder updated)', {
+        userId,
+        noteId,
+        placeholderId,
+        duration,
+        style,
+        hasAudio: !!contentData.audio_url
+      });
+
+      return {
+        id: placeholderId,
+        script,
+        audio_url: contentData.audio_url,
+        duration,
+        style,
+        note_id: noteId
+      };
+
+    } catch (error) {
+      logger.error('Error generating podcast with placeholder', {
+        error: error.message,
+        userId,
+        noteId,
+        placeholderId
       });
       throw new AppError('Failed to generate podcast', 500);
     }

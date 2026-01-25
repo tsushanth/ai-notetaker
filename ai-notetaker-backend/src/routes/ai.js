@@ -145,6 +145,7 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
     .from('ai_content')
     .insert({
       note_id,
+      user_id: req.userId,  // Required field for ai_content table
       content_type: 'podcast',
       content: {
         status: 'generating',

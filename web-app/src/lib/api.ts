@@ -611,7 +611,47 @@ export const meetingsApi = {
 
 // TTS API
 export const ttsApi = {
-  // Synthesize text to speech
+  // Generate TTS for a note and save it
+  generateForNote: async (token: string, noteId: string, options?: {
+    voice?: string;
+    speed?: number;
+    clonedVoiceId?: string;
+  }) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        audio_url: string;
+        voice: string;
+        speed: number;
+        duration_seconds: number;
+      };
+    }>('/api/tts/generate', {
+      method: 'POST',
+      token,
+      body: {
+        note_id: noteId,
+        voice: options?.voice || 'rachel',
+        speed: options?.speed || 1.0,
+        cloned_voice_id: options?.clonedVoiceId,
+      },
+    });
+  },
+
+  // Get saved TTS for a note
+  getTTSForNote: async (token: string, noteId: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        audio_url: string;
+        voice: string;
+        speed: number;
+        duration_seconds: number;
+        created_at: string;
+      } | null;
+    }>(`/api/tts/note/${noteId}`, { token });
+  },
+
+  // Synthesize text to speech (direct, not saved)
   synthesize: async (token: string, text: string, options?: {
     voice?: string;
     speed?: number;

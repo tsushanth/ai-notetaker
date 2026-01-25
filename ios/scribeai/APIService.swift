@@ -2878,6 +2878,119 @@ class APIService {
 
         return responseData
     }
+
+    /// TTS response for note
+    struct TTSForNoteResponse {
+        let audioUrl: String
+        let voice: String
+        let speed: Double
+        let durationSeconds: Int
+    }
+
+    /// Generate TTS for a note and save to storage
+    func generateTTSForNote(noteId: String, voice: String = "rachel", speed: Double = 1.0) async throws -> TTSForNoteResponse {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        guard let url = URL(string: "\(Constants.baseURL)/api/tts/generate") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "note_id": noteId,
+            "voice": voice,
+            "speed": speed
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("🔊 Generating TTS for note: \(noteId)")
+
+        // Use longer timeout for TTS generation
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 180 // 3 minutes
+        config.timeoutIntervalForResource = 240 // 4 minutes
+        let session = URLSession(configuration: config)
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        print("📥 TTS generate response status: \(httpResponse.statusCode)")
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorMessage = errorJson["error"] as? String {
+                throw APIError.serverError(errorMessage)
+            }
+            throw APIError.serverError("Failed to generate TTS")
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let responseData = json["data"] as? [String: Any],
+              let audioUrl = responseData["audio_url"] as? String else {
+            throw APIError.decodingError
+        }
+
+        print("✅ TTS generated: \(audioUrl)")
+
+        return TTSForNoteResponse(
+            audioUrl: audioUrl,
+            voice: responseData["voice"] as? String ?? voice,
+            speed: responseData["speed"] as? Double ?? speed,
+            durationSeconds: responseData["duration_seconds"] as? Int ?? 0
+        )
+    }
+
+    /// Get saved TTS for a note
+    func getTTSForNote(noteId: String) async throws -> TTSForNoteResponse? {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        guard let url = URL(string: "\(Constants.baseURL)/api/tts/note/\(noteId)") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            return nil
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let responseData = json["data"] as? [String: Any],
+              let audioUrl = responseData["audio_url"] as? String else {
+            return nil
+        }
+
+        return TTSForNoteResponse(
+            audioUrl: audioUrl,
+            voice: responseData["voice"] as? String ?? "rachel",
+            speed: responseData["speed"] as? Double ?? 1.0,
+            durationSeconds: responseData["duration_seconds"] as? Int ?? 0
+        )
+    }
 }
 
 // MARK: - Device Fingerprint

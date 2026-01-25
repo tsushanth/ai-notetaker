@@ -428,9 +428,14 @@ struct NotesTabContent: View {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showTTS.toggle()
                 }
-                // Load cloned voices when expanding
-                if showTTS && clonedVoices.isEmpty && !isLoadingVoices {
-                    loadClonedVoices()
+                // Load cloned voices and saved TTS when expanding
+                if showTTS {
+                    if clonedVoices.isEmpty && !isLoadingVoices {
+                        loadClonedVoices()
+                    }
+                    if ttsAudioData == nil && !isGeneratingTTS {
+                        loadSavedTTS()
+                    }
                 }
             } label: {
                 HStack {
@@ -685,14 +690,21 @@ struct NotesTabContent: View {
 
         Task {
             do {
-                let textToSpeak = currentNote.displayContent
-                print("🔊 Generating TTS for \(textToSpeak.count) characters")
+                print("🔊 Generating TTS for note: \(note.id)")
 
-                let audioData = try await APIService.shared.synthesizeSpeech(
-                    text: textToSpeak,
+                // Use the new API that saves to storage
+                let response = try await APIService.shared.generateTTSForNote(
+                    noteId: note.id,
                     voice: selectedVoice,
                     speed: ttsSpeed
                 )
+
+                // Download the audio from URL
+                guard let audioURL = URL(string: response.audioUrl) else {
+                    throw APIError.serverError("Invalid audio URL")
+                }
+
+                let (audioData, _) = try await URLSession.shared.data(from: audioURL)
 
                 await MainActor.run {
                     self.ttsAudioData = audioData
@@ -719,6 +731,38 @@ struct NotesTabContent: View {
                     self.ttsError = error.localizedDescription
                     print("❌ Error generating TTS: \(error)")
                 }
+            }
+        }
+    }
+
+    private func loadSavedTTS() {
+        Task {
+            do {
+                if let response = try await APIService.shared.getTTSForNote(noteId: note.id) {
+                    // Download the audio
+                    guard let audioURL = URL(string: response.audioUrl) else { return }
+                    let (audioData, _) = try await URLSession.shared.data(from: audioURL)
+
+                    await MainActor.run {
+                        self.ttsAudioData = audioData
+                        self.selectedVoice = response.voice
+                        self.ttsSpeed = response.speed
+
+                        // Setup audio player
+                        do {
+                            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+                            self.ttsAudioPlayer = try AVAudioPlayer(data: audioData)
+                            self.ttsAudioPlayer?.delegate = TTSAudioDelegate.shared
+                            TTSAudioDelegate.shared.onFinish = {
+                                self.isPlayingTTS = false
+                            }
+                        } catch {
+                            print("❌ Error setting up saved audio player: \(error)")
+                        }
+                    }
+                }
+            } catch {
+                print("❌ Error loading saved TTS: \(error)")
             }
         }
     }

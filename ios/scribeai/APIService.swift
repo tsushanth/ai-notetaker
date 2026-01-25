@@ -2732,18 +2732,18 @@ class APIService {
         let gender: String
     }
 
-    /// Available TTS voices
+    /// Available TTS voices (OpenAI)
     static let ttsVoices: [TTSVoice] = [
-        TTSVoice(id: "rachel", name: "Rachel", gender: "female"),
-        TTSVoice(id: "bella", name: "Bella", gender: "female"),
-        TTSVoice(id: "sarah", name: "Sarah", gender: "female"),
-        TTSVoice(id: "adam", name: "Adam", gender: "male"),
-        TTSVoice(id: "josh", name: "Josh", gender: "male"),
-        TTSVoice(id: "brian", name: "Brian", gender: "male"),
+        TTSVoice(id: "alloy", name: "Alloy", gender: "neutral"),
+        TTSVoice(id: "echo", name: "Echo", gender: "male"),
+        TTSVoice(id: "fable", name: "Fable", gender: "male"),
+        TTSVoice(id: "onyx", name: "Onyx", gender: "male"),
+        TTSVoice(id: "nova", name: "Nova", gender: "female"),
+        TTSVoice(id: "shimmer", name: "Shimmer", gender: "female"),
     ]
 
     /// Synthesize text to speech and return audio data
-    func synthesizeSpeech(text: String, voice: String = "rachel", speed: Double = 1.0) async throws -> Data {
+    func synthesizeSpeech(text: String, voice: String = "nova", speed: Double = 1.0) async throws -> Data {
         guard let token = await TokenManager.shared.getValidToken() else {
             throw APIError.unauthorized
         }
@@ -2800,8 +2800,8 @@ class APIService {
         return data
     }
 
-    /// Get available TTS voices (including cloned voices)
-    func getTTSVoices() async throws -> (builtin: [TTSVoice], cloned: [[String: Any]]) {
+    /// Get available TTS voices
+    func getTTSVoices() async throws -> [TTSVoice] {
         guard let token = await TokenManager.shared.getValidToken() else {
             throw APIError.unauthorized
         }
@@ -2829,22 +2829,19 @@ class APIService {
             throw APIError.decodingError
         }
 
-        // Parse builtin voices
-        var builtinVoices: [TTSVoice] = []
-        if let builtin = responseData["builtin"] as? [[String: Any]] {
-            for voice in builtin {
+        // Parse voices from API response
+        var voices: [TTSVoice] = []
+        if let voicesArray = responseData["voices"] as? [[String: Any]] {
+            for voice in voicesArray {
                 if let id = voice["id"] as? String,
                    let name = voice["name"] as? String,
                    let gender = voice["gender"] as? String {
-                    builtinVoices.append(TTSVoice(id: id, name: name, gender: gender))
+                    voices.append(TTSVoice(id: id, name: name, gender: gender))
                 }
             }
         }
 
-        // Parse cloned voices (keep as dictionary for flexibility)
-        let clonedVoices = responseData["cloned"] as? [[String: Any]] ?? []
-
-        return (builtinVoices, clonedVoices)
+        return voices.isEmpty ? APIService.ttsVoices : voices
     }
 
     /// Get TTS service status
@@ -2888,7 +2885,7 @@ class APIService {
     }
 
     /// Generate TTS for a note and save to storage
-    func generateTTSForNote(noteId: String, voice: String = "rachel", speed: Double = 1.0) async throws -> TTSForNoteResponse {
+    func generateTTSForNote(noteId: String, voice: String = "nova", speed: Double = 1.0) async throws -> TTSForNoteResponse {
         guard let token = await TokenManager.shared.getValidToken() else {
             throw APIError.unauthorized
         }

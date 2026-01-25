@@ -498,20 +498,27 @@ struct NotesTabContent: View {
                         }
                     }
 
-                    // Speed slider
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Speed")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.textSecondary)
-                            Spacer()
-                            Text(String(format: "%.1fx", ttsSpeed))
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.purple80)
-                        }
+                    // Speed options
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Speed")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.textSecondary)
 
-                        Slider(value: $ttsSpeed, in: 0.5...2.0, step: 0.25)
-                            .accentColor(.purple80)
+                        HStack(spacing: 6) {
+                            ForEach([0.75, 1.0, 1.25, 1.5, 2.0], id: \.self) { speed in
+                                Button {
+                                    ttsSpeed = speed
+                                } label: {
+                                    Text(speed == 1.0 ? "1x" : String(format: "%.2gx", speed))
+                                        .font(.system(size: 11, weight: .medium))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(ttsSpeed == speed ? Color.purple80 : Color.darkSurfaceVariant)
+                                        .foregroundColor(ttsSpeed == speed ? .white : .textPrimary)
+                                        .cornerRadius(6)
+                                }
+                            }
+                        }
                     }
 
                     // Error message

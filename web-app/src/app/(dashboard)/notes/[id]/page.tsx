@@ -1341,23 +1341,21 @@ export default function NoteDetailPage() {
 
                 {/* Speed selector */}
                 <div className="max-w-xs mx-auto mb-6">
-                  <label className="block text-sm text-[var(--text-muted)] mb-2">
-                    Speed: {ttsSpeed}x
-                  </label>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.25"
-                    value={ttsSpeed}
-                    onChange={(e) => setTtsSpeed(parseFloat(e.target.value))}
-                    className="w-full accent-[var(--accent-purple)]"
-                  />
-                  <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
-                    <span>0.5x</span>
-                    <span>1x</span>
-                    <span>1.5x</span>
-                    <span>2x</span>
+                  <label className="block text-sm text-[var(--text-muted)] mb-2">Speed</label>
+                  <div className="flex gap-2 justify-center">
+                    {[0.75, 1, 1.25, 1.5, 2].map((speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => setTtsSpeed(speed)}
+                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                          ttsSpeed === speed
+                            ? 'bg-[var(--accent-purple)] text-white'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                        }`}
+                      >
+                        {speed === 1 ? '1x' : `${speed}x`}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -1474,18 +1472,22 @@ export default function NoteDetailPage() {
 
                       {/* Speed selector */}
                       <div>
-                        <label className="block text-xs text-[var(--text-muted)] mb-2">
-                          Speed: {ttsSpeed}x
-                        </label>
-                        <input
-                          type="range"
-                          min="0.5"
-                          max="2"
-                          step="0.25"
-                          value={ttsSpeed}
-                          onChange={(e) => setTtsSpeed(parseFloat(e.target.value))}
-                          className="w-full accent-[var(--accent-purple)]"
-                        />
+                        <label className="block text-xs text-[var(--text-muted)] mb-2">Speed</label>
+                        <div className="flex gap-1.5 flex-wrap">
+                          {[0.75, 1, 1.25, 1.5, 2].map((speed) => (
+                            <button
+                              key={speed}
+                              onClick={() => setTtsSpeed(speed)}
+                              className={`px-2.5 py-1 rounded text-xs font-medium transition ${
+                                ttsSpeed === speed
+                                  ? 'bg-[var(--accent-purple)] text-white'
+                                  : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                              }`}
+                            >
+                              {speed === 1 ? '1x' : `${speed}x`}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </details>

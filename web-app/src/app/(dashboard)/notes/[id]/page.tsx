@@ -33,7 +33,8 @@ import {
   Square,
   Upload,
   Plus,
-  User
+  User,
+  Settings
 } from 'lucide-react';
 import type { Note, ChatMessage, QuizQuestion, FlashcardContent, InfographicContent } from '@/types';
 
@@ -1580,6 +1581,134 @@ export default function NoteDetailPage() {
                       </>
                     )}
                   </button>
+                </div>
+
+                {/* Voice options in Audio Ready state */}
+                <div className="mt-8 pt-6 border-t border-[var(--border-color)]">
+                  <details className="text-left">
+                    <summary className="cursor-pointer text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center gap-2">
+                      <Settings size={16} />
+                      Voice Settings
+                    </summary>
+                    <div className="mt-4 space-y-4">
+                      {/* Built-in voices */}
+                      <div>
+                        <p className="text-xs text-[var(--text-muted)] mb-2">Built-in Voices</p>
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {TTS_VOICES.map(voice => (
+                            <button
+                              key={voice.id}
+                              onClick={() => setSelectedVoice(voice.id)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                                selectedVoice === voice.id
+                                  ? 'bg-[var(--accent-purple)] text-white'
+                                  : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                              }`}
+                            >
+                              {voice.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Cloned voices */}
+                      {clonedVoices.length > 0 && (
+                        <div>
+                          <p className="text-xs text-[var(--text-muted)] mb-2">Your Cloned Voices</p>
+                          <div className="flex flex-wrap justify-center gap-2">
+                            {clonedVoices.map(voice => (
+                              <div key={voice.id} className="relative group">
+                                <button
+                                  onClick={() => setSelectedVoice(voice.id)}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
+                                    selectedVoice === voice.id
+                                      ? 'bg-[var(--accent-purple)] text-white'
+                                      : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                                  }`}
+                                >
+                                  <User size={12} />
+                                  {voice.name}
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Speed selector */}
+                      <div className="max-w-xs mx-auto">
+                        <label className="block text-xs text-[var(--text-muted)] mb-2">
+                          Speed: {ttsSpeed}x
+                        </label>
+                        <input
+                          type="range"
+                          min="0.5"
+                          max="2"
+                          step="0.25"
+                          value={ttsSpeed}
+                          onChange={(e) => setTtsSpeed(parseFloat(e.target.value))}
+                          className="w-full accent-[var(--accent-purple)]"
+                        />
+                      </div>
+
+                      {/* Voice cloning link */}
+                      {!showVoiceCloning ? (
+                        <button
+                          onClick={() => setShowVoiceCloning(true)}
+                          className="text-xs text-[var(--accent-purple)] hover:underline flex items-center gap-1 mx-auto"
+                        >
+                          <Plus size={14} />
+                          Clone Your Voice
+                        </button>
+                      ) : (
+                        <div className="bg-[var(--surface-variant)] rounded-lg p-4 max-w-md mx-auto">
+                          <h4 className="text-sm font-medium mb-3">Clone a Voice</h4>
+                          <div className="space-y-3">
+                            <div>
+                              <label className="block text-xs text-[var(--text-muted)] mb-1">Voice Name</label>
+                              <input
+                                type="text"
+                                value={newVoiceName}
+                                onChange={(e) => setNewVoiceName(e.target.value)}
+                                placeholder="e.g., My Voice"
+                                className="input w-full text-sm"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-[var(--text-muted)] mb-1">
+                                Audio Sample (10s - 5min)
+                              </label>
+                              <input
+                                type="file"
+                                accept="audio/wav,audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4"
+                                onChange={(e) => setVoiceFile(e.target.files?.[0] || null)}
+                                className="w-full text-xs text-[var(--text-secondary)] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[var(--accent-purple)] file:text-white"
+                              />
+                            </div>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleCreateClonedVoice}
+                                disabled={isCreatingVoice || !newVoiceName.trim() || !voiceFile}
+                                className="btn-primary flex-1 text-xs py-2"
+                              >
+                                {isCreatingVoice ? 'Creating...' : 'Create Voice'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowVoiceCloning(false);
+                                  setNewVoiceName('');
+                                  setVoiceFile(null);
+                                }}
+                                className="btn-secondary text-xs py-2"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </details>
                 </div>
               </div>
             )}

@@ -591,12 +591,13 @@ ${note.content.substring(0, 3000)}`; // Limit content length
    * Generate podcast script from note content
    */
   async generatePodcast(userId, noteId, options = {}) {
-    const { 
-      duration = 'medium', 
+    const {
+      duration = 'medium',
       style = 'conversational',
       num_hosts = 2,
       generate_audio = true,
-      voice = 'alloy',
+      voice = 'nova',
+      gender = 'female',  // 'female', 'male', or 'mixed' - determines voice pair for hosts
       language = 'english'
     } = options;
 
@@ -671,24 +672,25 @@ Format the script with clear speaker labels and natural dialogue. Remember: the 
       // Generate audio if requested
       if (generate_audio) {
         try {
-          logger.info('Generating podcast audio', { userId, noteId });
-          
+          logger.info('Generating podcast audio', { userId, noteId, gender });
+
           const ttsService = require('./ttsService');
-          
-          // Generate audio from script
-          const audioBuffer = await ttsService.generateAudio(script, voice);
-          
+
+          // Generate multi-voice audio from script (different voices for Host 1 & Host 2)
+          const audioBuffer = await ttsService.generatePodcastAudio(script, { gender });
+
           // Upload to Supabase storage
           const audioUrl = await ttsService.uploadAudio(audioBuffer, userId, noteId);
-          
+
           contentData.audio_url = audioUrl;
-          
-          logger.info('Podcast audio generated', { userId, noteId, audioUrl });
+          contentData.gender = gender;
+
+          logger.info('Podcast audio generated', { userId, noteId, audioUrl, gender });
         } catch (audioError) {
-          logger.error('Failed to generate podcast audio', { 
-            error: audioError.message, 
-            userId, 
-            noteId 
+          logger.error('Failed to generate podcast audio', {
+            error: audioError.message,
+            userId,
+            noteId
           });
           // Continue without audio - don't fail the whole request
           contentData.audio_generation_failed = true;

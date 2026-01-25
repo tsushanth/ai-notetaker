@@ -17,6 +17,13 @@ const OPENAI_VOICES = {
   'shimmer': 'shimmer',
 };
 
+// Voice pairs for multi-host podcasts by gender
+const VOICE_PAIRS = {
+  female: ['nova', 'shimmer'],      // Sarah, Emily
+  male: ['echo', 'onyx'],           // James, Marcus
+  mixed: ['nova', 'echo'],          // Sarah, James (default)
+};
+
 class TTSService {
   constructor() {
     this.openaiApiKey = process.env.OPENAI_API_KEY;
@@ -150,6 +157,134 @@ class TTSService {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
+
+    return Buffer.concat(audioBuffers);
+  }
+
+  /**
+   * Parse podcast script into segments by speaker
+   * Returns array of { speaker: 'Host 1' | 'Host 2' | 'narrator', text: string }
+   */
+  parsePodcastScript(script) {
+    const segments = [];
+    const lines = script.split('\n');
+    let currentSpeaker = 'narrator';
+    let currentText = '';
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      // Match patterns like "Host 1:", "Host 2:", "[Host 1]:", etc.
+      const hostMatch = trimmedLine.match(/^(?:\[)?Host\s*(\d+)(?:\])?:\s*(.*)/i);
+
+      if (hostMatch) {
+        // Save previous segment if any
+        if (currentText.trim()) {
+          segments.push({ speaker: currentSpeaker, text: currentText.trim() });
+        }
+
+        currentSpeaker = `Host ${hostMatch[1]}`;
+        currentText = hostMatch[2] || '';
+      } else {
+        // Continue current speaker's text
+        currentText += ' ' + trimmedLine;
+      }
+    }
+
+    // Add final segment
+    if (currentText.trim()) {
+      segments.push({ speaker: currentSpeaker, text: currentText.trim() });
+    }
+
+    return segments;
+  }
+
+  /**
+   * Generate multi-voice podcast audio
+   * Assigns different voices to Host 1 and Host 2 based on gender preference
+   */
+  async generatePodcastAudio(script, options = {}) {
+    const { gender = 'female', speed = 1.0 } = options;
+
+    // Get voice pair for the selected gender
+    const voicePair = VOICE_PAIRS[gender] || VOICE_PAIRS.female;
+    const [voice1, voice2] = voicePair;
+
+    logger.info('Generating multi-voice podcast', {
+      gender,
+      voice1,
+      voice2,
+      scriptLength: script.length
+    });
+
+    // Parse script into segments
+    const segments = this.parsePodcastScript(script);
+
+    if (segments.length === 0) {
+      // Fallback: generate with single voice if parsing fails
+      logger.warn('Failed to parse podcast script, using single voice');
+      return await this.generateAudio(script, voice1);
+    }
+
+    logger.info(`Parsed ${segments.length} podcast segments`);
+
+    // Generate audio for each segment with appropriate voice
+    const audioBuffers = [];
+
+    for (let i = 0; i < segments.length; i++) {
+      const segment = segments[i];
+
+      // Determine voice based on speaker
+      let voice = voice1; // Default for narrator or Host 1
+      if (segment.speaker === 'Host 2') {
+        voice = voice2;
+      } else if (segment.speaker === 'Host 1') {
+        voice = voice1;
+      }
+
+      // Clean the text for TTS (but don't remove host labels since they're already stripped)
+      const cleanText = segment.text
+        .replace(/\*\*.*?\*\*/g, '')
+        .replace(/\[.*?\]/g, '')
+        .replace(/\n\n+/g, ' ')
+        .trim();
+
+      if (!cleanText) continue;
+
+      logger.info(`Generating segment ${i + 1}/${segments.length}`, {
+        speaker: segment.speaker,
+        voice,
+        textLength: cleanText.length
+      });
+
+      try {
+        // Handle long segments by chunking
+        let buffer;
+        if (cleanText.length > this.MAX_CHUNK_SIZE) {
+          buffer = await this.generateAudioFromChunks(cleanText, voice, speed);
+        } else {
+          buffer = await this.synthesizeWithOpenAI(cleanText, voice, speed);
+        }
+
+        audioBuffers.push(buffer);
+
+        // Small delay between API calls to avoid rate limiting
+        if (i < segments.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      } catch (error) {
+        logger.error(`Error generating segment ${i + 1}`, {
+          error: error.message,
+          speaker: segment.speaker
+        });
+        throw error;
+      }
+    }
+
+    logger.info('Concatenating podcast audio buffers', {
+      bufferCount: audioBuffers.length
+    });
 
     return Buffer.concat(audioBuffers);
   }

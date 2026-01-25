@@ -353,62 +353,40 @@ struct PodcastTabContent: View {
                         }
                         .padding(.horizontal, 20)
 
-                        // Voice Selection Section
+                        // Voice Selection Section - Two dropdowns side by side
                         VStack(alignment: .leading, spacing: 12) {
                             HStack(spacing: 8) {
                                 Image(systemName: "person.wave.2")
                                     .font(.system(size: 14))
                                     .foregroundColor(.textSecondary)
-                                Text("Narrator Voice")
+                                Text("Narrator Voices")
                                     .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(.textPrimary)
                             }
 
-                            // Gender selection buttons
+                            // Two dropdowns side by side - Female and Male
                             HStack(spacing: 12) {
-                                ForEach(VoiceGender.allCases, id: \.rawValue) { gender in
-                                    GenderOptionButton(
-                                        gender: gender,
-                                        isSelected: selectedGender == gender
-                                    ) {
-                                        selectedGender = gender
-                                        selectedVoice = gender.defaultVoice
-                                    }
+                                // Female voices dropdown
+                                VoiceDropdown(
+                                    label: "Female",
+                                    voices: VoiceGender.female.voices,
+                                    selectedVoice: selectedGender == .female ? selectedVoice : nil,
+                                    isSelected: selectedGender == .female
+                                ) { voice in
+                                    selectedGender = .female
+                                    selectedVoice = voice
                                 }
-                            }
 
-                            // Voice dropdown for selected gender
-                            Menu {
-                                ForEach(selectedGender.voices, id: \.rawValue) { voice in
-                                    Button(action: {
-                                        selectedVoice = voice
-                                    }) {
-                                        HStack {
-                                            Text(voice.displayName)
-                                            if selectedVoice == voice {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
+                                // Male voices dropdown
+                                VoiceDropdown(
+                                    label: "Male",
+                                    voices: VoiceGender.male.voices,
+                                    selectedVoice: selectedGender == .male ? selectedVoice : nil,
+                                    isSelected: selectedGender == .male
+                                ) { voice in
+                                    selectedGender = .male
+                                    selectedVoice = voice
                                 }
-                            } label: {
-                                HStack {
-                                    Text(selectedVoice.displayName)
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(.textPrimary)
-                                    Spacer()
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.textSecondary)
-                                }
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 14)
-                                .background(Color.cardBackground)
-                                .cornerRadius(12)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .stroke(Color.darkSurfaceVariant, lineWidth: 1)
-                                )
                             }
                         }
                         .padding(.horizontal, 20)
@@ -479,9 +457,9 @@ struct PodcastTabContent: View {
                                     .cornerRadius(12)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.purple80.opacity(0.3), lineWidth: 1)
-                                    )
-                                }
+                                        .stroke(Color.purple80.opacity(0.3), lineWidth: 1)
+                                )
+                            }
                                 .buttonStyle(PlainButtonStyle())
                             }
                         }
@@ -541,11 +519,11 @@ struct PodcastTabContent: View {
         }
         .alert("Regenerate Podcast?", isPresented: $showRegenerateConfirmation) {
             Button("Cancel", role: .cancel) {}
-            Button("Regenerate", role: .destructive) {
+            Button("Continue", role: .destructive) {
                 regeneratePodcast()
             }
         } message: {
-            Text("This will create a new podcast and replace the current one. This action cannot be undone.")
+            Text("You'll be able to select new voice options before generating.")
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
@@ -855,13 +833,9 @@ struct PodcastTabContent: View {
         isPlaying = false
         currentTime = 0
         audioDuration = 0
-        
-        // Clear current podcast to show generating state
-        podcast = nil
 
-        // Generate new podcast with current selection
-        let instructions = specialInstructions.trimmingCharacters(in: .whitespacesAndNewlines)
-        generatePodcast(duration: selectedDuration, gender: selectedGender.rawValue, instructions: instructions.isEmpty ? nil : instructions)
+        // Clear current podcast to show generation view (user can select voices)
+        podcast = nil
     }
     
     private func pollForPodcastCompletion(token: String) async {
@@ -975,31 +949,54 @@ struct DurationOptionButton: View {
     }
 }
 
-// MARK: - Gender Option Button
+// MARK: - Voice Dropdown
 
-struct GenderOptionButton: View {
-    let gender: PodcastTabContent.VoiceGender
+struct VoiceDropdown: View {
+    let label: String
+    let voices: [PodcastTabContent.PodcastVoice]
+    let selectedVoice: PodcastTabContent.PodcastVoice?
     let isSelected: Bool
-    let action: () -> Void
+    let onSelect: (PodcastTabContent.PodcastVoice) -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: gender == .female ? "person.fill" : "person.fill")
-                    .font(.system(size: 14))
-                Text(gender.displayName)
-                    .font(.system(size: 15, weight: .semibold))
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(isSelected ? .purple80 : .textSecondary)
+
+            Menu {
+                ForEach(voices, id: \.rawValue) { voice in
+                    Button(action: {
+                        onSelect(voice)
+                    }) {
+                        HStack {
+                            Text(voice.displayName)
+                            if selectedVoice == voice {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text(selectedVoice?.displayName ?? voices.first?.displayName ?? "Select")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(isSelected ? .purple80 : .textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundColor(isSelected ? .purple80 : .textSecondary)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 12)
+                .background(isSelected ? Color.purple80.opacity(0.15) : Color.cardBackground)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(isSelected ? Color.purple80 : Color.darkSurfaceVariant, lineWidth: isSelected ? 2 : 1)
+                )
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .foregroundColor(isSelected ? .purple80 : .textPrimary)
-            .background(isSelected ? Color.purple80.opacity(0.15) : Color.cardBackground)
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.purple80 : Color.darkSurfaceVariant, lineWidth: 2)
-            )
         }
-        .buttonStyle(PlainButtonStyle())
+        .frame(maxWidth: .infinity)
     }
 }

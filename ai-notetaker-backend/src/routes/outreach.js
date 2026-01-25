@@ -10,6 +10,7 @@ const { logger } = require('../utils/logger');
 const { supabaseAdmin } = require('../config/supabase');
 const emailOutreachService = require('../services/sendgridOutreachService');
 const universityScraperService = require('../services/universityScraperService');
+const companyScraperService = require('../services/companyScraperService');
 
 // Async handler wrapper
 const asyncHandler = (fn) => (req, res, next) => {
@@ -800,6 +801,360 @@ Sushanth</p>
 <p>If Scribe AI could help your students this term, I'm happy to set up free access anytime. Just reply "interested" and I'll send the details.</p>
 
 <p>Quick links: <a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iOS</a> | <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android</a> | <a href="https://scribeai.online">Web</a></p>
+
+<p>If not, no worries at all - I appreciate your time!</p>
+
+<p>Best,<br>
+Sushanth</p>
+      `.trim(),
+    },
+  ];
+
+  res.json({
+    success: true,
+    data: templates,
+  });
+}));
+
+// =====================================================
+// COMPANY OUTREACH (B2B for Meeting Mind)
+// =====================================================
+
+/**
+ * GET /api/outreach/companies
+ * List companies
+ */
+router.get('/companies', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const { status, industry, limit = 50, offset = 0 } = req.query;
+
+  let query = supabaseAdmin
+    .from('companies')
+    .select('*', { count: 'exact' })
+    .order('name')
+    .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+  if (status) {
+    query = query.eq('scrape_status', status);
+  }
+  if (industry) {
+    query = query.eq('industry', industry);
+  }
+
+  const { data: companies, count, error } = await query;
+
+  if (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+
+  res.json({
+    success: true,
+    data: companies,
+    pagination: { total: count, limit: parseInt(limit), offset: parseInt(offset) },
+  });
+}));
+
+/**
+ * POST /api/outreach/companies
+ * Add a company
+ */
+router.post('/companies', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const { name, domain, industry, company_size, source } = req.body;
+
+  if (!name || !domain) {
+    return res.status(400).json({
+      success: false,
+      error: 'Name and domain are required',
+    });
+  }
+
+  try {
+    const company = await companyScraperService.addCompany({
+      name,
+      domain,
+      industry,
+      companySize: company_size,
+      source,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: company,
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+}));
+
+/**
+ * GET /api/outreach/company-scraper/stats
+ * Get company scraping statistics
+ */
+router.get('/company-scraper/stats', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const stats = await companyScraperService.getStats();
+
+  res.json({
+    success: true,
+    data: stats,
+  });
+}));
+
+/**
+ * POST /api/outreach/company-scraper/run
+ * Run scraper on pending companies
+ */
+router.post('/company-scraper/run', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const { limit = 5 } = req.body;
+
+  // Start scraping in background
+  res.json({
+    success: true,
+    message: `Starting scrape for up to ${limit} companies. Check /company-scraper/stats for progress.`,
+  });
+
+  // Run async
+  companyScraperService.scrapeAllPending(limit).catch(error => {
+    logger.error('Background company scrape failed', { error: error.message });
+  });
+}));
+
+/**
+ * POST /api/outreach/company-scraper/company/:id
+ * Scrape a specific company
+ */
+router.post('/company-scraper/company/:id', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const result = await companyScraperService.scrapeCompany(id);
+
+  res.json({
+    success: true,
+    data: result,
+  });
+}));
+
+/**
+ * GET /api/outreach/professional-contacts
+ * List professional contacts
+ */
+router.get('/professional-contacts', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const {
+    company_id,
+    industry,
+    department,
+    seniority,
+    status,
+    verified,
+    target_app,
+    limit = 50,
+    offset = 0,
+    search,
+  } = req.query;
+
+  let query = supabaseAdmin
+    .from('professional_contacts')
+    .select(`
+      *,
+      companies (name, domain, industry)
+    `, { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
+
+  if (company_id) {
+    query = query.eq('company_id', company_id);
+  }
+  if (department) {
+    query = query.eq('department', department);
+  }
+  if (seniority) {
+    query = query.eq('seniority', seniority);
+  }
+  if (status) {
+    query = query.eq('outreach_status', status);
+  }
+  if (verified === 'true') {
+    query = query.eq('email_verified', true);
+  }
+  if (target_app) {
+    query = query.eq('target_app', target_app);
+  }
+  if (search) {
+    query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%`);
+  }
+
+  const { data: contacts, count, error } = await query;
+
+  if (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+
+  // If industry filter, we need to filter after join
+  let filteredContacts = contacts;
+  if (industry && contacts) {
+    filteredContacts = contacts.filter(c => c.companies?.industry === industry);
+  }
+
+  res.json({
+    success: true,
+    data: filteredContacts,
+    pagination: { total: count, limit: parseInt(limit), offset: parseInt(offset) },
+  });
+}));
+
+/**
+ * GET /api/outreach/professional-contacts/stats
+ * Get professional contact statistics
+ */
+router.get('/professional-contacts/stats', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const { data: statusCounts } = await supabaseAdmin
+    .from('professional_contacts')
+    .select('outreach_status');
+
+  const stats = {
+    total: statusCounts?.length || 0,
+    byStatus: {},
+  };
+
+  for (const contact of statusCounts || []) {
+    const status = contact.outreach_status || 'pending';
+    stats.byStatus[status] = (stats.byStatus[status] || 0) + 1;
+  }
+
+  const { count: verifiedCount } = await supabaseAdmin
+    .from('professional_contacts')
+    .select('id', { count: 'exact' })
+    .eq('email_verified', true);
+
+  const { data: seniorityData } = await supabaseAdmin
+    .from('professional_contacts')
+    .select('seniority');
+
+  stats.verified = verifiedCount || 0;
+  stats.bySeniority = {};
+
+  for (const contact of seniorityData || []) {
+    const seniority = contact.seniority || 'unknown';
+    stats.bySeniority[seniority] = (stats.bySeniority[seniority] || 0) + 1;
+  }
+
+  res.json({
+    success: true,
+    data: stats,
+  });
+}));
+
+// =====================================================
+// MEETING MIND B2B TEMPLATES
+// =====================================================
+
+/**
+ * GET /api/outreach/templates/meetingmind
+ * Get Meeting Mind B2B email templates
+ */
+router.get('/templates/meetingmind', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const templates = [
+    {
+      name: 'Sales Professional Introduction',
+      subject: 'Save 2+ hours per week on meeting notes',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>As a {{title}} at {{company}}, you probably spend a lot of time in meetings. What if you could:</p>
+
+<ul>
+  <li>Auto-transcribe every call and meeting</li>
+  <li>Get instant AI summaries with action items</li>
+  <li>Search across all your past conversations</li>
+  <li>Share key moments with your team in seconds</li>
+</ul>
+
+<p>That's what <strong>Meeting Mind</strong> does. It runs quietly in the background during your Zoom, Teams, or phone calls, and gives you perfect notes every time.</p>
+
+<p>I'd love to offer you <strong>free premium access</strong> to try it out.</p>
+
+<p>Would you be open to a 15-minute call to see if it's a fit?</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, Meeting Mind</p>
+      `.trim(),
+    },
+    {
+      name: 'Consulting Firm Intro',
+      subject: 'Client meeting notes on autopilot',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Consulting engagements generate a lot of meetings. Client calls, internal syncs, stakeholder updates - each one needs documentation.</p>
+
+<p><strong>Meeting Mind</strong> automatically transcribes and summarizes every meeting, so your team can focus on delivering value instead of taking notes.</p>
+
+<p>Features consultants love:</p>
+<ul>
+  <li>Accurate transcription across accents and industries</li>
+  <li>AI-generated summaries with action items</li>
+  <li>Searchable archive of all conversations</li>
+  <li>Easy sharing with clients and team members</li>
+</ul>
+
+<p>Would you be interested in trying it with your team? Happy to set up free access.</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, Meeting Mind</p>
+      `.trim(),
+    },
+    {
+      name: 'Legal Professional Intro',
+      subject: 'Never miss a detail in client calls',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>In legal work, the details matter. Every client call, deposition, and meeting contains information that could be critical later.</p>
+
+<p><strong>Meeting Mind</strong> automatically transcribes your calls with high accuracy, giving you:</p>
+<ul>
+  <li>Verbatim transcripts of every conversation</li>
+  <li>AI-powered summaries highlighting key points</li>
+  <li>Searchable archive for quick reference</li>
+  <li>Secure, private storage</li>
+</ul>
+
+<p>I'd be happy to set up a trial for you and your team at {{company}}.</p>
+
+<p>Would a brief call work this week?</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, Meeting Mind</p>
+      `.trim(),
+    },
+    {
+      name: 'Follow-up #1',
+      subject: 'Re: Meeting transcription for {{company}}',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Just following up on my note about Meeting Mind - the meeting transcription tool.</p>
+
+<p>A few teams similar to yours have told us it saves them 2-3 hours per week on meeting documentation.</p>
+
+<p>If you're interested, I can set up free access for you to try it out - no commitment needed.</p>
+
+<p>Let me know!</p>
+
+<p>Best,<br>
+Sushanth</p>
+      `.trim(),
+    },
+    {
+      name: 'Follow-up #2 (Final)',
+      subject: 'Last note: Meeting Mind for {{company}}',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Wanted to send one final note - I know how busy things get.</p>
+
+<p>If Meeting Mind could help you or your team at {{company}}, just reply "interested" and I'll send over access details.</p>
 
 <p>If not, no worries at all - I appreciate your time!</p>
 

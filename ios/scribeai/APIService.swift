@@ -2722,6 +2722,162 @@ class APIService {
 
         return try JSONDecoder().decode(ValidateMeetingUrlResponse.self, from: data)
     }
+
+    // MARK: - Text-to-Speech
+
+    /// TTS Voice options
+    struct TTSVoice {
+        let id: String
+        let name: String
+        let gender: String
+    }
+
+    /// Available TTS voices
+    static let ttsVoices: [TTSVoice] = [
+        TTSVoice(id: "rachel", name: "Rachel", gender: "female"),
+        TTSVoice(id: "bella", name: "Bella", gender: "female"),
+        TTSVoice(id: "sarah", name: "Sarah", gender: "female"),
+        TTSVoice(id: "adam", name: "Adam", gender: "male"),
+        TTSVoice(id: "josh", name: "Josh", gender: "male"),
+        TTSVoice(id: "brian", name: "Brian", gender: "male"),
+    ]
+
+    /// Synthesize text to speech and return audio data
+    func synthesizeSpeech(text: String, voice: String = "rachel", speed: Double = 1.0) async throws -> Data {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        guard let url = URL(string: "\(Constants.baseURL)/api/tts/synthesize") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: Any] = [
+            "text": text,
+            "voice": voice,
+            "speed": speed
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        print("🔊 Generating TTS...")
+        print("   Text length: \(text.count)")
+        print("   Voice: \(voice), Speed: \(speed)")
+
+        // Use longer timeout for TTS (can take time for long content)
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 120 // 2 minutes
+        config.timeoutIntervalForResource = 180 // 3 minutes
+        let session = URLSession(configuration: config)
+
+        let (data, response) = try await session.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        print("📥 TTS response status: \(httpResponse.statusCode)")
+
+        if httpResponse.statusCode == 401 {
+            throw APIError.unauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            // Try to parse error message
+            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorMessage = errorJson["error"] as? String {
+                throw APIError.serverError(errorMessage)
+            }
+            throw APIError.serverError("Failed to generate speech")
+        }
+
+        print("✅ TTS audio received: \(data.count) bytes")
+        return data
+    }
+
+    /// Get available TTS voices (including cloned voices)
+    func getTTSVoices() async throws -> (builtin: [TTSVoice], cloned: [[String: Any]]) {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        guard let url = URL(string: "\(Constants.baseURL)/api/tts/voices") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch voices")
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let responseData = json["data"] as? [String: Any] else {
+            throw APIError.decodingError
+        }
+
+        // Parse builtin voices
+        var builtinVoices: [TTSVoice] = []
+        if let builtin = responseData["builtin"] as? [[String: Any]] {
+            for voice in builtin {
+                if let id = voice["id"] as? String,
+                   let name = voice["name"] as? String,
+                   let gender = voice["gender"] as? String {
+                    builtinVoices.append(TTSVoice(id: id, name: name, gender: gender))
+                }
+            }
+        }
+
+        // Parse cloned voices (keep as dictionary for flexibility)
+        let clonedVoices = responseData["cloned"] as? [[String: Any]] ?? []
+
+        return (builtinVoices, clonedVoices)
+    }
+
+    /// Get TTS service status
+    func getTTSStatus() async throws -> [String: Any] {
+        guard let token = await TokenManager.shared.getValidToken() else {
+            throw APIError.unauthorized
+        }
+
+        guard let url = URL(string: "\(Constants.baseURL)/api/tts/status") else {
+            throw APIError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw APIError.serverError("Invalid response")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw APIError.serverError("Failed to fetch TTS status")
+        }
+
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let responseData = json["data"] as? [String: Any] else {
+            throw APIError.decodingError
+        }
+
+        return responseData
+    }
 }
 
 // MARK: - Device Fingerprint

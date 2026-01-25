@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { useNotesStore } from '@/store/notesStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { notesApi, aiApi } from '@/lib/api';
+import { notesApi, aiApi, ttsApi } from '@/lib/api';
 import {
   ArrowLeft,
   FileText,
@@ -26,11 +26,25 @@ import {
   Image as ImageIcon,
   Download,
   ZoomIn,
-  X
+  X,
+  Mic,
+  Play,
+  Pause,
+  Square
 } from 'lucide-react';
 import type { Note, ChatMessage, QuizQuestion, FlashcardContent, InfographicContent } from '@/types';
 
-type TabType = 'notes' | 'chat' | 'quiz' | 'flashcards' | 'infographic' | 'podcast';
+type TabType = 'notes' | 'chat' | 'quiz' | 'flashcards' | 'infographic' | 'podcast' | 'tts';
+
+// Voice options for TTS
+const TTS_VOICES = [
+  { id: 'rachel', name: 'Rachel', gender: 'female' },
+  { id: 'bella', name: 'Bella', gender: 'female' },
+  { id: 'sarah', name: 'Sarah', gender: 'female' },
+  { id: 'adam', name: 'Adam', gender: 'male' },
+  { id: 'josh', name: 'Josh', gender: 'male' },
+  { id: 'brian', name: 'Brian', gender: 'male' },
+];
 
 export default function NoteDetailPage() {
   const params = useParams();
@@ -78,6 +92,14 @@ export default function NoteDetailPage() {
   const [selectedStyle, setSelectedStyle] = useState<string>('modern');
   const [showFullscreenInfographic, setShowFullscreenInfographic] = useState(false);
 
+  // TTS state
+  const [ttsAudioUrl, setTtsAudioUrl] = useState<string | null>(null);
+  const [isGeneratingTts, setIsGeneratingTts] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState<string>('rachel');
+  const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
+  const [isPlayingTts, setIsPlayingTts] = useState(false);
+  const [ttsAudioRef, setTtsAudioRef] = useState<HTMLAudioElement | null>(null);
+
   // Track last fetch time to force re-fetch when navigating back
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
@@ -101,6 +123,13 @@ export default function NoteDetailPage() {
     setPodcastUrl(null);
     // Reset infographic state
     setInfographicUrl(null);
+    // Reset TTS state
+    setTtsAudioUrl(null);
+    if (ttsAudioRef) {
+      ttsAudioRef.pause();
+      setTtsAudioRef(null);
+    }
+    setIsPlayingTts(false);
     // Reset chat state
     setChatMessages([]);
     setChatInput('');
@@ -542,6 +571,7 @@ export default function NoteDetailPage() {
     { id: 'flashcards' as TabType, label: 'Flashcards', icon: Layers },
     { id: 'infographic' as TabType, label: 'Infographic', icon: ImageIcon },
     { id: 'podcast' as TabType, label: 'Podcast', icon: Radio },
+    { id: 'tts' as TabType, label: 'Read Aloud', icon: Mic },
   ];
 
   // Infographic handlers
@@ -595,6 +625,87 @@ export default function NoteDetailPage() {
     { value: 'minimal', label: 'Minimal' },
     { value: 'professional', label: 'Professional' },
   ];
+
+  // TTS handlers
+  const handleGenerateTts = async () => {
+    if (!token || isGeneratingTts || !currentNote) return;
+
+    setIsGeneratingTts(true);
+    setError(null);
+
+    // Stop any existing audio
+    if (ttsAudioRef) {
+      ttsAudioRef.pause();
+      URL.revokeObjectURL(ttsAudioRef.src);
+      setTtsAudioRef(null);
+      setIsPlayingTts(false);
+    }
+
+    try {
+      const textToSpeak = currentNote.formatted_content || currentNote.content;
+      console.log('Generating TTS for text length:', textToSpeak.length, 'voice:', selectedVoice, 'speed:', ttsSpeed);
+
+      const audioBlob = await ttsApi.synthesize(token, textToSpeak, {
+        voice: selectedVoice,
+        speed: ttsSpeed,
+      });
+
+      // Create URL from blob
+      const audioUrl = URL.createObjectURL(audioBlob);
+      setTtsAudioUrl(audioUrl);
+
+      // Create audio element
+      const audio = new Audio(audioUrl);
+      audio.playbackRate = ttsSpeed;
+
+      audio.onended = () => {
+        setIsPlayingTts(false);
+      };
+
+      audio.onerror = () => {
+        setError('Failed to play audio');
+        setIsPlayingTts(false);
+      };
+
+      setTtsAudioRef(audio);
+    } catch (err) {
+      console.error('TTS generation error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to generate speech');
+    } finally {
+      setIsGeneratingTts(false);
+    }
+  };
+
+  const handlePlayPauseTts = () => {
+    if (!ttsAudioRef) return;
+
+    if (isPlayingTts) {
+      ttsAudioRef.pause();
+      setIsPlayingTts(false);
+    } else {
+      ttsAudioRef.play();
+      setIsPlayingTts(true);
+    }
+  };
+
+  const handleStopTts = () => {
+    if (ttsAudioRef) {
+      ttsAudioRef.pause();
+      ttsAudioRef.currentTime = 0;
+      setIsPlayingTts(false);
+    }
+  };
+
+  const handleDownloadTts = () => {
+    if (!ttsAudioUrl) return;
+
+    const a = document.createElement('a');
+    a.href = ttsAudioUrl;
+    a.download = `${currentNote?.title || 'note'}-audio.mp3`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   if (isLoading) {
     return (
@@ -1145,6 +1256,148 @@ export default function NoteDetailPage() {
                     </>
                   )}
                 </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TTS (Read Aloud) Tab */}
+        {activeTab === 'tts' && (
+          <div>
+            {!ttsAudioUrl ? (
+              <div className="text-center py-8">
+                <Mic className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)] opacity-50" />
+                <p className="text-[var(--text-muted)] mb-4">Convert your notes to speech with AI voices</p>
+
+                {/* Voice selector */}
+                <div className="max-w-sm mx-auto mb-6">
+                  <label className="block text-sm text-[var(--text-muted)] mb-2">Voice</label>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {TTS_VOICES.map((voice) => (
+                      <button
+                        key={voice.id}
+                        onClick={() => setSelectedVoice(voice.id)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                          selectedVoice === voice.id
+                            ? 'bg-[var(--accent-purple)] text-white'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                        }`}
+                      >
+                        {voice.name}
+                        <span className="ml-1 text-xs opacity-70">({voice.gender})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Speed selector */}
+                <div className="max-w-xs mx-auto mb-6">
+                  <label className="block text-sm text-[var(--text-muted)] mb-2">
+                    Speed: {ttsSpeed}x
+                  </label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.25"
+                    value={ttsSpeed}
+                    onChange={(e) => setTtsSpeed(parseFloat(e.target.value))}
+                    className="w-full accent-[var(--accent-purple)]"
+                  />
+                  <div className="flex justify-between text-xs text-[var(--text-muted)] mt-1">
+                    <span>0.5x</span>
+                    <span>1x</span>
+                    <span>1.5x</span>
+                    <span>2x</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleGenerateTts}
+                  disabled={isGeneratingTts}
+                  className="btn-primary"
+                >
+                  {isGeneratingTts ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      Generating Audio...
+                    </>
+                  ) : (
+                    <>
+                      <Volume2 className="w-5 h-5 mr-2" />
+                      Generate Audio
+                    </>
+                  )}
+                </button>
+
+                <p className="text-xs text-[var(--text-muted)] mt-4">
+                  This will generate audio for the entire note content
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-[var(--accent-purple)] flex items-center justify-center">
+                  <Volume2 className="w-12 h-12" />
+                </div>
+                <h3 className="text-lg font-medium mb-2">Audio Ready</h3>
+                <p className="text-sm text-[var(--text-muted)] mb-6">
+                  Voice: {TTS_VOICES.find(v => v.id === selectedVoice)?.name || selectedVoice} • Speed: {ttsSpeed}x
+                </p>
+
+                {/* Audio controls */}
+                <div className="flex items-center justify-center gap-4 mb-6">
+                  <button
+                    onClick={handleStopTts}
+                    className="p-3 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-background)] transition"
+                    title="Stop"
+                  >
+                    <Square size={24} />
+                  </button>
+                  <button
+                    onClick={handlePlayPauseTts}
+                    className="p-4 rounded-full bg-[var(--accent-purple)] hover:opacity-90 transition"
+                    title={isPlayingTts ? 'Pause' : 'Play'}
+                  >
+                    {isPlayingTts ? <Pause size={32} /> : <Play size={32} />}
+                  </button>
+                  <button
+                    onClick={handleDownloadTts}
+                    className="p-3 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-background)] transition"
+                    title="Download"
+                  >
+                    <Download size={24} />
+                  </button>
+                </div>
+
+                {/* Native audio element for additional controls */}
+                <audio
+                  controls
+                  src={ttsAudioUrl}
+                  className="w-full max-w-md mx-auto mb-4"
+                  onPlay={() => setIsPlayingTts(true)}
+                  onPause={() => setIsPlayingTts(false)}
+                  onEnded={() => setIsPlayingTts(false)}
+                />
+
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={handleGenerateTts}
+                    disabled={isGeneratingTts}
+                    className="btn-secondary flex items-center gap-2"
+                  >
+                    {isGeneratingTts ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <RotateCcw size={18} />
+                        Regenerate
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
           </div>

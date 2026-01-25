@@ -609,4 +609,129 @@ export const meetingsApi = {
   },
 };
 
-export default { authApi, notesApi, aiApi, creatorsApi, subscriptionApi, meetingsApi };
+// TTS API
+export const ttsApi = {
+  // Synthesize text to speech
+  synthesize: async (token: string, text: string, options?: {
+    voice?: string;
+    speed?: number;
+    clonedVoiceId?: string;
+    provider?: 'listenai' | 'openai';
+  }) => {
+    const response = await fetch(`${API_BASE_URL}/api/tts/synthesize`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        voice: options?.voice || 'rachel',
+        speed: options?.speed || 1.0,
+        cloned_voice_id: options?.clonedVoiceId,
+        provider: options?.provider,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'TTS failed' }));
+      throw new Error(error.error || 'Failed to generate speech');
+    }
+
+    // Return audio blob
+    return response.blob();
+  },
+
+  // Get available voices
+  getVoices: async (token: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        builtin: Array<{
+          id: string;
+          name: string;
+          gender: string;
+          provider: string;
+        }>;
+        cloned: Array<{
+          id: string;
+          name: string;
+          audio_url: string;
+          duration: number;
+          created_at: string;
+        }>;
+      };
+    }>('/api/tts/voices', { token });
+  },
+
+  // Get TTS service status
+  getStatus: async (token: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: {
+        listenai: { healthy: boolean; url: string };
+        openai: { configured: boolean };
+        voiceCount: number;
+      };
+    }>('/api/tts/status', { token });
+  },
+
+  // Create a cloned voice
+  createClonedVoice: async (token: string, name: string, audioFile: File) => {
+    const formData = new FormData();
+    formData.append('name', name);
+    formData.append('audio', audioFile);
+
+    const response = await fetch(`${API_BASE_URL}/api/tts/cloned-voices`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Failed to create voice' }));
+      throw new Error(error.error || 'Failed to create cloned voice');
+    }
+
+    return response.json() as Promise<{
+      success: boolean;
+      data: {
+        id: string;
+        name: string;
+        audio_url: string;
+        duration: number;
+        status: string;
+      };
+    }>;
+  },
+
+  // Get user's cloned voices
+  getClonedVoices: async (token: string) => {
+    return apiRequest<{
+      success: boolean;
+      data: Array<{
+        id: string;
+        name: string;
+        audio_url: string;
+        duration: number;
+        status: string;
+        created_at: string;
+      }>;
+    }>('/api/tts/cloned-voices', { token });
+  },
+
+  // Delete a cloned voice
+  deleteClonedVoice: async (token: string, voiceId: string) => {
+    return apiRequest<{
+      success: boolean;
+      message: string;
+    }>(`/api/tts/cloned-voices/${voiceId}`, {
+      method: 'DELETE',
+      token,
+    });
+  },
+};
+
+export default { authApi, notesApi, aiApi, creatorsApi, subscriptionApi, meetingsApi, ttsApi };

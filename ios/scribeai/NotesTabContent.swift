@@ -8,6 +8,7 @@
 //
 
 import SwiftUI
+import AVFoundation
 
 struct NotesTabContent: View {
     let note: Note
@@ -18,6 +19,16 @@ struct NotesTabContent: View {
     @State private var isGeneratingSummary = false
     @State private var currentNote: Note
     @State private var isCheckingFormatting = false
+
+    // TTS State
+    @State private var showTTS = false
+    @State private var isGeneratingTTS = false
+    @State private var ttsAudioPlayer: AVAudioPlayer?
+    @State private var ttsAudioData: Data?
+    @State private var isPlayingTTS = false
+    @State private var selectedVoice = "rachel"
+    @State private var ttsSpeed: Double = 1.0
+    @State private var ttsError: String?
 
     init(note: Note) {
         self.note = note
@@ -96,6 +107,11 @@ struct NotesTabContent: View {
 
                 // Summary Section (Collapsible)
                 summarySection
+                    .padding(.horizontal)
+                    .padding(.bottom, 12)
+
+                // TTS Section (Collapsible)
+                ttsSection
                     .padding(.horizontal)
                     .padding(.bottom, 12)
 
@@ -398,6 +414,266 @@ struct NotesTabContent: View {
                     print("❌ Error generating summary: \(error)")
                 }
             }
+        }
+    }
+
+    // MARK: - TTS Section
+
+    private var ttsSection: some View {
+        VStack(spacing: 0) {
+            // TTS header/toggle button
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showTTS.toggle()
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.system(size: 14))
+                        .foregroundColor(.purple80)
+
+                    Text("Read Aloud")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.purple80)
+
+                    if ttsAudioData != nil {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.accentGreen)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: showTTS ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.textSecondary)
+                }
+                .padding(12)
+                .background(Color.cardBackground)
+                .cornerRadius(10)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.purple80.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(PlainButtonStyle())
+
+            // Expanded TTS content
+            if showTTS {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Voice selection
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Voice")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.textSecondary)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(APIService.ttsVoices, id: \.id) { voice in
+                                    Button {
+                                        selectedVoice = voice.id
+                                    } label: {
+                                        VStack(spacing: 4) {
+                                            Text(voice.name)
+                                                .font(.system(size: 13, weight: .medium))
+                                            Text(voice.gender)
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.textSecondary)
+                                        }
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(selectedVoice == voice.id ? Color.purple80 : Color.darkSurfaceVariant)
+                                        .foregroundColor(selectedVoice == voice.id ? .white : .textPrimary)
+                                        .cornerRadius(8)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Speed slider
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Speed")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.textSecondary)
+                            Spacer()
+                            Text(String(format: "%.1fx", ttsSpeed))
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.purple80)
+                        }
+
+                        Slider(value: $ttsSpeed, in: 0.5...2.0, step: 0.25)
+                            .accentColor(.purple80)
+                    }
+
+                    // Error message
+                    if let error = ttsError {
+                        Text(error)
+                            .font(.system(size: 12))
+                            .foregroundColor(.red)
+                            .padding(8)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(6)
+                    }
+
+                    // Generate / Play controls
+                    if isGeneratingTTS {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("Generating audio...")
+                                .font(.system(size: 13))
+                                .foregroundColor(.textSecondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .center)
+                        .padding(.vertical, 12)
+                    } else if ttsAudioData != nil {
+                        // Audio player controls
+                        HStack(spacing: 16) {
+                            Button {
+                                stopTTS()
+                            } label: {
+                                Image(systemName: "stop.fill")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.textSecondary)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.darkSurfaceVariant)
+                                    .cornerRadius(22)
+                            }
+
+                            Button {
+                                togglePlayTTS()
+                            } label: {
+                                Image(systemName: isPlayingTTS ? "pause.fill" : "play.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .frame(width: 56, height: 56)
+                                    .background(Color.purple80)
+                                    .cornerRadius(28)
+                            }
+
+                            Button {
+                                generateTTS()
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 16))
+                                    .foregroundColor(.textSecondary)
+                                    .frame(width: 44, height: 44)
+                                    .background(Color.darkSurfaceVariant)
+                                    .cornerRadius(22)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    } else {
+                        // Generate button
+                        Button {
+                            generateTTS()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .font(.system(size: 12))
+                                Text("Generate Audio")
+                                    .font(.system(size: 13, weight: .medium))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+                            .background(Color.purple80)
+                            .cornerRadius(8)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+
+                    Text("Convert your notes to speech using AI voices")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textTertiary)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+                .padding(12)
+                .background(Color.cardBackground.opacity(0.5))
+                .cornerRadius(10)
+                .padding(.top, 8)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    // MARK: - TTS Functions
+
+    private func generateTTS() {
+        ttsError = nil
+        isGeneratingTTS = true
+        stopTTS()
+
+        Task {
+            do {
+                let textToSpeak = currentNote.displayContent
+                print("🔊 Generating TTS for \(textToSpeak.count) characters")
+
+                let audioData = try await APIService.shared.synthesizeSpeech(
+                    text: textToSpeak,
+                    voice: selectedVoice,
+                    speed: ttsSpeed
+                )
+
+                await MainActor.run {
+                    self.ttsAudioData = audioData
+                    self.isGeneratingTTS = false
+
+                    // Setup audio player
+                    do {
+                        try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
+                        try AVAudioSession.sharedInstance().setActive(true)
+
+                        self.ttsAudioPlayer = try AVAudioPlayer(data: audioData)
+                        self.ttsAudioPlayer?.delegate = TTSAudioDelegate.shared
+                        TTSAudioDelegate.shared.onFinish = {
+                            self.isPlayingTTS = false
+                        }
+                    } catch {
+                        print("❌ Error setting up audio player: \(error)")
+                        self.ttsError = "Failed to setup audio player"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    self.isGeneratingTTS = false
+                    self.ttsError = error.localizedDescription
+                    print("❌ Error generating TTS: \(error)")
+                }
+            }
+        }
+    }
+
+    private func togglePlayTTS() {
+        guard let player = ttsAudioPlayer else { return }
+
+        if isPlayingTTS {
+            player.pause()
+            isPlayingTTS = false
+        } else {
+            player.play()
+            isPlayingTTS = true
+        }
+    }
+
+    private func stopTTS() {
+        ttsAudioPlayer?.stop()
+        ttsAudioPlayer?.currentTime = 0
+        isPlayingTTS = false
+    }
+}
+
+// MARK: - TTS Audio Delegate
+
+class TTSAudioDelegate: NSObject, AVAudioPlayerDelegate {
+    static let shared = TTSAudioDelegate()
+    var onFinish: (() -> Void)?
+
+    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        DispatchQueue.main.async {
+            self.onFinish?()
         }
     }
 }

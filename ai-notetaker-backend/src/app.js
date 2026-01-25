@@ -30,6 +30,7 @@ const authRoutes = require('./routes/auth');
 const creatorsRoutes = require('./routes/creators');
 const meetingsRoutes = require('./routes/meetings');
 const outreachRoutes = require('./routes/outreach');
+const ttsRoutes = require('./routes/tts');
 const { createJobRoutes, initializeCronJobs } = require('./jobs/creatorPayoutJobs');
 
 const app = express();
@@ -247,6 +248,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/creators', creatorsRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/outreach', outreachRoutes);
+app.use('/api/tts', ttsRoutes);
 app.use('/api/jobs', createJobRoutes());
 
 // Initialize cron jobs (if node-cron is installed)

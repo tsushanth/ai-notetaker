@@ -29,6 +29,8 @@ struct NotesTabContent: View {
     @State private var selectedVoice = "rachel"
     @State private var ttsSpeed: Double = 1.0
     @State private var ttsError: String?
+    @State private var clonedVoices: [(id: String, name: String)] = []
+    @State private var isLoadingVoices = false
 
     init(note: Note) {
         self.note = note
@@ -426,6 +428,10 @@ struct NotesTabContent: View {
                 withAnimation(.easeInOut(duration: 0.2)) {
                     showTTS.toggle()
                 }
+                // Load cloned voices when expanding
+                if showTTS && clonedVoices.isEmpty && !isLoadingVoices {
+                    loadClonedVoices()
+                }
             } label: {
                 HStack {
                     Image(systemName: "speaker.wave.2.fill")
@@ -461,9 +467,9 @@ struct NotesTabContent: View {
             // Expanded TTS content
             if showTTS {
                 VStack(alignment: .leading, spacing: 16) {
-                    // Voice selection
+                    // Built-in Voice selection
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Voice")
+                        Text("Built-in Voices")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.textSecondary)
 
@@ -490,6 +496,51 @@ struct NotesTabContent: View {
                             }
                         }
                     }
+
+                    // Cloned Voices (if any)
+                    if !clonedVoices.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Your Cloned Voices")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundColor(.textSecondary)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(clonedVoices, id: \.id) { voice in
+                                        Button {
+                                            selectedVoice = voice.id
+                                        } label: {
+                                            HStack(spacing: 4) {
+                                                Image(systemName: "person.fill")
+                                                    .font(.system(size: 10))
+                                                Text(voice.name)
+                                                    .font(.system(size: 13, weight: .medium))
+                                            }
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                            .background(selectedVoice == voice.id ? Color.purple80 : Color.darkSurfaceVariant)
+                                            .foregroundColor(selectedVoice == voice.id ? .white : .textPrimary)
+                                            .cornerRadius(8)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if isLoadingVoices {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                            Text("Loading voices...")
+                                .font(.system(size: 12))
+                                .foregroundColor(.textSecondary)
+                        }
+                    }
+
+                    // Clone voice hint
+                    Text("Clone your voice via the web app at scribeai.app")
+                        .font(.system(size: 11))
+                        .foregroundColor(.textTertiary)
+                        .italic()
 
                     // Speed slider
                     VStack(alignment: .leading, spacing: 8) {
@@ -600,6 +651,32 @@ struct NotesTabContent: View {
     }
 
     // MARK: - TTS Functions
+
+    private func loadClonedVoices() {
+        isLoadingVoices = true
+
+        Task {
+            do {
+                let (_, cloned) = try await APIService.shared.getTTSVoices()
+
+                await MainActor.run {
+                    self.clonedVoices = cloned.compactMap { voice in
+                        guard let id = voice["id"] as? String,
+                              let name = voice["name"] as? String else {
+                            return nil
+                        }
+                        return (id: id, name: name)
+                    }
+                    self.isLoadingVoices = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.isLoadingVoices = false
+                    print("❌ Error loading cloned voices: \(error)")
+                }
+            }
+        }
+    }
 
     private func generateTTS() {
         ttsError = nil

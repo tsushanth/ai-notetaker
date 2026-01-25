@@ -138,6 +138,9 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
   // Create a placeholder record IMMEDIATELY so status polling returns "generating"
   // This prevents the old podcast from being returned while new one is being created
   const { supabaseAdmin } = require('../config/supabase');
+
+  logger.info('Creating podcast placeholder...', { noteId: note_id, userId: req.userId });
+
   const placeholderResult = await supabaseAdmin
     .from('ai_content')
     .insert({
@@ -154,8 +157,33 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
     .select()
     .single();
 
+  if (placeholderResult.error) {
+    logger.error('Failed to create podcast placeholder', {
+      error: placeholderResult.error.message,
+      code: placeholderResult.error.code,
+      noteId: note_id
+    });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to start podcast generation'
+    });
+  }
+
   const placeholderId = placeholderResult.data?.id;
-  logger.info('Created podcast placeholder', { placeholderId, noteId: note_id });
+
+  if (!placeholderId) {
+    logger.error('Placeholder created but no ID returned', { noteId: note_id, result: placeholderResult });
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to create podcast placeholder'
+    });
+  }
+
+  logger.info('Created podcast placeholder successfully', {
+    placeholderId,
+    noteId: note_id,
+    createdAt: placeholderResult.data?.created_at
+  });
 
   // Return immediately with pending status
   res.json({
@@ -205,10 +233,13 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
 router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (req, res) => {
   const { note_id } = req.params;
 
+  logger.info('Checking podcast status', { noteId: note_id, userId: req.userId });
+
   // Get the most recent podcast for this note
   const content = await aiService.getLatestPodcastForNote(req.userId, note_id);
 
   if (!content) {
+    logger.info('No podcast content found', { noteId: note_id });
     return res.json({
       success: true,
       data: {
@@ -218,8 +249,17 @@ router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (
     });
   }
 
+  logger.info('Podcast status check result', {
+    noteId: note_id,
+    contentId: content.id,
+    contentStatus: content.content?.status,
+    hasAudioUrl: !!content.content?.audio_url,
+    createdAt: content.created_at
+  });
+
   // Check if it's still generating (placeholder record)
   if (content.content.status === 'generating') {
+    logger.info('Returning generating status', { noteId: note_id, contentId: content.id });
     return res.json({
       success: true,
       data: {
@@ -232,6 +272,7 @@ router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (
 
   // Check if generation failed
   if (content.content.status === 'failed') {
+    logger.info('Returning failed status', { noteId: note_id, contentId: content.id });
     return res.json({
       success: true,
       data: {
@@ -244,6 +285,7 @@ router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (
 
   // Check if it has audio (completed)
   if (content.content.audio_url) {
+    logger.info('Returning ready status with audio', { noteId: note_id, contentId: content.id, audioUrl: content.content.audio_url?.substring(0, 50) });
     return res.json({
       success: true,
       data: {
@@ -260,6 +302,7 @@ router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (
   }
 
   // Fallback - still generating (no audio yet, no explicit status)
+  logger.info('Returning fallback generating status', { noteId: note_id });
   return res.json({
     success: true,
     data: {

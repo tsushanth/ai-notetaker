@@ -747,6 +747,8 @@ router.get('/templates', authenticate, requireAdmin, asyncHandler(async (req, re
 
 <p>Would you be open to sharing it with your class? I can set up free access for everyone.</p>
 
+<p><a href="https://scribeai.online/screenshots/screenshot-1.jpg">See what it looks like →</a></p>
+
 <p>Students can download it here:</p>
 <ul>
   <li><a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iPhone/iPad App Store</a></li>

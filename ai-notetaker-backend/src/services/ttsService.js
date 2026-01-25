@@ -558,6 +558,117 @@ class TTSService {
       voiceCount: this.getVoices().length,
     };
   }
+
+  /**
+   * Generate TTS for a note and save to storage
+   */
+  async generateForNote(userId, noteId, options = {}) {
+    const { voice = 'rachel', speed = 1.0, clonedVoiceId } = options;
+
+    // Fetch the note content
+    const { data: note, error: noteError } = await supabaseAdmin
+      .from('notes')
+      .select('content, formatted_content, title')
+      .eq('id', noteId)
+      .eq('user_id', userId)
+      .single();
+
+    if (noteError || !note) {
+      throw new Error('Note not found');
+    }
+
+    const textToSpeak = note.formatted_content || note.content;
+    if (!textToSpeak || textToSpeak.length === 0) {
+      throw new Error('Note has no content');
+    }
+
+    // Generate the audio
+    const audioBuffer = await this.synthesize(textToSpeak, {
+      voice,
+      speed,
+      clonedVoiceId,
+    });
+
+    // Upload to Supabase storage
+    const fileName = `tts/${userId}/${noteId}-${Date.now()}.mp3`;
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from('audio')
+      .upload(fileName, audioBuffer, {
+        contentType: 'audio/mpeg',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(`Failed to upload audio: ${uploadError.message}`);
+    }
+
+    // Get public URL
+    const { data: urlData } = supabaseAdmin.storage
+      .from('audio')
+      .getPublicUrl(fileName);
+
+    const audioUrl = urlData.publicUrl;
+
+    // Estimate duration (rough: ~150 words per minute, ~5 chars per word)
+    const estimatedDuration = Math.ceil((textToSpeak.length / 5) / 150 * 60);
+
+    // Save to ai_content table
+    const { error: dbError } = await supabaseAdmin
+      .from('ai_content')
+      .upsert({
+        note_id: noteId,
+        user_id: userId,
+        content_type: 'tts',
+        content: {
+          audio_url: audioUrl,
+          voice: clonedVoiceId || voice,
+          speed,
+          duration_seconds: estimatedDuration,
+          text_length: textToSpeak.length,
+        },
+        created_at: new Date().toISOString(),
+      }, {
+        onConflict: 'note_id,content_type',
+      });
+
+    if (dbError) {
+      logger.warn('Failed to save TTS to ai_content', { error: dbError.message });
+    }
+
+    return {
+      audio_url: audioUrl,
+      voice: clonedVoiceId || voice,
+      speed,
+      duration_seconds: estimatedDuration,
+    };
+  }
+
+  /**
+   * Get saved TTS for a note
+   */
+  async getTTSForNote(userId, noteId) {
+    const { data, error } = await supabaseAdmin
+      .from('ai_content')
+      .select('content, created_at')
+      .eq('note_id', noteId)
+      .eq('user_id', userId)
+      .eq('content_type', 'tts')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data) {
+      return null;
+    }
+
+    return {
+      audio_url: data.content.audio_url,
+      voice: data.content.voice,
+      speed: data.content.speed,
+      duration_seconds: data.content.duration_seconds,
+      created_at: data.created_at,
+    };
+  }
 }
 
 module.exports = new TTSService();

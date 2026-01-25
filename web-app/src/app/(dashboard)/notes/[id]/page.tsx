@@ -216,6 +216,17 @@ export default function NoteDetailPage() {
             console.log('[NoteDetail] Infographic URL:', imageUrl);
             if (imageUrl) setInfographicUrl(imageUrl);
           }
+          // TTS - handle both camelCase and snake_case
+          if (content.tts) {
+            console.log('[NoteDetail] Has TTS content');
+            const audioUrl = content.tts.audio_url || content.tts.audioUrl;
+            console.log('[NoteDetail] TTS URL:', audioUrl);
+            if (audioUrl) {
+              setTtsAudioUrl(audioUrl);
+              setSelectedVoice(content.tts.voice || 'rachel');
+              setTtsSpeed(content.tts.speed || 1.0);
+            }
+          }
         }
       } catch {
         // AI content might not exist yet
@@ -647,38 +658,38 @@ export default function NoteDetailPage() {
     // Stop any existing audio
     if (ttsAudioRef) {
       ttsAudioRef.pause();
-      URL.revokeObjectURL(ttsAudioRef.src);
       setTtsAudioRef(null);
       setIsPlayingTts(false);
     }
 
     try {
-      const textToSpeak = currentNote.formatted_content || currentNote.content;
-      console.log('Generating TTS for text length:', textToSpeak.length, 'voice:', selectedVoice, 'speed:', ttsSpeed);
+      console.log('Generating TTS for note:', noteId, 'voice:', selectedVoice, 'speed:', ttsSpeed);
 
-      const audioBlob = await ttsApi.synthesize(token, textToSpeak, {
+      // Use the new API that saves to storage
+      const response = await ttsApi.generateForNote(token, noteId, {
         voice: selectedVoice,
         speed: ttsSpeed,
+        clonedVoiceId: clonedVoices.find(v => v.id === selectedVoice) ? selectedVoice : undefined,
       });
 
-      // Create URL from blob
-      const audioUrl = URL.createObjectURL(audioBlob);
-      setTtsAudioUrl(audioUrl);
+      if (response.success && response.data) {
+        setTtsAudioUrl(response.data.audio_url);
 
-      // Create audio element
-      const audio = new Audio(audioUrl);
-      audio.playbackRate = ttsSpeed;
+        // Create audio element for playback controls
+        const audio = new Audio(response.data.audio_url);
+        audio.playbackRate = ttsSpeed;
 
-      audio.onended = () => {
-        setIsPlayingTts(false);
-      };
+        audio.onended = () => {
+          setIsPlayingTts(false);
+        };
 
-      audio.onerror = () => {
-        setError('Failed to play audio');
-        setIsPlayingTts(false);
-      };
+        audio.onerror = () => {
+          setError('Failed to play audio');
+          setIsPlayingTts(false);
+        };
 
-      setTtsAudioRef(audio);
+        setTtsAudioRef(audio);
+      }
     } catch (err) {
       console.error('TTS generation error:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate speech');

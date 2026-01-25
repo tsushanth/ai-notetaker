@@ -37,7 +37,7 @@ const upload = multer({
 
 /**
  * POST /api/tts/synthesize
- * Synthesize text to speech
+ * Synthesize text to speech (returns audio directly, not saved)
  */
 router.post('/synthesize', authenticate, asyncHandler(async (req, res) => {
   const {
@@ -81,6 +81,93 @@ router.post('/synthesize', authenticate, asyncHandler(async (req, res) => {
     res.send(audioBuffer);
   } catch (error) {
     logger.error('TTS synthesis error', { error: error.message, userId: req.user.id });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+}));
+
+/**
+ * POST /api/tts/generate
+ * Generate TTS for a note and save to storage (like podcast)
+ */
+router.post('/generate', authenticate, asyncHandler(async (req, res) => {
+  const {
+    note_id,
+    voice = 'rachel',
+    speed = 1.0,
+    cloned_voice_id,
+  } = req.body;
+
+  if (!note_id) {
+    return res.status(400).json({
+      success: false,
+      error: 'note_id is required',
+    });
+  }
+
+  try {
+    const result = await ttsService.generateForNote(req.user.id, note_id, {
+      voice,
+      speed: parseFloat(speed),
+      clonedVoiceId: cloned_voice_id,
+    });
+
+    logger.info('TTS generated for note', {
+      userId: req.user.id,
+      noteId: note_id,
+      voice,
+      audioUrl: result.audio_url,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        audio_url: result.audio_url,
+        voice: result.voice,
+        speed: result.speed,
+        duration_seconds: result.duration_seconds,
+      },
+    });
+  } catch (error) {
+    logger.error('TTS generation error', { error: error.message, userId: req.user.id, noteId: note_id });
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+}));
+
+/**
+ * GET /api/tts/note/:noteId
+ * Get saved TTS for a note
+ */
+router.get('/note/:noteId', authenticate, asyncHandler(async (req, res) => {
+  const { noteId } = req.params;
+
+  try {
+    const tts = await ttsService.getTTSForNote(req.user.id, noteId);
+
+    if (!tts) {
+      return res.json({
+        success: true,
+        data: null,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        audio_url: tts.audio_url,
+        voice: tts.voice,
+        speed: tts.speed,
+        duration_seconds: tts.duration_seconds,
+        created_at: tts.created_at,
+      },
+    });
+  } catch (error) {
+    logger.error('Error fetching TTS for note', { error: error.message, noteId });
     res.status(500).json({
       success: false,
       error: error.message,

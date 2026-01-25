@@ -13,7 +13,7 @@ struct PodcastTabContent: View {
     @State private var showRegenerateConfirmation = false
     @State private var showPaywall = false
     @State private var selectedDuration: String = "short"
-    @State private var selectedVoice: PodcastVoice = .female
+    @State private var selectedVoice: PodcastVoice = .sarah
     @State private var specialInstructions: String = ""
     @State private var showInstructionsField = false
     @FocusState private var isInstructionsFocused: Bool
@@ -33,22 +33,31 @@ struct PodcastTabContent: View {
         ("long", "Long", "15-20 min")
     ]
 
-    // Voice options
+    // Voice options - matches TTS voices with human names
     enum PodcastVoice: String, CaseIterable {
-        case female = "nova"
-        case male = "onyx"
+        case sarah = "nova"
+        case emily = "shimmer"
+        case alex = "alloy"
+        case james = "echo"
+        case daniel = "fable"
+        case marcus = "onyx"
 
         var displayName: String {
             switch self {
-            case .female: return "Female"
-            case .male: return "Male"
+            case .sarah: return "Sarah"
+            case .emily: return "Emily"
+            case .alex: return "Alex"
+            case .james: return "James"
+            case .daniel: return "Daniel"
+            case .marcus: return "Marcus"
             }
         }
 
-        var icon: String {
+        var genderLabel: String {
             switch self {
-            case .female: return "figure.stand.dress"
-            case .male: return "figure.stand"
+            case .sarah, .emily: return "Female"
+            case .alex: return "Neutral"
+            case .james, .daniel, .marcus: return "Male"
             }
         }
     }
@@ -325,19 +334,21 @@ struct PodcastTabContent: View {
                                 Image(systemName: "person.wave.2")
                                     .font(.system(size: 14))
                                     .foregroundColor(.textSecondary)
-                                Text("Voice")
+                                Text("Narrator Voice")
                                     .font(.system(size: 15, weight: .medium))
                                     .foregroundColor(.textPrimary)
                             }
 
-                            // Voice options as horizontal buttons
-                            HStack(spacing: 12) {
-                                ForEach(PodcastVoice.allCases, id: \.rawValue) { voice in
-                                    VoiceOptionButton(
-                                        voice: voice,
-                                        isSelected: selectedVoice == voice
-                                    ) {
-                                        selectedVoice = voice
+                            // Voice options as scrollable buttons
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    ForEach(PodcastVoice.allCases, id: \.rawValue) { voice in
+                                        VoiceOptionButton(
+                                            voice: voice,
+                                            isSelected: selectedVoice == voice
+                                        ) {
+                                            selectedVoice = voice
+                                        }
                                     }
                                 }
                             }
@@ -914,22 +925,22 @@ struct VoiceOptionButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: voice.icon)
-                    .font(.system(size: 20))
-                    .foregroundColor(isSelected ? .purple80 : .textSecondary)
-
+            VStack(spacing: 2) {
                 Text(voice.displayName)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(isSelected ? .purple80 : .textPrimary)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(isSelected ? .white : .textPrimary)
+
+                Text(voice.genderLabel)
+                    .font(.system(size: 10))
+                    .foregroundColor(isSelected ? .white.opacity(0.7) : .textTertiary)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
-            .background(isSelected ? Color.purple80.opacity(0.15) : Color.cardBackground)
-            .cornerRadius(12)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .background(isSelected ? Color.purple80 : Color.cardBackground)
+            .cornerRadius(8)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.purple80 : Color.clear, lineWidth: 2)
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isSelected ? Color.clear : Color.darkSurfaceVariant, lineWidth: 1)
             )
         }
         .buttonStyle(PlainButtonStyle())

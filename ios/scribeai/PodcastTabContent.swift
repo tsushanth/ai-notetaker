@@ -13,6 +13,7 @@ struct PodcastTabContent: View {
     @State private var showRegenerateConfirmation = false
     @State private var showPaywall = false
     @State private var selectedDuration: String = "short"
+    @State private var selectedGender: VoiceGender = .female
     @State private var selectedVoice: PodcastVoice = .sarah
     @State private var specialInstructions: String = ""
     @State private var showInstructionsField = false
@@ -33,11 +34,37 @@ struct PodcastTabContent: View {
         ("long", "Long", "15-20 min")
     ]
 
+    // Gender options for narrator
+    enum VoiceGender: String, CaseIterable {
+        case female = "female"
+        case male = "male"
+
+        var displayName: String {
+            switch self {
+            case .female: return "Female"
+            case .male: return "Male"
+            }
+        }
+
+        var voices: [PodcastVoice] {
+            switch self {
+            case .female: return [.sarah, .emily]
+            case .male: return [.james, .daniel, .marcus]
+            }
+        }
+
+        var defaultVoice: PodcastVoice {
+            switch self {
+            case .female: return .sarah
+            case .male: return .james
+            }
+        }
+    }
+
     // Voice options - matches TTS voices with human names
     enum PodcastVoice: String, CaseIterable {
         case sarah = "nova"
         case emily = "shimmer"
-        case alex = "alloy"
         case james = "echo"
         case daniel = "fable"
         case marcus = "onyx"
@@ -46,18 +73,16 @@ struct PodcastTabContent: View {
             switch self {
             case .sarah: return "Sarah"
             case .emily: return "Emily"
-            case .alex: return "Alex"
             case .james: return "James"
             case .daniel: return "Daniel"
             case .marcus: return "Marcus"
             }
         }
 
-        var genderLabel: String {
+        var gender: VoiceGender {
             switch self {
-            case .sarah, .emily: return "Female"
-            case .alex: return "Neutral"
-            case .james, .daniel, .marcus: return "Male"
+            case .sarah, .emily: return .female
+            case .james, .daniel, .marcus: return .male
             }
         }
     }
@@ -339,18 +364,51 @@ struct PodcastTabContent: View {
                                     .foregroundColor(.textPrimary)
                             }
 
-                            // Voice options as scrollable buttons
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(PodcastVoice.allCases, id: \.rawValue) { voice in
-                                        VoiceOptionButton(
-                                            voice: voice,
-                                            isSelected: selectedVoice == voice
-                                        ) {
-                                            selectedVoice = voice
+                            // Gender selection buttons
+                            HStack(spacing: 12) {
+                                ForEach(VoiceGender.allCases, id: \.rawValue) { gender in
+                                    GenderOptionButton(
+                                        gender: gender,
+                                        isSelected: selectedGender == gender
+                                    ) {
+                                        selectedGender = gender
+                                        selectedVoice = gender.defaultVoice
+                                    }
+                                }
+                            }
+
+                            // Voice dropdown for selected gender
+                            Menu {
+                                ForEach(selectedGender.voices, id: \.rawValue) { voice in
+                                    Button(action: {
+                                        selectedVoice = voice
+                                    }) {
+                                        HStack {
+                                            Text(voice.displayName)
+                                            if selectedVoice == voice {
+                                                Image(systemName: "checkmark")
+                                            }
                                         }
                                     }
                                 }
+                            } label: {
+                                HStack {
+                                    Text(selectedVoice.displayName)
+                                        .font(.system(size: 15, weight: .medium))
+                                        .foregroundColor(.textPrimary)
+                                    Spacer()
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.textSecondary)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .background(Color.cardBackground)
+                                .cornerRadius(12)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(Color.darkSurfaceVariant, lineWidth: 1)
+                                )
                             }
                         }
                         .padding(.horizontal, 20)
@@ -916,31 +974,29 @@ struct DurationOptionButton: View {
     }
 }
 
-// MARK: - Voice Option Button
+// MARK: - Gender Option Button
 
-struct VoiceOptionButton: View {
-    let voice: PodcastTabContent.PodcastVoice
+struct GenderOptionButton: View {
+    let gender: PodcastTabContent.VoiceGender
     let isSelected: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 2) {
-                Text(voice.displayName)
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundColor(isSelected ? .white : .textPrimary)
-
-                Text(voice.genderLabel)
-                    .font(.system(size: 10))
-                    .foregroundColor(isSelected ? .white.opacity(0.7) : .textTertiary)
+            HStack(spacing: 8) {
+                Image(systemName: gender == .female ? "person.fill" : "person.fill")
+                    .font(.system(size: 14))
+                Text(gender.displayName)
+                    .font(.system(size: 15, weight: .semibold))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(isSelected ? Color.purple80 : Color.cardBackground)
-            .cornerRadius(8)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .foregroundColor(isSelected ? .purple80 : .textPrimary)
+            .background(isSelected ? Color.purple80.opacity(0.15) : Color.cardBackground)
+            .cornerRadius(12)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(isSelected ? Color.clear : Color.darkSurfaceVariant, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isSelected ? Color.purple80 : Color.darkSurfaceVariant, lineWidth: 2)
             )
         }
         .buttonStyle(PlainButtonStyle())

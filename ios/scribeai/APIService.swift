@@ -2732,14 +2732,14 @@ class APIService {
         let gender: String
     }
 
-    /// Available TTS voices (OpenAI)
+    /// Available TTS voices (OpenAI voices with friendly names)
     static let ttsVoices: [TTSVoice] = [
-        TTSVoice(id: "alloy", name: "Alloy", gender: "neutral"),
-        TTSVoice(id: "echo", name: "Echo", gender: "male"),
-        TTSVoice(id: "fable", name: "Fable", gender: "male"),
-        TTSVoice(id: "onyx", name: "Onyx", gender: "male"),
-        TTSVoice(id: "nova", name: "Nova", gender: "female"),
-        TTSVoice(id: "shimmer", name: "Shimmer", gender: "female"),
+        TTSVoice(id: "nova", name: "Sarah", gender: "Female"),
+        TTSVoice(id: "shimmer", name: "Emily", gender: "Female"),
+        TTSVoice(id: "alloy", name: "Alex", gender: "Neutral"),
+        TTSVoice(id: "echo", name: "James", gender: "Male"),
+        TTSVoice(id: "fable", name: "Daniel", gender: "Male"),
+        TTSVoice(id: "onyx", name: "Marcus", gender: "Male"),
     ]
 
     /// Synthesize text to speech and return audio data

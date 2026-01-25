@@ -2983,7 +2983,7 @@ class APIService {
 
         return TTSForNoteResponse(
             audioUrl: audioUrl,
-            voice: responseData["voice"] as? String ?? "rachel",
+            voice: responseData["voice"] as? String ?? "nova",
             speed: responseData["speed"] as? Double ?? 1.0,
             durationSeconds: responseData["duration_seconds"] as? Int ?? 0
         )

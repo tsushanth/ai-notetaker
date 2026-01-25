@@ -135,29 +135,64 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
   // Record usage
   await recordUsage(req.userId, 'podcast', { note_id });
 
+  // Create a placeholder record IMMEDIATELY so status polling returns "generating"
+  // This prevents the old podcast from being returned while new one is being created
+  const { supabaseAdmin } = require('../config/supabase');
+  const placeholderResult = await supabaseAdmin
+    .from('ai_content')
+    .insert({
+      note_id,
+      content_type: 'podcast',
+      content: {
+        status: 'generating',
+        duration: options?.duration || 'medium',
+        style: options?.style || 'conversational',
+        gender: options?.gender || 'female',
+        started_at: new Date().toISOString()
+      }
+    })
+    .select()
+    .single();
+
+  const placeholderId = placeholderResult.data?.id;
+  logger.info('Created podcast placeholder', { placeholderId, noteId: note_id });
+
   // Return immediately with pending status
   res.json({
     success: true,
     data: {
       note_id,
+      id: placeholderId,
       status: 'generating',
       message: 'Podcast generation started. Please wait 60-90 seconds.'
     }
   });
 
   // Generate in background (don't await)
-  aiService.generatePodcast(req.userId, note_id, options)
+  aiService.generatePodcastWithPlaceholder(req.userId, note_id, placeholderId, options)
     .then(result => {
       logger.info('Background podcast generation completed', {
         noteId: note_id,
         hasAudio: !!result.audio_url
       });
     })
-    .catch(error => {
+    .catch(async error => {
       logger.error('Background podcast generation failed', {
         error: error.message,
         noteId: note_id
       });
+      // Update placeholder with error status
+      if (placeholderId) {
+        await supabaseAdmin
+          .from('ai_content')
+          .update({
+            content: {
+              status: 'failed',
+              error: error.message
+            }
+          })
+          .eq('id', placeholderId);
+      }
     });
 }));
 
@@ -183,7 +218,31 @@ router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (
     });
   }
 
-  // Check if it has audio
+  // Check if it's still generating (placeholder record)
+  if (content.content.status === 'generating') {
+    return res.json({
+      success: true,
+      data: {
+        status: 'generating',
+        id: content.id,
+        message: 'Podcast is being generated...'
+      }
+    });
+  }
+
+  // Check if generation failed
+  if (content.content.status === 'failed') {
+    return res.json({
+      success: true,
+      data: {
+        status: 'failed',
+        id: content.id,
+        message: content.content.error || 'Podcast generation failed'
+      }
+    });
+  }
+
+  // Check if it has audio (completed)
   if (content.content.audio_url) {
     return res.json({
       success: true,
@@ -198,15 +257,16 @@ router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (
         created_at: content.created_at
       }
     });
-  } else {
-    return res.json({
-      success: true,
-      data: {
-        status: 'generating',
-        message: 'Podcast is still being generated'
-      }
-    });
   }
+
+  // Fallback - still generating (no audio yet, no explicit status)
+  return res.json({
+    success: true,
+    data: {
+      status: 'generating',
+      message: 'Podcast is still being generated'
+    }
+  });
 }));
 
 /**

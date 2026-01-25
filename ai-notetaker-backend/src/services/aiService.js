@@ -1150,10 +1150,20 @@ Style: Educational study material infographic, clean and modern`;
       if (error) {
         if (error.code === 'PGRST116') {
           // No rows returned
+          logger.info('No podcast found for note', { noteId });
           return null;
         }
         throw error;
       }
+
+      // Log what we're returning for debugging
+      logger.info('getLatestPodcastForNote returning', {
+        noteId,
+        podcastId: data?.id,
+        hasAudioUrl: !!data?.content?.audio_url,
+        status: data?.content?.status,
+        createdAt: data?.created_at
+      });
 
       return data;
     } catch (error) {

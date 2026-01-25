@@ -142,11 +142,11 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
   logger.info('Creating podcast placeholder...', { noteId: note_id, userId: req.userId });
 
   // Use upsert to handle regeneration - updates existing record if one exists
+  // Note: ai_content table doesn't have user_id column - ownership is via note relationship
   const placeholderResult = await supabaseAdmin
     .from('ai_content')
     .upsert({
       note_id,
-      user_id: req.userId,
       content_type: 'podcast',
       content: {
         status: 'generating',

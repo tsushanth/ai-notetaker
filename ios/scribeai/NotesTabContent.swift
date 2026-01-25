@@ -705,18 +705,26 @@ struct NotesTabContent: View {
     }
 
     private func loadSavedTTS() {
+        print("🔊 Loading saved TTS for note: \(note.id)")
         Task {
             do {
                 if let response = try await APIService.shared.getTTSForNote(noteId: note.id) {
+                    print("🔊 Found saved TTS: \(response.audioUrl)")
                     // Download the audio
-                    guard let audioURL = URL(string: response.audioUrl) else { return }
+                    guard let audioURL = URL(string: response.audioUrl) else {
+                        print("❌ Invalid audio URL: \(response.audioUrl)")
+                        return
+                    }
                     let (audioData, _) = try await URLSession.shared.data(from: audioURL)
+                    print("🔊 Downloaded audio: \(audioData.count) bytes")
 
                     await MainActor.run {
                         self.ttsAudioData = audioData
                         self.selectedVoice = response.voice
                         self.setupAudioPlayer(with: audioData)
                     }
+                } else {
+                    print("🔊 No saved TTS found for note: \(note.id)")
                 }
             } catch {
                 print("❌ Error loading saved TTS: \(error)")

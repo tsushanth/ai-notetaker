@@ -261,12 +261,11 @@ class TTSService {
     // Estimate duration (rough: ~150 words per minute, ~5 chars per word)
     const estimatedDuration = Math.ceil((textToSpeak.length / 5) / 150 * 60);
 
-    // Save to ai_content table
+    // Save to ai_content table (like podcasts - no user_id, ownership verified via note)
     const { error: dbError } = await supabaseAdmin
       .from('ai_content')
       .upsert({
         note_id: noteId,
-        user_id: userId,
         content_type: 'tts',
         content: {
           audio_url: audioUrl,
@@ -281,7 +280,17 @@ class TTSService {
       });
 
     if (dbError) {
-      logger.warn('Failed to save TTS to ai_content', { error: dbError.message });
+      logger.error('Failed to save TTS to ai_content', {
+        error: dbError.message,
+        code: dbError.code,
+        details: dbError.details,
+        noteId,
+        userId
+      });
+      // Don't throw - audio was generated, just save failed
+      // The user can still use the audio, they just won't have it saved
+    } else {
+      logger.info('TTS saved to ai_content', { noteId, audioUrl });
     }
 
     return {
@@ -296,19 +305,35 @@ class TTSService {
    * Get saved TTS for a note
    */
   async getTTSForNote(userId, noteId) {
+    logger.info('Fetching saved TTS', { noteId, userId });
+
+    // Query by note_id and content_type only (like podcasts)
+    // User ownership is verified at the route level
     const { data, error } = await supabaseAdmin
       .from('ai_content')
       .select('content, created_at')
       .eq('note_id', noteId)
-      .eq('user_id', userId)
       .eq('content_type', 'tts')
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
-    if (error || !data) {
+    if (error) {
+      // PGRST116 = no rows returned, which is expected when no TTS exists
+      if (error.code !== 'PGRST116') {
+        logger.warn('Error fetching TTS', { error: error.message, code: error.code, noteId });
+      } else {
+        logger.info('No saved TTS found', { noteId });
+      }
       return null;
     }
+
+    if (!data) {
+      logger.info('No saved TTS found', { noteId });
+      return null;
+    }
+
+    logger.info('Found saved TTS', { noteId, audioUrl: data.content.audio_url });
 
     return {
       audio_url: data.content.audio_url,

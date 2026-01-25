@@ -1339,26 +1339,6 @@ export default function NoteDetailPage() {
                   </select>
                 </div>
 
-                {/* Speed selector */}
-                <div className="max-w-xs mx-auto mb-6">
-                  <label className="block text-sm text-[var(--text-muted)] mb-2">Speed</label>
-                  <div className="flex gap-2 justify-center">
-                    {[0.75, 1, 1.25, 1.5, 2].map((speed) => (
-                      <button
-                        key={speed}
-                        onClick={() => setTtsSpeed(speed)}
-                        className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                          ttsSpeed === speed
-                            ? 'bg-[var(--accent-purple)] text-white'
-                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                        }`}
-                      >
-                        {speed === 1 ? '1x' : `${speed}x`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <button
                   onClick={handleGenerateTts}
                   disabled={isGeneratingTts}
@@ -1383,41 +1363,13 @@ export default function NoteDetailPage() {
               </div>
             ) : (
               <div className="text-center py-8">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-[var(--accent-purple)] flex items-center justify-center">
-                  <Volume2 className="w-12 h-12" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">Audio Ready</h3>
-                <p className="text-sm text-[var(--text-muted)] mb-6">
-                  Voice: {TTS_VOICES.find(v => v.id === selectedVoice)?.name || selectedVoice} • Speed: {ttsSpeed}x
+                <p className="text-sm text-[var(--text-muted)] mb-4">
+                  Voice: {TTS_VOICES.find(v => v.id === selectedVoice)?.name || selectedVoice}
                 </p>
 
-                {/* Audio controls */}
-                <div className="flex items-center justify-center gap-4 mb-6">
-                  <button
-                    onClick={handleStopTts}
-                    className="p-3 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-background)] transition"
-                    title="Stop"
-                  >
-                    <Square size={24} />
-                  </button>
-                  <button
-                    onClick={handlePlayPauseTts}
-                    className="p-4 rounded-full bg-[var(--accent-purple)] hover:opacity-90 transition"
-                    title={isPlayingTts ? 'Pause' : 'Play'}
-                  >
-                    {isPlayingTts ? <Pause size={32} /> : <Play size={32} />}
-                  </button>
-                  <button
-                    onClick={handleDownloadTts}
-                    className="p-3 rounded-full bg-[var(--surface-variant)] hover:bg-[var(--card-background)] transition"
-                    title="Download"
-                  >
-                    <Download size={24} />
-                  </button>
-                </div>
-
-                {/* Native audio element for additional controls */}
+                {/* Audio player with native controls */}
                 <audio
+                  ref={(el) => setTtsAudioRef(el)}
                   controls
                   src={ttsAudioUrl}
                   className="w-full max-w-md mx-auto mb-4"
@@ -1426,7 +1378,39 @@ export default function NoteDetailPage() {
                   onEnded={() => setIsPlayingTts(false)}
                 />
 
+                {/* Playback speed */}
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <span className="text-sm text-[var(--text-muted)]">Speed:</span>
+                  <div className="flex gap-1">
+                    {[0.75, 1, 1.25, 1.5, 2].map((speed) => (
+                      <button
+                        key={speed}
+                        onClick={() => {
+                          setTtsSpeed(speed);
+                          if (ttsAudioRef) ttsAudioRef.playbackRate = speed;
+                        }}
+                        className={`px-2 py-1 rounded text-xs font-medium transition ${
+                          ttsSpeed === speed
+                            ? 'bg-[var(--accent-purple)] text-white'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                        }`}
+                      >
+                        {speed === 1 ? '1x' : `${speed}x`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Actions */}
                 <div className="flex justify-center gap-3">
+                  <button
+                    onClick={handleDownloadTts}
+                    className="btn-secondary flex items-center gap-2"
+                    title="Download"
+                  >
+                    <Download size={18} />
+                    Download
+                  </button>
                   <button
                     onClick={handleGenerateTts}
                     disabled={isGeneratingTts}
@@ -1446,49 +1430,25 @@ export default function NoteDetailPage() {
                   </button>
                 </div>
 
-                {/* Voice options in Audio Ready state */}
-                <div className="mt-8 pt-6 border-t border-[var(--border-color)]">
+                {/* Voice selection for regeneration */}
+                <div className="mt-6 pt-6 border-t border-[var(--border-color)]">
                   <details className="text-left max-w-xs mx-auto">
                     <summary className="cursor-pointer text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center gap-2">
                       <Settings size={16} />
-                      Voice Settings
+                      Change Voice
                     </summary>
-                    <div className="mt-4 space-y-4">
-                      {/* Voice dropdown */}
-                      <div>
-                        <label className="block text-xs text-[var(--text-muted)] mb-2">Voice</label>
-                        <select
-                          value={selectedVoice}
-                          onChange={(e) => setSelectedVoice(e.target.value)}
-                          className="w-full px-3 py-2 rounded-lg bg-[var(--surface-variant)] text-[var(--text-primary)] border border-[var(--border-color)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)]"
-                        >
-                          {TTS_VOICES.map(voice => (
-                            <option key={voice.id} value={voice.id}>
-                              {voice.name} ({voice.gender})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Speed selector */}
-                      <div>
-                        <label className="block text-xs text-[var(--text-muted)] mb-2">Speed</label>
-                        <div className="flex gap-1.5 flex-wrap">
-                          {[0.75, 1, 1.25, 1.5, 2].map((speed) => (
-                            <button
-                              key={speed}
-                              onClick={() => setTtsSpeed(speed)}
-                              className={`px-2.5 py-1 rounded text-xs font-medium transition ${
-                                ttsSpeed === speed
-                                  ? 'bg-[var(--accent-purple)] text-white'
-                                  : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                              }`}
-                            >
-                              {speed === 1 ? '1x' : `${speed}x`}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                    <div className="mt-4">
+                      <select
+                        value={selectedVoice}
+                        onChange={(e) => setSelectedVoice(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg bg-[var(--surface-variant)] text-[var(--text-primary)] border border-[var(--border-color)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)]"
+                      >
+                        {TTS_VOICES.map(voice => (
+                          <option key={voice.id} value={voice.id}>
+                            {voice.name} ({voice.gender})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </details>
                 </div>

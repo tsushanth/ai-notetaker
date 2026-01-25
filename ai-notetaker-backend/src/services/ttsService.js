@@ -171,12 +171,28 @@ class TTSService {
     let currentSpeaker = 'narrator';
     let currentText = '';
 
+    // Log first 800 chars of script for debugging
+    logger.info('Parsing podcast script', {
+      scriptPreview: script.substring(0, 800),
+      totalLength: script.length,
+      lineCount: lines.length
+    });
+
+    let host1Count = 0;
+    let host2Count = 0;
+
     for (const line of lines) {
-      const trimmedLine = line.trim();
+      // Strip markdown bold markers before parsing
+      let trimmedLine = line.trim();
       if (!trimmedLine) continue;
 
+      // Remove all markdown bold markers (**) for cleaner parsing
+      const cleanLine = trimmedLine.replace(/\*\*/g, '');
+
       // Match patterns like "Host 1:", "Host 2:", "[Host 1]:", etc.
-      const hostMatch = trimmedLine.match(/^(?:\[)?Host\s*(\d+)(?:\])?:\s*(.*)/i);
+      // Also handle Speaker 1, Speaker 2, Person 1, Person 2, etc.
+      // More flexible regex that handles various formats
+      const hostMatch = cleanLine.match(/^(?:\[)?(?:Host|Speaker|Person|Voice)\s*(\d+)(?:\])?[:\-]\s*(.*)/i);
 
       if (hostMatch) {
         // Save previous segment if any
@@ -186,6 +202,10 @@ class TTSService {
 
         currentSpeaker = `Host ${hostMatch[1]}`;
         currentText = hostMatch[2] || '';
+
+        // Track host counts for debugging
+        if (hostMatch[1] === '1') host1Count++;
+        else if (hostMatch[1] === '2') host2Count++;
       } else {
         // Continue current speaker's text
         currentText += ' ' + trimmedLine;
@@ -196,6 +216,23 @@ class TTSService {
     if (currentText.trim()) {
       segments.push({ speaker: currentSpeaker, text: currentText.trim() });
     }
+
+    // Log parsing results for debugging
+    const speakerCounts = {};
+    segments.forEach(s => {
+      speakerCounts[s.speaker] = (speakerCounts[s.speaker] || 0) + 1;
+    });
+
+    logger.info('Podcast script parsing results', {
+      totalSegments: segments.length,
+      speakerCounts,
+      host1Lines: host1Count,
+      host2Lines: host2Count,
+      firstFewSegments: segments.slice(0, 3).map(s => ({
+        speaker: s.speaker,
+        textPreview: s.text.substring(0, 50)
+      }))
+    });
 
     return segments;
   }
@@ -227,7 +264,17 @@ class TTSService {
       return await this.generateAudio(script, voice1);
     }
 
-    logger.info(`Parsed ${segments.length} podcast segments`);
+    // Check if we detected BOTH hosts - if not, we'll alternate voices
+    const hasHost1 = segments.some(s => s.speaker === 'Host 1');
+    const hasHost2 = segments.some(s => s.speaker === 'Host 2');
+    const hasBothHosts = hasHost1 && hasHost2;
+
+    logger.info(`Parsed ${segments.length} podcast segments`, {
+      hasHost1,
+      hasHost2,
+      hasBothHosts,
+      willAlternate: !hasBothHosts
+    });
 
     // Generate audio for each segment with appropriate voice
     const audioBuffers = [];
@@ -236,11 +283,14 @@ class TTSService {
       const segment = segments[i];
 
       // Determine voice based on speaker
-      let voice = voice1; // Default for narrator or Host 1
-      if (segment.speaker === 'Host 2') {
-        voice = voice2;
-      } else if (segment.speaker === 'Host 1') {
-        voice = voice1;
+      let voice;
+      if (hasBothHosts) {
+        // We have proper Host 1/Host 2 tags - use them
+        voice = segment.speaker === 'Host 2' ? voice2 : voice1;
+      } else {
+        // Fallback: alternate voices for each segment
+        voice = (i % 2 === 0) ? voice1 : voice2;
+        logger.info(`Alternating voice for segment ${i}`, { voice, originalSpeaker: segment.speaker });
       }
 
       // Clean the text for TTS (but don't remove host labels since they're already stripped)
@@ -255,7 +305,8 @@ class TTSService {
       logger.info(`Generating segment ${i + 1}/${segments.length}`, {
         speaker: segment.speaker,
         voice,
-        textLength: cleanText.length
+        textLength: cleanText.length,
+        textPreview: cleanText.substring(0, 60)
       });
 
       try {

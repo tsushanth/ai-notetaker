@@ -622,25 +622,30 @@ ${note.content.substring(0, 3000)}`; // Limit content length
         interview: 'Create an interview-style podcast where one host asks insightful questions and the other provides detailed answers.'
       };
 
-      const prompt = `Create a ${config.minutes} minute podcast script based on the following content. ${styleInstructions[style]}
+      const prompt = `Create a ${config.minutes} minute podcast script with TWO HOSTS having a conversation. ${styleInstructions[style]}
 
-CRITICAL LENGTH REQUIREMENT: The script MUST be approximately ${config.words} words (minimum ${config.minWords} words). This is essential for achieving the ${config.minutes} minute runtime. Do NOT create a shorter script.
+CRITICAL REQUIREMENTS:
+1. LENGTH: The script MUST be approximately ${config.words} words (minimum ${config.minWords} words) for the ${config.minutes} minute runtime.
+2. FORMAT: EVERY line of dialogue MUST start with either "Host 1:" or "Host 2:" on its own line. No other format.
+3. TWO DISTINCT VOICES: Host 1 and Host 2 must alternate frequently throughout the entire script. Both hosts should speak roughly equal amounts.
 
-The podcast should have ${num_hosts} host(s). Use clear speaker labels like "Host 1:" and "Host 2:".
+Example format (follow this exactly):
+Host 1: Welcome to our podcast! Today we're discussing...
+Host 2: That's right! I'm really excited about this topic because...
+Host 1: Let me start by explaining the first concept...
+Host 2: That's a great point. I'd add that...
 
 Guidelines:
-- Make it engaging and natural with rich dialogue
-- Include smooth transitions between topics
-- Add appropriate energy and enthusiasm
-- Use examples, analogies, and elaborations to reach the target length
-- Include follow-up questions and detailed explanations
-- End with a strong conclusion summarizing key takeaways
-- IMPORTANT: Write a COMPLETE script that fills the full ${config.minutes} minute runtime
+- Make it a natural back-and-forth CONVERSATION between two people
+- Include reactions, follow-up questions, and interjections from both hosts
+- Both hosts should contribute insights and examples
+- Add energy and enthusiasm from both speakers
+- End with both hosts summarizing key takeaways
 
 Content to discuss:
 ${truncateContent(note.content)}
 
-Format the script with clear speaker labels and natural dialogue. Remember: the script must be at least ${config.minWords} words to achieve the desired podcast length.`;
+IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a monologue. Every paragraph must start with "Host 1:" or "Host 2:".`;
 
       const completion = await openai.chat.completions.create({
         model: MODELS.GPT4_MINI,

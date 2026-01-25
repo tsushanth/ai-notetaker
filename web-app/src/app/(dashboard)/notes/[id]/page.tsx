@@ -214,7 +214,7 @@ export default function NoteDetailPage() {
             console.log('[NoteDetail] TTS URL:', audioUrl);
             if (audioUrl) {
               setTtsAudioUrl(audioUrl);
-              setSelectedVoice(content.tts.voice || 'rachel');
+              setSelectedVoice(content.tts.voice || 'nova');
               setTtsSpeed(content.tts.speed || 1.0);
             }
           }
@@ -1226,26 +1226,20 @@ export default function NoteDetailPage() {
                 <Radio className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)] opacity-50" />
                 <p className="text-[var(--text-muted)] mb-6">Generate an AI podcast discussion about this note</p>
 
-                {/* Voice Selection */}
-                <div className="max-w-lg mx-auto mb-6">
-                  <label className="block text-sm text-[var(--text-muted)] mb-2">Select Narrator Voice</label>
-                  <div className="flex flex-wrap gap-2 justify-center">
+                {/* Voice Selection Dropdown */}
+                <div className="max-w-xs mx-auto mb-6">
+                  <label className="block text-sm text-[var(--text-muted)] mb-2">Narrator Voice</label>
+                  <select
+                    value={podcastVoice}
+                    onChange={(e) => setPodcastVoice(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg bg-[var(--surface-variant)] text-[var(--text-primary)] border border-[var(--border-color)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)]"
+                  >
                     {TTS_VOICES.map(voice => (
-                      <button
-                        key={voice.id}
-                        onClick={() => setPodcastVoice(voice.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                          podcastVoice === voice.id
-                            ? 'bg-[var(--accent-purple)] text-white'
-                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                        }`}
-                        title={voice.description}
-                      >
-                        {voice.name}
-                        <span className="ml-1 text-xs opacity-70">({voice.gender})</span>
-                      </button>
+                      <option key={voice.id} value={voice.id}>
+                        {voice.name} ({voice.gender})
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 <button
@@ -1279,28 +1273,23 @@ export default function NoteDetailPage() {
                 />
 
                 {/* Voice selection for regeneration */}
-                <details className="mt-6 text-left max-w-lg mx-auto">
+                <details className="mt-6 text-left max-w-xs mx-auto">
                   <summary className="cursor-pointer text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center gap-2">
                     <Settings size={16} />
                     Change Voice
                   </summary>
                   <div className="mt-4">
-                    <div className="flex flex-wrap gap-2 justify-center">
+                    <select
+                      value={podcastVoice}
+                      onChange={(e) => setPodcastVoice(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg bg-[var(--surface-variant)] text-[var(--text-primary)] border border-[var(--border-color)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)]"
+                    >
                       {TTS_VOICES.map(voice => (
-                        <button
-                          key={voice.id}
-                          onClick={() => setPodcastVoice(voice.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                            podcastVoice === voice.id
-                              ? 'bg-[var(--accent-purple)] text-white'
-                              : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                          }`}
-                          title={voice.description}
-                        >
-                          {voice.name}
-                        </button>
+                        <option key={voice.id} value={voice.id}>
+                          {voice.name} ({voice.gender})
+                        </option>
                       ))}
-                    </div>
+                    </select>
                   </div>
                 </details>
 
@@ -1334,25 +1323,20 @@ export default function NoteDetailPage() {
                 <Mic className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)] opacity-50" />
                 <p className="text-[var(--text-muted)] mb-4">Convert your notes to speech with AI voices</p>
 
-                {/* Built-in Voice selector */}
-                <div className="max-w-lg mx-auto mb-6">
-                  <label className="block text-sm text-[var(--text-muted)] mb-2">Built-in Voices</label>
-                  <div className="flex flex-wrap gap-2 justify-center">
+                {/* Voice selector dropdown */}
+                <div className="max-w-xs mx-auto mb-6">
+                  <label className="block text-sm text-[var(--text-muted)] mb-2">Voice</label>
+                  <select
+                    value={selectedVoice}
+                    onChange={(e) => setSelectedVoice(e.target.value)}
+                    className="w-full px-4 py-2 rounded-lg bg-[var(--surface-variant)] text-[var(--text-primary)] border border-[var(--border-color)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)]"
+                  >
                     {TTS_VOICES.map((voice) => (
-                      <button
-                        key={voice.id}
-                        onClick={() => setSelectedVoice(voice.id)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                          selectedVoice === voice.id
-                            ? 'bg-[var(--accent-purple)] text-white'
-                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                        }`}
-                      >
-                        {voice.name}
-                        <span className="ml-1 text-xs opacity-70">({voice.gender})</span>
-                      </button>
+                      <option key={voice.id} value={voice.id}>
+                        {voice.name} ({voice.gender})
+                      </option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 {/* Speed selector */}
@@ -1466,35 +1450,30 @@ export default function NoteDetailPage() {
 
                 {/* Voice options in Audio Ready state */}
                 <div className="mt-8 pt-6 border-t border-[var(--border-color)]">
-                  <details className="text-left">
+                  <details className="text-left max-w-xs mx-auto">
                     <summary className="cursor-pointer text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center gap-2">
                       <Settings size={16} />
                       Voice Settings
                     </summary>
                     <div className="mt-4 space-y-4">
-                      {/* Voices */}
+                      {/* Voice dropdown */}
                       <div>
-                        <p className="text-xs text-[var(--text-muted)] mb-2">Select Voice</p>
-                        <div className="flex flex-wrap justify-center gap-2">
+                        <label className="block text-xs text-[var(--text-muted)] mb-2">Voice</label>
+                        <select
+                          value={selectedVoice}
+                          onChange={(e) => setSelectedVoice(e.target.value)}
+                          className="w-full px-3 py-2 rounded-lg bg-[var(--surface-variant)] text-[var(--text-primary)] border border-[var(--border-color)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-purple)]"
+                        >
                           {TTS_VOICES.map(voice => (
-                            <button
-                              key={voice.id}
-                              onClick={() => setSelectedVoice(voice.id)}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                                selectedVoice === voice.id
-                                  ? 'bg-[var(--accent-purple)] text-white'
-                                  : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                              }`}
-                              title={voice.description}
-                            >
-                              {voice.name}
-                            </button>
+                            <option key={voice.id} value={voice.id}>
+                              {voice.name} ({voice.gender})
+                            </option>
                           ))}
-                        </div>
+                        </select>
                       </div>
 
                       {/* Speed selector */}
-                      <div className="max-w-xs mx-auto">
+                      <div>
                         <label className="block text-xs text-[var(--text-muted)] mb-2">
                           Speed: {ttsSpeed}x
                         </label>

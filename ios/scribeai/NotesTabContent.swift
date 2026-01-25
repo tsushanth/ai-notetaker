@@ -141,6 +141,7 @@ struct NotesTabContent: View {
         }
         .onAppear {
             checkForFormattedContent()
+            loadSavedTTS()  // Load saved TTS like podcasts do
         }
     }
 

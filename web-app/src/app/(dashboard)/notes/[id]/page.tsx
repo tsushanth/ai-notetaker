@@ -31,23 +31,20 @@ import {
   Play,
   Pause,
   Square,
-  Upload,
-  Plus,
-  User,
   Settings
 } from 'lucide-react';
 import type { Note, ChatMessage, QuizQuestion, FlashcardContent, InfographicContent } from '@/types';
 
 type TabType = 'notes' | 'chat' | 'quiz' | 'flashcards' | 'infographic' | 'podcast' | 'tts';
 
-// Voice options for TTS
+// Voice options for TTS (OpenAI voices)
 const TTS_VOICES = [
-  { id: 'rachel', name: 'Rachel', gender: 'female' },
-  { id: 'bella', name: 'Bella', gender: 'female' },
-  { id: 'sarah', name: 'Sarah', gender: 'female' },
-  { id: 'adam', name: 'Adam', gender: 'male' },
-  { id: 'josh', name: 'Josh', gender: 'male' },
-  { id: 'brian', name: 'Brian', gender: 'male' },
+  { id: 'alloy', name: 'Alloy', gender: 'neutral', description: 'Balanced and versatile' },
+  { id: 'echo', name: 'Echo', gender: 'male', description: 'Warm and engaging' },
+  { id: 'fable', name: 'Fable', gender: 'male', description: 'Expressive storyteller' },
+  { id: 'onyx', name: 'Onyx', gender: 'male', description: 'Deep and authoritative' },
+  { id: 'nova', name: 'Nova', gender: 'female', description: 'Friendly and upbeat' },
+  { id: 'shimmer', name: 'Shimmer', gender: 'female', description: 'Clear and professional' },
 ];
 
 export default function NoteDetailPage() {
@@ -89,6 +86,7 @@ export default function NoteDetailPage() {
   const [podcastUrl, setPodcastUrl] = useState<string | null>(null);
   const [isGeneratingPodcast, setIsGeneratingPodcast] = useState(false);
   const [podcastGenerationStartTime, setPodcastGenerationStartTime] = useState<number | null>(null);
+  const [podcastVoice, setPodcastVoice] = useState<string>('nova');
 
   // Infographic state
   const [infographicUrl, setInfographicUrl] = useState<string | null>(null);
@@ -99,18 +97,10 @@ export default function NoteDetailPage() {
   // TTS state
   const [ttsAudioUrl, setTtsAudioUrl] = useState<string | null>(null);
   const [isGeneratingTts, setIsGeneratingTts] = useState(false);
-  const [selectedVoice, setSelectedVoice] = useState<string>('rachel');
+  const [selectedVoice, setSelectedVoice] = useState<string>('nova');
   const [ttsSpeed, setTtsSpeed] = useState<number>(1.0);
   const [isPlayingTts, setIsPlayingTts] = useState(false);
   const [ttsAudioRef, setTtsAudioRef] = useState<HTMLAudioElement | null>(null);
-
-  // Voice cloning state
-  const [clonedVoices, setClonedVoices] = useState<Array<{ id: string; name: string; audio_url: string; duration: number }>>([]);
-  const [showVoiceCloning, setShowVoiceCloning] = useState(false);
-  const [newVoiceName, setNewVoiceName] = useState('');
-  const [voiceFile, setVoiceFile] = useState<File | null>(null);
-  const [isCreatingVoice, setIsCreatingVoice] = useState(false);
-  const [isDeletingVoice, setIsDeletingVoice] = useState<string | null>(null);
 
   // Track last fetch time to force re-fetch when navigating back
   const [lastFetchTime, setLastFetchTime] = useState<number>(0);
@@ -452,8 +442,8 @@ export default function NoteDetailPage() {
     setError(null); // Clear any previous errors
 
     try {
-      console.log('Starting podcast generation at:', new Date(generationStartTime).toISOString());
-      const response = await aiApi.generatePodcast(token, noteId, language);
+      console.log('Starting podcast generation at:', new Date(generationStartTime).toISOString(), 'voice:', podcastVoice);
+      const response = await aiApi.generatePodcast(token, noteId, { language, voice: podcastVoice });
       console.log('Podcast API response:', JSON.stringify(response, null, 2));
       const podcast = response.podcast as any;
       // Handle both camelCase and snake_case, and async generation
@@ -670,7 +660,6 @@ export default function NoteDetailPage() {
       const response = await ttsApi.generateForNote(token, noteId, {
         voice: selectedVoice,
         speed: ttsSpeed,
-        clonedVoiceId: clonedVoices.find(v => v.id === selectedVoice) ? selectedVoice : undefined,
       });
 
       if (response.success && response.data) {
@@ -729,62 +718,6 @@ export default function NoteDetailPage() {
     a.click();
     document.body.removeChild(a);
   };
-
-  // Voice cloning handlers
-  const loadClonedVoices = async () => {
-    if (!token) return;
-    try {
-      const response = await ttsApi.getClonedVoices(token);
-      if (response.success && response.data) {
-        setClonedVoices(response.data);
-      }
-    } catch (err) {
-      console.error('Failed to load cloned voices:', err);
-    }
-  };
-
-  const handleCreateClonedVoice = async () => {
-    if (!token || !newVoiceName.trim() || !voiceFile) return;
-
-    setIsCreatingVoice(true);
-    try {
-      const response = await ttsApi.createClonedVoice(token, newVoiceName.trim(), voiceFile);
-      if (response.success && response.data) {
-        setClonedVoices(prev => [...prev, response.data]);
-        setNewVoiceName('');
-        setVoiceFile(null);
-        setShowVoiceCloning(false);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create voice');
-    } finally {
-      setIsCreatingVoice(false);
-    }
-  };
-
-  const handleDeleteClonedVoice = async (voiceId: string) => {
-    if (!token) return;
-
-    setIsDeletingVoice(voiceId);
-    try {
-      await ttsApi.deleteClonedVoice(token, voiceId);
-      setClonedVoices(prev => prev.filter(v => v.id !== voiceId));
-      if (selectedVoice === voiceId) {
-        setSelectedVoice('rachel');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete voice');
-    } finally {
-      setIsDeletingVoice(null);
-    }
-  };
-
-  // Load cloned voices when TTS tab is opened
-  useEffect(() => {
-    if (activeTab === 'tts' && token) {
-      loadClonedVoices();
-    }
-  }, [activeTab, token]);
 
   if (isLoading) {
     return (
@@ -1291,7 +1224,30 @@ export default function NoteDetailPage() {
             {!podcastUrl ? (
               <div className="text-center py-8">
                 <Radio className="w-12 h-12 mx-auto mb-4 text-[var(--text-muted)] opacity-50" />
-                <p className="text-[var(--text-muted)] mb-4">Generate an AI podcast discussion about this note</p>
+                <p className="text-[var(--text-muted)] mb-6">Generate an AI podcast discussion about this note</p>
+
+                {/* Voice Selection */}
+                <div className="max-w-lg mx-auto mb-6">
+                  <label className="block text-sm text-[var(--text-muted)] mb-2">Select Narrator Voice</label>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {TTS_VOICES.map(voice => (
+                      <button
+                        key={voice.id}
+                        onClick={() => setPodcastVoice(voice.id)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                          podcastVoice === voice.id
+                            ? 'bg-[var(--accent-purple)] text-white'
+                            : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                        }`}
+                        title={voice.description}
+                      >
+                        {voice.name}
+                        <span className="ml-1 text-xs opacity-70">({voice.gender})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <button
                   onClick={handleGeneratePodcast}
                   disabled={isGeneratingPodcast}
@@ -1312,12 +1268,42 @@ export default function NoteDetailPage() {
                 <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-[var(--accent-purple)] flex items-center justify-center">
                   <Volume2 className="w-12 h-12" />
                 </div>
-                <h3 className="text-lg font-medium mb-4">AI Podcast Ready</h3>
+                <h3 className="text-lg font-medium mb-2">AI Podcast Ready</h3>
+                <p className="text-sm text-[var(--text-muted)] mb-4">
+                  Voice: {TTS_VOICES.find(v => v.id === podcastVoice)?.name || podcastVoice}
+                </p>
                 <audio
                   controls
                   src={podcastUrl}
                   className="w-full max-w-md mx-auto"
                 />
+
+                {/* Voice selection for regeneration */}
+                <details className="mt-6 text-left max-w-lg mx-auto">
+                  <summary className="cursor-pointer text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] flex items-center justify-center gap-2">
+                    <Settings size={16} />
+                    Change Voice
+                  </summary>
+                  <div className="mt-4">
+                    <div className="flex flex-wrap gap-2 justify-center">
+                      {TTS_VOICES.map(voice => (
+                        <button
+                          key={voice.id}
+                          onClick={() => setPodcastVoice(voice.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
+                            podcastVoice === voice.id
+                              ? 'bg-[var(--accent-purple)] text-white'
+                              : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
+                          }`}
+                          title={voice.description}
+                        >
+                          {voice.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </details>
+
                 <button
                   onClick={handleGeneratePodcast}
                   disabled={isGeneratingPodcast}
@@ -1367,111 +1353,6 @@ export default function NoteDetailPage() {
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Cloned Voices */}
-                {clonedVoices.length > 0 && (
-                  <div className="max-w-lg mx-auto mb-6">
-                    <label className="block text-sm text-[var(--text-muted)] mb-2">Your Cloned Voices</label>
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      {clonedVoices.map((voice) => (
-                        <div key={voice.id} className="relative group">
-                          <button
-                            onClick={() => setSelectedVoice(voice.id)}
-                            className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${
-                              selectedVoice === voice.id
-                                ? 'bg-[var(--accent-purple)] text-white'
-                                : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                            }`}
-                          >
-                            <User size={14} />
-                            {voice.name}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClonedVoice(voice.id)}
-                            disabled={isDeletingVoice === voice.id}
-                            className="absolute -top-2 -right-2 p-1 rounded-full bg-[var(--accent-red)] text-white opacity-0 group-hover:opacity-100 transition"
-                            title="Delete voice"
-                          >
-                            {isDeletingVoice === voice.id ? (
-                              <Loader2 size={12} className="animate-spin" />
-                            ) : (
-                              <X size={12} />
-                            )}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Voice Cloning Section */}
-                <div className="max-w-md mx-auto mb-6">
-                  {!showVoiceCloning ? (
-                    <button
-                      onClick={() => setShowVoiceCloning(true)}
-                      className="text-sm text-[var(--accent-purple)] hover:underline flex items-center gap-2 mx-auto"
-                    >
-                      <Plus size={16} />
-                      Clone Your Voice
-                    </button>
-                  ) : (
-                    <div className="bg-[var(--surface-variant)] rounded-lg p-4 text-left">
-                      <h4 className="text-sm font-medium mb-3">Clone a Voice</h4>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs text-[var(--text-muted)] mb-1">Voice Name</label>
-                          <input
-                            type="text"
-                            value={newVoiceName}
-                            onChange={(e) => setNewVoiceName(e.target.value)}
-                            placeholder="e.g., My Voice"
-                            className="input w-full text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-[var(--text-muted)] mb-1">
-                            Audio Sample (10s - 5min, WAV/MP3/M4A)
-                          </label>
-                          <input
-                            type="file"
-                            accept="audio/wav,audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4"
-                            onChange={(e) => setVoiceFile(e.target.files?.[0] || null)}
-                            className="w-full text-sm text-[var(--text-secondary)] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[var(--accent-purple)] file:text-white hover:file:opacity-90"
-                          />
-                        </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleCreateClonedVoice}
-                            disabled={isCreatingVoice || !newVoiceName.trim() || !voiceFile}
-                            className="btn-primary flex-1 text-sm"
-                          >
-                            {isCreatingVoice ? (
-                              <>
-                                <Loader2 size={14} className="animate-spin mr-2" />
-                                Creating...
-                              </>
-                            ) : (
-                              <>
-                                <Upload size={14} className="mr-2" />
-                                Create Voice
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => {
-                              setShowVoiceCloning(false);
-                              setNewVoiceName('');
-                              setVoiceFile(null);
-                            }}
-                            className="btn-secondary text-sm"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 {/* Speed selector */}
@@ -1525,7 +1406,7 @@ export default function NoteDetailPage() {
                 </div>
                 <h3 className="text-lg font-medium mb-2">Audio Ready</h3>
                 <p className="text-sm text-[var(--text-muted)] mb-6">
-                  Voice: {TTS_VOICES.find(v => v.id === selectedVoice)?.name || clonedVoices.find(v => v.id === selectedVoice)?.name || selectedVoice} • Speed: {ttsSpeed}x
+                  Voice: {TTS_VOICES.find(v => v.id === selectedVoice)?.name || selectedVoice} • Speed: {ttsSpeed}x
                 </p>
 
                 {/* Audio controls */}
@@ -1591,9 +1472,9 @@ export default function NoteDetailPage() {
                       Voice Settings
                     </summary>
                     <div className="mt-4 space-y-4">
-                      {/* Built-in voices */}
+                      {/* Voices */}
                       <div>
-                        <p className="text-xs text-[var(--text-muted)] mb-2">Built-in Voices</p>
+                        <p className="text-xs text-[var(--text-muted)] mb-2">Select Voice</p>
                         <div className="flex flex-wrap justify-center gap-2">
                           {TTS_VOICES.map(voice => (
                             <button
@@ -1604,36 +1485,13 @@ export default function NoteDetailPage() {
                                   ? 'bg-[var(--accent-purple)] text-white'
                                   : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
                               }`}
+                              title={voice.description}
                             >
                               {voice.name}
                             </button>
                           ))}
                         </div>
                       </div>
-
-                      {/* Cloned voices */}
-                      {clonedVoices.length > 0 && (
-                        <div>
-                          <p className="text-xs text-[var(--text-muted)] mb-2">Your Cloned Voices</p>
-                          <div className="flex flex-wrap justify-center gap-2">
-                            {clonedVoices.map(voice => (
-                              <div key={voice.id} className="relative group">
-                                <button
-                                  onClick={() => setSelectedVoice(voice.id)}
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
-                                    selectedVoice === voice.id
-                                      ? 'bg-[var(--accent-purple)] text-white'
-                                      : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
-                                  }`}
-                                >
-                                  <User size={12} />
-                                  {voice.name}
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
 
                       {/* Speed selector */}
                       <div className="max-w-xs mx-auto">
@@ -1650,63 +1508,6 @@ export default function NoteDetailPage() {
                           className="w-full accent-[var(--accent-purple)]"
                         />
                       </div>
-
-                      {/* Voice cloning link */}
-                      {!showVoiceCloning ? (
-                        <button
-                          onClick={() => setShowVoiceCloning(true)}
-                          className="text-xs text-[var(--accent-purple)] hover:underline flex items-center gap-1 mx-auto"
-                        >
-                          <Plus size={14} />
-                          Clone Your Voice
-                        </button>
-                      ) : (
-                        <div className="bg-[var(--surface-variant)] rounded-lg p-4 max-w-md mx-auto">
-                          <h4 className="text-sm font-medium mb-3">Clone a Voice</h4>
-                          <div className="space-y-3">
-                            <div>
-                              <label className="block text-xs text-[var(--text-muted)] mb-1">Voice Name</label>
-                              <input
-                                type="text"
-                                value={newVoiceName}
-                                onChange={(e) => setNewVoiceName(e.target.value)}
-                                placeholder="e.g., My Voice"
-                                className="input w-full text-sm"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-[var(--text-muted)] mb-1">
-                                Audio Sample (10s - 5min)
-                              </label>
-                              <input
-                                type="file"
-                                accept="audio/wav,audio/mpeg,audio/mp3,audio/m4a,audio/x-m4a,audio/mp4"
-                                onChange={(e) => setVoiceFile(e.target.files?.[0] || null)}
-                                className="w-full text-xs text-[var(--text-secondary)] file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-[var(--accent-purple)] file:text-white"
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={handleCreateClonedVoice}
-                                disabled={isCreatingVoice || !newVoiceName.trim() || !voiceFile}
-                                className="btn-primary flex-1 text-xs py-2"
-                              >
-                                {isCreatingVoice ? 'Creating...' : 'Create Voice'}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setShowVoiceCloning(false);
-                                  setNewVoiceName('');
-                                  setVoiceFile(null);
-                                }}
-                                className="btn-secondary text-xs py-2"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </details>
                 </div>

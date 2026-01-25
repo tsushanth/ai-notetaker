@@ -221,11 +221,11 @@ export const aiApi = {
     return { flashcards: response.data };
   },
 
-  generatePodcast: async (token: string, noteId: string, language?: string) => {
+  generatePodcast: async (token: string, noteId: string, options?: { language?: string; voice?: string }) => {
     const response = await apiRequest<{ success: boolean; data: unknown }>('/api/ai/podcast', {
       method: 'POST',
       token,
-      body: { note_id: noteId, options: { language } },
+      body: { note_id: noteId, options: { language: options?.language, voice: options?.voice || 'nova' } },
     });
     return { podcast: response.data };
   },
@@ -615,7 +615,6 @@ export const ttsApi = {
   generateForNote: async (token: string, noteId: string, options?: {
     voice?: string;
     speed?: number;
-    clonedVoiceId?: string;
   }) => {
     return apiRequest<{
       success: boolean;
@@ -630,9 +629,8 @@ export const ttsApi = {
       token,
       body: {
         note_id: noteId,
-        voice: options?.voice || 'rachel',
+        voice: options?.voice || 'nova',
         speed: options?.speed || 1.0,
-        cloned_voice_id: options?.clonedVoiceId,
       },
     });
   },
@@ -655,8 +653,6 @@ export const ttsApi = {
   synthesize: async (token: string, text: string, options?: {
     voice?: string;
     speed?: number;
-    clonedVoiceId?: string;
-    provider?: 'listenai' | 'openai';
   }) => {
     const response = await fetch(`${API_BASE_URL}/api/tts/synthesize`, {
       method: 'POST',
@@ -666,10 +662,8 @@ export const ttsApi = {
       },
       body: JSON.stringify({
         text,
-        voice: options?.voice || 'rachel',
+        voice: options?.voice || 'nova',
         speed: options?.speed || 1.0,
-        cloned_voice_id: options?.clonedVoiceId,
-        provider: options?.provider,
       }),
     });
 
@@ -687,18 +681,11 @@ export const ttsApi = {
     return apiRequest<{
       success: boolean;
       data: {
-        builtin: Array<{
+        voices: Array<{
           id: string;
           name: string;
           gender: string;
-          provider: string;
-        }>;
-        cloned: Array<{
-          id: string;
-          name: string;
-          audio_url: string;
-          duration: number;
-          created_at: string;
+          description: string;
         }>;
       };
     }>('/api/tts/voices', { token });
@@ -709,68 +696,10 @@ export const ttsApi = {
     return apiRequest<{
       success: boolean;
       data: {
-        listenai: { healthy: boolean; url: string };
         openai: { configured: boolean };
         voiceCount: number;
       };
     }>('/api/tts/status', { token });
-  },
-
-  // Create a cloned voice
-  createClonedVoice: async (token: string, name: string, audioFile: File) => {
-    const formData = new FormData();
-    formData.append('name', name);
-    formData.append('audio', audioFile);
-
-    const response = await fetch(`${API_BASE_URL}/api/tts/cloned-voices`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Failed to create voice' }));
-      throw new Error(error.error || 'Failed to create cloned voice');
-    }
-
-    return response.json() as Promise<{
-      success: boolean;
-      data: {
-        id: string;
-        name: string;
-        audio_url: string;
-        duration: number;
-        status: string;
-      };
-    }>;
-  },
-
-  // Get user's cloned voices
-  getClonedVoices: async (token: string) => {
-    return apiRequest<{
-      success: boolean;
-      data: Array<{
-        id: string;
-        name: string;
-        audio_url: string;
-        duration: number;
-        status: string;
-        created_at: string;
-      }>;
-    }>('/api/tts/cloned-voices', { token });
-  },
-
-  // Delete a cloned voice
-  deleteClonedVoice: async (token: string, voiceId: string) => {
-    return apiRequest<{
-      success: boolean;
-      message: string;
-    }>(`/api/tts/cloned-voices/${voiceId}`, {
-      method: 'DELETE',
-      token,
-    });
   },
 };
 

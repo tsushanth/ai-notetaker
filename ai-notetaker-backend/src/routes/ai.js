@@ -141,11 +141,12 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
 
   logger.info('Creating podcast placeholder...', { noteId: note_id, userId: req.userId });
 
+  // Use upsert to handle regeneration - updates existing record if one exists
   const placeholderResult = await supabaseAdmin
     .from('ai_content')
-    .insert({
+    .upsert({
       note_id,
-      user_id: req.userId,  // Required field for ai_content table
+      user_id: req.userId,
       content_type: 'podcast',
       content: {
         status: 'generating',
@@ -154,7 +155,7 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
         gender: options?.gender || 'female',
         started_at: new Date().toISOString()
       }
-    })
+    }, { onConflict: 'note_id,content_type' })
     .select()
     .single();
 

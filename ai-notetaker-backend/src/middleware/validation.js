@@ -48,7 +48,7 @@ const schemas = {
       num_questions: Joi.number().min(1).max(50),
       num_cards: Joi.number().min(1).max(100),
       count: Joi.number().min(1).max(100), // Alias for num_cards (iOS uses this)
-      style: Joi.string().valid('flowchart', 'mindmap', 'sequenceDiagram', 'modern', 'colorful', 'minimal', 'professional'), // diagram and infographic styles
+      style: Joi.string(), // Allow any style - different content types have different valid styles
       language: Joi.string().valid(...SUPPORTED_LANGUAGES).default('english'),
       generate_audio: Joi.boolean(),
       duration: Joi.string().valid('short', 'medium', 'long'),

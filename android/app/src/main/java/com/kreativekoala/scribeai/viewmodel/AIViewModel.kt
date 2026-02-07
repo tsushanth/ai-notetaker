@@ -155,15 +155,27 @@ class AIViewModel : ViewModel() {
             _mindMapState.value = AIContentState.Loading
 
             val options = AIOptions(includeExploration = includeExploration, language = language)
-            repository.generateMindMap(token, noteId, options).fold(
-                onSuccess = { content ->
-                    _mindMapState.value = AIContentState.Success(content)
-                    AnalyticsService.trackMindMapGenerated(noteId, content.nodes?.size ?: 0)
-                },
-                onFailure = { exception ->
-                    _mindMapState.value = AIContentState.Error(exception.message ?: "Failed to generate mind map")
-                }
-            )
+            try {
+                repository.generateMindMap(token, noteId, options).fold(
+                    onSuccess = { content ->
+                        _mindMapState.value = AIContentState.Success(content)
+                        AnalyticsService.trackMindMapGenerated(noteId, content.nodes?.size ?: 0)
+                    },
+                    onFailure = { exception ->
+                        Log.e("AIViewModel", "Failed to generate mind map", exception)
+                        ErrorReportingService.reportError(
+                            ErrorReportingService.UserFlow.GENERATE_MINDMAP,
+                            exception,
+                            "Note: $noteId"
+                        )
+                        _mindMapState.value = AIContentState.Error(exception.message ?: "Failed to generate mind map")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AIViewModel", "Unexpected error generating mind map", e)
+                ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_MINDMAP, e, "Note: $noteId")
+                _mindMapState.value = AIContentState.Error(e.message ?: "Failed to generate mind map")
+            }
         }
     }
 
@@ -177,15 +189,27 @@ class AIViewModel : ViewModel() {
             _infographicState.value = AIContentState.Loading
 
             val options = AIOptions(style = style, language = language)
-            repository.generateInfographic(token, noteId, options).fold(
-                onSuccess = { data ->
-                    _infographicState.value = AIContentState.Success(data)
-                    Log.d("AIViewModel", "Infographic generated for note: $noteId, style: $style")
-                },
-                onFailure = { exception ->
-                    _infographicState.value = AIContentState.Error(exception.message ?: "Failed to generate infographic")
-                }
-            )
+            try {
+                repository.generateInfographic(token, noteId, options).fold(
+                    onSuccess = { data ->
+                        _infographicState.value = AIContentState.Success(data)
+                        Log.d("AIViewModel", "Infographic generated for note: $noteId, style: $style")
+                    },
+                    onFailure = { exception ->
+                        Log.e("AIViewModel", "Failed to generate infographic", exception)
+                        ErrorReportingService.reportError(
+                            ErrorReportingService.UserFlow.GENERATE_INFOGRAPHIC,
+                            exception,
+                            "Note: $noteId, Style: $style"
+                        )
+                        _infographicState.value = AIContentState.Error(exception.message ?: "Failed to generate infographic")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AIViewModel", "Unexpected error generating infographic", e)
+                ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_INFOGRAPHIC, e, "Note: $noteId")
+                _infographicState.value = AIContentState.Error(e.message ?: "Failed to generate infographic")
+            }
         }
     }
 
@@ -221,7 +245,24 @@ class AIViewModel : ViewModel() {
             try {
                 // Start generation
                 val request = GenerateAIRequest(noteId, "podcast", options)
-                repository.startPodcastGeneration(token, request)
+                val startResult = repository.startPodcastGeneration(token, request)
+
+                // Check if podcast generation started successfully
+                startResult.fold(
+                    onSuccess = {
+                        Log.d("AIViewModel", "Podcast generation started for note: $noteId")
+                    },
+                    onFailure = { exception ->
+                        Log.e("AIViewModel", "Failed to start podcast generation", exception)
+                        ErrorReportingService.reportError(
+                            ErrorReportingService.UserFlow.GENERATE_PODCAST,
+                            exception,
+                            "Failed to start generation for note: $noteId"
+                        )
+                        _podcastState.value = AIContentState.Error(exception.message ?: "Failed to start podcast generation")
+                        return@launch
+                    }
+                )
 
                 // Poll for completion every 2 seconds, up to 3 minutes (90 attempts)
                 repeat(90) { attempt ->
@@ -244,6 +285,18 @@ class AIViewModel : ViewModel() {
                                     AnalyticsService.trackPodcastGenerated(0) // Duration unknown at this point
                                     return@launch
                                 }
+                                "failed" -> {
+                                    // Podcast generation failed on the server
+                                    val errorMessage = status.message ?: "Podcast generation failed on server"
+                                    Log.e("AIViewModel", "Podcast generation failed: $errorMessage")
+                                    ErrorReportingService.reportError(
+                                        ErrorReportingService.UserFlow.GENERATE_PODCAST,
+                                        Exception(errorMessage),
+                                        "Note: $noteId, Attempt: $attempt"
+                                    )
+                                    _podcastState.value = AIContentState.Error(errorMessage)
+                                    return@launch
+                                }
                                 "generating" -> {
                                     // Continue polling
                                 }
@@ -254,14 +307,23 @@ class AIViewModel : ViewModel() {
                         },
                         onFailure = {
                             // Continue polling on error
+                            Log.w("AIViewModel", "Podcast status check failed, attempt: $attempt", it)
                         }
                     )
                 }
 
                 // Timeout after 3 minutes
-                _podcastState.value = AIContentState.Error("Podcast generation is taking longer than expected. Try loading this note again in a few minutes.")
+                val timeoutError = "Podcast generation is taking longer than expected. Try loading this note again in a few minutes."
+                ErrorReportingService.reportError(
+                    ErrorReportingService.UserFlow.GENERATE_PODCAST,
+                    Exception("Timeout after 3 minutes"),
+                    "Note: $noteId"
+                )
+                _podcastState.value = AIContentState.Error(timeoutError)
 
             } catch (e: Exception) {
+                Log.e("AIViewModel", "Unexpected error generating podcast", e)
+                ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_PODCAST, e, "Note: $noteId")
                 _podcastState.value = AIContentState.Error(e.message ?: "Failed to start podcast generation")
             }
         }
@@ -362,14 +424,26 @@ class AIViewModel : ViewModel() {
         viewModelScope.launch {
             _diagramState.value = AIContentState.Loading
             val options = AIOptions(style = style, language = language)
-            repository.generateAIContent(token, noteId, "diagram", options).fold(
-                onSuccess = { content ->
-                    _diagramState.value = AIContentState.Success(content)
-                },
-                onFailure = { exception ->
-                    _diagramState.value = AIContentState.Error(exception.message ?: "Failed to generate diagram")
-                }
-            )
+            try {
+                repository.generateAIContent(token, noteId, "diagram", options).fold(
+                    onSuccess = { content ->
+                        _diagramState.value = AIContentState.Success(content)
+                    },
+                    onFailure = { exception ->
+                        Log.e("AIViewModel", "Failed to generate diagram", exception)
+                        ErrorReportingService.reportError(
+                            ErrorReportingService.UserFlow.GENERATE_DIAGRAM,
+                            exception,
+                            "Note: $noteId, Style: $style"
+                        )
+                        _diagramState.value = AIContentState.Error(exception.message ?: "Failed to generate diagram")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AIViewModel", "Unexpected error generating diagram", e)
+                ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_DIAGRAM, e, "Note: $noteId")
+                _diagramState.value = AIContentState.Error(e.message ?: "Failed to generate diagram")
+            }
         }
     }
 

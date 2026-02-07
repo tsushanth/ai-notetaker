@@ -838,6 +838,7 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
 
           contentData.audio_url = audioUrl;
           contentData.gender = gender;
+          contentData.status = 'ready';
 
           logger.info('Podcast audio generated', { userId, noteId, audioUrl, gender });
         } catch (audioError) {
@@ -846,9 +847,13 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
             userId,
             noteId
           });
+          contentData.status = 'failed';
           contentData.audio_generation_failed = true;
-          contentData.error = audioError.message;
+          contentData.error = `Audio generation failed: ${audioError.message}`;
         }
+      } else {
+        // No audio generation requested - mark as ready with script only
+        contentData.status = 'ready';
       }
 
       // UPDATE the placeholder record instead of creating new

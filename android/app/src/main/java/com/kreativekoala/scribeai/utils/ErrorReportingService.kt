@@ -46,6 +46,8 @@ object ErrorReportingService {
         GENERATE_FLASHCARDS("Generate Flashcards"),
         GENERATE_PODCAST("Generate Podcast"),
         GENERATE_DIAGRAM("Generate Diagram"),
+        GENERATE_MINDMAP("Generate Mind Map"),
+        GENERATE_INFOGRAPHIC("Generate Infographic"),
         CHAT_WITH_NOTE("Chat with Note"),
 
         // Subscription flows

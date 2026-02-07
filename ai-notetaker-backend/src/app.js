@@ -205,9 +205,13 @@ const limiter = rateLimit({
     // Fallback to req.ip (which works correctly when trust proxy is enabled)
     return req.ip || req.connection.remoteAddress || 'unknown';
   },
-  // Skip rate limiting for allowlisted IPs or when disabled
+  // Skip rate limiting for allowlisted IPs, disabled, or polling endpoints
   skip: (req) => {
     if (rateLimitDisabled) {
+      return true;
+    }
+    // Skip rate limiting for podcast status polling (called every 2s during generation)
+    if (req.path.includes('/ai/podcast/status/')) {
       return true;
     }
     const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;

@@ -299,52 +299,6 @@ class NoteRepository {
         }
     }
 
-    suspend fun generateMindMap(
-        token: String,
-        noteId: String,
-        options: AIOptions? = null
-    ): Result<AIContentData> {
-        return withContext(Dispatchers.IO) {
-            try {
-                val request = GenerateAIRequest(noteId, "mindmap", options)
-                val response = apiService.generateMindMap("Bearer $token", request)
-
-                if (response.isSuccessful && response.body()?.data != null) {
-                    val mindMapData = response.body()!!.data!!
-                    // Convert MindMapData to AIContentData
-                    val aiContentData = AIContentData(
-                        id = mindMapData.id,
-                        noteId = mindMapData.noteId,
-                        title = mindMapData.title,
-                        nodes = mindMapData.nodes
-                    )
-                    Result.success(aiContentData)
-                } else {
-                    val errorBody = response.errorBody()?.string() ?: ""
-                    val errorMessage = when (response.code()) {
-                        401 -> "Session expired. Please log in again."
-                        403, 402 -> {
-                            when {
-                                errorBody.contains("subscription", ignoreCase = true) ||
-                                errorBody.contains("premium", ignoreCase = true) ->
-                                    "Mind map generation requires a premium subscription."
-                                errorBody.contains("trial", ignoreCase = true) ->
-                                    "Your free trial has ended. Subscribe to continue."
-                                else -> "Access denied. Please check your subscription status."
-                            }
-                        }
-                        else -> "Failed to generate mind map. Please try again."
-                    }
-                    Log.e(TAG, "❌ generateMindMap failed: ${response.code()} - $errorBody")
-                    Result.failure(SubscriptionException(errorMessage, response.code()))
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "❌ generateMindMap exception", e)
-                Result.failure(e)
-            }
-        }
-    }
-
     suspend fun generateInfographic(
         token: String,
         noteId: String,

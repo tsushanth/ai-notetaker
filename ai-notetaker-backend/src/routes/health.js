@@ -88,30 +88,56 @@ router.get('/live', (req, res) => {
 /**
  * Readiness probe - checks if app can serve traffic
  * GET /health/ready
+ *
+ * Includes retry logic and timeout to handle transient network issues
  */
 router.get('/ready', async (req, res) => {
-  try {
-    // Quick check that supabaseAdmin works
-    const { error } = await supabaseAdmin
-      .from('notes')
-      .select('id')
-      .limit(1);
+  const TIMEOUT_MS = 5000; // 5 second timeout
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY_MS = 500;
 
-    if (error) {
-      logger.warn('Readiness check failed', { error: error.message });
+  const checkDatabase = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+      const { error } = await supabaseAdmin
+        .from('notes')
+        .select('id')
+        .limit(1)
+        .abortSignal(controller.signal);
+
+      clearTimeout(timeoutId);
+      return { success: !error, error: error?.message };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      return { success: false, error: err.message };
+    }
+  };
+
+  // Retry logic for transient failures
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const result = await checkDatabase();
+
+    if (result.success) {
+      return res.status(200).json({ ready: true });
+    }
+
+    if (attempt < MAX_RETRIES) {
+      logger.warn('Readiness check failed, retrying', {
+        attempt,
+        maxRetries: MAX_RETRIES,
+        error: result.error
+      });
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+    } else {
+      logger.warn('Readiness check failed after retries', { error: result.error });
       return res.status(503).json({
         ready: false,
         reason: 'Database connection failed',
-        error: error.message
+        error: result.error
       });
     }
-
-    res.status(200).json({ ready: true });
-  } catch (error) {
-    res.status(503).json({
-      ready: false,
-      reason: error.message
-    });
   }
 });
 

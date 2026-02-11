@@ -150,6 +150,14 @@ class UniversityScraperService {
     const baseUrl = `https://www.${domain}`;
     const altUrl = `https://${domain}`;
 
+    // Detect if international university by domain suffix
+    const isUK = domain.endsWith('.ac.uk');
+    const isAustralia = domain.endsWith('.edu.au');
+    const isCanada = domain.endsWith('.ca');
+    const isInternational = isUK || isAustralia || isCanada ||
+      domain.endsWith('.ac.nz') || domain.endsWith('.ie') ||
+      domain.endsWith('.edu.sg') || domain.endsWith('.edu.hk') || domain.endsWith('.hk');
+
     // Try common department + faculty patterns
     for (const dept of this.departmentPaths.slice(0, 10)) { // Limit to first 10 depts
       for (const pattern of this.facultyPatterns.slice(0, 5)) { // Limit patterns
@@ -158,6 +166,23 @@ class UniversityScraperService {
           `https://${dept}.${domain}${pattern}`,
           `${baseUrl}/departments/${dept}${pattern}`,
         ];
+
+        // Add international patterns
+        if (isInternational) {
+          urls.push(
+            `${baseUrl}/schools/${dept}/people`,
+            `${baseUrl}/schools/${dept}/staff`,
+            `${baseUrl}/schools/${dept}/academic-staff`,
+            `${baseUrl}/${dept}/about/people`,
+            `${baseUrl}/${dept}/about-us/people`,
+            `${baseUrl}/${dept}/our-people`,
+            `${baseUrl}/${dept}/staff`,
+            `${baseUrl}/${dept}/academic-staff`,
+            `${baseUrl}/faculties/${dept}/people`,
+            `${altUrl}/${dept}${pattern}`,
+            `${altUrl}/schools/${dept}/people`,
+          );
+        }
 
         for (const url of urls) {
           const exists = await this.checkPageExists(url);
@@ -178,6 +203,25 @@ class UniversityScraperService {
       `${baseUrl}/people`,
       `${altUrl}/directory`,
     ];
+
+    // Add international-specific main directory URLs
+    if (isInternational) {
+      mainDirUrls.push(
+        `${baseUrl}/staff`,
+        `${baseUrl}/academic-staff`,
+        `${baseUrl}/our-people`,
+        `${baseUrl}/about/people`,
+        `${baseUrl}/about-us/people`,
+        `${baseUrl}/research/people`,
+        `${baseUrl}/research/researchers`,
+        `${altUrl}/people`,
+        `${altUrl}/staff`,
+        `${altUrl}/about/people`,
+        `https://research.${domain}/en/persons`,
+        `https://profiles.${domain}`,
+        `https://researchers.${domain}`,
+      );
+    }
 
     for (const url of mainDirUrls) {
       const exists = await this.checkPageExists(url);

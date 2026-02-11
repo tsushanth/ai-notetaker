@@ -115,10 +115,6 @@ object AnalyticsService {
         SUMMARY_GENERATED("summary_generated"),
         DIAGRAM_GENERATED("diagram_generated"),
 
-        // AI Feature - Mind Map
-        MINDMAP_TAB_VIEWED("mindmap_tab_viewed"),
-        MINDMAP_GENERATED("mindmap_generated"),
-
         // Feature discovery
         FEATURE_DISCOVERED("feature_discovered"),
         TAB_SWITCHED("tab_switched"),
@@ -629,20 +625,6 @@ object AnalyticsService {
             "diagram_type" to diagramType
         ))
         trackReachedValue("diagram")
-    }
-
-    // MARK: - Mind Map Events
-
-    fun trackMindMapTabViewed(noteId: String) {
-        track(Event.MINDMAP_TAB_VIEWED, mapOf("note_id" to noteId))
-    }
-
-    fun trackMindMapGenerated(noteId: String, nodeCount: Int) {
-        track(Event.MINDMAP_GENERATED, mapOf(
-            "note_id" to noteId,
-            "node_count" to nodeCount
-        ))
-        trackReachedValue("mindmap")
     }
 
     // MARK: - Note Events

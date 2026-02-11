@@ -46,8 +46,6 @@ data class AIOptions(
     val duration: String? = null, // "short", "medium", "long"
     val voice: String? = null, // "nova" (female), "onyx" (male)
     val instructions: String? = null,
-    // Mind Map options
-    val includeExploration: Boolean? = true
 )
 
 data class AIContentResponse(
@@ -139,48 +137,12 @@ data class AIContentData(
     @SerializedName("num_cards")
     val numCards: Int? = null,
     val model: String? = null,
-    // Mind Map fields
     val title: String? = null,
-    val nodes: List<MindMapNode>? = null,
     // Infographic fields
     @SerializedName("image_url")
     val imageUrl: String? = null,
     @SerializedName("extracted_data")
     val extractedData: InfographicExtractedData? = null
-)
-
-// MARK: - Mind Map Models
-
-data class MindMapNode(
-    val id: String,
-    val label: String,
-    val content: String,
-    val level: Int,
-    val parentId: String? = null,
-    val color: String? = null,
-    val isExploratory: Boolean? = false
-)
-
-data class MindMap(
-    val id: String,
-    val noteId: String,
-    val title: String,
-    val nodes: List<MindMapNode>,
-    val createdAt: String
-)
-
-data class MindMapGenerateResponse(
-    val success: Boolean,
-    val data: MindMapData? = null,
-    val error: String? = null
-)
-
-data class MindMapData(
-    val id: String,
-    @SerializedName("note_id")
-    val noteId: String,
-    val title: String,
-    val nodes: List<MindMapNode>
 )
 
 // MARK: - Infographic Models

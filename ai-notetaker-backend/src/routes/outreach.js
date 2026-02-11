@@ -1170,4 +1170,227 @@ Sushanth</p>
   });
 }));
 
+// =====================================================
+// SECUREVOX OUTREACH TEMPLATES
+// =====================================================
+
+/**
+ * GET /api/outreach/templates/securevox
+ * Get SecureVox B2B/B2C email templates
+ */
+router.get('/templates/securevox', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  const templates = [
+    {
+      name: 'Legal Professional Introduction',
+      target_industry: 'legal',
+      subject: 'Transcribe confidential client calls without the cloud',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>As a {{title}} at {{company}}, you handle sensitive client conversations daily. But most transcription tools send your audio to the cloud, creating confidentiality concerns.</p>
+
+<p><strong>SecureVox</strong> is different: 100% offline, on-device transcription powered by OpenAI's Whisper AI. Your recordings never leave your device.</p>
+
+<p>Key benefits for legal professionals:</p>
+<ul>
+  <li>Complete client confidentiality - no cloud uploads ever</li>
+  <li>Works without internet connection</li>
+  <li>Supports 99+ languages with auto-detection</li>
+  <li>Export to TXT, SRT (subtitles), VTT formats</li>
+  <li>Word-level timestamps for easy reference</li>
+</ul>
+
+<p>I'd love to offer you <strong>free access</strong> to try it out. Would a brief demo be helpful?</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, <a href="https://securevox.app">SecureVox</a></p>
+      `.trim(),
+    },
+    {
+      name: 'Healthcare Professional Introduction',
+      target_industry: 'healthcare',
+      subject: 'HIPAA-friendly transcription for patient notes',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Most AI transcription tools upload audio to third-party servers, creating HIPAA compliance concerns for healthcare providers.</p>
+
+<p><strong>SecureVox</strong> solves this by processing everything locally on your device. No cloud uploads, no data collection, no compliance headaches.</p>
+
+<p>Why healthcare professionals love it:</p>
+<ul>
+  <li>100% on-device processing - audio never leaves your device</li>
+  <li>No account required - zero data collection</li>
+  <li>Works offline in any environment</li>
+  <li>Accurate medical terminology recognition</li>
+  <li>Custom dictionary support for specialized terms</li>
+</ul>
+
+<p>Would this be useful for your practice at {{company}}? I'd be happy to set up a free trial.</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, <a href="https://securevox.app">SecureVox</a></p>
+      `.trim(),
+    },
+    {
+      name: 'Journalist/Media Introduction',
+      target_industry: 'media',
+      subject: 'Protect your sources with offline transcription',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>When you're interviewing confidential sources, the last thing you need is your audio being uploaded to a third-party server.</p>
+
+<p><strong>SecureVox</strong> transcribes everything on your device using AI - completely offline. Perfect for sensitive interviews where source protection matters.</p>
+
+<p>Built for journalists:</p>
+<ul>
+  <li>100% offline - works in the field without internet</li>
+  <li>No cloud, no accounts, no data trail</li>
+  <li>99+ language support for international reporting</li>
+  <li>Export timestamps for easy audio navigation</li>
+  <li>Import audio/video files from any source</li>
+</ul>
+
+<p>I'd love to offer you free access to try it. Want me to set that up?</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, <a href="https://securevox.app">SecureVox</a></p>
+      `.trim(),
+    },
+    {
+      name: 'Research/Academic Introduction',
+      target_industry: 'research',
+      subject: 'IRB-compliant transcription for research interviews',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Research involving human subjects often requires strict data handling protocols. Most transcription services upload audio to external servers, complicating IRB compliance.</p>
+
+<p><strong>SecureVox</strong> processes everything locally on your device - no cloud uploads, no external data sharing, no compliance concerns.</p>
+
+<p>Perfect for research:</p>
+<ul>
+  <li>Complete data sovereignty - audio never leaves your device</li>
+  <li>No third-party data processing agreements needed</li>
+  <li>Works offline for field research</li>
+  <li>99+ languages for international studies</li>
+  <li>Export transcripts in multiple formats</li>
+</ul>
+
+<p>Would this help with your research at {{company}}? Happy to provide free access for your team.</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, <a href="https://securevox.app">SecureVox</a></p>
+      `.trim(),
+    },
+    {
+      name: 'Therapist/Counselor Introduction',
+      target_industry: 'mental_health',
+      subject: 'Private session notes without cloud concerns',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Therapy and counseling sessions contain deeply sensitive information. Using cloud-based transcription tools puts that confidentiality at risk.</p>
+
+<p><strong>SecureVox</strong> keeps everything on your device. Record sessions, get accurate transcripts, and maintain complete client confidentiality.</p>
+
+<p>Built for mental health professionals:</p>
+<ul>
+  <li>100% local processing - nothing uploaded anywhere</li>
+  <li>No accounts, no data collection</li>
+  <li>Works without internet</li>
+  <li>Easy session note organization</li>
+  <li>Searchable transcript archive</li>
+</ul>
+
+<p>I'd be happy to offer you free access to try it. Interested?</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, <a href="https://securevox.app">SecureVox</a></p>
+      `.trim(),
+    },
+    {
+      name: 'Executive/Board Introduction',
+      target_industry: 'enterprise',
+      subject: 'Confidential meeting transcription - 100% offline',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Board meetings, strategy sessions, and executive discussions contain information that shouldn't leave your organization. Yet most transcription tools send audio to external cloud servers.</p>
+
+<p><strong>SecureVox</strong> processes everything on-device. No cloud, no external servers, no data leaks.</p>
+
+<p>Why executives trust it:</p>
+<ul>
+  <li>Complete confidentiality - audio never leaves your device</li>
+  <li>No vendor data processing agreements</li>
+  <li>Works offline - perfect for secure facilities</li>
+  <li>Accurate transcription of business discussions</li>
+  <li>Easy sharing within your organization</li>
+</ul>
+
+<p>Would a demo be helpful? I can show you how it works in 15 minutes.</p>
+
+<p>Best,<br>
+Sushanth<br>
+Founder, <a href="https://securevox.app">SecureVox</a></p>
+      `.trim(),
+    },
+    {
+      name: 'Follow-up #1',
+      target_industry: 'all',
+      subject: 'Re: Offline transcription for {{company}}',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Just following up on my note about SecureVox - the privacy-first transcription app.</p>
+
+<p>Quick highlights:</p>
+<ul>
+  <li>100% on-device - your audio never touches a cloud server</li>
+  <li>Works completely offline</li>
+  <li>99+ languages supported</li>
+</ul>
+
+<p>If privacy matters for your work at {{company}}, I'd love to give you free access to try it out.</p>
+
+<p>Let me know!</p>
+
+<p>Best,<br>
+Sushanth</p>
+      `.trim(),
+    },
+    {
+      name: 'Follow-up #2 (Final)',
+      target_industry: 'all',
+      subject: 'Last note: SecureVox for {{company}}',
+      body: `
+<p>Hi {{first_name}},</p>
+
+<p>Wanted to send one final note - I know how busy things get.</p>
+
+<p>If you ever need transcription that keeps your audio 100% private (no cloud, no uploads, nothing leaving your device), SecureVox is here.</p>
+
+<p>Just reply "interested" and I'll send over free access details.</p>
+
+<p>If not, no worries at all - I appreciate your time!</p>
+
+<p>Best,<br>
+Sushanth</p>
+      `.trim(),
+    },
+  ];
+
+  res.json({
+    success: true,
+    data: templates,
+  });
+}));
+
 module.exports = router;

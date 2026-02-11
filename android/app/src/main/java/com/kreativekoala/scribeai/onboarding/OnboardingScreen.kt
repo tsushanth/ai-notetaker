@@ -933,9 +933,6 @@ private fun TrialScreen(
             }
         }
 
-        // Web Discount Section
-        WebDiscountSection()
-
         // Platform Availability
         PlatformAvailabilitySection()
 
@@ -1103,84 +1100,6 @@ private fun TrialTermsText(modifier: Modifier = Modifier) {
                 }
         }
     )
-}
-
-@Composable
-private fun WebDiscountSection() {
-    val context = LocalContext.current
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://scribeai.online/subscription"))
-                    context.startActivity(intent)
-                }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Globe icon
-            Surface(
-                modifier = Modifier.size(40.dp),
-                shape = CircleShape,
-                color = Purple80.copy(alpha = 0.2f)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Default.Language,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = Purple80
-                    )
-                }
-            }
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        "Subscribe on Web",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Surface(
-                        color = Color(0xFFFF6B35),
-                        shape = RoundedCornerShape(4.dp)
-                    ) {
-                        Text(
-                            "30% OFF",
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-                Text(
-                    "Get a discount by subscribing online",
-                    fontSize = 13.sp,
-                    color = TextSecondary
-                )
-            }
-
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = "Open",
-                modifier = Modifier.size(24.dp),
-                tint = TextTertiary
-            )
-        }
-    }
 }
 
 @Composable

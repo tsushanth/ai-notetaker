@@ -607,6 +607,16 @@ ${note.content.substring(0, 3000)}`; // Limit content length
         throw new AppError('Note not found', 404);
       }
 
+      // Validate minimum content length for podcast generation
+      const wordCount = (note.content || '').trim().split(/\s+/).filter(w => w.length > 0).length;
+      const MIN_WORDS_FOR_PODCAST = 50;
+      if (wordCount < MIN_WORDS_FOR_PODCAST) {
+        throw new AppError(
+          `Your note needs more content to generate a podcast. It currently has ${wordCount} words — please add at least ${MIN_WORDS_FOR_PODCAST} words of content and try again.`,
+          400
+        );
+      }
+
       const durationConfig = {
         short: { minutes: '3-5', words: 600, minWords: 500 },
         medium: { minutes: '8-12', words: 1400, minWords: 1200 },
@@ -731,6 +741,10 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
         userId,
         noteId
       });
+      // Preserve specific error messages (e.g., content too short) instead of generic fallback
+      if (error instanceof AppError) {
+        throw error;
+      }
       throw new AppError('Failed to generate podcast', 500);
     }
   }
@@ -754,6 +768,16 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
       const note = await noteService.getNoteById(userId, noteId);
       if (!note) {
         throw new AppError('Note not found', 404);
+      }
+
+      // Validate minimum content length for podcast generation
+      const wordCount = (note.content || '').trim().split(/\s+/).filter(w => w.length > 0).length;
+      const MIN_WORDS_FOR_PODCAST = 50;
+      if (wordCount < MIN_WORDS_FOR_PODCAST) {
+        throw new AppError(
+          `Your note needs more content to generate a podcast. It currently has ${wordCount} words — please add at least ${MIN_WORDS_FOR_PODCAST} words of content and try again.`,
+          400
+        );
       }
 
       const durationConfig = {
@@ -895,6 +919,10 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
         noteId,
         placeholderId
       });
+      // Preserve specific error messages (e.g., content too short) instead of generic fallback
+      if (error instanceof AppError) {
+        throw error;
+      }
       throw new AppError('Failed to generate podcast', 500);
     }
   }

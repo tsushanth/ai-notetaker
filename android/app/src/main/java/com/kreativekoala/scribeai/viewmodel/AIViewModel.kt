@@ -45,9 +45,6 @@ class AIViewModel : ViewModel() {
     private val _diagramState = MutableStateFlow<AIContentState>(AIContentState.Idle)
     val diagramState: StateFlow<AIContentState> = _diagramState.asStateFlow()
 
-    private val _mindMapState = MutableStateFlow<AIContentState>(AIContentState.Idle)
-    val mindMapState: StateFlow<AIContentState> = _mindMapState.asStateFlow()
-
     private val _infographicState = MutableStateFlow<AIContentState>(AIContentState.Idle)
     val infographicState: StateFlow<AIContentState> = _infographicState.asStateFlow()
 
@@ -142,40 +139,6 @@ class AIViewModel : ViewModel() {
                     _flashcardsState.value = AIContentState.Error(exception.message ?: "Failed to generate flashcards")
                 }
             )
-        }
-    }
-
-    fun generateMindMap(
-        token: String,
-        noteId: String,
-        includeExploration: Boolean = true,
-        language: String = "english"
-    ) {
-        viewModelScope.launch {
-            _mindMapState.value = AIContentState.Loading
-
-            val options = AIOptions(includeExploration = includeExploration, language = language)
-            try {
-                repository.generateMindMap(token, noteId, options).fold(
-                    onSuccess = { content ->
-                        _mindMapState.value = AIContentState.Success(content)
-                        AnalyticsService.trackMindMapGenerated(noteId, content.nodes?.size ?: 0)
-                    },
-                    onFailure = { exception ->
-                        Log.e("AIViewModel", "Failed to generate mind map", exception)
-                        ErrorReportingService.reportError(
-                            ErrorReportingService.UserFlow.GENERATE_MINDMAP,
-                            exception,
-                            "Note: $noteId"
-                        )
-                        _mindMapState.value = AIContentState.Error(exception.message ?: "Failed to generate mind map")
-                    }
-                )
-            } catch (e: Exception) {
-                Log.e("AIViewModel", "Unexpected error generating mind map", e)
-                ErrorReportingService.reportError(ErrorReportingService.UserFlow.GENERATE_MINDMAP, e, "Note: $noteId")
-                _mindMapState.value = AIContentState.Error(e.message ?: "Failed to generate mind map")
-            }
         }
     }
 
@@ -358,10 +321,6 @@ class AIViewModel : ViewModel() {
                             .filter { it.contentType == "flashcards" }
                             .maxByOrNull { it.createdAt }
 
-                        val mindmap = aiContentList
-                            .filter { it.contentType == "mindmap" }
-                            .maxByOrNull { it.createdAt }
-
                         // Update states - set to Success if content exists, otherwise keep as Idle
                         // Wrap content safely to ensure proper type handling
                         _summaryState.value = summary?.let {
@@ -400,14 +359,6 @@ class AIViewModel : ViewModel() {
                             }
                         } ?: AIContentState.Idle
 
-                        _mindMapState.value = mindmap?.let {
-                            try {
-                                AIContentState.Success(it.content)
-                            } catch (e: Exception) {
-                                Log.e("AIViewModel", "Error casting mindmap content", e)
-                                AIContentState.Idle
-                            }
-                        } ?: AIContentState.Idle
                     },
                     onFailure = {
                         // Silently fail - just means no content exists yet
@@ -483,7 +434,6 @@ class AIViewModel : ViewModel() {
             "flashcards" -> _flashcardsState.value = AIContentState.Idle
             "podcast" -> _podcastState.value = AIContentState.Idle
             "diagram" -> _diagramState.value = AIContentState.Idle
-            "mindmap" -> _mindMapState.value = AIContentState.Idle
             "infographic" -> _infographicState.value = AIContentState.Idle
         }
     }
@@ -498,7 +448,6 @@ class AIViewModel : ViewModel() {
         _flashcardsState.value = AIContentState.Idle
         _podcastState.value = AIContentState.Idle
         _diagramState.value = AIContentState.Idle
-        _mindMapState.value = AIContentState.Idle
         _infographicState.value = AIContentState.Idle
     }
 }

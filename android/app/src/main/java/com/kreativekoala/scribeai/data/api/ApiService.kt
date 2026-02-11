@@ -113,12 +113,6 @@ interface ApiService {
         @Body request: GenerateAIRequest
     ): Response<AIContentResponse>
 
-    @POST("api/ai/mindmap")
-    suspend fun generateMindMap(
-        @Header("Authorization") token: String,
-        @Body request: GenerateAIRequest
-    ): Response<MindMapGenerateResponse>
-
     @POST("api/ai/infographic")
     suspend fun generateInfographic(
         @Header("Authorization") token: String,

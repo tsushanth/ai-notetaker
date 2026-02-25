@@ -7,6 +7,7 @@
 
 import SwiftUI
 import GoogleSignIn
+import AdServices
 
 @main
 struct ScribeAIApp: App {
@@ -18,6 +19,9 @@ struct ScribeAIApp: App {
     init() {
         // Initialize Firebase Analytics (free, unlimited)
         FirebaseAnalyticsHelper.shared.initialize()
+
+        // Fetch Apple Search Ads attribution for ad optimization
+        AppleSearchAdsAttribution.shared.fetchAndSendAttribution()
     }
 
     var body: some Scene {
@@ -170,4 +174,90 @@ struct SplashScreenView: View {
 
 #Preview {
     SplashScreenView()
+}
+
+// MARK: - Apple Search Ads Attribution
+
+class AppleSearchAdsAttribution {
+    static let shared = AppleSearchAdsAttribution()
+
+    private let defaults = UserDefaults.standard
+    private let attributionSentKey = "apple_search_ads_attribution_sent"
+
+    private init() {}
+
+    /// Fetches the Apple Search Ads attribution token and sends it to the backend
+    func fetchAndSendAttribution() {
+        // Only send attribution once per install
+        guard !defaults.bool(forKey: attributionSentKey) else {
+            #if DEBUG
+            print("📱 ASA attribution already sent")
+            #endif
+            return
+        }
+
+        // Fetch attribution token in background
+        Task {
+            await fetchAttributionToken()
+        }
+    }
+
+    private func fetchAttributionToken() async {
+        do {
+            // Get the attribution token from Apple's AdServices framework
+            let token = try AAAttribution.attributionToken()
+
+            #if DEBUG
+            print("📱 ASA attribution token fetched: \(token.prefix(50))...")
+            #endif
+
+            // Send to backend
+            await sendAttributionToBackend(token: token)
+
+        } catch {
+            #if DEBUG
+            print("📱 ASA attribution error: \(error.localizedDescription)")
+            #endif
+        }
+    }
+
+    private func sendAttributionToBackend(token: String) async {
+        guard let url = URL(string: "\(Constants.baseURL)\(Constants.API.attribution)") else {
+            return
+        }
+
+        // Get device info for matching
+        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? "unknown"
+
+        let payload: [String: Any] = [
+            "platform": "ios",
+            "attribution_token": token,
+            "device_id": deviceId,
+            "bundle_id": Bundle.main.bundleIdentifier ?? "KreativeKoala.scribeai",
+            "app_version": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown",
+            "timestamp": ISO8601DateFormatter().string(from: Date())
+        ]
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.timeoutInterval = 10
+
+        do {
+            request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+
+            let (_, response) = try await URLSession.shared.data(for: request)
+
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                defaults.set(true, forKey: attributionSentKey)
+                #if DEBUG
+                print("📱 ASA attribution sent successfully")
+                #endif
+            }
+        } catch {
+            #if DEBUG
+            print("📱 ASA attribution send error: \(error.localizedDescription)")
+            #endif
+        }
+    }
 }

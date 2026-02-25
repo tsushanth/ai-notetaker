@@ -25,8 +25,10 @@ struct ProfileView: View {
     @State private var showingPaywall = false
     @State private var showingLanguageSheet = false
     @State private var showingThemeSheet = false
+    @State private var showingDataConsent = false
     @State private var selectedLanguage: String = UserDefaults.standard.string(forKey: "preferred_language") ?? "english"
     @StateObject private var themeManager = ThemeManager.shared
+    @ObservedObject private var consentManager = AIDataConsentManager.shared
     
     private let languages: [(code: String, name: String)] = [
         // Major World Languages
@@ -164,6 +166,19 @@ struct ProfileView: View {
                                 .background(Color.darkSurfaceVariant)
                                 .padding(.leading, 56)
 
+                            // Data & Privacy
+                            ProfileRow(
+                                icon: "shield.lefthalf.filled",
+                                title: "Data & Privacy",
+                                subtitle: consentManager.hasConsented ? "AI data sharing allowed" : "AI data sharing not allowed"
+                            ) {
+                                showingDataConsent = true
+                            }
+
+                            Divider()
+                                .background(Color.darkSurfaceVariant)
+                                .padding(.leading, 56)
+
                             ProfileRow(
                                 icon: "questionmark.circle",
                                 title: "Help & Support",
@@ -278,6 +293,12 @@ struct ProfileView: View {
         }
         // Apply user's theme preference
         .preferredColorScheme(themeManager.colorScheme)
+        .sheet(isPresented: $showingDataConsent) {
+            NavigationView {
+                AIDataConsentView(isOnboarding: false)
+            }
+            .preferredColorScheme(.dark)
+        }
         .sheet(isPresented: $showingThemeSheet) {
             ThemeSelectionSheet()
         }

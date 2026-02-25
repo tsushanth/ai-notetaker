@@ -75,8 +75,9 @@ enum OnboardingStep: Int, CaseIterable {
     case featureAudio = 6
     case socialProof = 7
     case comparison = 8
-    case trial = 9
-    case notifications = 10
+    case dataConsent = 9
+    case trial = 10
+    case notifications = 11
 
     var totalSteps: Int { OnboardingStep.allCases.count }
 
@@ -118,14 +119,32 @@ class OnboardingManager: ObservableObject {
     @Published var hasCompletedOnboarding: Bool
     @Published var isLoading = false
 
+    /// True when a returning user needs to see the data consent page only (not full onboarding).
+    @Published var isReturningUser: Bool = false
+
     // MARK: - Keys
     private let hasCompletedOnboardingKey = "hasCompletedOnboarding"
     private let userTypeKey = "userType"
     private let useCasesKey = "useCases"
     private let preferencesSyncedKey = "preferencesSynced"
+    private let onboardingVersionKey = "onboardingVersion"
+
+    // Current onboarding version - increment to show onboarding again
+    // v1: original onboarding
+    // v2: added AI data consent page
+    private let currentVersion = 2
 
     private init() {
-        self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey)
+        let savedVersion = UserDefaults.standard.integer(forKey: onboardingVersionKey)
+        let hasCompleted = UserDefaults.standard.bool(forKey: hasCompletedOnboardingKey)
+
+        if hasCompleted && savedVersion < currentVersion {
+            // User completed old version but not new — they need consent only
+            self.isReturningUser = true
+            self.hasCompletedOnboarding = false
+        } else {
+            self.hasCompletedOnboarding = hasCompleted && savedVersion >= currentVersion
+        }
 
         // Load saved preferences
         if let userTypeRaw = UserDefaults.standard.string(forKey: userTypeKey),
@@ -180,9 +199,17 @@ class OnboardingManager: ObservableObject {
         }
     }
 
+    func skipToDataConsent() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentStep = .dataConsent
+        }
+    }
+
     // MARK: - Completion
     func completeOnboarding() {
+        UserDefaults.standard.set(currentVersion, forKey: onboardingVersionKey)
         hasCompletedOnboarding = true
+        isReturningUser = false
         UserDefaults.standard.set(true, forKey: hasCompletedOnboardingKey)
 
         // Save preferences locally

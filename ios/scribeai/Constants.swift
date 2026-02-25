@@ -28,6 +28,9 @@ struct Constants {
         static let subscriptionStatus = "/api/subscriptions/status"
         static let subscriptionEvent = "/api/subscriptions/event"
         static let subscriptionAccess = "/api/subscriptions/access"
+
+        // Attribution endpoints
+        static let attribution = "/api/attribution"
     }
     
     struct Keychain {

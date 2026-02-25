@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <div className="py-16">
       <div className="max-w-[900px] mx-auto px-6">
         <h1 className="text-3xl md:text-4xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-[var(--text-muted)] text-sm mb-12">Last updated: December 28, 2025</p>
+        <p className="text-[var(--text-muted)] text-sm mb-12">Last updated: February 25, 2026</p>
 
         <section className="mb-10">
           <h2 className="text-xl font-semibold mb-4">Introduction</h2>
@@ -51,11 +51,35 @@ export default function PrivacyPage() {
         </section>
 
         <section className="mb-10">
-          <h2 className="text-xl font-semibold mb-4">AI Processing</h2>
-          <p className="text-[var(--text-secondary)] leading-relaxed">
-            Your content is processed using third-party AI services to provide transcription, summarization,
-            flashcard generation, and podcast creation. Your content is not used to train AI models.
+          <h2 className="text-xl font-semibold mb-4">Third-Party AI Services</h2>
+          <p className="text-[var(--text-secondary)] leading-relaxed mb-4">
+            Scribe AI uses the following third-party AI services to provide its features.
+            The app asks for your explicit consent before sending any data to these services.
+            Your content is not used to train AI models.
           </p>
+
+          <h3 className="text-lg font-medium text-[var(--text-secondary)] mb-3">Audio Transcription</h3>
+          <p className="text-[var(--text-secondary)] mb-2">When you record or upload audio, it is sent to:</p>
+          <ul className="list-disc list-inside text-[var(--text-secondary)] mb-4 space-y-2">
+            <li><strong className="text-[var(--text-secondary)]">OpenAI Whisper</strong> (openai.com) &mdash; converts audio to text, subject to <a href="https://openai.com/policies/api-data-usage-policies" className="text-[var(--accent-purple-light)] hover:underline">OpenAI&apos;s API data usage policy</a></li>
+          </ul>
+
+          <h3 className="text-lg font-medium text-[var(--text-secondary)] mb-3">AI Content Generation</h3>
+          <p className="text-[var(--text-secondary)] mb-2">When you generate summaries, quizzes, flashcards, mind maps, infographics, or chat with your notes, the text is sent to:</p>
+          <ul className="list-disc list-inside text-[var(--text-secondary)] mb-4 space-y-2">
+            <li><strong className="text-[var(--text-secondary)]">OpenAI GPT-4</strong> (openai.com) &mdash; processes text to generate AI content, subject to <a href="https://openai.com/policies/api-data-usage-policies" className="text-[var(--accent-purple-light)] hover:underline">OpenAI&apos;s API data usage policy</a>. Data sent via the API is not used for model training.</li>
+          </ul>
+
+          <h3 className="text-lg font-medium text-[var(--text-secondary)] mb-3">AI Podcast Generation</h3>
+          <p className="text-[var(--text-secondary)] mb-2">When you generate a podcast from your notes, the text is sent to:</p>
+          <ul className="list-disc list-inside text-[var(--text-secondary)] mb-4 space-y-2">
+            <li><strong className="text-[var(--text-secondary)]">OpenAI TTS</strong> (openai.com) &mdash; text-to-speech synthesis for podcast audio</li>
+          </ul>
+
+          <h3 className="text-lg font-medium text-[var(--text-secondary)] mb-3">Authentication &amp; Storage</h3>
+          <ul className="list-disc list-inside text-[var(--text-secondary)] space-y-2">
+            <li><strong className="text-[var(--text-secondary)]">Supabase</strong> (supabase.com) &mdash; provides authentication, database, and file storage services</li>
+          </ul>
         </section>
 
         <section className="mb-10">
@@ -69,9 +93,10 @@ export default function PrivacyPage() {
 
         <section className="mb-10">
           <h2 className="text-xl font-semibold mb-4">Data Sharing</h2>
-          <p className="text-[var(--text-secondary)] mb-3">We do not sell your personal information. We may share information with:</p>
+          <p className="text-[var(--text-secondary)] mb-3">We do not sell your personal information. We share data with:</p>
           <ul className="list-disc list-inside text-[var(--text-secondary)] space-y-2">
-            <li><strong className="text-[var(--text-secondary)]">Service Providers:</strong> Third-party services that help us operate the App</li>
+            <li><strong className="text-[var(--text-secondary)]">OpenAI:</strong> Your content (text and audio) is sent to OpenAI for AI processing as described above. OpenAI&apos;s API data usage policy prohibits use of API data for model training.</li>
+            <li><strong className="text-[var(--text-secondary)]">Supabase:</strong> Your account information and files are stored via Supabase with encryption at rest and in transit.</li>
             <li><strong className="text-[var(--text-secondary)]">Legal Requirements:</strong> When required by law</li>
             <li><strong className="text-[var(--text-secondary)]">Business Transfers:</strong> In connection with a merger or acquisition</li>
           </ul>
@@ -83,6 +108,7 @@ export default function PrivacyPage() {
             <li><strong className="text-[var(--text-secondary)]">Access:</strong> Request a copy of your personal data</li>
             <li><strong className="text-[var(--text-secondary)]">Delete:</strong> Request deletion of your account and data</li>
             <li><strong className="text-[var(--text-secondary)]">Export:</strong> Export your notes and content</li>
+            <li><strong className="text-[var(--text-secondary)]">Revoke consent:</strong> Revoke AI data sharing consent at any time in the app&apos;s Settings</li>
             <li><strong className="text-[var(--text-secondary)]">Opt-out:</strong> Disable analytics and non-essential data collection</li>
           </ul>
           <p className="text-[var(--text-secondary)] mt-4">

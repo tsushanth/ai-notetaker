@@ -31,6 +31,10 @@ struct OnboardingView: View {
             }
         }
         .onAppear {
+            // Returning users (who already completed onboarding v1) skip straight to consent
+            if manager.isReturningUser {
+                manager.skipToDataConsent()
+            }
             AnalyticsService.shared.track(.onboardingStarted, properties: [:])
             stepEntryTime = Date()
         }
@@ -129,6 +133,8 @@ struct OnboardingView: View {
             OnboardingSocialProofView()
         case .comparison:
             OnboardingComparisonView()
+        case .dataConsent:
+            AIDataConsentView(isOnboarding: true)
         case .trial:
             OnboardingTrialView()
         case .notifications:

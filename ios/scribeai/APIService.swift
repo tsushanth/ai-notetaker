@@ -20,6 +20,7 @@ enum APIError: Error {
     case networkError(String, isRetryable: Bool)
     case subscriptionRequired(reason: String, trialExpired: Bool)
     case freeTierLimitReached(feature: String, used: Int, limit: Int)
+    case consentRequired
 }
 
 extension APIError: LocalizedError {
@@ -45,6 +46,8 @@ extension APIError: LocalizedError {
             return reason
         case .freeTierLimitReached(let feature, _, _):
             return "You've reached your free limit for \(feature). Upgrade to continue."
+        case .consentRequired:
+            return "AI data sharing consent is required. Please grant consent in Settings > Data & Privacy."
         }
     }
 }
@@ -61,6 +64,16 @@ class APIService {
     }()
 
     private init() {}
+
+    // MARK: - Consent Check
+
+    /// Checks if the user has granted AI data sharing consent.
+    private func requireAIConsent() async throws {
+        let hasConsent = await MainActor.run { AIDataConsentManager.shared.hasConsented }
+        guard hasConsent else {
+            throw APIError.consentRequired
+        }
+    }
 
     // MARK: - Dynamic Timeout Helper
 
@@ -635,6 +648,7 @@ class APIService {
     }
     
     func transcribeRecording(token: String, recordingId: String) async throws -> TranscriptionResult {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             // Wrap transcription in retry logic for network resilience
             try await self.executeWithRetry(config: .transcribe) {
@@ -999,6 +1013,7 @@ class APIService {
     }
 
     func generatePodcast(token: String, noteId: String, contentLength: Int = 0, duration: String = "short", gender: String = "female", instructions: String? = nil) async throws -> AIContent {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._generatePodcast(token: validToken, noteId: noteId, contentLength: contentLength, duration: duration, gender: gender, instructions: instructions)
         }
@@ -1076,6 +1091,7 @@ class APIService {
     }
 
     func generateQuiz(token: String, noteId: String, difficulty: String = "medium", numQuestions: Int = 5, contentLength: Int = 0) async throws -> AIContent {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._generateQuiz(token: validToken, noteId: noteId, difficulty: difficulty, numQuestions: numQuestions, contentLength: contentLength)
         }
@@ -1209,6 +1225,7 @@ class APIService {
     }
 
     func generateFlashcards(token: String, noteId: String, contentLength: Int = 0, count: Int = 20, instructions: String? = nil) async throws -> AIContent {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._generateFlashcards(token: validToken, noteId: noteId, contentLength: contentLength, count: count, instructions: instructions)
         }
@@ -1315,6 +1332,7 @@ class APIService {
     // MARK: - Mind Map Generation
 
     func generateMindMap(token: String, noteId: String, contentLength: Int = 0, includeExploration: Bool = true) async throws -> AIContent {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._generateMindMap(token: validToken, noteId: noteId, contentLength: contentLength, includeExploration: includeExploration)
         }
@@ -1451,6 +1469,7 @@ class APIService {
     // MARK: - Infographic Generation
 
     func generateInfographic(token: String, noteId: String, contentLength: Int = 0, style: String = "modern") async throws -> AIContent {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._generateInfographic(token: validToken, noteId: noteId, contentLength: contentLength, style: style)
         }
@@ -1572,6 +1591,7 @@ class APIService {
     }
 
     func generateSummary(token: String, noteId: String, length: String, contentLength: Int = 0) async throws -> AIContent {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._generateSummary(token: validToken, noteId: noteId, length: length, contentLength: contentLength)
         }
@@ -1670,6 +1690,7 @@ class APIService {
     }
 
     func chatWithNote(token: String, noteId: String, question: String, conversationHistory: [ChatHistoryItem], contentLength: Int = 0) async throws -> ChatResponse {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._chatWithNote(token: validToken, noteId: noteId, question: question, conversationHistory: conversationHistory, contentLength: contentLength)
         }
@@ -2037,6 +2058,7 @@ class APIService {
     }
 
     func sendChatMessage(token: String, noteId: String, message: String) async throws -> ChatMessage {
+        try await requireAIConsent()
         return try await executeWithTokenRefresh { validToken in
             try await self._sendChatMessage(token: validToken, noteId: noteId, message: message)
         }
@@ -2744,6 +2766,7 @@ class APIService {
 
     /// Synthesize text to speech and return audio data
     func synthesizeSpeech(text: String, voice: String = "nova", speed: Double = 1.0) async throws -> Data {
+        try await requireAIConsent()
         guard let token = await TokenManager.shared.getValidToken() else {
             throw APIError.unauthorized
         }
@@ -2886,6 +2909,7 @@ class APIService {
 
     /// Generate TTS for a note and save to storage
     func generateTTSForNote(noteId: String, voice: String = "nova", speed: Double = 1.0) async throws -> TTSForNoteResponse {
+        try await requireAIConsent()
         guard let token = await TokenManager.shared.getValidToken() else {
             throw APIError.unauthorized
         }

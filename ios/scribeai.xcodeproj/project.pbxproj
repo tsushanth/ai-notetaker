@@ -17,6 +17,8 @@
 		881B30692ECD26B3003270AA /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30682ECD26B3003270AA /* GoogleSignInSwift */; };
 		8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8845E2972F0C2D7700982F8B /* FirebaseAnalytics */; };
 		88FB00012F51AB00003270AA /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 88FB00002F51AB00003270AA /* FacebookCore */; };
+		88RC00012F51AC00003270AA /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 88RC00002F51AC00003270AA /* RevenueCat */; };
+		88RC00032F51AC00003270AA /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 88RC00022F51AC00003270AA /* RevenueCatUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +61,8 @@
 				881B30672ECD26B3003270AA /* GoogleSignIn in Frameworks */,
 				8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */,
 				88FB00012F51AB00003270AA /* FacebookCore in Frameworks */,
+				88RC00012F51AC00003270AA /* RevenueCat in Frameworks */,
+				88RC00032F51AC00003270AA /* RevenueCatUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -111,6 +115,8 @@
 				881B30682ECD26B3003270AA /* GoogleSignInSwift */,
 				8845E2972F0C2D7700982F8B /* FirebaseAnalytics */,
 				88FB00002F51AB00003270AA /* FacebookCore */,
+				88RC00002F51AC00003270AA /* RevenueCat */,
+				88RC00022F51AC00003270AA /* RevenueCatUI */,
 			);
 			productName = scribeai;
 			productReference = 881B30142ECD0B69003270AA /* scribeai.app */;
@@ -145,6 +151,7 @@
 				881B30652ECD26B3003270AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
+				88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 881B30152ECD0B69003270AA /* Products */;
@@ -428,6 +435,14 @@
 				minimumVersion = 17.0.0;
 			};
 		};
+		88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -480,6 +495,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
 			productName = FacebookCore;
+		};
+		88RC00002F51AC00003270AA /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCat;
+		};
+		88RC00022F51AC00003270AA /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */;
+			productName = RevenueCatUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

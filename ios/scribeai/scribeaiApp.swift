@@ -7,6 +7,7 @@
 
 import SwiftUI
 import GoogleSignIn
+import FacebookCore
 
 @main
 struct ScribeAIApp: App {
@@ -18,6 +19,9 @@ struct ScribeAIApp: App {
     init() {
         // Initialize Firebase Analytics (free, unlimited)
         FirebaseAnalyticsHelper.shared.initialize()
+
+        // Initialize Facebook SDK for Meta Ads attribution
+        FacebookSDKHelper.shared.initialize()
     }
 
     var body: some Scene {
@@ -57,10 +61,18 @@ struct ScribeAIApp: App {
                 // Firebase: Log app open for DAU tracking
                 FirebaseAnalyticsHelper.shared.logAppOpen()
 
+                // Facebook: Log app launch
+                FacebookSDKHelper.shared.logAppLaunch()
+
                 // Dismiss splash after animation completes
                 DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
                     withAnimation(.easeOut(duration: 0.5)) {
                         showingSplash = false
+                    }
+
+                    // Request ATT permission after splash (for Facebook attribution)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        FacebookSDKHelper.shared.requestTrackingPermission()
                     }
                 }
             }

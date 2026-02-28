@@ -16,6 +16,7 @@
 		881B30672ECD26B3003270AA /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30662ECD26B3003270AA /* GoogleSignIn */; };
 		881B30692ECD26B3003270AA /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30682ECD26B3003270AA /* GoogleSignInSwift */; };
 		8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8845E2972F0C2D7700982F8B /* FirebaseAnalytics */; };
+		88FB00012F51AB00003270AA /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 88FB00002F51AB00003270AA /* FacebookCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +58,7 @@
 				881B30402ECD0DFF003270AA /* Realtime in Frameworks */,
 				881B30672ECD26B3003270AA /* GoogleSignIn in Frameworks */,
 				8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */,
+				88FB00012F51AB00003270AA /* FacebookCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,6 +110,7 @@
 				881B30662ECD26B3003270AA /* GoogleSignIn */,
 				881B30682ECD26B3003270AA /* GoogleSignInSwift */,
 				8845E2972F0C2D7700982F8B /* FirebaseAnalytics */,
+				88FB00002F51AB00003270AA /* FacebookCore */,
 			);
 			productName = scribeai;
 			productReference = 881B30142ECD0B69003270AA /* scribeai.app */;
@@ -141,6 +144,7 @@
 				881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */,
 				881B30652ECD26B3003270AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 881B30152ECD0B69003270AA /* Products */;
@@ -416,6 +420,14 @@
 				minimumVersion = 12.7.0;
 			};
 		};
+		88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/facebook-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 17.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -463,6 +475,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseAnalytics;
+		};
+		88FB00002F51AB00003270AA /* FacebookCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

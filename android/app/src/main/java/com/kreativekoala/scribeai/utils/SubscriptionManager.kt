@@ -3,6 +3,7 @@ package com.kreativekoala.scribeai.utils
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
+import com.kreativekoala.scribeai.service.TikTokHelper
 import android.provider.Settings
 import android.util.Log
 import com.android.billingclient.api.*
@@ -240,6 +241,10 @@ class SubscriptionManager(private val context: Context) {
             val price = getFormattedPrice(productId)
             val currency = getPriceCurrencyCode(productId)
             AnalyticsService.trackSubscriptionBilled(productId, price, currency)
+
+            // Track on Firebase and TikTok for ad attribution
+            FirebaseAnalyticsHelper.logPurchaseCompleted(productId, price.replace("[^\\d.]".toRegex(), "").toDoubleOrNull())
+            TikTokHelper.trackEvent("purchase_success")
 
             // Sync with server
             syncWithServer(activePurchase)

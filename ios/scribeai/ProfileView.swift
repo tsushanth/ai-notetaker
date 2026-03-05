@@ -283,7 +283,7 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showingPaywall) {
             NavigationView {
-                PaywallView(source: "profile") {
+                ScribeRemotePaywallView(triggerSource: "profile") {
                     showingPaywall = false
                 }
             }

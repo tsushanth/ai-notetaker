@@ -2,8 +2,6 @@ package com.kreativekoala.scribeai.ui.screens
 
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -11,7 +9,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -114,10 +111,6 @@ fun YouTubeInputScreen(
                     YouTubeInputContent(
                         youtubeUrl = youtubeUrl,
                         onUrlChange = { youtubeUrl = it },
-                        onOpenYouTube = {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://youtube.com"))
-                            context.startActivity(intent)
-                        },
                         onPasteFromClipboard = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             val clipData = clipboard.primaryClip
@@ -307,7 +300,6 @@ fun YouTubeInputScreen(
 private fun YouTubeInputContent(
     youtubeUrl: String,
     onUrlChange: (String) -> Unit,
-    onOpenYouTube: () -> Unit,
     onPasteFromClipboard: () -> Unit,
     onGenerateNotes: () -> Unit
 ) {
@@ -365,22 +357,6 @@ private fun YouTubeInputContent(
                     lineHeight = 18.sp
                 )
             }
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        // Open YouTube Button
-        OutlinedButton(
-            onClick = onOpenYouTube,
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Purple80
-            ),
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Open YouTube")
         }
 
         Spacer(Modifier.height(24.dp))

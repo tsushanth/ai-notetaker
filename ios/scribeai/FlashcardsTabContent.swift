@@ -291,7 +291,7 @@ struct FlashcardsTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView(source: "flashcards_feature_gate") {
+                ScribeRemotePaywallView(triggerSource: "flashcards_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()

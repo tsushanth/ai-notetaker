@@ -527,7 +527,7 @@ struct PodcastTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView(source: "podcast_feature_gate") {
+                ScribeRemotePaywallView(triggerSource: "podcast_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()

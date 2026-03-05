@@ -194,7 +194,7 @@ struct PostValueTrialPromptView: View {
         .cornerRadius(20, corners: [.topLeft, .topRight])
         .sheet(isPresented: $showFullPaywall) {
             NavigationView {
-                PaywallView(source: "post_value_prompt") {
+                ScribeRemotePaywallView(triggerSource: "post_value_prompt") {
                     showFullPaywall = false
                     manager.dismissPrompt()
                 }

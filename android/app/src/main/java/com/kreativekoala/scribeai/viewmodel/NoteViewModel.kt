@@ -10,6 +10,7 @@ import com.kreativekoala.scribeai.data.models.*
 import com.kreativekoala.scribeai.data.repository.NoteRepository
 import com.kreativekoala.scribeai.utils.ErrorReportingService
 import com.kreativekoala.scribeai.utils.SubscriptionManager
+import com.kreativekoala.scribeai.utils.TutorialContent
 import com.kreativekoala.scribeai.utils.UserIdHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
@@ -152,7 +153,7 @@ class NoteViewModel(
 
                     // Get existing local-only notes (tutorial) BEFORE caching
                     val cachedNotes = localRepository.getAllNotes(userId).firstOrNull() ?: emptyList()
-                    val tutorialNotes = cachedNotes.filter { it.id.startsWith("tutorial_") }
+                    val tutorialNotes = cachedNotes.filter { it.id == TutorialContent.TUTORIAL_ID }
 
                     // Update cache with server notes only
                     localRepository.cacheNotes(userId, serverNotes)

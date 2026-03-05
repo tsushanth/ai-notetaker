@@ -24,6 +24,7 @@ const SUPPORTED_LANGUAGES = [
  */
 const schemas = {
   createNote: Joi.object({
+    id: Joi.string().uuid().optional(),
     title: Joi.string().min(1).max(500).required(),
     content: Joi.string().min(1).required(),
     source_type: Joi.string().valid('recording', 'pdf', 'video', 'slideshow', 'manual', 'scan', 'meeting', 'docx', 'txt', 'document', 'text', 'tutorial'),

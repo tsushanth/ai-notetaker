@@ -59,7 +59,8 @@ class MainActivity : ComponentActivity() {
         val localNoteRepository = NoteCacheRepository(database.noteCacheDao())
         val tutorialManager = TutorialManager(
             context = applicationContext,
-            localRepository = localNoteRepository
+            localRepository = localNoteRepository,
+            authManager = authManager
         )
 
         // Initialize billing client with auth manager for server sync

@@ -163,7 +163,7 @@ struct QuizTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView(source: "quiz_feature_gate") {
+                ScribeRemotePaywallView(triggerSource: "quiz_feature_gate") {
                     showPaywall = false
                     // Refresh access status after purchase
                     Task {

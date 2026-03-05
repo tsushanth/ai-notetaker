@@ -35,7 +35,7 @@ struct SubscriptionSettingsSection: View {
         }
         .sheet(isPresented: $showingPaywall) {
             NavigationView {
-                PaywallView(source: "settings_section") {
+                ScribeRemotePaywallView(triggerSource: "settings_section") {
                     showingPaywall = false
                 }
             }
@@ -218,7 +218,7 @@ struct SubscriptionBanner: View {
             .buttonStyle(PlainButtonStyle())
             .sheet(isPresented: $showingPaywall) {
                 NavigationView {
-                    PaywallView(source: "home_banner") {
+                    ScribeRemotePaywallView(triggerSource: "home_banner") {
                         showingPaywall = false
                     }
                 }
@@ -293,7 +293,7 @@ struct PremiumFeatureGate<Content: View>: View {
             }
             .sheet(isPresented: $showingPaywall) {
                 NavigationView {
-                    PaywallView(source: "premium_feature_gate") {
+                    ScribeRemotePaywallView(triggerSource: "premium_feature_gate") {
                         showingPaywall = false
                     }
                 }

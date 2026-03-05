@@ -101,7 +101,7 @@ fun NoteDetailScreen(
             1 -> AnalyticsService.trackChatTabViewed(note.id)
             2 -> AnalyticsService.trackQuizTabViewed(note.id)
             3 -> AnalyticsService.trackFlashcardsTabViewed(note.id)
-            4 -> AnalyticsService.trackPodcastTabViewed(note.id)
+            // Podcast tab removed
         }
     }
 
@@ -233,7 +233,6 @@ fun NoteDetailScreen(
                     1 -> ChatTab(note, aiViewModel, authToken, preferredLanguage)
                     2 -> QuizTab(note, aiViewModel, authToken, preferredLanguage)
                     3 -> FlashcardsTab(note, aiViewModel, authToken, preferredLanguage)
-                    4 -> PodcastTab(note, aiViewModel, authToken, preferredLanguage)
                 }
             }
 
@@ -292,14 +291,6 @@ private fun BottomTabBar(
             label = "Cards",
             isSelected = selectedTab == 3,
             onClick = { onTabSelected(3) },
-            modifier = Modifier.weight(1f)
-        )
-        // Podcast tab
-        BottomTabItem(
-            icon = Icons.Default.Podcasts,
-            label = "Audio",
-            isSelected = selectedTab == 4,
-            onClick = { onTabSelected(4) },
             modifier = Modifier.weight(1f)
         )
     }

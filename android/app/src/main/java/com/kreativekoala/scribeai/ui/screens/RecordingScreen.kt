@@ -747,7 +747,7 @@ private fun RecordingProcessingContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // Notification card
+        // Info card about processing time
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -755,46 +755,23 @@ private fun RecordingProcessingContent(
             ),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.Top
             ) {
                 Icon(
-                    Icons.Default.Notifications,
+                    Icons.Default.Info,
                     contentDescription = null,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(28.dp)
+                    tint = Purple80,
+                    modifier = Modifier.size(24.dp)
                 )
-
-                Spacer(Modifier.height(12.dp))
-
+                Spacer(Modifier.width(12.dp))
                 Text(
-                    "Get notified when your notes are ready",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    "Notes usually take a few minutes to generate. We'll let you know when they're ready.",
+                    "Notes usually take a few minutes to generate. You can leave this screen and come back later.",
                     fontSize = 14.sp,
                     color = TextSecondary,
                     lineHeight = 20.sp
                 )
-
-                Spacer(Modifier.height(16.dp))
-
-                Button(
-                    onClick = { /* TODO: Enable notifications */ },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkSurface
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Notify me", color = TextPrimary)
-                }
             }
         }
     }

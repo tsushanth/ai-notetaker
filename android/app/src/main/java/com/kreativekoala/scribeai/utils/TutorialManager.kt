@@ -9,8 +9,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
+import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.local.NoteCacheRepository as LocalNoteRepository
 import com.kreativekoala.scribeai.data.models.AIContent // Use existing model
+import com.kreativekoala.scribeai.data.models.CreateNoteRequest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
@@ -20,7 +22,8 @@ import kotlinx.coroutines.flow.map
  */
 class TutorialManager(
     private val context: Context,
-    private val localRepository: LocalNoteRepository
+    private val localRepository: LocalNoteRepository,
+    private val authManager: AuthManager? = null
 ) {
 
     companion object {
@@ -75,11 +78,11 @@ class TutorialManager(
             // Add to local cache
             localRepository.addNote(userId, tutorialNote)
 
+            // Sync tutorial note to backend so AI features (chat, mindmap, podcast) work
+            syncTutorialToBackend(tutorialNote)
+
             // Mark as seeded
             markTutorialAsSeeded()
-
-            // Note: AI content will be loaded on-demand from TutorialContent
-            // when the user opens the note. No need to cache it here.
 
             Log.d(TAG, "✅ Tutorial note seeded successfully")
 
@@ -113,6 +116,38 @@ class TutorialManager(
             Log.d(TAG, "Tutorial reset")
         } catch (e: Exception) {
             Log.e(TAG, "Error resetting tutorial", e)
+        }
+    }
+
+    /**
+     * Sync tutorial note to backend so AI features work on it.
+     * Uses the same UUID so chat/mindmap/podcast can find it server-side.
+     */
+    private suspend fun syncTutorialToBackend(note: com.kreativekoala.scribeai.data.models.Note) {
+        try {
+            val token = authManager?.getFreshToken() ?: run {
+                Log.w(TAG, "No auth token available, skipping backend sync")
+                return
+            }
+
+            val request = CreateNoteRequest(
+                id = note.id,
+                title = note.title,
+                content = note.content,
+                sourceType = note.sourceType ?: "tutorial",
+                metadata = mapOf("isTutorial" to true, "version" to "1.0")
+            )
+
+            val response = RetrofitClient.apiService.createNote("Bearer $token", request)
+
+            if (response.isSuccessful) {
+                Log.d(TAG, "✅ Tutorial note synced to backend: ${note.id}")
+            } else {
+                Log.w(TAG, "Backend sync failed (${response.code()}): ${response.errorBody()?.string()}")
+            }
+        } catch (e: Exception) {
+            // Non-fatal: tutorial still works locally, backend features will fail gracefully
+            Log.w(TAG, "Failed to sync tutorial to backend (non-fatal)", e)
         }
     }
 

@@ -3,6 +3,7 @@ package com.kreativekoala.scribeai.ui.screens
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -56,7 +57,6 @@ fun HomeScreen(
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-    var showPaywall by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
@@ -78,7 +78,6 @@ fun HomeScreen(
     // Observe states
     val uiState by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val shouldShowPaywall by viewModel.shouldShowPaywall.collectAsState()
     val subscriptionState by subscriptionManager.subscriptionState.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
@@ -111,11 +110,6 @@ fun HomeScreen(
    // DEBUG: Track when authToken changes (but don't load notes here!)
     LaunchedEffect(authToken) {
         Log.d("HomeScreen", "🟡 authToken changed: ${authToken?.take(20)}...")
-    }
-
-    // Show paywall when triggered by ViewModel
-    LaunchedEffect(shouldShowPaywall) {
-        showPaywall = shouldShowPaywall
     }
 
     LaunchedEffect(Unit) {
@@ -159,34 +153,6 @@ fun HomeScreen(
                     }
                 },
                 actions = {
-                    // Subscription badge
-                    if (isSubscribed) {
-                        Surface(
-                            color = Purple80,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = Color.White
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    "PRO",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-
                     // Menu button with dropdown
                     IconButton(onClick = { showMenu = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Menu")
@@ -196,20 +162,6 @@ fun HomeScreen(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
-                        if (!isSubscribed) {
-                            DropdownMenuItem(
-                                text = { Text("Upgrade to Pro") },
-                                onClick = {
-                                    showMenu = false
-                                    showPaywall = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Star, contentDescription = null, tint = Purple80)
-                                }
-                            )
-                            HorizontalDivider()
-                        }
-
                         DropdownMenuItem(
                             text = { Text("Language") },
                             onClick = {
@@ -280,11 +232,7 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = {
                     if (authToken != null) {
-                        if (subscriptionManager.canCreateNotebook()) {
-                            showCreateSheet = true
-                        } else {
-                            showPaywall = true
-                        }
+                        showCreateSheet = true
                     }
                 },
                 containerColor = Purple80,
@@ -322,49 +270,8 @@ fun HomeScreen(
                         color = TextPrimary
                     )
 
-                    // Show usage for free users (based on lifetime count)
-                    if (!isSubscribed) {
-                        Spacer(Modifier.height(4.dp))
-                        val remaining = subscriptionManager.getRemainingFreeNotebooks()
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                if (remaining > 0)
-                                    "$remaining free notebook${if (remaining > 1) "s" else ""} remaining"
-                                else
-                                    "Free limit reached",
-                                fontSize = 13.sp,
-                                color = if (remaining == 0) AccentRed else TextSecondary
-                            )
-                            if (remaining == 0) {
-                                Spacer(Modifier.width(8.dp))
-                                TextButton(
-                                    onClick = { showPaywall = true },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                                ) {
-                                    Text(
-                                        "Upgrade",
-                                        fontSize = 12.sp,
-                                        color = Purple80
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
 
-                // FIXED: New Folder button now shows "Coming Soon" toast
-                OutlinedButton(
-                    onClick = {
-                        Toast.makeText(context, "Folders coming soon!", Toast.LENGTH_SHORT).show()
-                    },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Purple80
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("New Folder")
-                }
             }
 
             // Notes List
@@ -408,43 +315,6 @@ fun HomeScreen(
                                     color = TextTertiary
                                 )
 
-                                if (!isSubscribed) {
-                                    Spacer(Modifier.height(24.dp))
-                                    val remaining = subscriptionManager.getRemainingFreeNotebooks()
-                                    Card(
-                                        onClick = {
-                                            if (remaining == 0) {
-                                                showPaywall = true
-                                            }
-                                        },
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = Purple80.copy(alpha = 0.1f)
-                                        )
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Icon(
-                                                if (remaining > 0) Icons.Default.Info else Icons.Default.Star,
-                                                contentDescription = null,
-                                                tint = Purple80,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Spacer(Modifier.height(8.dp))
-                                            Text(
-                                                if (remaining > 0)
-                                                    "You can create $remaining free notebook${if (remaining > 1) "s" else ""}"
-                                                else
-                                                    "Upgrade for unlimited notebooks →",
-                                                fontSize = 13.sp,
-                                                color = if (remaining > 0) TextSecondary else Purple80,
-                                                textAlign = TextAlign.Center,
-                                                fontWeight = if (remaining == 0) FontWeight.Medium else FontWeight.Normal
-                                            )
-                                        }
-                                    }
-                                }
                             }
                         }
                     } else {
@@ -631,31 +501,6 @@ fun HomeScreen(
             onMeetings = {
                 showCreateSheet = false
                 onMeetings()
-            }
-        )
-    }
-
-    // Paywall
-    if (showPaywall) {
-        PaywallScreen(
-            subscriptionManager = subscriptionManager,
-            onDismiss = {
-                showPaywall = false
-                viewModel.dismissPaywall()
-            },
-            onSubscribe = {
-                showPaywall = false
-                viewModel.dismissPaywall()
-                // Reload subscription state and notes
-                subscriptionManager.checkExistingSubscriptions()
-                subscriptionManager.refreshAccessStatus()
-                // Reload notes with fresh token
-                coroutineScope.launch {
-                    val token = authManager.getFreshToken()
-                    if (token != null) {
-                        viewModel.loadNotes(token, forceRefresh = true)
-                    }
-                }
             }
         )
     }

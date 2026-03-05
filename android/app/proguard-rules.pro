@@ -19,3 +19,8 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# TikTok SDK
+-dontwarn com.android.installreferrer.api.InstallReferrerClient$Builder
+-dontwarn com.android.installreferrer.api.InstallReferrerClient
+-dontwarn com.android.installreferrer.api.InstallReferrerStateListener

@@ -53,12 +53,18 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
                     Log.d("AuthViewModel", "Cached token expired, attempting refresh")
                     val refreshedToken = authManager.refreshToken()
                     if (refreshedToken != null) {
+                        // Seed tutorial for returning users too
+                        val userId = UserIdHelper.extractUserIdFromToken(refreshedToken)
+                        tutorialManager.seedTutorialIfNeeded(userId)
                         _authState.value = AuthState.Authenticated(refreshedToken)
                     } else {
                         Log.w("AuthViewModel", "Token refresh failed, user needs to log in")
                         _authState.value = AuthState.Idle
                     }
                 } else {
+                    // Seed tutorial for returning users too
+                    val userId = UserIdHelper.extractUserIdFromToken(token)
+                    tutorialManager.seedTutorialIfNeeded(userId)
                     _authState.value = AuthState.Authenticated(token)
                 }
             }

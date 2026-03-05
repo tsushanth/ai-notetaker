@@ -56,6 +56,7 @@ data class Note(
 }
 
 data class CreateNoteRequest(
+    val id: String? = null,
     val title: String,
     val content: String,
     @SerializedName("source_type")

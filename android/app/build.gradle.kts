@@ -10,6 +10,15 @@ android {
     namespace = "com.kreativekoala.scribeai"
     compileSdk = 35
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("/Users/sushanthtiruvaipati/Documents/GitHub/AndroidAppKey")
+            storePassword = "KashtePhale!9"
+            keyAlias = "androidappkey"
+            keyPassword = "KashtePhale!9"
+        }
+    }
+
     lint {
         checkReleaseBuilds = false
         abortOnError = false
@@ -19,8 +28,8 @@ android {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 24
         targetSdk = 35
-        versionCode = 33
-        versionName = "33.0"
+        versionCode = 50
+        versionName = "50.0"
 
         // 16KB page size support
         ndk {
@@ -46,6 +55,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -161,5 +171,8 @@ dependencies {
 
     // Image Loading
     implementation(libs.coil.compose)
+
+    // TikTok Events SDK (install attribution & event tracking)
+    implementation("com.github.tiktok:tiktok-business-android-sdk:1.6.0")
 
 }

@@ -1854,6 +1854,115 @@ async function handleStripeWebhook(event, stripeClient) {
   }
 }
 
+// ============================================
+// RevenueCat Webhook - Handle subscription events
+// ============================================
+router.post('/webhook/revenuecat', express.json(), asyncHandler(async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+
+  if (webhookSecret && authHeader !== webhookSecret) {
+    logger.warn('RevenueCat webhook: invalid authorization header');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { event } = req.body;
+  if (!event) {
+    return res.status(400).json({ error: 'Missing event' });
+  }
+
+  const {
+    type,
+    app_user_id,
+    product_id,
+    period_type,
+    expiration_at_ms,
+    store,
+    price,
+    currency
+  } = event;
+
+  logger.info('RevenueCat webhook received', { type, app_user_id, product_id });
+
+  // Map RC event types to internal status
+  const RC_EVENT_MAP = {
+    INITIAL_PURCHASE:     { status: 'active',       is_trial: false },
+    RENEWAL:              { status: 'active',       is_trial: false },
+    UNCANCELLATION:       { status: 'active',       is_trial: false },
+    TRIAL_STARTED:        { status: 'active',       is_trial: true  },
+    TRIAL_CONVERTED:      { status: 'active',       is_trial: false },
+    TRIAL_CANCELLED:      { status: 'cancelled',    is_trial: true  },
+    CANCELLATION:         { status: 'cancelled',    is_trial: false },
+    EXPIRATION:           { status: 'expired',      is_trial: false },
+    BILLING_ISSUE:        { status: 'grace_period', is_trial: false },
+    SUBSCRIPTION_PAUSED:  { status: 'paused',       is_trial: false },
+  };
+
+  const statusUpdate = RC_EVENT_MAP[type];
+  if (!statusUpdate) {
+    logger.info('RevenueCat webhook: unhandled event type', { type });
+    return res.status(200).json({ received: true });
+  }
+
+  // For INITIAL_PURCHASE, check if it's actually a trial
+  if (type === 'INITIAL_PURCHASE' && period_type === 'TRIAL') {
+    statusUpdate.status = 'active';
+    statusUpdate.is_trial = true;
+  }
+
+  const platform = store === 'PLAY_STORE' ? 'android' : 'ios';
+  const expirationDate = expiration_at_ms ? new Date(expiration_at_ms).toISOString() : null;
+
+  try {
+    // Look up user by RC app_user_id (stored as user ID)
+    const { data: subscription, error: fetchErr } = await supabase
+      .from('subscriptions')
+      .select('id, user_id')
+      .eq('user_id', app_user_id)
+      .single();
+
+    if (fetchErr || !subscription) {
+      logger.warn('RevenueCat webhook: no subscription found for user', { app_user_id });
+      return res.status(200).json({ received: true });
+    }
+
+    const updateData = {
+      ...statusUpdate,
+      product_id: product_id || subscription.product_id,
+      platform,
+      updated_at: new Date().toISOString(),
+      ...(expirationDate && { expiration_date: expirationDate }),
+      ...(type === 'TRIAL_CONVERTED' && { trial_end: new Date().toISOString() }),
+    };
+
+    const { error: updateErr } = await supabase
+      .from('subscriptions')
+      .update(updateData)
+      .eq('user_id', app_user_id);
+
+    if (updateErr) {
+      logger.error('RevenueCat webhook: failed to update subscription', { error: updateErr.message, app_user_id });
+      return res.status(500).json({ error: 'Failed to update subscription' });
+    }
+
+    // Track the event in metrics
+    await trackSubscriptionMetric(
+      app_user_id,
+      null,
+      type.toLowerCase(),
+      platform,
+      'revenuecat_webhook',
+      { product_id, price, currency, period_type }
+    ).catch(err => logger.warn('RC webhook metric tracking failed', { err: err.message }));
+
+    logger.info('RevenueCat webhook processed', { type, app_user_id, status: statusUpdate.status });
+    res.status(200).json({ received: true });
+  } catch (err) {
+    logger.error('RevenueCat webhook error', { error: err.message });
+    res.status(500).json({ error: 'Internal error' });
+  }
+}));
+
 // Export both router and webhook handler
 module.exports = router;
 module.exports.handleStripeWebhook = handleStripeWebhook;

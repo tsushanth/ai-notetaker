@@ -19,6 +19,7 @@
 		88FB00012F51AB00003270AA /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 88FB00002F51AB00003270AA /* FacebookCore */; };
 		88RC00012F51AC00003270AA /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 88RC00002F51AC00003270AA /* RevenueCat */; };
 		88RC00032F51AC00003270AA /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 88RC00022F51AC00003270AA /* RevenueCatUI */; };
+		PKT000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PKT000000000002 /* PaywallKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +64,7 @@
 				88FB00012F51AB00003270AA /* FacebookCore in Frameworks */,
 				88RC00012F51AC00003270AA /* RevenueCat in Frameworks */,
 				88RC00032F51AC00003270AA /* RevenueCatUI in Frameworks */,
+				PKT000000000003 /* PaywallKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,6 +119,7 @@
 				88FB00002F51AB00003270AA /* FacebookCore */,
 				88RC00002F51AC00003270AA /* RevenueCat */,
 				88RC00022F51AC00003270AA /* RevenueCatUI */,
+				PKT000000000002 /* PaywallKit */,
 			);
 			productName = scribeai;
 			productReference = 881B30142ECD0B69003270AA /* scribeai.app */;
@@ -152,6 +155,7 @@
 				8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 				88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */,
+				PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 881B30152ECD0B69003270AA /* Products */;
@@ -310,7 +314,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
@@ -328,7 +332,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 33.0;
+				MARKETING_VERSION = 99.2;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -348,7 +352,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 33;
+				CURRENT_PROJECT_VERSION = 105;
 				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
@@ -366,7 +370,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 33.0;
+				MARKETING_VERSION = 99.2;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -445,6 +449,13 @@
 		};
 /* End XCRemoteSwiftPackageReference section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../PaywallKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		881B30392ECD0DFF003270AA /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -505,6 +516,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */;
 			productName = RevenueCatUI;
+		};
+		PKT000000000002 /* PaywallKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */;
+			productName = PaywallKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -8,12 +8,15 @@
 import SwiftUI
 import GoogleSignIn
 import FacebookCore
+import RevenueCat
 
 @main
 struct ScribeAIApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var paywallCoordinator = PaywallCoordinator.shared
     @State private var showingSplash = true
+    @State private var showLaunchPaywall = false
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -22,6 +25,14 @@ struct ScribeAIApp: App {
 
         // Initialize Facebook SDK for Meta Ads attribution
         FacebookSDKHelper.shared.initialize()
+
+        // Initialize RevenueCat for remote paywall
+        #if DEBUG
+        Purchases.logLevel = .warn
+        #else
+        Purchases.logLevel = .warn
+        #endif
+        Purchases.configure(withAPIKey: "appl_NBCWDmwGCyKQuzJQPjqHUlauPHZ")
     }
 
     var body: some Scene {
@@ -70,9 +81,21 @@ struct ScribeAIApp: App {
                         showingSplash = false
                     }
 
-                    // Request ATT permission after splash (for Facebook attribution)
+                    // Show paywall on launch if trial expired and not subscribed
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         FacebookSDKHelper.shared.requestTrackingPermission()
+
+                        let gate = SubscriptionGateManager.shared
+                        if !gate.canAccessPremiumFeatures && !gate.isInTrialPeriod {
+                            // Only show once per day to avoid annoying users
+                            let lastLaunchPaywall = UserDefaults.standard.object(forKey: "lastLaunchPaywallDate") as? Date
+                            let shouldShow = lastLaunchPaywall == nil ||
+                                Date().timeIntervalSince(lastLaunchPaywall!) > 86400
+                            if shouldShow {
+                                showLaunchPaywall = true
+                                UserDefaults.standard.set(Date(), forKey: "lastLaunchPaywallDate")
+                            }
+                        }
                     }
                 }
             }
@@ -80,12 +103,21 @@ struct ScribeAIApp: App {
                 switch newPhase {
                 case .active:
                     AnalyticsService.shared.startSession()
+                    paywallCoordinator.checkWinbackEligibility()
                 case .background:
                     AnalyticsService.shared.endSession()
                 case .inactive:
                     break
                 @unknown default:
                     break
+                }
+            }
+            .sheet(isPresented: $paywallCoordinator.showWinbackOffer) {
+                WinbackOfferView()
+            }
+            .sheet(isPresented: $showLaunchPaywall) {
+                ScribeRemotePaywallView(triggerSource: "launch_expired") {
+                    showLaunchPaywall = false
                 }
             }
         }

@@ -84,6 +84,7 @@ struct PaywallView: View {
                 timeSpentSeconds: timeSpent,
                 selectedPlan: selectedProduct?.id
             )
+            PaywallCoordinator.shared.trackDismiss()
             dismiss()
         } label: {
             Image(systemName: "xmark")

@@ -282,10 +282,8 @@ struct ProfileView: View {
             ThemeSelectionSheet()
         }
         .sheet(isPresented: $showingPaywall) {
-            NavigationView {
-                ScribeRemotePaywallView(triggerSource: "profile") {
-                    showingPaywall = false
-                }
+            ScribeRemotePaywallView(triggerSource: "profile") {
+                showingPaywall = false
             }
             .preferredColorScheme(.dark)  // FIX: Ensure paywall is also dark
         }

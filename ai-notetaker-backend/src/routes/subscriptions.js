@@ -17,11 +17,10 @@ const supabase = createClient(
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Stripe Price IDs - these need to be created in Stripe Dashboard
-// You'll need to set these after creating products in Stripe
+// Stripe Price IDs — hardcoded fallbacks so deploys can't wipe them
 const STRIPE_PRICES = {
-  monthly: process.env.STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
-  yearly: process.env.STRIPE_PRICE_YEARLY || 'price_yearly_placeholder'
+  monthly: process.env.STRIPE_PRICE_MONTHLY || 'price_1Ssq3iKFBTQTkmztweW9EgST',
+  yearly: process.env.STRIPE_PRICE_YEARLY || 'price_1Sjv8UKFBTQTkmztT2AC3ae9'
 };
 
 // ============================================

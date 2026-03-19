@@ -15,8 +15,8 @@ class SubscriptionGateManager: ObservableObject {
 
     private let defaults = UserDefaults.standard
 
-    // Trial configuration
-    static let trialDays = 7
+    // Trial configuration — set to 0 to disable auto-trial (paywall on first premium access)
+    static let trialDays = 0
 
     private enum Keys {
         static let installDate = "analytics_install_date"  // Reuse from AnalyticsService
@@ -279,25 +279,29 @@ struct SubscriptionGatedModifier: ViewModifier {
             if gateManager.canAccessPremiumFeatures {
                 content
             } else {
-                // Show paywall blocker
+                // Show lock screen but auto-present paywall sheet
                 TrialExpiredView(
                     featureName: featureName,
                     onSubscribe: {
-                        // Track paywall view from feature gate
-                        AnalyticsService.shared.trackPaywallViewed(source: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))")
                         showPaywall = true
                     }
                 )
+                .onAppear {
+                    // Auto-present paywall when gated feature is accessed
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if !showPaywall {
+                            AnalyticsService.shared.trackPaywallViewed(source: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))")
+                            showPaywall = true
+                        }
+                    }
+                }
             }
         }
         .sheet(isPresented: $showPaywall) {
-            NavigationView {
-                ScribeRemotePaywallView(triggerSource: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))") {
-                    showPaywall = false
-                    // Refresh access status after purchase attempt
-                    Task {
-                        await SubscriptionGateManager.shared.refreshAccessStatus()
-                    }
+            ScribeRemotePaywallView(triggerSource: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))") {
+                showPaywall = false
+                Task {
+                    await SubscriptionGateManager.shared.refreshAccessStatus()
                 }
             }
         }
@@ -397,10 +401,8 @@ struct TrialBannerView: View {
                 )
             )
             .sheet(isPresented: $showPaywall) {
-                NavigationView {
-                    ScribeRemotePaywallView(triggerSource: "trial_banner") {
-                        showPaywall = false
-                    }
+                ScribeRemotePaywallView(triggerSource: "trial_banner") {
+                    showPaywall = false
                 }
             }
         }

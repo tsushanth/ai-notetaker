@@ -26,10 +26,10 @@ android {
 
     defaultConfig {
         applicationId = "com.kreativekoala.scribeai"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 35
-        versionCode = 50
-        versionName = "50.0"
+        versionCode = 60
+        versionName = "58.1"
 
         // 16KB page size support
         ndk {
@@ -53,17 +53,14 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
+            isMinifyEnabled = false
+            isShrinkResources = false
             signingConfig = signingConfigs.getByName("release")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
             buildConfigField("boolean", "DEBUG", "false")
         }
         debug {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
         }
 
     }
@@ -100,6 +97,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Compose
     implementation(platform(libs.androidx.compose.bom))
@@ -161,8 +159,12 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
-    // Google Play Billing (Subscriptions)
-    implementation(libs.play.billing.ktx)
+    // RevenueCat (Subscriptions + Native Paywall UI)
+    implementation("com.revenuecat.purchases:purchases:8.20.0")
+    implementation("com.revenuecat.purchases:purchases-ui:8.20.0")
+
+    // PaywallKit
+    implementation(project(":paywallkit"))
 
     // Room Database (Local Cache)
     implementation(libs.androidx.room.runtime)

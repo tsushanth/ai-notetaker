@@ -21,9 +21,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.InAppReviewHelper
 
@@ -85,7 +87,7 @@ fun ReviewPromptDialog() {
 
                     // Title
                     Text(
-                        text = "Enjoying Scribe AI?",
+                        text = stringResource(R.string.enjoying_scribe_ai),
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -95,7 +97,7 @@ fun ReviewPromptDialog() {
 
                     // Subtitle
                     Text(
-                        text = "Is Scribe AI helping you study faster and learn better?",
+                        text = stringResource(R.string.review_subtitle),
                         fontSize = 15.sp,
                         color = TextSecondary,
                         textAlign = TextAlign.Center,
@@ -120,7 +122,7 @@ fun ReviewPromptDialog() {
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Yes, I love it!",
+                            text = stringResource(R.string.yes_love_it),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -136,7 +138,7 @@ fun ReviewPromptDialog() {
                             .height(44.dp)
                     ) {
                         Text(
-                            text = "Not yet",
+                            text = stringResource(R.string.not_yet),
                             fontSize = 16.sp,
                             color = TextSecondary
                         )

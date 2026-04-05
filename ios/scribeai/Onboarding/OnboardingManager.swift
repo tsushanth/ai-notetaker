@@ -165,7 +165,10 @@ class OnboardingManager: ObservableObject {
             "at_step": currentStep.rawValue,
             "step_name": String(describing: currentStep)
         ])
-        completeOnboarding()
+        // Always force users to the trial/paywall step — never allow skipping past it
+        withAnimation(.easeInOut(duration: 0.3)) {
+            currentStep = .trial
+        }
     }
 
     func skipTrial(timeSpentSeconds: Int = 0, selectedPlan: String? = nil) {

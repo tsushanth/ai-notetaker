@@ -1,0 +1,1 @@
+Bug fixes: podcast tab now shows upgrade prompt instead of error when subscription is needed. Subscription sync improvements.

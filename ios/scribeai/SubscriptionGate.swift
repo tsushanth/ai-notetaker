@@ -18,6 +18,9 @@ class SubscriptionGateManager: ObservableObject {
     // Trial configuration — set to 0 to disable auto-trial (paywall on first premium access)
     static let trialDays = 0
 
+    // Free note creation limit — non-subscribers can only create this many notes
+    static let freeNoteLimit = 3
+
     private enum Keys {
         static let installDate = "analytics_install_date"  // Reuse from AnalyticsService
         static let hasSeenPaywall = "has_seen_paywall_after_trial"
@@ -193,6 +196,13 @@ class SubscriptionGateManager: ObservableObject {
         return canAccessPremiumFeatures
     }
 
+    var canExportNotes: Bool {
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.features.canExportNotes ?? false
+        }
+        return canAccessPremiumFeatures
+    }
+
     /// Reason why access is blocked (for UI)
     var accessBlockedReason: String {
         if let serverStatus = serverAccessStatus {
@@ -222,6 +232,29 @@ class SubscriptionGateManager: ObservableObject {
 
     var usageLimits: UsageLimits? {
         return serverAccessStatus?.usage.limits
+    }
+
+    // MARK: - Free Note Creation Limit
+
+    private static let noteCountKey = "com.scribeai.noteCount"
+
+    /// Check if the user can create a new note (premium users always can; free users limited)
+    func canCreateNote() -> Bool {
+        guard !canAccessPremiumFeatures else { return true }
+        let count = defaults.integer(forKey: Self.noteCountKey)
+        return count < Self.freeNoteLimit
+    }
+
+    /// Record that a note was created (call after successful note creation)
+    func recordNoteCreation() {
+        let count = defaults.integer(forKey: Self.noteCountKey) + 1
+        defaults.set(count, forKey: Self.noteCountKey)
+    }
+
+    /// Number of free notes remaining
+    func remainingFreeNotes() -> Int {
+        let count = defaults.integer(forKey: Self.noteCountKey)
+        return max(0, Self.freeNoteLimit - count)
     }
 
     // MARK: - For debugging

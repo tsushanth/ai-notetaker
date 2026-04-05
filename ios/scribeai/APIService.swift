@@ -1517,9 +1517,10 @@ class APIService {
         struct InfographicGenerateData: Codable {
             let id: String
             let noteId: String
-            let imageUrl: String
+            let imageUrl: String?
             let extractedData: InfographicExtractedData?
             let style: String?
+            let status: String?
 
             enum CodingKeys: String, CodingKey {
                 case id
@@ -1527,6 +1528,7 @@ class APIService {
                 case imageUrl = "image_url"
                 case extractedData = "extracted_data"
                 case style
+                case status
             }
         }
 
@@ -1551,14 +1553,14 @@ class APIService {
             throw APIError.serverError("Failed to generate infographic - no data returned")
         }
 
-        print("✅ Decoded infographic response: \(responseData.imageUrl)")
+        print("✅ Decoded infographic response: \(responseData.imageUrl ?? "generating...")")
 
         return AIContent(
             id: responseData.id,
             noteId: noteId,
             audioUrl: nil,
             duration: nil,
-            status: nil,
+            status: responseData.status,
             questions: nil,
             flashcards: nil,
             summary: nil,

@@ -14,10 +14,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.models.Meeting
 import com.kreativekoala.scribeai.data.models.MeetingPlatform
 import com.kreativekoala.scribeai.data.models.MeetingStatus
@@ -50,15 +52,15 @@ fun MeetingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Meeting Bot") },
+                title = { Text(stringResource(R.string.meeting_bot)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showCreateDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Meeting")
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.join_a_meeting))
                     }
                 }
             )
@@ -105,7 +107,7 @@ fun MeetingsScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = { token?.let { meetingViewModel.loadMeetings(it) } }) {
-                            Text("Retry")
+                            Text(stringResource(R.string.retry))
                         }
                     }
                 }
@@ -144,14 +146,14 @@ fun EmptyMeetingsView(onCreateMeeting: () -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "No Meetings Yet",
+            text = stringResource(R.string.no_meetings),
             style = MaterialTheme.typography.headlineSmall
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Enter a meeting link to have our bot join, record, and transcribe automatically.",
+            text = stringResource(R.string.no_meetings_hint),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -162,7 +164,7 @@ fun EmptyMeetingsView(onCreateMeeting: () -> Unit) {
         Button(onClick = onCreateMeeting) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Join a Meeting")
+            Text(stringResource(R.string.join_a_meeting))
         }
     }
 }
@@ -289,21 +291,21 @@ fun MeetingCard(
                     IconButton(onClick = onCancel) {
                         Icon(
                             Icons.Default.Cancel,
-                            contentDescription = "Cancel",
+                            contentDescription = stringResource(R.string.cancel),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
                 meeting.status == MeetingStatus.COMPLETED && meeting.noteId != null -> {
                     TextButton(onClick = onViewNote) {
-                        Text("View Note")
+                        Text(stringResource(R.string.view_note))
                     }
                 }
                 meeting.status in listOf(MeetingStatus.FAILED, MeetingStatus.CANCELLED) -> {
                     IconButton(onClick = { showDeleteConfirmation = true }) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Delete",
+                            contentDescription = stringResource(R.string.delete),
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
@@ -315,8 +317,8 @@ fun MeetingCard(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete Meeting") },
-            text = { Text("Are you sure you want to delete this meeting?") },
+            title = { Text(stringResource(R.string.delete)) },
+            text = { Text(stringResource(R.string.delete_note_detail_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -324,12 +326,12 @@ fun MeetingCard(
                         showDeleteConfirmation = false
                     }
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )

@@ -4,6 +4,7 @@ const { authenticate } = require('../middleware/auth');
 const { validate } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
 const noteService = require('../services/noteService');
+const integrationService = require('../services/integrationService');
 
 // All routes require authentication
 router.use(authenticate);
@@ -15,6 +16,14 @@ router.use(authenticate);
 router.post('/', validate('createNote'), asyncHandler(async (req, res) => {
   // Formatting is now triggered automatically in noteService.createNote()
   const note = await noteService.createNote(req.userId, req.validatedBody);
+
+  // Fire webhooks (Zapier, etc.) — non-blocking
+  integrationService.fireWebhooks(req.userId, 'note.created', {
+    noteId: note.id,
+    title: note.title,
+    sourceType: note.source_type,
+    createdAt: note.created_at
+  }).catch(() => {}); // silently ignore webhook failures
 
   res.status(201).json({
     success: true,

@@ -17,10 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.components.*
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
@@ -43,14 +45,14 @@ fun YouTubeInputScreen(
     var youtubeUrl by remember { mutableStateOf("") }
     var showTranscriptInfo by remember { mutableStateOf(false) }
 
-    // Processing state
-    var processingState by remember { mutableStateOf<ProcessingState>(ProcessingState.Idle) }
-    var processingSteps by remember { mutableStateOf(createYouTubeProcessingSteps()) }
-    var currentStepIndex by remember { mutableIntStateOf(0) }
-    var uploadComplete by remember { mutableStateOf(false) }
-
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    // Processing state
+    var processingState by remember { mutableStateOf<ProcessingState>(ProcessingState.Idle) }
+    var processingSteps by remember { mutableStateOf(createYouTubeProcessingSteps(context)) }
+    var currentStepIndex by remember { mutableIntStateOf(0) }
+    var uploadComplete by remember { mutableStateOf(false) }
 
     val authToken by authManager.authToken.collectAsState()
 
@@ -81,15 +83,15 @@ fun YouTubeInputScreen(
         topBar = {
             if (processingState is ProcessingState.Idle) {
                 TopAppBar(
-                    title = { Text("YouTube Transcript") },
+                    title = { Text(stringResource(R.string.youtube_url)) },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back), tint = TextPrimary)
                         }
                     },
                     actions = {
                         IconButton(onClick = { showTranscriptInfo = true }) {
-                            Icon(Icons.Default.Info, contentDescription = "Info", tint = TextSecondary)
+                            Icon(Icons.Default.Info, contentDescription = null, tint = TextSecondary)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -150,7 +152,7 @@ fun YouTubeInputScreen(
                             AnalyticsService.trackYoutubeProcessed()
 
                             // Initialize processing
-                            processingSteps = createYouTubeProcessingSteps()
+                            processingSteps = createYouTubeProcessingSteps(context)
                             currentStepIndex = 0
                             uploadComplete = false
                             processingState = ProcessingState.Processing(
@@ -247,7 +249,7 @@ fun YouTubeInputScreen(
                         message = state.message,
                         onRetry = {
                             processingState = ProcessingState.Idle
-                            processingSteps = createYouTubeProcessingSteps()
+                            processingSteps = createYouTubeProcessingSteps(context)
                             currentStepIndex = 0
                             uploadComplete = false
                         },
@@ -262,7 +264,7 @@ fun YouTubeInputScreen(
     if (showTranscriptInfo) {
         AlertDialog(
             onDismissRequest = { showTranscriptInfo = false },
-            title = { Text("About YouTube Transcripts") },
+            title = { Text(stringResource(R.string.youtube_url)) },
             text = {
                 Column {
                     Text(
@@ -288,7 +290,7 @@ fun YouTubeInputScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showTranscriptInfo = false }) {
-                    Text("Got it", color = Purple80)
+                    Text(stringResource(R.string.close), color = Purple80)
                 }
             },
             containerColor = CardBackground
@@ -351,7 +353,7 @@ private fun YouTubeInputContent(
                 )
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    "Only videos with captions/subtitles are supported",
+                    stringResource(R.string.paste_youtube_url),
                     fontSize = 13.sp,
                     color = TextSecondary,
                     lineHeight = 18.sp
@@ -363,7 +365,7 @@ private fun YouTubeInputContent(
 
         // URL Input Label
         Text(
-            "👇 enter link here 👇",
+            stringResource(R.string.youtube_url_placeholder),
             fontSize = 14.sp,
             color = TextSecondary
         )
@@ -377,7 +379,7 @@ private fun YouTubeInputContent(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    "www.youtube.com/watch?v=...",
+                    stringResource(R.string.youtube_url_placeholder),
                     color = TextTertiary
                 )
             },
@@ -405,7 +407,7 @@ private fun YouTubeInputContent(
         ) {
             Icon(Icons.Default.ContentPaste, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Paste From Clipboard")
+            Text(stringResource(R.string.paste_from_clipboard))
         }
 
         Spacer(Modifier.weight(1f))
@@ -426,7 +428,7 @@ private fun YouTubeInputContent(
             Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(
-                "Generate Notes",
+                stringResource(R.string.create_note),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -438,9 +440,9 @@ private fun YouTubeInputContent(
 
 // Helper functions
 
-private fun createYouTubeProcessingSteps(): List<ProcessingStep> {
+private fun createYouTubeProcessingSteps(context: android.content.Context): List<ProcessingStep> {
     return YouTubeProcessingStep.entries.map { step ->
-        ProcessingStep(title = step.title, status = StepStatus.PENDING)
+        ProcessingStep(title = context.getString(step.titleResId), status = StepStatus.PENDING)
     }
 }
 

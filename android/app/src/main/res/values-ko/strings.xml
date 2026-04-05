@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">홈</string>
+    <string name="menu">메뉴</string>
+    <string name="menu_language">언어</string>
+    <string name="menu_upgrade_pro">Pro로 업그레이드</string>
+    <string name="menu_manage_subscription">구독 관리</string>
+    <string name="menu_appearance">외관</string>
+    <string name="menu_sign_out">로그아웃</string>
+    <string name="menu_delete_account">계정 삭제</string>
+    <string name="add">추가</string>
+    <string name="no_notes_yet">노트가 없습니다</string>
+    <string name="tap_to_create_first_note">+를 눌러 첫 노트를 만드세요</string>
+    <string name="notes_count_format">%1$d / %2$d 노트</string>
+    <string name="load_more_notes">더 불러오기</string>
+    <string name="error_loading_notes">노트를 불러오는 중 오류 발생</string>
+    <string name="retry">재시도</string>
+    <string name="account_deletion_requested">계정 삭제가 요청되었습니다. 로그아웃됩니다.</string>
+    <string name="error_delete_account">계정 삭제 실패: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">언어 선택</string>
+    <string name="language_subtitle">AI 생성 콘텐츠에 이 언어가 사용됩니다</string>
+    <string name="ok">확인</string>
+    <string name="cancel">취소</string>
+
+    <!-- Note Card -->
+    <string name="more">더보기</string>
+    <string name="edit_title">제목 수정</string>
+    <string name="delete">삭제</string>
+    <string name="delete_note">노트를 삭제할까요?</string>
+    <string name="delete_note_message">「%s」을(를) 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</string>
+    <string name="delete_note_detail_message">이 노트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</string>
+    <string name="label_title">제목</string>
+    <string name="save">저장</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">녹음 또는 오디오 업로드</string>
+    <string name="youtube_video">YouTube 동영상</string>
+    <string name="upload_document">문서 업로드</string>
+    <string name="upload_document_subtitle">PDF, DOCX, PPT, TXT 등 지원!</string>
+    <string name="scan_text">텍스트 스캔</string>
+    <string name="scan_text_subtitle">텍스트가 포함된 이미지</string>
+    <string name="join_meeting">회의 참가</string>
+    <string name="join_meeting_subtitle">Zoom, Meet, Teams, Webex 녹음</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">뒤로</string>
+    <string name="more_options">더 많은 옵션</string>
+    <string name="share">공유</string>
+    <string name="share_note">노트 공유</string>
+    <string name="tab_notes">노트</string>
+    <string name="tab_chat">채팅</string>
+    <string name="tab_quiz">퀴즈</string>
+    <string name="tab_cards">카드</string>
+    <string name="formatting_notes">노트 정리 중\u2026</string>
+    <string name="formatted">정리됨</string>
+    <string name="raw">원문</string>
+    <string name="source_label">출처: %s</string>
+    <string name="open_source_link">출처 열기</string>
+    <string name="characters_words_format">%1$s 글자 \u2022 %2$s 단어</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">YouTube 동영상</string>
+    <string name="source_audio_recording">음성 녹음</string>
+    <string name="source_pdf_document">PDF 문서</string>
+    <string name="source_scanned_document">스캔 문서</string>
+    <string name="source_image">이미지</string>
+    <string name="source_text">텍스트</string>
+
+    <!-- Summary Section -->
+    <string name="summary">요약</string>
+    <string name="generating_summary">요약 생성 중\u2026</string>
+    <string name="regenerate">다시 생성</string>
+    <string name="no_summary_yet">아직 요약이 없습니다</string>
+    <string name="generate_summary">요약 생성</string>
+    <string name="no_summary_available">요약을 사용할 수 없습니다</string>
+    <string name="summary_length">요약 길이</string>
+    <string name="create_summary_description">노트의 간결한 요약을 생성합니다</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">메시지 입력\u2026</string>
+    <string name="send">보내기</string>
+    <string name="voice_mode">음성 모드</string>
+    <string name="text_mode">텍스트 모드</string>
+    <string name="ask_about_notes">노트에 대해 무엇이든 물어보세요</string>
+    <string name="ask_about_notes_description">노트의 이해, 분석 또는 특정 정보 검색을 도와드립니다.</string>
+    <string name="suggested_questions">추천 질문:</string>
+    <string name="chat_suggestion_summarize">핵심 포인트 요약</string>
+    <string name="chat_suggestion_explain">주요 개념 설명</string>
+    <string name="chat_suggestion_test">이 내용으로 테스트</string>
+    <string name="listening">듣는 중\u2026</string>
+    <string name="tap_to_speak">탭하여 말하기</string>
+    <string name="speaking">말하는 중\u2026</string>
+    <string name="stop_speaking">말하기 중지</string>
+    <string name="could_not_open_link">링크를 열 수 없습니다</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">퀴즈 생성</string>
+    <string name="generate_quiz_description">지식을 테스트할 퀴즈 만들기</string>
+    <string name="generating_quiz">퀴즈 생성 중\u2026</string>
+    <string name="question_count_format">문제 %1$d / %2$d</string>
+    <string name="check_answer">정답 확인</string>
+    <string name="next_question">다음 문제</string>
+    <string name="correct">정답!</string>
+    <string name="incorrect">오답</string>
+    <string name="correct_answer_is">정답은: %s</string>
+    <string name="quiz_complete">퀴즈 완료!</string>
+    <string name="quiz_score_format">%1$d / %2$d 문제 정답</string>
+    <string name="try_again">다시 하기</string>
+    <string name="new_quiz">새 퀴즈</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">플래시카드 생성</string>
+    <string name="generate_flashcards_description">학습용 플래시카드 만들기</string>
+    <string name="generating_flashcards">플래시카드 생성 중\u2026</string>
+    <string name="flashcard_count_format">카드 %1$d / %2$d</string>
+    <string name="tap_to_flip">탭하여 뒤집기</string>
+    <string name="previous">이전</string>
+    <string name="next">다음</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">다시 오신 것을 환영합니다</string>
+    <string name="sign_in_to_continue">로그인하여 계속하기</string>
+    <string name="continue_with_google">Google로 계속하기</string>
+    <string name="or_divider">  또는  </string>
+    <string name="email">이메일</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">비밀번호</string>
+    <string name="enter_password">비밀번호를 입력하세요</string>
+    <string name="hide_password">비밀번호 숨기기</string>
+    <string name="show_password">비밀번호 표시</string>
+    <string name="sign_in">로그인</string>
+    <string name="forgot_password">비밀번호를 잊으셨나요?</string>
+    <string name="no_account">계정이 없으신가요? </string>
+    <string name="sign_up">회원가입</string>
+    <string name="error_invalid_credentials">이메일 또는 비밀번호가 올바르지 않습니다. 다시 시도해 주세요.</string>
+    <string name="error_email_not_confirmed">로그인 전에 이메일을 인증해 주세요.</string>
+    <string name="error_user_not_found">이 이메일로 등록된 계정이 없습니다.</string>
+    <string name="error_network">네트워크 오류입니다. 연결 상태를 확인해 주세요.</string>
+    <string name="error_no_google_account">Google 계정을 찾을 수 없습니다. 기기에 Google 계정을 추가해 주세요.</string>
+    <string name="error_google_signin_failed">Google 로그인 실패</string>
+    <string name="error_email_required">이메일을 입력해 주세요</string>
+    <string name="error_invalid_email">유효한 이메일 주소를 입력해 주세요</string>
+    <string name="error_password_required">비밀번호를 입력해 주세요</string>
+    <string name="error_password_too_short">비밀번호는 6자 이상이어야 합니다</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">이메일 전송 완료!</string>
+    <string name="reset_password">비밀번호 재설정</string>
+    <string name="reset_email_sent">비밀번호 재설정 링크를 발송했습니다:</string>
+    <string name="check_inbox">받은편지함과 스팸 폴더를 확인해 주세요.</string>
+    <string name="reset_password_instruction">이메일 주소를 입력하면 비밀번호 재설정 링크를 보내드립니다.</string>
+    <string name="done">완료</string>
+    <string name="send_reset_link">재설정 링크 보내기</string>
+    <string name="error_enter_valid_email">유효한 이메일을 입력해 주세요</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">계정 만들기</string>
+    <string name="sign_up_subtitle">가입하여 시작하기</string>
+    <string name="at_least_6_characters">6자 이상</string>
+    <string name="confirm_password">비밀번호 확인</string>
+    <string name="reenter_password">비밀번호 재입력</string>
+    <string name="already_have_account">이미 계정이 있으신가요? </string>
+    <string name="error_valid_email">유효한 이메일을 입력해 주세요</string>
+    <string name="error_enter_password">비밀번호를 입력해 주세요</string>
+    <string name="error_confirm_password">비밀번호를 확인해 주세요</string>
+    <string name="error_passwords_mismatch">비밀번호가 일치하지 않습니다</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">오디오 녹음</string>
+    <string name="record_audio_subtitle">강의, 회의, 메모를 녹음하세요.\n자동으로 전사하고 학습 자료를 만들어 드립니다.</string>
+    <string name="grant_microphone_permission">마이크 권한 허용</string>
+    <string name="start_recording">녹음 시작</string>
+    <string name="tap_to_start_recording">탭하여 녹음 시작</string>
+    <string name="recording_status">녹음 중\u2026</string>
+    <string name="paused">일시정지됨</string>
+    <string name="discard">삭제</string>
+    <string name="pause">일시정지</string>
+    <string name="resume">재개</string>
+    <string name="stop">중지</string>
+    <string name="recording_complete">녹음 완료</string>
+    <string name="duration_format">길이: %s</string>
+    <string name="title_optional">제목 (선택)</string>
+    <string name="title_placeholder">예: 생물학 강의</string>
+    <string name="process_recording">녹음 처리</string>
+    <string name="discard_recording">녹음 삭제</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">오디오 업로드 중</string>
+    <string name="step_transcribing_audio">오디오 전사 중</string>
+    <string name="step_identifying_speakers">화자 식별 중</string>
+    <string name="step_analyzing_content">콘텐츠 분석 중</string>
+    <string name="step_summarizing_key_points">핵심 요약 중</string>
+    <string name="step_finalizing_note">노트 완성 중</string>
+    <string name="upload_complete_safe">업로드가 완료되었습니다. 안전하게 나가셔도 됩니다.</string>
+    <string name="processing_info">노트 생성에는 보통 몇 분이 소요됩니다. 이 화면을 떠났다가 나중에 돌아오셔도 됩니다.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">노트가 준비되었습니다!</string>
+    <string name="note_ready_description">녹음을 전사하고 학습 자료를 만들었습니다.</string>
+    <string name="view_note">노트 보기</string>
+    <string name="go_to_home">홈으로</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">문제가 발생했습니다</string>
+    <string name="try_again_button">다시 시도</string>
+    <string name="go_back">뒤로 가기</string>
+    <string name="error_not_authenticated">인증되지 않음</string>
+    <string name="error_upload_failed">오디오 업로드 실패</string>
+    <string name="error_transcribe_failed">오디오 전사 실패</string>
+    <string name="error_start_recording">녹음 시작 실패: %s</string>
+    <string name="error_stop_recording">녹음 중지 실패: %s</string>
+    <string name="error_processing_failed">처리 실패</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">닫기</string>
+    <string name="unlock_pro">Scribe AI Pro 잠금 해제</string>
+    <string name="unlimited_access">모든 기능을 무제한으로 사용하세요</string>
+    <string name="feature_unlimited_notes">모든 소스에서 무제한 노트</string>
+    <string name="feature_ai_summaries">AI 요약 &amp; 퀴즈</string>
+    <string name="feature_flashcards">플래시카드 생성</string>
+    <string name="feature_ai_chat">노트와 AI 채팅</string>
+    <string name="feature_mind_map">마인드맵 시각화</string>
+    <string name="feature_podcast">오디오 팟캐스트 생성</string>
+    <string name="plan_yearly">연간</string>
+    <string name="plan_monthly">월간</string>
+    <string name="per_month_format">%s/월</string>
+    <string name="save_percent_format">%d%% 할인</string>
+    <string name="loading_plans">요금제 로딩 중\u2026</string>
+    <string name="continue_button">계속</string>
+    <string name="restore_purchases">구매 복원</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">정말인가요?</string>
+    <string name="lose_access">다음 항목에 대한 접근 권한을 잃게 됩니다:</string>
+    <string name="stat_notes_created">생성한 노트</string>
+    <string name="stat_quizzes_generated">생성한 퀴즈</string>
+    <string name="stat_flashcards_created">생성한 플래시카드</string>
+    <string name="stat_audio_hours">시간의 오디오 콘텐츠</string>
+    <string name="stay_signed_in">로그인 유지</string>
+    <string name="sign_out_anyway">그래도 로그아웃</string>
+    <string name="delete_account">계정을 삭제할까요?</string>
+    <string name="delete_account_warning">이 작업은 되돌릴 수 없습니다.\n다음 데이터가 영구 삭제됩니다:</string>
+    <string name="keep_my_account">계정 유지</string>
+    <string name="delete_anyway">그래도 삭제</string>
+    <string name="before_you_go">잠깐만요\u2026</string>
+    <string name="feedback_reason">떠나시는 이유를 알려주시면 개선에 도움이 됩니다</string>
+    <string name="delete_my_account">내 계정 삭제</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Scribe AI가 마음에 드시나요?</string>
+    <string name="review_subtitle">Scribe AI가 더 빠른 학습과 이해에 도움이 되고 있나요?</string>
+    <string name="yes_love_it">네, 정말 좋아요!</string>
+    <string name="not_yet">아직이요</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">YouTube URL</string>
+    <string name="paste_youtube_url">YouTube 동영상 URL을 붙여넣기</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">클립보드에서 붙여넣기</string>
+    <string name="create_note">노트 만들기</string>
+    <string name="invalid_youtube_url">유효한 YouTube URL을 입력해 주세요</string>
+    <string name="creating_note">노트 생성 중\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">문서 업로드</string>
+    <string name="tap_to_select">탭하여 파일 선택</string>
+    <string name="supported_formats">PDF, DOCX, PPT, TXT 지원</string>
+    <string name="file_selected">파일이 선택됨</string>
+    <string name="uploading">업로드 중\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">문서 스캔</string>
+    <string name="grant_permission">권한 허용</string>
+    <string name="scan_another_page">다른 페이지 스캔</string>
+    <string name="save_with_count">저장 (%d)</string>
+    <string name="dismiss">닫기</string>
+    <string name="scanned_pages_format">%d 페이지 스캔됨</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">회의 참가</string>
+    <string name="meeting_link">회의 링크</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">제목 (선택)</string>
+    <string name="meeting_title_placeholder">예: 팀 스탠드업</string>
+    <string name="send_bot">봇 보내기</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">회의 봇</string>
+    <string name="no_meetings">아직 회의가 없습니다</string>
+    <string name="no_meetings_hint">회의에 참가하면 녹음 및 전사가 진행됩니다</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">테마 선택</string>
+    <string name="theme_system">시스템 기본값</string>
+    <string name="theme_light">라이트</string>
+    <string name="theme_dark">다크</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">디버그 토큰</string>
+    <string name="copy_token">토큰을 클립보드에 복사</string>
+    <string name="token_copied">토큰이 복사되었습니다!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">로딩 중\u2026</string>
+    <string name="error_label">오류</string>
+    <string name="generate">생성</string>
+
+    <!-- Language Picker -->
+    <string name="language">언어</string>
+    <string name="language_picker_title">언어 선택</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

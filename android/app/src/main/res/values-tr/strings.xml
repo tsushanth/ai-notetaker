@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">Ana Sayfa</string>
+    <string name="menu">Menü</string>
+    <string name="menu_language">Dil</string>
+    <string name="menu_upgrade_pro">Pro\'ya Yükselt</string>
+    <string name="menu_manage_subscription">Aboneliği Yönet</string>
+    <string name="menu_appearance">Görünüm</string>
+    <string name="menu_sign_out">Çıkış Yap</string>
+    <string name="menu_delete_account">Hesabı Sil</string>
+    <string name="add">Ekle</string>
+    <string name="no_notes_yet">Henüz not yok</string>
+    <string name="tap_to_create_first_note">İlk notunuzu oluşturmak için + düğmesine dokunun</string>
+    <string name="notes_count_format">%2$d nottan %1$d</string>
+    <string name="load_more_notes">Daha Fazla Not Yükle</string>
+    <string name="error_loading_notes">Notlar yüklenirken hata oluştu</string>
+    <string name="retry">Tekrar Dene</string>
+    <string name="account_deletion_requested">Hesap silme talebi alındı. Oturumunuz kapatılacak.</string>
+    <string name="error_delete_account">Hesap silinemedi: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">Dil Seçin</string>
+    <string name="language_subtitle">Yapay zeka tarafından oluşturulan içerik bu dilde olacaktır</string>
+    <string name="ok">Tamam</string>
+    <string name="cancel">İptal</string>
+
+    <!-- Note Card -->
+    <string name="more">Daha Fazla</string>
+    <string name="edit_title">Başlığı Düzenle</string>
+    <string name="delete">Sil</string>
+    <string name="delete_note">Not Silinsin mi?</string>
+    <string name="delete_note_message">\"%s\" notunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</string>
+    <string name="delete_note_detail_message">Bu notu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.</string>
+    <string name="label_title">Başlık</string>
+    <string name="save">Kaydet</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">Ses kaydet veya yükle</string>
+    <string name="youtube_video">YouTube videosu</string>
+    <string name="upload_document">Belge yükle</string>
+    <string name="upload_document_subtitle">Herhangi bir PDF, DOCX, PPT, TXT vb.!</string>
+    <string name="scan_text">Metin Tara</string>
+    <string name="scan_text_subtitle">Metin içeren herhangi bir görüntü</string>
+    <string name="join_meeting">Toplantıya Katıl</string>
+    <string name="join_meeting_subtitle">Zoom, Meet, Teams, Webex kaydedin</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">Geri</string>
+    <string name="more_options">Daha fazla seçenek</string>
+    <string name="share">Paylaş</string>
+    <string name="share_note">Notu Paylaş</string>
+    <string name="tab_notes">Notlar</string>
+    <string name="tab_chat">Sohbet</string>
+    <string name="tab_quiz">Test</string>
+    <string name="tab_cards">Kartlar</string>
+    <string name="formatting_notes">Notlar biçimlendiriliyor\u2026</string>
+    <string name="formatted">Biçimlendirilmiş</string>
+    <string name="raw">Ham</string>
+    <string name="source_label">Kaynak: %s</string>
+    <string name="open_source_link">Kaynağı aç</string>
+    <string name="characters_words_format">%1$s karakter \u2022 %2$s kelime</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">YouTube Videosu</string>
+    <string name="source_audio_recording">Ses Kaydı</string>
+    <string name="source_pdf_document">PDF Belgesi</string>
+    <string name="source_scanned_document">Taranan Belge</string>
+    <string name="source_image">Görüntü</string>
+    <string name="source_text">Metin</string>
+
+    <!-- Summary Section -->
+    <string name="summary">Özet</string>
+    <string name="generating_summary">Özet oluşturuluyor\u2026</string>
+    <string name="regenerate">Yeniden Oluştur</string>
+    <string name="no_summary_yet">Henüz özet yok</string>
+    <string name="generate_summary">Özet Oluştur</string>
+    <string name="no_summary_available">Özet mevcut değil</string>
+    <string name="summary_length">Özet Uzunluğu</string>
+    <string name="create_summary_description">Notlarınızın kısa bir özetini oluşturun</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">Bir mesaj yazın\u2026</string>
+    <string name="send">Gönder</string>
+    <string name="voice_mode">Sesli mod</string>
+    <string name="text_mode">Metin modu</string>
+    <string name="ask_about_notes">Notlarınız hakkında herhangi bir şey sorun</string>
+    <string name="ask_about_notes_description">Notlarınızdaki belirli bilgileri anlamanıza, analiz etmenize veya bulmanıza yardımcı olabilirim.</string>
+    <string name="suggested_questions">Önerilen sorular:</string>
+    <string name="chat_suggestion_summarize">Ana noktaları özetle</string>
+    <string name="chat_suggestion_explain">Temel kavramları açıkla</string>
+    <string name="chat_suggestion_test">Bu konuda beni test et</string>
+    <string name="listening">Dinleniyor\u2026</string>
+    <string name="tap_to_speak">Konuşmak için dokunun</string>
+    <string name="speaking">Konuşuyor\u2026</string>
+    <string name="stop_speaking">Konuşmayı durdur</string>
+    <string name="could_not_open_link">Bağlantı açılamadı</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">Test Oluştur</string>
+    <string name="generate_quiz_description">Bilginizi sınamak için bir test oluşturun</string>
+    <string name="generating_quiz">Test oluşturuluyor\u2026</string>
+    <string name="question_count_format">Soru %1$d / %2$d</string>
+    <string name="check_answer">Cevabı Kontrol Et</string>
+    <string name="next_question">Sonraki Soru</string>
+    <string name="correct">Doğru!</string>
+    <string name="incorrect">Yanlış</string>
+    <string name="correct_answer_is">Doğru cevap: %s</string>
+    <string name="quiz_complete">Test Tamamlandı!</string>
+    <string name="quiz_score_format">%2$d üzerinden %1$d puan aldınız</string>
+    <string name="try_again">Tekrar Dene</string>
+    <string name="new_quiz">Yeni Test</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">Bilgi Kartları Oluştur</string>
+    <string name="generate_flashcards_description">Çalışma için bilgi kartları oluşturun</string>
+    <string name="generating_flashcards">Bilgi kartları oluşturuluyor\u2026</string>
+    <string name="flashcard_count_format">Kart %1$d / %2$d</string>
+    <string name="tap_to_flip">Çevirmek için dokunun</string>
+    <string name="previous">Önceki</string>
+    <string name="next">Sonraki</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">Tekrar Hoş Geldiniz</string>
+    <string name="sign_in_to_continue">Devam etmek için giriş yapın</string>
+    <string name="continue_with_google">Google ile devam et</string>
+    <string name="or_divider">  veya  </string>
+    <string name="email">E-posta</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">Şifre</string>
+    <string name="enter_password">Şifrenizi girin</string>
+    <string name="hide_password">Şifreyi gizle</string>
+    <string name="show_password">Şifreyi göster</string>
+    <string name="sign_in">Giriş Yap</string>
+    <string name="forgot_password">Şifremi Unuttum?</string>
+    <string name="no_account">Hesabınız yok mu? </string>
+    <string name="sign_up">Kayıt Ol</string>
+    <string name="error_invalid_credentials">Yanlış e-posta veya şifre. Lütfen tekrar deneyin.</string>
+    <string name="error_email_not_confirmed">Giriş yapmadan önce lütfen e-postanızı doğrulayın.</string>
+    <string name="error_user_not_found">Bu e-posta ile kayıtlı hesap bulunamadı.</string>
+    <string name="error_network">Ağ hatası. Lütfen bağlantınızı kontrol edin.</string>
+    <string name="error_no_google_account">Google hesabı bulunamadı. Lütfen cihazınıza bir Google hesabı ekleyin.</string>
+    <string name="error_google_signin_failed">Google ile giriş başarısız oldu</string>
+    <string name="error_email_required">Lütfen e-postanızı girin</string>
+    <string name="error_invalid_email">Lütfen geçerli bir e-posta adresi girin</string>
+    <string name="error_password_required">Lütfen şifrenizi girin</string>
+    <string name="error_password_too_short">Şifre en az 6 karakter olmalıdır</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">E-posta Gönderildi!</string>
+    <string name="reset_password">Şifre Sıfırla</string>
+    <string name="reset_email_sent">Şifre sıfırlama bağlantısını şu adrese gönderdik:</string>
+    <string name="check_inbox">Lütfen gelen kutunuzu ve spam klasörünüzü kontrol edin.</string>
+    <string name="reset_password_instruction">E-posta adresinizi girin, size şifre sıfırlama bağlantısı gönderelim.</string>
+    <string name="done">Bitti</string>
+    <string name="send_reset_link">Sıfırlama Bağlantısı Gönder</string>
+    <string name="error_enter_valid_email">Lütfen geçerli bir e-posta girin</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">Hesap Oluştur</string>
+    <string name="sign_up_subtitle">Başlamak için kayıt olun</string>
+    <string name="at_least_6_characters">En az 6 karakter</string>
+    <string name="confirm_password">Şifreyi Onayla</string>
+    <string name="reenter_password">Şifreyi tekrar girin</string>
+    <string name="already_have_account">Zaten hesabınız var mı? </string>
+    <string name="error_valid_email">Lütfen geçerli bir e-posta girin</string>
+    <string name="error_enter_password">Lütfen bir şifre girin</string>
+    <string name="error_confirm_password">Lütfen şifrenizi onaylayın</string>
+    <string name="error_passwords_mismatch">Şifreler eşleşmiyor</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">Ses Kaydet</string>
+    <string name="record_audio_subtitle">Dersleri, toplantıları veya notları kaydedin.\nTranskripsiyonunu yapıp çalışma materyalleri oluşturacağız.</string>
+    <string name="grant_microphone_permission">Mikrofon İzni Ver</string>
+    <string name="start_recording">Kaydı Başlat</string>
+    <string name="tap_to_start_recording">Kaydı başlatmak için dokunun</string>
+    <string name="recording_status">Kaydediliyor\u2026</string>
+    <string name="paused">Duraklatıldı</string>
+    <string name="discard">At</string>
+    <string name="pause">Duraklat</string>
+    <string name="resume">Devam Et</string>
+    <string name="stop">Durdur</string>
+    <string name="recording_complete">Kayıt Tamamlandı</string>
+    <string name="duration_format">Süre: %s</string>
+    <string name="title_optional">Başlık (isteğe bağlı)</string>
+    <string name="title_placeholder">örn., Biyoloji Dersi</string>
+    <string name="process_recording">Kaydı İşle</string>
+    <string name="discard_recording">Kaydı At</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">Ses yükleniyor</string>
+    <string name="step_transcribing_audio">Ses yazıya dökülüyor</string>
+    <string name="step_identifying_speakers">Konuşmacılar belirleniyor</string>
+    <string name="step_analyzing_content">İçerik analiz ediliyor</string>
+    <string name="step_summarizing_key_points">Ana noktalar özetleniyor</string>
+    <string name="step_finalizing_note">Notunuz tamamlanıyor</string>
+    <string name="upload_complete_safe">Yükleme tamamlandı. Artık güvenle ayrılabilirsiniz.</string>
+    <string name="processing_info">Notların oluşturulması genellikle birkaç dakika sürer. Bu ekrandan ayrılıp daha sonra geri dönebilirsiniz.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">Notunuz hazır!</string>
+    <string name="note_ready_description">Kaydınızı yazıya döktük ve çalışma materyalleri oluşturduk.</string>
+    <string name="view_note">Notu Görüntüle</string>
+    <string name="go_to_home">Ana Sayfaya Git</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">Bir şeyler yanlış gitti</string>
+    <string name="try_again_button">Tekrar Dene</string>
+    <string name="go_back">Geri Dön</string>
+    <string name="error_not_authenticated">Kimlik doğrulanmadı</string>
+    <string name="error_upload_failed">Ses yüklenemedi</string>
+    <string name="error_transcribe_failed">Ses yazıya dökülemedi</string>
+    <string name="error_start_recording">Kayıt başlatılamadı: %s</string>
+    <string name="error_stop_recording">Kayıt durdurulamadı: %s</string>
+    <string name="error_processing_failed">İşleme başarısız oldu</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">Kapat</string>
+    <string name="unlock_pro">Scribe AI Pro\'yu Aç</string>
+    <string name="unlimited_access">Tüm özelliklere sınırsız erişim elde edin</string>
+    <string name="feature_unlimited_notes">Herhangi bir kaynaktan sınırsız not</string>
+    <string name="feature_ai_summaries">Yapay zeka destekli özetler ve testler</string>
+    <string name="feature_flashcards">Bilgi kartı oluşturma</string>
+    <string name="feature_ai_chat">Notlarınızla yapay zeka sohbeti</string>
+    <string name="feature_mind_map">Zihin haritası görselleştirmesi</string>
+    <string name="feature_podcast">Sesli podcast oluşturma</string>
+    <string name="plan_yearly">Yıllık</string>
+    <string name="plan_monthly">Aylık</string>
+    <string name="per_month_format">%s/ay</string>
+    <string name="save_percent_format">%d%% Tasarruf</string>
+    <string name="loading_plans">Planlar yükleniyor\u2026</string>
+    <string name="continue_button">Devam Et</string>
+    <string name="restore_purchases">Satın Alımları Geri Yükle</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">Emin misiniz?</string>
+    <string name="lose_access">Şunlara erişiminizi kaybedeceksiniz:</string>
+    <string name="stat_notes_created">oluşturduğunuz notlar</string>
+    <string name="stat_quizzes_generated">oluşturulan testler</string>
+    <string name="stat_flashcards_created">oluşturulan bilgi kartları</string>
+    <string name="stat_audio_hours">saatlik ses içeriği</string>
+    <string name="stay_signed_in">Oturumu Açık Tut</string>
+    <string name="sign_out_anyway">Yine de Çıkış Yap</string>
+    <string name="delete_account">Hesap Silinsin mi?</string>
+    <string name="delete_account_warning">Bu geri alınamaz.\nKalıcı olarak kaybedeceksiniz:</string>
+    <string name="keep_my_account">Hesabımı Koru</string>
+    <string name="delete_anyway">Yine de Sil</string>
+    <string name="before_you_go">Gitmeden önce\u2026</string>
+    <string name="feedback_reason">Neden ayrıldığınızı söyleyerek gelişmemize yardımcı olun</string>
+    <string name="delete_my_account">Hesabımı Sil</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Scribe AI\'dan memnun musunuz?</string>
+    <string name="review_subtitle">Scribe AI daha hızlı çalışmanıza ve daha iyi öğrenmenize yardımcı oluyor mu?</string>
+    <string name="yes_love_it">Evet, bayılıyorum!</string>
+    <string name="not_yet">Henüz değil</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">YouTube URL\'si</string>
+    <string name="paste_youtube_url">Bir YouTube video URL\'si yapıştırın</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">Panodan Yapıştır</string>
+    <string name="create_note">Not Oluştur</string>
+    <string name="invalid_youtube_url">Lütfen geçerli bir YouTube URL\'si girin</string>
+    <string name="creating_note">Not oluşturuluyor\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">Belge Yükle</string>
+    <string name="tap_to_select">Dosya seçmek için dokunun</string>
+    <string name="supported_formats">PDF, DOCX, PPT, TXT desteklenir</string>
+    <string name="file_selected">Dosya seçildi</string>
+    <string name="uploading">Yükleniyor\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">Belge Tara</string>
+    <string name="grant_permission">İzin Ver</string>
+    <string name="scan_another_page">Başka Bir Sayfa Tara</string>
+    <string name="save_with_count">Kaydet (%d)</string>
+    <string name="dismiss">Kapat</string>
+    <string name="scanned_pages_format">%d sayfa tarandı</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">Toplantıya Katıl</string>
+    <string name="meeting_link">Toplantı Bağlantısı</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">Başlık (isteğe bağlı)</string>
+    <string name="meeting_title_placeholder">örn., Ekip Toplantısı</string>
+    <string name="send_bot">Bot Gönder</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">Toplantı Botu</string>
+    <string name="no_meetings">Henüz toplantı yok</string>
+    <string name="no_meetings_hint">Kaydedilip yazıya dökülmesi için bir toplantıya katılın</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">Tema Seçin</string>
+    <string name="theme_system">Sistem Varsayılanı</string>
+    <string name="theme_light">Açık</string>
+    <string name="theme_dark">Koyu</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">Hata Ayıklama Tokeni</string>
+    <string name="copy_token">Tokeni Panoya Kopyala</string>
+    <string name="token_copied">Token kopyalandı!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">Yükleniyor\u2026</string>
+    <string name="error_label">Hata</string>
+    <string name="generate">Oluştur</string>
+
+    <!-- Language Picker -->
+    <string name="language">Dil</string>
+    <string name="language_picker_title">Dil Seçin</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

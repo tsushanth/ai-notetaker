@@ -91,6 +91,7 @@ struct BottomNavigationBar: View {
     @State private var showingScanner = false
     @State private var showingMeetings = false
     @State private var showActionSheet = false
+    @State private var showPaywall = false
 
     var onContentCreated: () -> Void
 
@@ -104,6 +105,10 @@ struct BottomNavigationBar: View {
 
                 // Add Content Button (centered)
                 Button(action: {
+                    if !SubscriptionGateManager.shared.canCreateNote() {
+                        showPaywall = true
+                        return
+                    }
                     showActionSheet = true
                 }) {
                     HStack(spacing: 8) {
@@ -126,22 +131,27 @@ struct BottomNavigationBar: View {
         }
         .confirmationDialog("Add Content", isPresented: $showActionSheet) {
             Button("Record Audio") {
+                SubscriptionGateManager.shared.recordNoteCreation()
                 showingRecording = true
             }
 
             Button("Scan Document") {
+                SubscriptionGateManager.shared.recordNoteCreation()
                 showingScanner = true
             }
 
             Button("Upload PDF/Audio") {
+                SubscriptionGateManager.shared.recordNoteCreation()
                 showingUpload = true
             }
 
             Button("YouTube Link") {
+                SubscriptionGateManager.shared.recordNoteCreation()
                 showingYouTube = true
             }
 
             Button("Join Meeting") {
+                SubscriptionGateManager.shared.recordNoteCreation()
                 showingMeetings = true
             }
 
@@ -184,6 +194,11 @@ struct BottomNavigationBar: View {
             onContentCreated()
         }) {
             MeetingsView()
+        }
+        .sheet(isPresented: $showPaywall) {
+            ScribeRemotePaywallView(triggerSource: "note_limit_reached") {
+                showPaywall = false
+            }
         }
     }
 }

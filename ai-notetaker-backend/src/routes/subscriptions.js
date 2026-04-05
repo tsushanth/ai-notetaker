@@ -258,6 +258,9 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
         canCreateNotes: status.hasAccess || remaining.notes > 0,
         canUseAI: status.hasAccess || remaining.aiGenerations > 0,
         canGeneratePodcasts: status.isSubscribed || status.isInTrial,
+        canExportNotes: status.isSubscribed || status.isInTrial,
+        canShareNotes: true,  // Free: 3/month, premium: unlimited (enforced server-side)
+        canUseIntegrations: status.isSubscribed || status.isInTrial,
         unlimitedAccess: status.isSubscribed || status.isInTrial
       }
     }

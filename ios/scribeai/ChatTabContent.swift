@@ -278,11 +278,14 @@ struct ChatTabContent: View {
                     let aiMessage = ChatMessage(id: UUID().uuidString, role: "assistant", text: response.answer)
                     messages.append(aiMessage)
                     isLoading = false
-                    
+
                     // Speak response in voice mode
                     if speakResponse && isVoiceMode {
                         speakText(response.answer)
                     }
+
+                    // Trigger post-value paywall prompt after AI chat response
+                    PostValueTrialManager.shared.checkAndTriggerPrompt()
                 }
             } catch {
                 await MainActor.run {

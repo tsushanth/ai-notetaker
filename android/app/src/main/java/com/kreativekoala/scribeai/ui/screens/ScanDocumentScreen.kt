@@ -36,9 +36,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import com.kreativekoala.scribeai.R
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -150,10 +152,10 @@ fun ScanDocumentScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Scan Document") },
+                title = { Text(stringResource(R.string.scan_document)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -247,10 +249,10 @@ fun ScanDocumentScreen(
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Uploading...")
+                                    Text(stringResource(R.string.uploading))
                                 }
                             } else {
-                                Text("Save (${scannedPages.size})")
+                                Text(stringResource(R.string.save_with_count, scannedPages.size))
                             }
                         }
                     }
@@ -280,18 +282,18 @@ fun ScanDocumentScreen(
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        text = "Camera Permission Required",
+                        text = stringResource(R.string.grant_permission),
                         style = MaterialTheme.typography.titleLarge
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Please grant camera permission to scan documents",
+                        text = stringResource(R.string.grant_permission),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                        Text("Grant Permission")
+                        Text(stringResource(R.string.grant_permission))
                     }
                 }
             } else if (showPreview && scannedPages.isNotEmpty()) {
@@ -419,7 +421,7 @@ fun ScanDocumentScreen(
                         ) {
                             if (scannedPages.isNotEmpty()) {
                                 Text(
-                                    text = "${scannedPages.size} page${if (scannedPages.size > 1) "s" else ""} scanned",
+                                    text = stringResource(R.string.scanned_pages_format, scannedPages.size),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -563,7 +565,7 @@ fun ScanDocumentScreen(
                         .padding(16.dp),
                     action = {
                         TextButton(onClick = { errorMessage = null }) {
-                            Text("Dismiss")
+                            Text(stringResource(R.string.dismiss))
                         }
                     }
                 ) {
@@ -700,7 +702,7 @@ fun PreviewScannedPages(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Scan Another Page")
+            Text(stringResource(R.string.scan_another_page))
         }
     }
 }

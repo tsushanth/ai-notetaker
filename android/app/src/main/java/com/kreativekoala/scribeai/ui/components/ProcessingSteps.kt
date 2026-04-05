@@ -17,8 +17,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.theme.*
 
 // MARK: - Processing Step Types
@@ -26,46 +28,46 @@ import com.kreativekoala.scribeai.ui.theme.*
 /**
  * YouTube processing steps
  */
-enum class YouTubeProcessingStep(val title: String) {
-    SENDING_URL("Sending video URL"),
-    FETCHING_TRANSCRIPT("Fetching transcript"),
-    ANALYZING_CONTENT("Analyzing content"),
-    SUMMARIZING_KEY_POINTS("Summarizing key points"),
-    FINALIZING_NOTE("Finalizing your note")
+enum class YouTubeProcessingStep(val titleResId: Int) {
+    SENDING_URL(R.string.step_uploading_audio),
+    FETCHING_TRANSCRIPT(R.string.step_transcribing_audio),
+    ANALYZING_CONTENT(R.string.step_analyzing_content),
+    SUMMARIZING_KEY_POINTS(R.string.step_summarizing_key_points),
+    FINALIZING_NOTE(R.string.step_finalizing_note)
 }
 
 /**
  * Audio recording processing steps
  */
-enum class RecordingProcessingStep(val title: String) {
-    UPLOADING_AUDIO("Uploading audio"),
-    TRANSCRIBING_AUDIO("Transcribing audio"),
-    IDENTIFYING_SPEAKERS("Identifying speakers"),
-    ANALYZING_CONTENT("Analyzing content"),
-    SUMMARIZING_KEY_POINTS("Summarizing key points"),
-    FINALIZING_NOTE("Finalizing your note")
+enum class RecordingProcessingStep(val titleResId: Int) {
+    UPLOADING_AUDIO(R.string.step_uploading_audio),
+    TRANSCRIBING_AUDIO(R.string.step_transcribing_audio),
+    IDENTIFYING_SPEAKERS(R.string.step_identifying_speakers),
+    ANALYZING_CONTENT(R.string.step_analyzing_content),
+    SUMMARIZING_KEY_POINTS(R.string.step_summarizing_key_points),
+    FINALIZING_NOTE(R.string.step_finalizing_note)
 }
 
 /**
  * PDF/Document processing steps
  */
-enum class DocumentProcessingStep(val title: String) {
-    UPLOADING_DOCUMENT("Uploading document"),
-    EXTRACTING_TEXT("Extracting text"),
-    ANALYZING_CONTENT("Analyzing content"),
-    SUMMARIZING_KEY_POINTS("Summarizing key points"),
-    FINALIZING_NOTE("Finalizing your note")
+enum class DocumentProcessingStep(val titleResId: Int) {
+    UPLOADING_DOCUMENT(R.string.step_uploading_audio),
+    EXTRACTING_TEXT(R.string.step_transcribing_audio),
+    ANALYZING_CONTENT(R.string.step_analyzing_content),
+    SUMMARIZING_KEY_POINTS(R.string.step_summarizing_key_points),
+    FINALIZING_NOTE(R.string.step_finalizing_note)
 }
 
 /**
  * Scan processing steps
  */
-enum class ScanProcessingStep(val title: String) {
-    UPLOADING_IMAGES("Uploading scanned images"),
-    PERFORMING_OCR("Extracting text (OCR)"),
-    ANALYZING_CONTENT("Analyzing content"),
-    SUMMARIZING_KEY_POINTS("Summarizing key points"),
-    FINALIZING_NOTE("Finalizing your note")
+enum class ScanProcessingStep(val titleResId: Int) {
+    UPLOADING_IMAGES(R.string.step_uploading_audio),
+    PERFORMING_OCR(R.string.step_transcribing_audio),
+    ANALYZING_CONTENT(R.string.step_analyzing_content),
+    SUMMARIZING_KEY_POINTS(R.string.step_summarizing_key_points),
+    FINALIZING_NOTE(R.string.step_finalizing_note)
 }
 
 // MARK: - Generic Processing Step
@@ -247,7 +249,7 @@ private fun UploadCompleteCard() {
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                "Upload is complete. It's safe to leave now.",
+                stringResource(R.string.upload_complete_safe),
                 fontSize = 14.sp,
                 color = TextSecondary
             )
@@ -292,7 +294,7 @@ fun ProcessingSuccessView(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Your note is ready!",
+            stringResource(R.string.note_ready),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -301,7 +303,7 @@ fun ProcessingSuccessView(
         Spacer(Modifier.height(12.dp))
 
         Text(
-            "We've processed your content and created study materials.",
+            stringResource(R.string.note_ready_description),
             fontSize = 16.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -321,7 +323,7 @@ fun ProcessingSuccessView(
             Icon(Icons.Default.Visibility, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(
-                "View Note",
+                stringResource(R.string.view_note),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -331,7 +333,7 @@ fun ProcessingSuccessView(
 
         TextButton(onClick = onGoHome) {
             Text(
-                "Go to Home",
+                stringResource(R.string.go_to_home),
                 fontSize = 16.sp,
                 color = TextSecondary
             )
@@ -371,7 +373,7 @@ fun ProcessingErrorView(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Something went wrong",
+            stringResource(R.string.something_went_wrong),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -401,7 +403,7 @@ fun ProcessingErrorView(
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(
-                "Try Again",
+                stringResource(R.string.try_again_button),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -411,7 +413,7 @@ fun ProcessingErrorView(
 
         TextButton(onClick = onGoBack) {
             Text(
-                "Go Back",
+                stringResource(R.string.go_back),
                 fontSize = 16.sp,
                 color = TextSecondary
             )

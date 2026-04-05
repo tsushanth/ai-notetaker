@@ -363,6 +363,8 @@ struct FlashcardsTabContent: View {
                             cards: flashcards,
                             createdAt: aiContent.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
+                        // Trigger post-value paywall prompt after AI content generated
+                        PostValueTrialManager.shared.checkAndTriggerPrompt()
                     }
                     self.isGenerating = false
                 }

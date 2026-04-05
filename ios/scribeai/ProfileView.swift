@@ -11,6 +11,9 @@
 //
 
 import SwiftUI
+#if DEBUG
+import PaywallKit
+#endif
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -187,7 +190,24 @@ struct ProfileView: View {
                         .background(Color.cardBackground)
                         .cornerRadius(12)
                         .padding(.horizontal, 24)
-                        
+
+                        #if DEBUG
+                        // PaywallKit Debug View
+                        PaywallDebugView(
+                            appId: "scribeai",
+                            appName: "Scribe AI",
+                            features: [
+                                PaywallFeature(icon: "\u{1F4DD}", title: "Unlimited Notebooks", description: "No limits on notes"),
+                                PaywallFeature(icon: "\u{1F916}", title: "AI Summaries & Chat", description: "Summarize and ask questions"),
+                                PaywallFeature(icon: "\u{1F399}\u{FE0F}", title: "Audio Podcasts", description: "Turn notes into podcasts"),
+                                PaywallFeature(icon: "\u{1F9E0}", title: "Quizzes & Flashcards", description: "Auto-generated study material"),
+                                PaywallFeature(icon: "\u{1F5FA}\u{FE0F}", title: "Mind Maps", description: "Visualize complex topics")
+                            ],
+                            theme: PaywallTheme(accent: Color(red: 0.49, green: 0.23, blue: 0.93), accent2: Color(red: 0.66, green: 0.33, blue: 0.97))
+                        )
+                        .padding(.horizontal, 24)
+                        #endif
+
                         // Sign Out Button
                         Button(action: {
                             showingSignOutAlert = true

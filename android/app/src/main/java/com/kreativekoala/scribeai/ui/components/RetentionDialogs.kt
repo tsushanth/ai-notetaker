@@ -19,8 +19,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.models.DeletionReason
 import com.kreativekoala.scribeai.data.models.UserStats
 import com.kreativekoala.scribeai.ui.theme.*
@@ -68,7 +70,7 @@ fun SignOutRetentionDialog(
 
                 // Title
                 Text(
-                    text = "Are you sure?",
+                    text = stringResource(R.string.are_you_sure),
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
@@ -77,7 +79,7 @@ fun SignOutRetentionDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "You'll lose access to:",
+                    text = stringResource(R.string.lose_access),
                     fontSize = 16.sp,
                     color = TextSecondary
                 )
@@ -99,23 +101,23 @@ fun SignOutRetentionDialog(
                         StatRow(
                             icon = Icons.Default.Description,
                             value = "${stats.notesCount}",
-                            label = "notes you've created"
+                            label = stringResource(R.string.stat_notes_created)
                         )
                         StatRow(
                             icon = Icons.Default.Quiz,
                             value = "${stats.quizzesCount}",
-                            label = "quizzes generated"
+                            label = stringResource(R.string.stat_quizzes_generated)
                         )
                         StatRow(
                             icon = Icons.Default.Style,
                             value = "${stats.flashcardsCount}",
-                            label = "flashcards created"
+                            label = stringResource(R.string.stat_flashcards_created)
                         )
                         if (stats.audioHours > 0) {
                             StatRow(
                                 icon = Icons.Default.Headphones,
                                 value = String.format("%.1f", stats.audioHours),
-                                label = "hours of audio content"
+                                label = stringResource(R.string.stat_audio_hours)
                             )
                         }
                     }
@@ -136,7 +138,7 @@ fun SignOutRetentionDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                 ) {
                     Text(
-                        text = "Stay Signed In",
+                        text = stringResource(R.string.stay_signed_in),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -152,7 +154,7 @@ fun SignOutRetentionDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Sign Out Anyway",
+                        text = stringResource(R.string.sign_out_anyway),
                         fontSize = 16.sp,
                         color = TextSecondary
                     )
@@ -199,7 +201,7 @@ fun DeleteAccountRetentionDialog(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Before you go...",
+                        text = stringResource(R.string.before_you_go),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -208,7 +210,7 @@ fun DeleteAccountRetentionDialog(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Help us improve by telling us why you're leaving",
+                        text = stringResource(R.string.feedback_reason),
                         fontSize = 16.sp,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
@@ -263,7 +265,7 @@ fun DeleteAccountRetentionDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                     ) {
                         Text(
-                            text = "Go Back",
+                            text = stringResource(R.string.go_back),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -293,7 +295,7 @@ fun DeleteAccountRetentionDialog(
                             )
                         } else {
                             Text(
-                                text = "Delete My Account",
+                                text = stringResource(R.string.delete_my_account),
                                 fontSize = 16.sp,
                                 color = if (selectedReason != null) AccentRed else TextTertiary
                             )
@@ -318,7 +320,7 @@ fun DeleteAccountRetentionDialog(
 
                     // Title
                     Text(
-                        text = "Delete Account?",
+                        text = stringResource(R.string.delete_account),
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -327,7 +329,7 @@ fun DeleteAccountRetentionDialog(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "This cannot be undone.\nYou'll permanently lose:",
+                        text = stringResource(R.string.delete_account_warning),
                         fontSize = 16.sp,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
@@ -350,17 +352,17 @@ fun DeleteAccountRetentionDialog(
                             StatRow(
                                 icon = Icons.Default.Description,
                                 value = "${stats.notesCount}",
-                                label = "notes you've created"
+                                label = stringResource(R.string.stat_notes_created)
                             )
                             StatRow(
                                 icon = Icons.Default.Quiz,
                                 value = "${stats.quizzesCount}",
-                                label = "quizzes generated"
+                                label = stringResource(R.string.stat_quizzes_generated)
                             )
                             StatRow(
                                 icon = Icons.Default.Style,
                                 value = "${stats.flashcardsCount}",
-                                label = "flashcards created"
+                                label = stringResource(R.string.stat_flashcards_created)
                             )
                         }
 
@@ -380,7 +382,7 @@ fun DeleteAccountRetentionDialog(
                         colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                     ) {
                         Text(
-                            text = "Keep My Account",
+                            text = stringResource(R.string.keep_my_account),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -393,7 +395,7 @@ fun DeleteAccountRetentionDialog(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Delete Anyway",
+                            text = stringResource(R.string.delete_anyway),
                             fontSize = 16.sp,
                             color = AccentRed
                         )

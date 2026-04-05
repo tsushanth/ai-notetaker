@@ -31,6 +31,16 @@ const creatorsRoutes = require('./routes/creators');
 const meetingsRoutes = require('./routes/meetings');
 const outreachRoutes = require('./routes/outreach');
 const ttsRoutes = require('./routes/tts');
+const exportsRoutes = require('./routes/exports');
+const sharingRoutes = require('./routes/sharing');
+const integrationsRoutes = require('./routes/integrations');
+const learningRoutes = require('./routes/learning');
+const learnPageRoutes = require('./routes/learnPage');
+const createContentRoutes = require('./routes/createContent');
+const createPageRoutes = require('./routes/createPage');
+const competeRoutes = require('./routes/compete');
+const competePageRoutes = require('./routes/competePage');
+const competeCreatePageRoutes = require('./routes/competeCreatePage');
 const { createJobRoutes, initializeCronJobs } = require('./jobs/creatorPayoutJobs');
 
 const app = express();
@@ -41,6 +51,12 @@ const app = express();
 // Google Cloud Run acts as a reverse proxy
 // ============================================
 app.set('trust proxy', true);
+
+// These pages must be served before Helmet (use inline scripts)
+app.use('/learn', learnPageRoutes);
+app.use('/create', createPageRoutes);
+app.use('/compete', competePageRoutes);
+app.use('/compete-create', competeCreatePageRoutes);
 
 // Security middleware
 app.use(helmet());
@@ -253,6 +269,14 @@ app.use('/api/creators', creatorsRoutes);
 app.use('/api/meetings', meetingsRoutes);
 app.use('/api/outreach', outreachRoutes);
 app.use('/api/tts', ttsRoutes);
+app.use('/api/notes', exportsRoutes);
+app.use('/api/notes', sharingRoutes);
+app.use('/api', sharingRoutes);
+app.use('/api/integrations', integrationsRoutes);
+app.use('/api/learn', learningRoutes);
+app.use('/api/create', createContentRoutes);
+app.use('/api/compete', competeRoutes);
+// learnPageRoutes mounted before helmet() above
 app.use('/api/jobs', createJobRoutes());
 
 // Initialize cron jobs (if node-cron is installed)

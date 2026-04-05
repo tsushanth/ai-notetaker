@@ -11,7 +11,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.utils.AuthManager
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,12 +37,12 @@ fun DebugTokenScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Debug Token") },
+                title = { Text(stringResource(R.string.debug_token)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = androidx.compose.material.icons.Icons.Default.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 }
@@ -174,7 +176,7 @@ fun DebugTokenScreen(
                 modifier = Modifier.fillMaxWidth(),
                 enabled = authToken != null
             ) {
-                Text("Copy Token to Clipboard")
+                Text(stringResource(R.string.copy_token))
             }
         }
     }

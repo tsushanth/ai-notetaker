@@ -796,6 +796,8 @@ struct PodcastTabContent: View {
                             createdAt: aiContent.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
                         self.isGenerating = false
+                        // Trigger post-value paywall prompt after AI content generated
+                        PostValueTrialManager.shared.checkAndTriggerPrompt()
                     }
                 } else {
                     print("⚠️ No audio URL in response, polling for status...")

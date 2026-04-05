@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">Startseite</string>
+    <string name="menu">Men\u00fc</string>
+    <string name="menu_language">Sprache</string>
+    <string name="menu_upgrade_pro">Auf Pro upgraden</string>
+    <string name="menu_manage_subscription">Abonnement verwalten</string>
+    <string name="menu_appearance">Erscheinungsbild</string>
+    <string name="menu_sign_out">Abmelden</string>
+    <string name="menu_delete_account">Konto l\u00f6schen</string>
+    <string name="add">Hinzuf\u00fcgen</string>
+    <string name="no_notes_yet">Noch keine Notizen</string>
+    <string name="tap_to_create_first_note">Tippe auf +, um deine erste Notiz zu erstellen</string>
+    <string name="notes_count_format">%1$d von %2$d Notizen</string>
+    <string name="load_more_notes">Mehr Notizen laden</string>
+    <string name="error_loading_notes">Fehler beim Laden der Notizen</string>
+    <string name="retry">Erneut versuchen</string>
+    <string name="account_deletion_requested">Kontol\u00f6schung angefordert. Du wirst abgemeldet.</string>
+    <string name="error_delete_account">Konto konnte nicht gel\u00f6scht werden: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">Sprache ausw\u00e4hlen</string>
+    <string name="language_subtitle">KI-generierte Inhalte werden in dieser Sprache sein</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Abbrechen</string>
+
+    <!-- Note Card -->
+    <string name="more">Mehr</string>
+    <string name="edit_title">Titel bearbeiten</string>
+    <string name="delete">L\u00f6schen</string>
+    <string name="delete_note">Notiz l\u00f6schen?</string>
+    <string name="delete_note_message">M\u00f6chtest du \"%s\" wirklich l\u00f6schen? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.</string>
+    <string name="delete_note_detail_message">M\u00f6chtest du diese Notiz wirklich l\u00f6schen? Diese Aktion kann nicht r\u00fcckg\u00e4ngig gemacht werden.</string>
+    <string name="label_title">Titel</string>
+    <string name="save">Speichern</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">Audio aufnehmen oder hochladen</string>
+    <string name="youtube_video">YouTube-Video</string>
+    <string name="upload_document">Dokument hochladen</string>
+    <string name="upload_document_subtitle">PDF, DOCX, PPT, TXT usw.!</string>
+    <string name="scan_text">Text scannen</string>
+    <string name="scan_text_subtitle">Jedes Bild mit Text</string>
+    <string name="join_meeting">Meeting beitreten</string>
+    <string name="join_meeting_subtitle">Zoom, Meet, Teams, Webex aufnehmen</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">Zur\u00fcck</string>
+    <string name="more_options">Weitere Optionen</string>
+    <string name="share">Teilen</string>
+    <string name="share_note">Notiz teilen</string>
+    <string name="tab_notes">Notizen</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_quiz">Quiz</string>
+    <string name="tab_cards">Karten</string>
+    <string name="formatting_notes">Formatierung l\u00e4uft\u2026</string>
+    <string name="formatted">Formatiert</string>
+    <string name="raw">Unformatiert</string>
+    <string name="source_label">Quelle: %s</string>
+    <string name="open_source_link">Quelle \u00f6ffnen</string>
+    <string name="characters_words_format">%1$s Zeichen \u2022 %2$s W\u00f6rter</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">YouTube-Video</string>
+    <string name="source_audio_recording">Audioaufnahme</string>
+    <string name="source_pdf_document">PDF-Dokument</string>
+    <string name="source_scanned_document">Gescanntes Dokument</string>
+    <string name="source_image">Bild</string>
+    <string name="source_text">Text</string>
+
+    <!-- Summary Section -->
+    <string name="summary">Zusammenfassung</string>
+    <string name="generating_summary">Zusammenfassung wird erstellt\u2026</string>
+    <string name="regenerate">Neu generieren</string>
+    <string name="no_summary_yet">Noch keine Zusammenfassung</string>
+    <string name="generate_summary">Zusammenfassung erstellen</string>
+    <string name="no_summary_available">Keine Zusammenfassung verf\u00fcgbar</string>
+    <string name="summary_length">L\u00e4nge der Zusammenfassung</string>
+    <string name="create_summary_description">Erstelle eine pr\u00e4gnante Zusammenfassung deiner Notizen</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">Nachricht eingeben\u2026</string>
+    <string name="send">Senden</string>
+    <string name="voice_mode">Sprachmodus</string>
+    <string name="text_mode">Textmodus</string>
+    <string name="ask_about_notes">Frag alles \u00fcber deine Notizen</string>
+    <string name="ask_about_notes_description">Ich kann dir helfen, deine Notizen zu verstehen, zu analysieren oder bestimmte Informationen zu finden.</string>
+    <string name="suggested_questions">Vorgeschlagene Fragen:</string>
+    <string name="chat_suggestion_summarize">Die wichtigsten Punkte zusammenfassen</string>
+    <string name="chat_suggestion_explain">Die Hauptkonzepte erkl\u00e4ren</string>
+    <string name="chat_suggestion_test">Mein Wissen testen</string>
+    <string name="listening">H\u00f6rt zu\u2026</string>
+    <string name="tap_to_speak">Tippe zum Sprechen</string>
+    <string name="speaking">Spricht\u2026</string>
+    <string name="stop_speaking">Sprechen stoppen</string>
+    <string name="could_not_open_link">Link konnte nicht ge\u00f6ffnet werden</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">Quiz erstellen</string>
+    <string name="generate_quiz_description">Erstelle ein Quiz, um dein Wissen zu testen</string>
+    <string name="generating_quiz">Quiz wird erstellt\u2026</string>
+    <string name="question_count_format">Frage %1$d von %2$d</string>
+    <string name="check_answer">Antwort pr\u00fcfen</string>
+    <string name="next_question">N\u00e4chste Frage</string>
+    <string name="correct">Richtig!</string>
+    <string name="incorrect">Falsch</string>
+    <string name="correct_answer_is">Die richtige Antwort ist: %s</string>
+    <string name="quiz_complete">Quiz abgeschlossen!</string>
+    <string name="quiz_score_format">Du hast %1$d von %2$d richtig</string>
+    <string name="try_again">Nochmal versuchen</string>
+    <string name="new_quiz">Neues Quiz</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">Lernkarten erstellen</string>
+    <string name="generate_flashcards_description">Lernkarten zum \u00dcben erstellen</string>
+    <string name="generating_flashcards">Lernkarten werden erstellt\u2026</string>
+    <string name="flashcard_count_format">Karte %1$d von %2$d</string>
+    <string name="tap_to_flip">Tippe zum Umdrehen</string>
+    <string name="previous">Zur\u00fcck</string>
+    <string name="next">Weiter</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">Willkommen zur\u00fcck</string>
+    <string name="sign_in_to_continue">Melde dich an, um fortzufahren</string>
+    <string name="continue_with_google">Weiter mit Google</string>
+    <string name="or_divider">  oder  </string>
+    <string name="email">E-Mail</string>
+    <string name="email_placeholder">deine@email.com</string>
+    <string name="password">Passwort</string>
+    <string name="enter_password">Gib dein Passwort ein</string>
+    <string name="hide_password">Passwort ausblenden</string>
+    <string name="show_password">Passwort anzeigen</string>
+    <string name="sign_in">Anmelden</string>
+    <string name="forgot_password">Passwort vergessen?</string>
+    <string name="no_account">Noch kein Konto? </string>
+    <string name="sign_up">Registrieren</string>
+    <string name="error_invalid_credentials">E-Mail oder Passwort falsch. Bitte versuche es erneut.</string>
+    <string name="error_email_not_confirmed">Bitte best\u00e4tige deine E-Mail, bevor du dich anmeldest.</string>
+    <string name="error_user_not_found">Kein Konto mit dieser E-Mail gefunden.</string>
+    <string name="error_network">Netzwerkfehler. Bitte pr\u00fcfe deine Verbindung.</string>
+    <string name="error_no_google_account">Kein Google-Konto gefunden. Bitte f\u00fcge ein Google-Konto auf deinem Ger\u00e4t hinzu.</string>
+    <string name="error_google_signin_failed">Google-Anmeldung fehlgeschlagen</string>
+    <string name="error_email_required">Bitte gib deine E-Mail ein</string>
+    <string name="error_invalid_email">Bitte gib eine g\u00fcltige E-Mail-Adresse ein</string>
+    <string name="error_password_required">Bitte gib dein Passwort ein</string>
+    <string name="error_password_too_short">Das Passwort muss mindestens 6 Zeichen lang sein</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">E-Mail gesendet!</string>
+    <string name="reset_password">Passwort zur\u00fccksetzen</string>
+    <string name="reset_email_sent">Wir haben einen Link zum Zur\u00fccksetzen gesendet an:</string>
+    <string name="check_inbox">Bitte pr\u00fcfe deinen Posteingang und Spam-Ordner.</string>
+    <string name="reset_password_instruction">Gib deine E-Mail-Adresse ein und wir senden dir einen Link zum Zur\u00fccksetzen deines Passworts.</string>
+    <string name="done">Fertig</string>
+    <string name="send_reset_link">Link senden</string>
+    <string name="error_enter_valid_email">Bitte gib eine g\u00fcltige E-Mail ein</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">Konto erstellen</string>
+    <string name="sign_up_subtitle">Registriere dich, um loszulegen</string>
+    <string name="at_least_6_characters">Mindestens 6 Zeichen</string>
+    <string name="confirm_password">Passwort best\u00e4tigen</string>
+    <string name="reenter_password">Passwort erneut eingeben</string>
+    <string name="already_have_account">Bereits ein Konto? </string>
+    <string name="error_valid_email">Bitte gib eine g\u00fcltige E-Mail ein</string>
+    <string name="error_enter_password">Bitte gib ein Passwort ein</string>
+    <string name="error_confirm_password">Bitte best\u00e4tige dein Passwort</string>
+    <string name="error_passwords_mismatch">Passw\u00f6rter stimmen nicht \u00fcberein</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">Audio aufnehmen</string>
+    <string name="record_audio_subtitle">Nimm Vorlesungen, Meetings oder Notizen auf.\nWir transkribieren und erstellen Lernmaterialien.</string>
+    <string name="grant_microphone_permission">Mikrofonzugriff erlauben</string>
+    <string name="start_recording">Aufnahme starten</string>
+    <string name="tap_to_start_recording">Tippe, um die Aufnahme zu starten</string>
+    <string name="recording_status">Aufnahme\u2026</string>
+    <string name="paused">Pausiert</string>
+    <string name="discard">Verwerfen</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Fortsetzen</string>
+    <string name="stop">Stopp</string>
+    <string name="recording_complete">Aufnahme abgeschlossen</string>
+    <string name="duration_format">Dauer: %s</string>
+    <string name="title_optional">Titel (optional)</string>
+    <string name="title_placeholder">z.B. Biologie-Vorlesung</string>
+    <string name="process_recording">Aufnahme verarbeiten</string>
+    <string name="discard_recording">Aufnahme verwerfen</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">Audio wird hochgeladen</string>
+    <string name="step_transcribing_audio">Audio wird transkribiert</string>
+    <string name="step_identifying_speakers">Sprecher werden erkannt</string>
+    <string name="step_analyzing_content">Inhalt wird analysiert</string>
+    <string name="step_summarizing_key_points">Kernpunkte werden zusammengefasst</string>
+    <string name="step_finalizing_note">Notiz wird fertiggestellt</string>
+    <string name="upload_complete_safe">Upload abgeschlossen. Du kannst jetzt sicher gehen.</string>
+    <string name="processing_info">Notizen brauchen in der Regel einige Minuten. Du kannst diesen Bildschirm verlassen und sp\u00e4ter zur\u00fcckkehren.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">Deine Notiz ist fertig!</string>
+    <string name="note_ready_description">Wir haben deine Aufnahme transkribiert und Lernmaterialien erstellt.</string>
+    <string name="view_note">Notiz anzeigen</string>
+    <string name="go_to_home">Zur Startseite</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">Etwas ist schiefgelaufen</string>
+    <string name="try_again_button">Erneut versuchen</string>
+    <string name="go_back">Zur\u00fcck</string>
+    <string name="error_not_authenticated">Nicht authentifiziert</string>
+    <string name="error_upload_failed">Audio-Upload fehlgeschlagen</string>
+    <string name="error_transcribe_failed">Transkription fehlgeschlagen</string>
+    <string name="error_start_recording">Aufnahme konnte nicht gestartet werden: %s</string>
+    <string name="error_stop_recording">Aufnahme konnte nicht gestoppt werden: %s</string>
+    <string name="error_processing_failed">Verarbeitung fehlgeschlagen</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">Schlie\u00dfen</string>
+    <string name="unlock_pro">Scribe AI Pro freischalten</string>
+    <string name="unlimited_access">Unbegrenzter Zugang zu allen Funktionen</string>
+    <string name="feature_unlimited_notes">Unbegrenzte Notizen aus jeder Quelle</string>
+    <string name="feature_ai_summaries">KI-Zusammenfassungen &amp; Quizze</string>
+    <string name="feature_flashcards">Lernkarten-Erstellung</string>
+    <string name="feature_ai_chat">KI-Chat mit deinen Notizen</string>
+    <string name="feature_mind_map">Mindmap-Visualisierung</string>
+    <string name="feature_podcast">Audio-Podcast-Erstellung</string>
+    <string name="plan_yearly">J\u00e4hrlich</string>
+    <string name="plan_monthly">Monatlich</string>
+    <string name="per_month_format">%s/Monat</string>
+    <string name="save_percent_format">%d%% sparen</string>
+    <string name="loading_plans">Tarife werden geladen\u2026</string>
+    <string name="continue_button">Weiter</string>
+    <string name="restore_purchases">K\u00e4ufe wiederherstellen</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">Bist du sicher?</string>
+    <string name="lose_access">Du verlierst den Zugang zu:</string>
+    <string name="stat_notes_created">erstellte Notizen</string>
+    <string name="stat_quizzes_generated">generierte Quizze</string>
+    <string name="stat_flashcards_created">erstellte Lernkarten</string>
+    <string name="stat_audio_hours">Stunden Audioinhalt</string>
+    <string name="stay_signed_in">Angemeldet bleiben</string>
+    <string name="sign_out_anyway">Trotzdem abmelden</string>
+    <string name="delete_account">Konto l\u00f6schen?</string>
+    <string name="delete_account_warning">Dies kann nicht r\u00fcckg\u00e4ngig gemacht werden.\nDu verlierst dauerhaft:</string>
+    <string name="keep_my_account">Mein Konto behalten</string>
+    <string name="delete_anyway">Trotzdem l\u00f6schen</string>
+    <string name="before_you_go">Bevor du gehst\u2026</string>
+    <string name="feedback_reason">Hilf uns, besser zu werden, indem du uns sagst, warum du gehst</string>
+    <string name="delete_my_account">Mein Konto l\u00f6schen</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Gef\u00e4llt dir Scribe AI?</string>
+    <string name="review_subtitle">Hilft dir Scribe AI, schneller zu lernen und besser zu verstehen?</string>
+    <string name="yes_love_it">Ja, ich liebe es!</string>
+    <string name="not_yet">Noch nicht</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">YouTube-URL</string>
+    <string name="paste_youtube_url">YouTube-Video-URL einf\u00fcgen</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">Aus Zwischenablage einf\u00fcgen</string>
+    <string name="create_note">Notiz erstellen</string>
+    <string name="invalid_youtube_url">Bitte gib eine g\u00fcltige YouTube-URL ein</string>
+    <string name="creating_note">Notiz wird erstellt\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">Dokument hochladen</string>
+    <string name="tap_to_select">Tippe, um eine Datei auszuw\u00e4hlen</string>
+    <string name="supported_formats">PDF, DOCX, PPT, TXT unterst\u00fctzt</string>
+    <string name="file_selected">Datei ausgew\u00e4hlt</string>
+    <string name="uploading">Wird hochgeladen\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">Dokument scannen</string>
+    <string name="grant_permission">Berechtigung erteilen</string>
+    <string name="scan_another_page">Weitere Seite scannen</string>
+    <string name="save_with_count">Speichern (%d)</string>
+    <string name="dismiss">Schlie\u00dfen</string>
+    <string name="scanned_pages_format">%d Seiten gescannt</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">Einem Meeting beitreten</string>
+    <string name="meeting_link">Meeting-Link</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">Titel (optional)</string>
+    <string name="meeting_title_placeholder">z.B. Team-Standup</string>
+    <string name="send_bot">Bot senden</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">Meeting-Bot</string>
+    <string name="no_meetings">Noch keine Meetings</string>
+    <string name="no_meetings_hint">Tritt einem Meeting bei, um es aufzunehmen und zu transkribieren</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">Design ausw\u00e4hlen</string>
+    <string name="theme_system">Systemstandard</string>
+    <string name="theme_light">Hell</string>
+    <string name="theme_dark">Dunkel</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">Debug-Token</string>
+    <string name="copy_token">Token in Zwischenablage kopieren</string>
+    <string name="token_copied">Token kopiert!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">Wird geladen\u2026</string>
+    <string name="error_label">Fehler</string>
+    <string name="generate">Generieren</string>
+
+    <!-- Language Picker -->
+    <string name="language">Sprache</string>
+    <string name="language_picker_title">Sprache ausw\u00e4hlen</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

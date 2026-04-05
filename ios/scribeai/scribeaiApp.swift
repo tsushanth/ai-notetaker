@@ -8,7 +8,7 @@
 import SwiftUI
 import GoogleSignIn
 import FacebookCore
-import RevenueCat
+import PaywallKit
 
 @main
 struct ScribeAIApp: App {
@@ -17,7 +17,11 @@ struct ScribeAIApp: App {
     @StateObject private var paywallCoordinator = PaywallCoordinator.shared
     @State private var showingSplash = true
     @State private var showLaunchPaywall = false
+    @State private var showAppOpenPaywall = false
     @Environment(\.scenePhase) private var scenePhase
+
+    private static let paywallTriggerOpens: Set<Int> = [1, 3, 5]
+    private static let paywallRecurringInterval = 3
 
     init() {
         // Initialize Firebase Analytics (free, unlimited)
@@ -26,13 +30,12 @@ struct ScribeAIApp: App {
         // Initialize Facebook SDK for Meta Ads attribution
         FacebookSDKHelper.shared.initialize()
 
-        // Initialize RevenueCat for remote paywall
-        #if DEBUG
-        Purchases.logLevel = .warn
-        #else
-        Purchases.logLevel = .warn
-        #endif
-        Purchases.configure(withAPIKey: "appl_NBCWDmwGCyKQuzJQPjqHUlauPHZ")
+        // Initialize PaywallKit StoreManager (StoreKit 2)
+        StoreManager.shared.configure(productIds: [
+            "com.kreativekoala.scribeai.monthly",
+            "com.kreativekoala.scribeai.yearly",
+            "com.kreativekoala.scribeai.lifetime1"
+        ])
     }
 
     var body: some Scene {
@@ -76,7 +79,8 @@ struct ScribeAIApp: App {
                 FacebookSDKHelper.shared.logAppLaunch()
 
                 // Dismiss splash after animation completes
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                let snapshotDelay: Double = ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") ? 0.0 : 2.5
+                DispatchQueue.main.asyncAfter(deadline: .now() + snapshotDelay) {
                     withAnimation(.easeOut(duration: 0.5)) {
                         showingSplash = false
                     }
@@ -85,16 +89,20 @@ struct ScribeAIApp: App {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         FacebookSDKHelper.shared.requestTrackingPermission()
 
-                        let gate = SubscriptionGateManager.shared
-                        if !gate.canAccessPremiumFeatures && !gate.isInTrialPeriod {
-                            // Only show once per day to avoid annoying users
-                            let lastLaunchPaywall = UserDefaults.standard.object(forKey: "lastLaunchPaywallDate") as? Date
-                            let shouldShow = lastLaunchPaywall == nil ||
-                                Date().timeIntervalSince(lastLaunchPaywall!) > 86400
-                            if shouldShow {
+                        // Refresh StoreManager subscription status
+                        Task {
+                            await StoreManager.shared.refreshSubscriptionStatus()
+                        }
+
+                        if !ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
+                            let gate = SubscriptionGateManager.shared
+                            if !gate.canAccessPremiumFeatures && !gate.isInTrialPeriod {
+                                // Show every launch for expired trial users (no cooldown)
                                 showLaunchPaywall = true
-                                UserDefaults.standard.set(Date(), forKey: "lastLaunchPaywallDate")
                             }
+
+                            // App-open paywall trigger
+                            checkAppOpenPaywall()
                         }
                     }
                 }
@@ -103,7 +111,9 @@ struct ScribeAIApp: App {
                 switch newPhase {
                 case .active:
                     AnalyticsService.shared.startSession()
-                    paywallCoordinator.checkWinbackEligibility()
+                    if !ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
+                        paywallCoordinator.checkWinbackEligibility()
+                    }
                 case .background:
                     AnalyticsService.shared.endSession()
                 case .inactive:
@@ -120,6 +130,23 @@ struct ScribeAIApp: App {
                     showLaunchPaywall = false
                 }
             }
+            .fullScreenCover(isPresented: $showAppOpenPaywall) {
+                ScribeRemotePaywallView(triggerSource: "app_open") {
+                    showAppOpenPaywall = false
+                }
+            }
+        }
+    }
+
+    private func checkAppOpenPaywall() {
+        guard !SubscriptionGateManager.shared.canAccessPremiumFeatures else { return }
+        let key = "com.scribeai.appOpenCount"
+        let count = UserDefaults.standard.integer(forKey: key) + 1
+        UserDefaults.standard.set(count, forKey: key)
+        let shouldShow = Self.paywallTriggerOpens.contains(count)
+            || (count > 5 && (count - 5) % Self.paywallRecurringInterval == 0)
+        if shouldShow {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showAppOpenPaywall = true }
         }
     }
 }

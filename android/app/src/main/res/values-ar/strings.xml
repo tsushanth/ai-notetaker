@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">الرئيسية</string>
+    <string name="menu">القائمة</string>
+    <string name="menu_language">اللغة</string>
+    <string name="menu_upgrade_pro">الترقية إلى Pro</string>
+    <string name="menu_manage_subscription">إدارة الاشتراك</string>
+    <string name="menu_appearance">المظهر</string>
+    <string name="menu_sign_out">تسجيل الخروج</string>
+    <string name="menu_delete_account">حذف الحساب</string>
+    <string name="add">إضافة</string>
+    <string name="no_notes_yet">لا توجد ملاحظات بعد</string>
+    <string name="tap_to_create_first_note">اضغط + لإنشاء ملاحظتك الأولى</string>
+    <string name="notes_count_format">%1$d من %2$d ملاحظة</string>
+    <string name="load_more_notes">تحميل المزيد من الملاحظات</string>
+    <string name="error_loading_notes">خطأ في تحميل الملاحظات</string>
+    <string name="retry">إعادة المحاولة</string>
+    <string name="account_deletion_requested">تم طلب حذف الحساب. سيتم تسجيل خروجك.</string>
+    <string name="error_delete_account">فشل حذف الحساب: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">اختر اللغة</string>
+    <string name="language_subtitle">سيكون المحتوى المُنشأ بالذكاء الاصطناعي بهذه اللغة</string>
+    <string name="ok">موافق</string>
+    <string name="cancel">إلغاء</string>
+
+    <!-- Note Card -->
+    <string name="more">المزيد</string>
+    <string name="edit_title">تعديل العنوان</string>
+    <string name="delete">حذف</string>
+    <string name="delete_note">حذف الملاحظة؟</string>
+    <string name="delete_note_message">هل أنت متأكد أنك تريد حذف \"%s\"؟ لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="delete_note_detail_message">هل أنت متأكد أنك تريد حذف هذه الملاحظة؟ لا يمكن التراجع عن هذا الإجراء.</string>
+    <string name="label_title">العنوان</string>
+    <string name="save">حفظ</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">تسجيل أو رفع صوت</string>
+    <string name="youtube_video">فيديو يوتيوب</string>
+    <string name="upload_document">رفع مستند</string>
+    <string name="upload_document_subtitle">أي ملف PDF أو DOCX أو PPT أو TXT وغيرها!</string>
+    <string name="scan_text">مسح النص</string>
+    <string name="scan_text_subtitle">أي صورة تحتوي على نص</string>
+    <string name="join_meeting">الانضمام إلى اجتماع</string>
+    <string name="join_meeting_subtitle">تسجيل Zoom وMeet وTeams وWebex</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">رجوع</string>
+    <string name="more_options">خيارات إضافية</string>
+    <string name="share">مشاركة</string>
+    <string name="share_note">مشاركة الملاحظة</string>
+    <string name="tab_notes">ملاحظات</string>
+    <string name="tab_chat">محادثة</string>
+    <string name="tab_quiz">اختبار</string>
+    <string name="tab_cards">بطاقات</string>
+    <string name="formatting_notes">جارٍ تنسيق الملاحظات\u2026</string>
+    <string name="formatted">منسّق</string>
+    <string name="raw">خام</string>
+    <string name="source_label">المصدر: %s</string>
+    <string name="open_source_link">فتح المصدر</string>
+    <string name="characters_words_format">%1$s حرف \u2022 %2$s كلمة</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">فيديو يوتيوب</string>
+    <string name="source_audio_recording">تسجيل صوتي</string>
+    <string name="source_pdf_document">مستند PDF</string>
+    <string name="source_scanned_document">مستند ممسوح</string>
+    <string name="source_image">صورة</string>
+    <string name="source_text">نص</string>
+
+    <!-- Summary Section -->
+    <string name="summary">ملخص</string>
+    <string name="generating_summary">جارٍ إنشاء الملخص\u2026</string>
+    <string name="regenerate">إعادة الإنشاء</string>
+    <string name="no_summary_yet">لا يوجد ملخص بعد</string>
+    <string name="generate_summary">إنشاء ملخص</string>
+    <string name="no_summary_available">لا يوجد ملخص متاح</string>
+    <string name="summary_length">طول الملخص</string>
+    <string name="create_summary_description">إنشاء ملخص موجز لملاحظاتك</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">اكتب رسالة\u2026</string>
+    <string name="send">إرسال</string>
+    <string name="voice_mode">وضع الصوت</string>
+    <string name="text_mode">وضع النص</string>
+    <string name="ask_about_notes">اسأل أي شيء عن ملاحظاتك</string>
+    <string name="ask_about_notes_description">يمكنني مساعدتك في فهم أو تحليل أو العثور على معلومات محددة في ملاحظاتك.</string>
+    <string name="suggested_questions">أسئلة مقترحة:</string>
+    <string name="chat_suggestion_summarize">لخّص النقاط الرئيسية</string>
+    <string name="chat_suggestion_explain">اشرح المفاهيم الأساسية</string>
+    <string name="chat_suggestion_test">اختبرني في هذه المادة</string>
+    <string name="listening">جارٍ الاستماع\u2026</string>
+    <string name="tap_to_speak">اضغط للتحدث</string>
+    <string name="speaking">جارٍ التحدث\u2026</string>
+    <string name="stop_speaking">إيقاف التحدث</string>
+    <string name="could_not_open_link">تعذر فتح الرابط</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">إنشاء اختبار</string>
+    <string name="generate_quiz_description">إنشاء اختبار لاختبار معرفتك</string>
+    <string name="generating_quiz">جارٍ إنشاء الاختبار\u2026</string>
+    <string name="question_count_format">السؤال %1$d من %2$d</string>
+    <string name="check_answer">تحقق من الإجابة</string>
+    <string name="next_question">السؤال التالي</string>
+    <string name="correct">صحيح!</string>
+    <string name="incorrect">خطأ</string>
+    <string name="correct_answer_is">الإجابة الصحيحة هي: %s</string>
+    <string name="quiz_complete">اكتمل الاختبار!</string>
+    <string name="quiz_score_format">حصلت على %1$d من %2$d</string>
+    <string name="try_again">حاول مرة أخرى</string>
+    <string name="new_quiz">اختبار جديد</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">إنشاء بطاقات تعليمية</string>
+    <string name="generate_flashcards_description">إنشاء بطاقات تعليمية للدراسة</string>
+    <string name="generating_flashcards">جارٍ إنشاء البطاقات التعليمية\u2026</string>
+    <string name="flashcard_count_format">البطاقة %1$d من %2$d</string>
+    <string name="tap_to_flip">اضغط للقلب</string>
+    <string name="previous">السابق</string>
+    <string name="next">التالي</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">مرحبًا بعودتك</string>
+    <string name="sign_in_to_continue">سجّل الدخول للمتابعة</string>
+    <string name="continue_with_google">المتابعة مع Google</string>
+    <string name="or_divider">  أو  </string>
+    <string name="email">البريد الإلكتروني</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">كلمة المرور</string>
+    <string name="enter_password">أدخل كلمة المرور</string>
+    <string name="hide_password">إخفاء كلمة المرور</string>
+    <string name="show_password">إظهار كلمة المرور</string>
+    <string name="sign_in">تسجيل الدخول</string>
+    <string name="forgot_password">نسيت كلمة المرور؟</string>
+    <string name="no_account">ليس لديك حساب؟ </string>
+    <string name="sign_up">إنشاء حساب</string>
+    <string name="error_invalid_credentials">بريد إلكتروني أو كلمة مرور غير صحيحة. يرجى المحاولة مرة أخرى.</string>
+    <string name="error_email_not_confirmed">يرجى التحقق من بريدك الإلكتروني قبل تسجيل الدخول.</string>
+    <string name="error_user_not_found">لم يتم العثور على حساب بهذا البريد الإلكتروني.</string>
+    <string name="error_network">خطأ في الشبكة. يرجى التحقق من اتصالك.</string>
+    <string name="error_no_google_account">لم يتم العثور على حساب Google. يرجى إضافة حساب Google إلى جهازك.</string>
+    <string name="error_google_signin_failed">فشل تسجيل الدخول بـ Google</string>
+    <string name="error_email_required">يرجى إدخال بريدك الإلكتروني</string>
+    <string name="error_invalid_email">يرجى إدخال عنوان بريد إلكتروني صالح</string>
+    <string name="error_password_required">يرجى إدخال كلمة المرور</string>
+    <string name="error_password_too_short">يجب أن تتكون كلمة المرور من 6 أحرف على الأقل</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">تم إرسال البريد الإلكتروني!</string>
+    <string name="reset_password">إعادة تعيين كلمة المرور</string>
+    <string name="reset_email_sent">لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى:</string>
+    <string name="check_inbox">يرجى التحقق من صندوق الوارد ومجلد الرسائل غير المرغوب فيها.</string>
+    <string name="reset_password_instruction">أدخل عنوان بريدك الإلكتروني وسنرسل لك رابطًا لإعادة تعيين كلمة المرور.</string>
+    <string name="done">تم</string>
+    <string name="send_reset_link">إرسال رابط إعادة التعيين</string>
+    <string name="error_enter_valid_email">يرجى إدخال بريد إلكتروني صالح</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">إنشاء حساب</string>
+    <string name="sign_up_subtitle">سجّل للبدء</string>
+    <string name="at_least_6_characters">6 أحرف على الأقل</string>
+    <string name="confirm_password">تأكيد كلمة المرور</string>
+    <string name="reenter_password">أعد إدخال كلمة المرور</string>
+    <string name="already_have_account">لديك حساب بالفعل؟ </string>
+    <string name="error_valid_email">يرجى إدخال بريد إلكتروني صالح</string>
+    <string name="error_enter_password">يرجى إدخال كلمة المرور</string>
+    <string name="error_confirm_password">يرجى تأكيد كلمة المرور</string>
+    <string name="error_passwords_mismatch">كلمات المرور غير متطابقة</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">تسجيل صوتي</string>
+    <string name="record_audio_subtitle">سجّل المحاضرات أو الاجتماعات أو الملاحظات.\nسنقوم بالنسخ وإنشاء مواد دراسية.</string>
+    <string name="grant_microphone_permission">منح إذن الميكروفون</string>
+    <string name="start_recording">بدء التسجيل</string>
+    <string name="tap_to_start_recording">اضغط لبدء التسجيل</string>
+    <string name="recording_status">جارٍ التسجيل\u2026</string>
+    <string name="paused">متوقف مؤقتًا</string>
+    <string name="discard">تجاهل</string>
+    <string name="pause">إيقاف مؤقت</string>
+    <string name="resume">استئناف</string>
+    <string name="stop">إيقاف</string>
+    <string name="recording_complete">اكتمل التسجيل</string>
+    <string name="duration_format">المدة: %s</string>
+    <string name="title_optional">العنوان (اختياري)</string>
+    <string name="title_placeholder">مثال: محاضرة في الأحياء</string>
+    <string name="process_recording">معالجة التسجيل</string>
+    <string name="discard_recording">تجاهل التسجيل</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">جارٍ رفع الصوت</string>
+    <string name="step_transcribing_audio">جارٍ نسخ الصوت</string>
+    <string name="step_identifying_speakers">جارٍ تحديد المتحدثين</string>
+    <string name="step_analyzing_content">جارٍ تحليل المحتوى</string>
+    <string name="step_summarizing_key_points">جارٍ تلخيص النقاط الرئيسية</string>
+    <string name="step_finalizing_note">جارٍ إنهاء ملاحظتك</string>
+    <string name="upload_complete_safe">اكتمل الرفع. يمكنك المغادرة الآن بأمان.</string>
+    <string name="processing_info">عادة ما تستغرق الملاحظات بضع دقائق للإنشاء. يمكنك مغادرة هذه الشاشة والعودة لاحقًا.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">ملاحظتك جاهزة!</string>
+    <string name="note_ready_description">لقد قمنا بنسخ تسجيلك وإنشاء مواد دراسية.</string>
+    <string name="view_note">عرض الملاحظة</string>
+    <string name="go_to_home">الذهاب إلى الرئيسية</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">حدث خطأ ما</string>
+    <string name="try_again_button">حاول مرة أخرى</string>
+    <string name="go_back">رجوع</string>
+    <string name="error_not_authenticated">غير مصادق عليه</string>
+    <string name="error_upload_failed">فشل رفع الصوت</string>
+    <string name="error_transcribe_failed">فشل نسخ الصوت</string>
+    <string name="error_start_recording">فشل بدء التسجيل: %s</string>
+    <string name="error_stop_recording">فشل إيقاف التسجيل: %s</string>
+    <string name="error_processing_failed">فشلت المعالجة</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">إغلاق</string>
+    <string name="unlock_pro">افتح Scribe AI Pro</string>
+    <string name="unlimited_access">احصل على وصول غير محدود لجميع الميزات</string>
+    <string name="feature_unlimited_notes">ملاحظات غير محدودة من أي مصدر</string>
+    <string name="feature_ai_summaries">ملخصات واختبارات مدعومة بالذكاء الاصطناعي</string>
+    <string name="feature_flashcards">إنشاء بطاقات تعليمية</string>
+    <string name="feature_ai_chat">محادثة ذكاء اصطناعي مع ملاحظاتك</string>
+    <string name="feature_mind_map">تصور خريطة ذهنية</string>
+    <string name="feature_podcast">إنشاء بودكاست صوتي</string>
+    <string name="plan_yearly">سنوي</string>
+    <string name="plan_monthly">شهري</string>
+    <string name="per_month_format">%s/شهر</string>
+    <string name="save_percent_format">وفّر %d%%</string>
+    <string name="loading_plans">جارٍ تحميل الخطط\u2026</string>
+    <string name="continue_button">متابعة</string>
+    <string name="restore_purchases">استعادة المشتريات</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">هل أنت متأكد؟</string>
+    <string name="lose_access">ستفقد الوصول إلى:</string>
+    <string name="stat_notes_created">ملاحظات أنشأتها</string>
+    <string name="stat_quizzes_generated">اختبارات تم إنشاؤها</string>
+    <string name="stat_flashcards_created">بطاقات تعليمية تم إنشاؤها</string>
+    <string name="stat_audio_hours">ساعات من المحتوى الصوتي</string>
+    <string name="stay_signed_in">البقاء مسجّل الدخول</string>
+    <string name="sign_out_anyway">تسجيل الخروج على أي حال</string>
+    <string name="delete_account">حذف الحساب؟</string>
+    <string name="delete_account_warning">لا يمكن التراجع عن هذا.\nستفقد نهائيًا:</string>
+    <string name="keep_my_account">الاحتفاظ بحسابي</string>
+    <string name="delete_anyway">حذف على أي حال</string>
+    <string name="before_you_go">قبل أن تذهب\u2026</string>
+    <string name="feedback_reason">ساعدنا في التحسين بإخبارنا لماذا تغادر</string>
+    <string name="delete_my_account">حذف حسابي</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">هل تستمتع بـ Scribe AI؟</string>
+    <string name="review_subtitle">هل يساعدك Scribe AI في الدراسة بشكل أسرع والتعلم بشكل أفضل؟</string>
+    <string name="yes_love_it">نعم، أحبه!</string>
+    <string name="not_yet">ليس بعد</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">رابط يوتيوب</string>
+    <string name="paste_youtube_url">الصق رابط فيديو يوتيوب</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">لصق من الحافظة</string>
+    <string name="create_note">إنشاء ملاحظة</string>
+    <string name="invalid_youtube_url">يرجى إدخال رابط يوتيوب صالح</string>
+    <string name="creating_note">جارٍ إنشاء الملاحظة\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">رفع مستند</string>
+    <string name="tap_to_select">اضغط لاختيار ملف</string>
+    <string name="supported_formats">يدعم PDF وDOCX وPPT وTXT</string>
+    <string name="file_selected">تم اختيار الملف</string>
+    <string name="uploading">جارٍ الرفع\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">مسح مستند</string>
+    <string name="grant_permission">منح الإذن</string>
+    <string name="scan_another_page">مسح صفحة أخرى</string>
+    <string name="save_with_count">حفظ (%d)</string>
+    <string name="dismiss">إغلاق</string>
+    <string name="scanned_pages_format">تم مسح %d صفحة</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">الانضمام إلى اجتماع</string>
+    <string name="meeting_link">رابط الاجتماع</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">العنوان (اختياري)</string>
+    <string name="meeting_title_placeholder">مثال: اجتماع الفريق اليومي</string>
+    <string name="send_bot">إرسال البوت</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">بوت الاجتماع</string>
+    <string name="no_meetings">لا توجد اجتماعات بعد</string>
+    <string name="no_meetings_hint">انضم إلى اجتماع ليتم تسجيله ونسخه</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">اختر المظهر</string>
+    <string name="theme_system">النظام الافتراضي</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_dark">داكن</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">رمز التصحيح</string>
+    <string name="copy_token">نسخ الرمز إلى الحافظة</string>
+    <string name="token_copied">تم نسخ الرمز!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">جارٍ التحميل\u2026</string>
+    <string name="error_label">خطأ</string>
+    <string name="generate">إنشاء</string>
+
+    <!-- Language Picker -->
+    <string name="language">اللغة</string>
+    <string name="language_picker_title">اختر اللغة</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

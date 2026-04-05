@@ -230,6 +230,7 @@ fun AppNavigation(
                             authManager = authManager,
                             note = state.note,
                             noteViewModel = noteViewModel,
+                            subscriptionManager = subscriptionManager,
                             onNavigateBack = { navController.popBackStack() },
                             onNoteDeleted = {
                                 navController.popBackStack()

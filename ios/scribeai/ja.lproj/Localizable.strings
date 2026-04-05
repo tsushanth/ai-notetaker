@@ -1,0 +1,454 @@
+/*
+  Localizable.strings (Japanese - ja)
+  scribeai
+
+  Generated for internationalization.
+*/
+
+// MARK: - HomeView / Navigation
+"SCRIBE AI" = "SCRIBE AI";
+"Add Content" = "コンテンツを追加";
+"Record Audio" = "音声を録音";
+"Scan Document" = "書類をスキャン";
+"Upload PDF/Audio" = "PDF/音声をアップロード";
+"YouTube Link" = "YouTubeリンク";
+"Join Meeting" = "ミーティングに参加";
+"Cancel" = "キャンセル";
+
+// MARK: - LoginView
+"scribe ai" = "scribe ai";
+"Your AI-powered note-taking companion" = "AIを活用したノート作成パートナー";
+"Email" = "メールアドレス";
+"Enter your email" = "メールアドレスを入力";
+"Password" = "パスワード";
+"Enter your password" = "パスワードを入力";
+"Sign In" = "サインイン";
+"OR" = "または";
+"Continue with Apple" = "Appleで続ける";
+"Continue with Google" = "Googleで続ける";
+"Don't have an account?" = "アカウントをお持ちでないですか？";
+"Sign Up" = "サインアップ";
+
+// MARK: - SignUpView
+"Create Account" = "アカウント作成";
+"Join ScribeAI to start taking smart notes" = "ScribeAIに参加してスマートノートを始めよう";
+"Name" = "名前";
+"Enter your name" = "名前を入力";
+"Create a password" = "パスワードを作成";
+"Confirm Password" = "パスワードの確認";
+"Confirm your password" = "パスワードを再入力";
+"Passwords don't match" = "パスワードが一致しません";
+"Password must:" = "パスワードの条件：";
+"Be at least 6 characters" = "6文字以上であること";
+
+// MARK: - RecordingView (AudioRecordingView)
+"Record lectures, meetings, or notes.\nWe'll transcribe and create study materials." = "講義、会議、またはノートを録音しましょう。\n文字起こしと学習教材を作成します。";
+"Tap to start recording" = "タップして録音を開始";
+"Grant Microphone Permission" = "マイクの使用を許可";
+"Recording..." = "録音中...";
+"Paused" = "一時停止中";
+"Recording Complete" = "録音完了";
+"Duration: %@" = "長さ: %@";
+"Title (optional)" = "タイトル（任意）";
+"Process Recording" = "録音を処理";
+"Discard Recording" = "録音を破棄";
+"Discard Recording?" = "録音を破棄しますか？";
+"Keep Recording" = "録音を保持";
+"Discard" = "破棄";
+"You have an active recording. Are you sure you want to leave? Your recording will be lost." = "録音中です。本当に離れますか？録音データは失われます。";
+"Delete Recording?" = "録音を削除しますか？";
+"Delete" = "削除";
+"Are you sure you want to delete this recording? This action cannot be undone." = "この録音を削除してもよろしいですか？この操作は取り消せません。";
+"Microphone Access Required" = "マイクへのアクセスが必要です";
+"Open Settings" = "設定を開く";
+"Please enable microphone access in Settings to record audio." = "音声を録音するには、設定でマイクへのアクセスを有効にしてください。";
+
+// MARK: - NoteListView
+"Search notes..." = "ノートを検索...";
+"Showing %@ of %@ notes" = "%@件中%@件のノートを表示";
+"Delete Note" = "ノートを削除";
+"Are you sure you want to delete '%@'? This action cannot be undone." = "「%@」を削除してもよろしいですか？この操作は取り消せません。";
+"Edit Title" = "タイトルを編集";
+"Title" = "タイトル";
+"Save" = "保存";
+"Enter a new title for this note" = "このノートの新しいタイトルを入力";
+"'%@' deleted" = "「%@」を削除しました";
+"No notes yet" = "ノートはまだありません";
+"Tap the + button to create your first note" = "＋ボタンをタップして最初のノートを作成しましょう";
+"Loading..." = "読み込み中...";
+"Load More Notes" = "さらにノートを読み込む";
+"Session expired. Please sign in again." = "セッションが期限切れです。再度サインインしてください。";
+
+// MARK: - NoteCardContent
+"YouTube" = "YouTube";
+"Recording" = "録音";
+"PDF" = "PDF";
+"Scanned" = "スキャン";
+"Upload" = "アップロード";
+"Note" = "ノート";
+"%@ words" = "%@ 語";
+"%@ characters" = "%@ 文字";
+"Today" = "今日";
+"Yesterday" = "昨日";
+"Recently" = "最近";
+
+// MARK: - NoteDetailView
+"Source: %@" = "ソース: %@";
+"YouTube Video" = "YouTube動画";
+"Audio Recording" = "音声録音";
+"PDF Document" = "PDF文書";
+"Scanned Document" = "スキャンした書類";
+"Uploaded File" = "アップロードしたファイル";
+"%@ characters • %@ words" = "%@ 文字 • %@ 語";
+"Share" = "共有";
+"Are you sure you want to delete this note? This action cannot be undone." = "このノートを削除してもよろしいですか？この操作は取り消せません。";
+
+// MARK: - NoteDetailTab
+"Notes" = "ノート";
+"Chat" = "チャット";
+"Quiz" = "クイズ";
+"Flashcards" = "フラッシュカード";
+"Mind Map" = "マインドマップ";
+"Infographic" = "インフォグラフィック";
+"Podcast" = "ポッドキャスト";
+
+// MARK: - ProfileView
+"User" = "ユーザー";
+"PRO" = "PRO";
+"ACTIVE" = "有効";
+"Premium" = "プレミアム";
+"Monthly Plan" = "月額プラン";
+"Yearly Plan" = "年額プラン";
+"Premium Plan" = "プレミアムプラン";
+"Manage Subscription" = "サブスクリプションを管理";
+"Upgrade to Premium" = "プレミアムにアップグレード";
+"Unlock all features" = "すべての機能をアンロック";
+"View Plans" = "プランを見る";
+"Appearance" = "外観";
+"Language" = "言語";
+"Help & Support" = "ヘルプ＆サポート";
+"Get help with the app" = "アプリのサポートを受ける";
+"About" = "概要";
+"Version 1.0.0" = "バージョン 1.0.0";
+"Sign Out" = "サインアウト";
+"Are you sure you want to sign out?" = "サインアウトしてもよろしいですか？";
+"Delete Account" = "アカウントを削除";
+"Permanently delete your account and data" = "アカウントとデータを完全に削除";
+"Deleting account..." = "アカウントを削除中...";
+"About Scribe AI" = "Scribe AIについて";
+"Visit Website" = "ウェブサイトを訪問";
+"Privacy Policy" = "プライバシーポリシー";
+"Terms of Service" = "利用規約";
+"OK" = "OK";
+"Scribe AI - Your AI-powered study assistant\n\nVersion 1.0.0\n\n© 2025 Kreative Koala. All rights reserved." = "Scribe AI - AIを活用した学習アシスタント\n\nバージョン 1.0.0\n\n© 2025 Kreative Koala. All rights reserved.";
+"Are you sure you want to delete your account? This will permanently delete:\n\n• Your profile and settings\n• All your notes and recordings\n• All generated content (quizzes, flashcards, podcasts)\n\nThis action cannot be undone." = "アカウントを削除してもよろしいですか？以下のデータが完全に削除されます：\n\n• プロフィールと設定\n• すべてのノートと録音\n• すべての生成コンテンツ（クイズ、フラッシュカード、ポッドキャスト）\n\nこの操作は取り消せません。";
+"Final Confirmation" = "最終確認";
+"Continue" = "続ける";
+"Delete My Account" = "アカウントを削除する";
+"This is your last chance. Once deleted, your account and all data cannot be recovered.\n\nAre you absolutely sure?" = "これが最後のチャンスです。削除すると、アカウントとすべてのデータは復元できません。\n\n本当によろしいですか？";
+"Error" = "エラー";
+"An error occurred while deleting your account. Please try again or contact support." = "アカウントの削除中にエラーが発生しました。もう一度お試しいただくか、サポートにお問い合わせください。";
+"How would you like to get help?" = "どのようにサポートを受けたいですか？";
+"Email Support" = "メールサポート";
+"Rate App" = "アプリを評価";
+"Email Copied" = "メールアドレスをコピーしました";
+"Our support email (support@scribeai.online) has been copied to your clipboard. Please paste it into your email app." = "サポートメール（support@scribeai.online）がクリップボードにコピーされました。メールアプリに貼り付けてください。";
+
+// MARK: - Language Selection
+"Select Language" = "言語を選択";
+"AI-generated content will be in this language" = "AI生成コンテンツはこの言語で作成されます";
+
+// MARK: - Theme Selection
+"Choose how the app looks" = "アプリの外観を選択";
+"Done" = "完了";
+"System" = "システム";
+"Light" = "ライト";
+"Dark" = "ダーク";
+
+// MARK: - UploadOptionsView
+"Choose what you'd like to upload" = "アップロードしたいものを選択";
+"Upload PDF" = "PDFをアップロード";
+"Extract text from PDF documents" = "PDF文書からテキストを抽出";
+"Upload Audio" = "音声をアップロード";
+"Transcribe audio files" = "音声ファイルを文字起こし";
+"Take photos and extract text" = "写真を撮ってテキストを抽出";
+"Upload from Camera Roll" = "カメラロールからアップロード";
+"Select photos with text to extract" = "テキストを抽出する写真を選択";
+"Analyzing document..." = "書類を分析中...";
+"No Text Found" = "テキストが見つかりません";
+"The selected photos don't appear to contain any readable text. Please select photos that contain documents, notes, or other text content." = "選択した写真には読み取り可能なテキストが含まれていないようです。書類、ノート、またはその他のテキストコンテンツを含む写真を選択してください。";
+
+// MARK: - YouTubeInputView
+"YouTube Transcript" = "YouTubeトランスクリプト";
+"Only videos with captions/subtitles are supported" = "字幕付きの動画のみ対応しています";
+"Open YouTube" = "YouTubeを開く";
+"Paste From Clipboard" = "クリップボードから貼り付け";
+"Generate Notes" = "ノートを生成";
+"Please enter a valid YouTube URL" = "有効なYouTube URLを入力してください";
+"Video ID: %@" = "動画ID: %@";
+"YouTube URL detected" = "YouTube URLを検出しました";
+"About YouTube Transcripts" = "YouTubeトランスクリプトについて";
+"Got it" = "了解";
+"This feature extracts captions/subtitles from YouTube videos.\n\nRequirements:\n• Video must have captions enabled\n• Auto-generated or manual subtitles\n• Works with most public videos" = "この機能はYouTube動画から字幕を抽出します。\n\n要件：\n• 動画に字幕が有効であること\n• 自動生成または手動の字幕\n• ほとんどの公開動画で動作します";
+
+// MARK: - Processing Steps
+"Sending video URL" = "動画URLを送信中";
+"Fetching transcript" = "トランスクリプトを取得中";
+"Analyzing content" = "コンテンツを分析中";
+"Summarizing key points" = "要点をまとめています";
+"Finalizing your note" = "ノートを仕上げています";
+"Uploading audio" = "音声をアップロード中";
+"Transcribing audio" = "音声を文字起こし中";
+"Identifying speakers" = "話者を識別中";
+"Uploading document" = "書類をアップロード中";
+"Extracting text" = "テキストを抽出中";
+"Uploading scanned images" = "スキャン画像をアップロード中";
+"Extracting text (OCR)" = "テキストを抽出中（OCR）";
+"Upload is complete. It's safe to leave now." = "アップロードが完了しました。安全にページを離れることができます。";
+
+// MARK: - Success View
+"Your note is ready!" = "ノートが完成しました！";
+"We've processed your content and created study materials." = "コンテンツを処理し、学習教材を作成しました。";
+"View Note" = "ノートを見る";
+"Go to Home" = "ホームに戻る";
+
+// MARK: - Error View
+"Something went wrong" = "問題が発生しました";
+"Try Again" = "もう一度試す";
+"Go Back" = "戻る";
+
+// MARK: - Notification Card
+"Get notified when your notes are ready" = "ノートが完成したら通知を受け取る";
+"Notes usually take a few minutes to generate. We'll let you know when they're ready." = "ノートの生成には通常数分かかります。完成したらお知らせします。";
+"Notify me" = "通知する";
+
+// MARK: - PaywallView
+"Unlock ScribeAI Premium" = "ScribeAI Premiumをアンロック";
+"Get unlimited access to all AI-powered features" = "すべてのAI機能に無制限アクセス";
+"Unlimited Notebooks" = "無制限のノートブック";
+"Create as many notes as you need" = "必要なだけノートを作成";
+"AI Summaries" = "AI要約";
+"Instant summaries of your content" = "コンテンツの即時要約";
+"Audio Podcasts" = "オーディオポッドキャスト";
+"Convert notes to podcasts" = "ノートをポッドキャストに変換";
+"Quizzes & Flashcards" = "クイズ＆フラッシュカード";
+"AI-generated study materials" = "AI生成の学習教材";
+"AI Chat Assistant" = "AIチャットアシスタント";
+"Ask questions about your notes" = "ノートについて質問";
+"Cloud Sync" = "クラウド同期";
+"Access from all your devices" = "すべてのデバイスからアクセス";
+"BEST VALUE" = "お得";
+"FOREVER" = "永久";
+"one-time" = "一回払い";
+"One-time" = "一回払い";
+"Select a Plan" = "プランを選択";
+"Subscribe for %@/%@" = "%@/%@でサブスクライブ";
+"Restore Purchases" = "購入を復元";
+"Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions in your App Store account settings." = "サブスクリプションは、現在の期間終了の少なくとも24時間前にキャンセルしない限り自動的に更新されます。App Storeのアカウント設定でサブスクリプションを管理・キャンセルできます。";
+"Processing..." = "処理中...";
+"Have a promo code?" = "プロモコードをお持ちですか？";
+"Enter promo code" = "プロモコードを入力";
+"Apply" = "適用";
+"Code applied!" = "コードが適用されました！";
+"Referred by %@" = "%@からの紹介";
+"Hide" = "非表示";
+"Invalid or expired promo code" = "無効または期限切れのプロモコード";
+"Subscribe on Web" = "ウェブでサブスクライブ";
+"30% OFF" = "30%オフ";
+"Just %@/week" = "わずか%@/週";
+"Save %@%%" = "%@%%お得";
+
+// MARK: - Onboarding - UserType
+"What describes you best?" = "あなたに最も当てはまるものは？";
+"We use this to personalize your experience :)" = "体験をパーソナライズするために使用します :)";
+"Undergraduate Student" = "大学生";
+"High School Student" = "高校生";
+"Middle School Student" = "中学生";
+"Graduate Student" = "大学院生";
+"Professional" = "社会人";
+"Educator" = "教育者";
+"Other" = "その他";
+
+// MARK: - Onboarding - UseCase
+"What will you use\nScribeAI for?" = "ScribeAIを\n何に使いますか？";
+"Select all that apply" = "該当するものをすべて選択";
+"Lecture Notes" = "講義ノート";
+"Study Materials" = "学習教材";
+"Meeting Notes" = "会議メモ";
+"Research" = "研究";
+"Personal Learning" = "自主学習";
+
+// MARK: - Onboarding - Features
+"Upload Anything" = "何でもアップロード";
+"PDFs  •  YouTube Videos  •  Audio" = "PDF  •  YouTube動画  •  音声";
+"Drop here" = "ここにドロップ";
+"Uploaded!" = "アップロード完了！";
+"Try it out!" = "試してみよう！";
+"Drag the file to the drop zone" = "ファイルをドロップゾーンにドラッグ";
+"We'll create beautiful\nnotes for you." = "きれいなノートを\n作成します。";
+"Master your terms." = "用語をマスター。";
+"Memorize key concepts with spaced repetition" = "間隔反復で重要な概念を記憶";
+"Tap to flip" = "タップして裏返す";
+"Test your knowledge." = "知識をテスト。";
+"AI-generated quizzes to reinforce learning" = "AI生成クイズで学習を強化";
+"Learn on the go." = "移動中に学習。";
+"Turn your materials into engaging audio summaries" = "教材を魅力的なオーディオ要約に変換";
+"AI Generated Podcast" = "AI生成ポッドキャスト";
+"Tap play to hear a sample" = "再生をタップしてサンプルを聴く";
+
+// MARK: - Onboarding - Skip / Navigation
+"Skip" = "スキップ";
+"Maybe later" = "また後で";
+
+// MARK: - Onboarding - Social Proof
+"100K+" = "10万人以上";
+"Students trust ScribeAI" = "の学生がScribeAIを信頼";
+"25K+ App Ratings" = "25,000件以上の評価";
+"What students are saying" = "学生の声";
+"Join 100K+ Students" = "10万人以上の学生に参加";
+
+// MARK: - Onboarding - Comparison
+"ScribeAI Pro users\nlearn up to 6x more\nefficiently." = "ScribeAI Proユーザーは\n最大6倍効率的に\n学習しています。";
+"FREE" = "無料";
+"Unlimited Notes" = "無制限のノート";
+"AI Podcasts" = "AIポッドキャスト";
+"Priority Support" = "優先サポート";
+"Early Access Features" = "先行アクセス機能";
+"All features currently free during beta!" = "ベータ期間中はすべての機能が無料！";
+
+// MARK: - Onboarding - Trial
+"Try ScribeAI Pro" = "ScribeAI Proを試す";
+"Ace your exams with AI" = "AIで試験に合格";
+"Study smarter, not harder" = "もっと賢く学ぼう";
+"Make learning fun with AI" = "AIで楽しく学ぼう";
+"Never miss an action item" = "アクション項目を見逃さない";
+"Save hours on lesson prep" = "授業準備の時間を節約";
+"Transform how you learn" = "学び方を変えよう";
+"free for 7 days." = "7日間無料。";
+"No charge today" = "今日は課金されません";
+"How your free trial works:" = "無料トライアルの仕組み：";
+"Today - Free trial starts" = "今日 - 無料トライアル開始";
+"Enjoy full access free for 7 days" = "7日間すべての機能を無料で利用";
+"We'll send a reminder - cancel before this if you don't want to continue" = "リマインダーをお送りします - 継続しない場合はその前にキャンセル";
+"First charge only if you haven't canceled" = "キャンセルしなかった場合のみ初回課金";
+"What you get:" = "特典：";
+"Unlimited access forever" = "永久に無制限アクセス";
+"No recurring charges" = "繰り返しの課金なし";
+"All future updates included" = "将来のアップデートをすべて含む";
+"Premium features unlocked" = "プレミアム機能がアンロック";
+"One-time payment" = "一回払い";
+"Pay once, use forever" = "一度払えばずっと使える";
+"Start your free 7-day trial" = "7日間の無料トライアルを開始";
+"Get Lifetime Access" = "永久アクセスを取得";
+"Yearly" = "年額";
+"Monthly" = "月額";
+"Lifetime" = "永久";
+"One-time purchase - no subscription" = "一回購入 - サブスクリプションなし";
+"We'll remind you 2 days before your trial ends" = "トライアル終了の2日前にお知らせします";
+"Cancel anytime in App Store settings - no charge" = "App Store設定でいつでもキャンセル可能 - 課金なし";
+"Secure payment via App Store" = "App Store経由の安全な決済";
+
+// MARK: - Onboarding - Notifications
+"Never miss what matters" = "大切なことを見逃さない";
+"Get notified about things like..." = "以下のような通知を受け取れます...";
+"Notes Ready" = "ノート完成";
+"Your Biology lecture notes are ready to review!" = "生物学の講義ノートの復習準備ができました！";
+"Exam Prep" = "試験対策";
+"Chemistry exam in 3h - You know 85% of the content. Study the rest?" = "化学の試験まで3時間 - 85%は習得済み。残りを勉強しますか？";
+"Quiz Generated" = "クイズ生成完了";
+"New quiz ready for AP Biology Chapter 3" = "AP生物学第3章の新しいクイズが準備できました";
+"Skip for now" = "今はスキップ";
+"Enable Notifications" = "通知を有効にする";
+
+// MARK: - ReviewPromptView
+"Enjoying Scribe AI?" = "Scribe AIを楽しんでいますか？";
+"Is Scribe AI helping you study faster and learn better?" = "Scribe AIは学習の効率化に役立っていますか？";
+"Yes, I love it!" = "はい、気に入っています！";
+"Not yet" = "まだです";
+
+// MARK: - SubscriptionGate
+"Trial Ended" = "トライアル終了";
+"Your 7-day free trial has ended.\nSubscribe to unlock %@ and all other features." = "7日間の無料トライアルが終了しました。\n%@やその他すべての機能をアンロックするにはサブスクライブしてください。";
+"Subscribe Now" = "今すぐサブスクライブ";
+"%@ day%@ left in trial" = "トライアル残り%@日%@";
+"Upgrade" = "アップグレード";
+"Your 7-day free trial has ended. Subscribe to continue using all features." = "7日間の無料トライアルが終了しました。すべての機能を引き続き利用するにはサブスクライブしてください。";
+"Your free trial has already been used on this device. Subscribe to continue using all features." = "このデバイスでは無料トライアルが既に使用されています。すべての機能を引き続き利用するにはサブスクライブしてください。";
+
+// MARK: - SubscriptionSettingsSection
+"Subscription" = "サブスクリプション";
+"Unlimited notes & AI features" = "無制限のノートとAI機能";
+
+// MARK: - PostValueTrialPrompt
+"Loving the AI features?" = "AI機能を気に入りましたか？";
+"Start your free 7-day trial to keep using unlimited AI features" = "7日間の無料トライアルを開始して、無制限のAI機能を使い続けよう";
+"Free access" = "無料アクセス";
+"Day 5" = "5日目";
+"Reminder" = "リマインダー";
+"Day 7" = "7日目";
+"First charge" = "初回課金";
+"Start Free Trial" = "無料トライアルを開始";
+
+// MARK: - FeaturePreviewGate
+"You've seen %@ of %@ cards" = "%@/%@枚のカードを閲覧済み";
+"Subscribe to unlock all flashcards and study more effectively" = "すべてのフラッシュカードをアンロックして効果的に学習するにはサブスクライブ";
+"Unlock All Cards" = "すべてのカードをアンロック";
+"You've answered %@ of %@ questions" = "%@/%@問に回答済み";
+"Subscribe to complete the quiz and test your knowledge" = "クイズを完了して知識をテストするにはサブスクライブ";
+"Unlock Full Quiz" = "完全なクイズをアンロック";
+"Subscribe to read the full summary" = "全文要約を読むにはサブスクライブ";
+"Unlock Full Summary" = "完全な要約をアンロック";
+"PREVIEW" = "プレビュー";
+
+// MARK: - JoinMeetingView
+"Join a Meeting" = "ミーティングに参加";
+"Paste your meeting link and our bot will join to record and transcribe." = "ミーティングリンクを貼り付けると、ボットが参加して録音・文字起こしを行います。";
+"Meeting Link" = "ミーティングリンク";
+"Meeting Title (optional)" = "ミーティングタイトル（任意）";
+"Supported Platforms" = "対応プラットフォーム";
+"Please enter a valid Zoom, Google Meet, or Teams link" = "有効なZoom、Google Meet、またはTeamsのリンクを入力してください";
+"%@ meeting detected" = "%@ミーティングを検出";
+"Send Bot to Meeting" = "ボットをミーティングに送信";
+
+// MARK: - MeetingsView
+"Meeting Bot" = "ミーティングボット";
+"Loading meetings..." = "ミーティングを読み込み中...";
+"No Meetings Yet" = "ミーティングはまだありません";
+"Enter a meeting link to have our bot join, record, and transcribe automatically." = "ミーティングリンクを入力すると、ボットが自動的に参加、録音、文字起こしを行います。";
+"Delete Meeting" = "ミーティングを削除";
+"Are you sure you want to delete this meeting?" = "このミーティングを削除してもよろしいですか？";
+"Untitled Meeting" = "無題のミーティング";
+"Loading note..." = "ノートを読み込み中...";
+"Failed to load note" = "ノートの読み込みに失敗しました";
+
+// MARK: - RetentionViews
+"Are you sure?" = "よろしいですか？";
+"You'll lose access to:" = "以下へのアクセスを失います：";
+"notes you've created" = "作成したノート";
+"quizzes generated" = "生成したクイズ";
+"flashcards created" = "作成したフラッシュカード";
+"hours of audio content" = "時間分のオーディオコンテンツ";
+"Stay Signed In" = "サインインを維持";
+"Sign Out Anyway" = "それでもサインアウト";
+"Delete Account?" = "アカウントを削除しますか？";
+"This cannot be undone.\nYou'll permanently lose:" = "この操作は取り消せません。\n以下が永久に失われます：";
+"Keep My Account" = "アカウントを保持";
+"Delete Anyway" = "それでも削除";
+"Before you go..." = "その前に...";
+"Help us improve by telling us why you're leaving" = "退会理由を教えていただけると改善に役立ちます";
+"Not useful for my needs" = "自分のニーズに合わない";
+"Too expensive" = "高すぎる";
+"Found a better alternative" = "より良い代替サービスを見つけた";
+"Privacy concerns" = "プライバシーへの懸念";
+"Technical issues" = "技術的な問題";
+
+// MARK: - Subscription Features (gated)
+"AI Chat" = "AIチャット";
+"AI Quizzes" = "AIクイズ";
+"AI Flashcards" = "AIフラッシュカード";
+"AI Mind Maps" = "AIマインドマップ";
+"AI Infographics" = "AIインフォグラフィック";
+"AI Podcasts" = "AIポッドキャスト";
+
+// MARK: - Edit Title Menu
+"Edit Title" = "タイトルを編集";

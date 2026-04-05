@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">首页</string>
+    <string name="menu">菜单</string>
+    <string name="menu_language">语言</string>
+    <string name="menu_upgrade_pro">升级到Pro</string>
+    <string name="menu_manage_subscription">管理订阅</string>
+    <string name="menu_appearance">外观</string>
+    <string name="menu_sign_out">退出登录</string>
+    <string name="menu_delete_account">删除账户</string>
+    <string name="add">添加</string>
+    <string name="no_notes_yet">暂无笔记</string>
+    <string name="tap_to_create_first_note">点击 + 创建你的第一条笔记</string>
+    <string name="notes_count_format">%1$d / %2$d 条笔记</string>
+    <string name="load_more_notes">加载更多笔记</string>
+    <string name="error_loading_notes">加载笔记时出错</string>
+    <string name="retry">重试</string>
+    <string name="account_deletion_requested">已请求删除账户。即将退出登录。</string>
+    <string name="error_delete_account">删除账户失败: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">选择语言</string>
+    <string name="language_subtitle">AI生成的内容将使用此语言</string>
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
+
+    <!-- Note Card -->
+    <string name="more">更多</string>
+    <string name="edit_title">编辑标题</string>
+    <string name="delete">删除</string>
+    <string name="delete_note">删除笔记？</string>
+    <string name="delete_note_message">确定要删除「%s」吗？此操作无法撤销。</string>
+    <string name="delete_note_detail_message">确定要删除此笔记吗？此操作无法撤销。</string>
+    <string name="label_title">标题</string>
+    <string name="save">保存</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">录音或上传音频</string>
+    <string name="youtube_video">YouTube视频</string>
+    <string name="upload_document">上传文档</string>
+    <string name="upload_document_subtitle">支持PDF、DOCX、PPT、TXT等格式！</string>
+    <string name="scan_text">扫描文字</string>
+    <string name="scan_text_subtitle">任何包含文字的图片</string>
+    <string name="join_meeting">加入会议</string>
+    <string name="join_meeting_subtitle">录制Zoom、Meet、Teams、Webex</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">返回</string>
+    <string name="more_options">更多选项</string>
+    <string name="share">分享</string>
+    <string name="share_note">分享笔记</string>
+    <string name="tab_notes">笔记</string>
+    <string name="tab_chat">对话</string>
+    <string name="tab_quiz">测验</string>
+    <string name="tab_cards">卡片</string>
+    <string name="formatting_notes">正在格式化笔记\u2026</string>
+    <string name="formatted">已格式化</string>
+    <string name="raw">原文</string>
+    <string name="source_label">来源: %s</string>
+    <string name="open_source_link">打开来源</string>
+    <string name="characters_words_format">%1$s 个字符 \u2022 %2$s 个词</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">YouTube视频</string>
+    <string name="source_audio_recording">录音</string>
+    <string name="source_pdf_document">PDF文档</string>
+    <string name="source_scanned_document">扫描文档</string>
+    <string name="source_image">图片</string>
+    <string name="source_text">文本</string>
+
+    <!-- Summary Section -->
+    <string name="summary">摘要</string>
+    <string name="generating_summary">正在生成摘要\u2026</string>
+    <string name="regenerate">重新生成</string>
+    <string name="no_summary_yet">暂无摘要</string>
+    <string name="generate_summary">生成摘要</string>
+    <string name="no_summary_available">无可用摘要</string>
+    <string name="summary_length">摘要长度</string>
+    <string name="create_summary_description">为你的笔记创建简洁的摘要</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">输入消息\u2026</string>
+    <string name="send">发送</string>
+    <string name="voice_mode">语音模式</string>
+    <string name="text_mode">文字模式</string>
+    <string name="ask_about_notes">关于笔记，你可以问任何问题</string>
+    <string name="ask_about_notes_description">我可以帮助你理解、分析或查找笔记中的特定信息。</string>
+    <string name="suggested_questions">推荐问题:</string>
+    <string name="chat_suggestion_summarize">总结要点</string>
+    <string name="chat_suggestion_explain">解释主要概念</string>
+    <string name="chat_suggestion_test">测试我对这些内容的掌握</string>
+    <string name="listening">正在聆听\u2026</string>
+    <string name="tap_to_speak">点击说话</string>
+    <string name="speaking">正在播放\u2026</string>
+    <string name="stop_speaking">停止播放</string>
+    <string name="could_not_open_link">无法打开链接</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">生成测验</string>
+    <string name="generate_quiz_description">创建测验来检验你的知识</string>
+    <string name="generating_quiz">正在生成测验\u2026</string>
+    <string name="question_count_format">第 %1$d 题，共 %2$d 题</string>
+    <string name="check_answer">查看答案</string>
+    <string name="next_question">下一题</string>
+    <string name="correct">正确！</string>
+    <string name="incorrect">错误</string>
+    <string name="correct_answer_is">正确答案是: %s</string>
+    <string name="quiz_complete">测验完成！</string>
+    <string name="quiz_score_format">得分: %1$d / %2$d</string>
+    <string name="try_again">再试一次</string>
+    <string name="new_quiz">新测验</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">生成记忆卡</string>
+    <string name="generate_flashcards_description">创建学习用记忆卡</string>
+    <string name="generating_flashcards">正在生成记忆卡\u2026</string>
+    <string name="flashcard_count_format">卡片 %1$d / %2$d</string>
+    <string name="tap_to_flip">点击翻转</string>
+    <string name="previous">上一张</string>
+    <string name="next">下一张</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">欢迎回来</string>
+    <string name="sign_in_to_continue">请登录以继续</string>
+    <string name="continue_with_google">使用Google账号继续</string>
+    <string name="or_divider">  或  </string>
+    <string name="email">邮箱</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">密码</string>
+    <string name="enter_password">请输入密码</string>
+    <string name="hide_password">隐藏密码</string>
+    <string name="show_password">显示密码</string>
+    <string name="sign_in">登录</string>
+    <string name="forgot_password">忘记密码？</string>
+    <string name="no_account">还没有账户？ </string>
+    <string name="sign_up">注册</string>
+    <string name="error_invalid_credentials">邮箱或密码不正确，请重试。</string>
+    <string name="error_email_not_confirmed">请在登录前验证你的邮箱。</string>
+    <string name="error_user_not_found">未找到使用此邮箱的账户。</string>
+    <string name="error_network">网络错误，请检查网络连接。</string>
+    <string name="error_no_google_account">未找到Google账号。请在设备上添加Google账号。</string>
+    <string name="error_google_signin_failed">Google登录失败</string>
+    <string name="error_email_required">请输入邮箱</string>
+    <string name="error_invalid_email">请输入有效的邮箱地址</string>
+    <string name="error_password_required">请输入密码</string>
+    <string name="error_password_too_short">密码至少需要6个字符</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">邮件已发送！</string>
+    <string name="reset_password">重置密码</string>
+    <string name="reset_email_sent">密码重置链接已发送至:</string>
+    <string name="check_inbox">请检查收件箱和垃圾邮件文件夹。</string>
+    <string name="reset_password_instruction">请输入邮箱地址，我们将发送密码重置链接。</string>
+    <string name="done">完成</string>
+    <string name="send_reset_link">发送重置链接</string>
+    <string name="error_enter_valid_email">请输入有效的邮箱</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">创建账户</string>
+    <string name="sign_up_subtitle">注册以开始使用</string>
+    <string name="at_least_6_characters">至少6个字符</string>
+    <string name="confirm_password">确认密码</string>
+    <string name="reenter_password">重新输入密码</string>
+    <string name="already_have_account">已有账户？ </string>
+    <string name="error_valid_email">请输入有效的邮箱</string>
+    <string name="error_enter_password">请输入密码</string>
+    <string name="error_confirm_password">请确认密码</string>
+    <string name="error_passwords_mismatch">两次输入的密码不一致</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">录制音频</string>
+    <string name="record_audio_subtitle">录制讲座、会议或笔记。\n我们将自动转录并创建学习资料。</string>
+    <string name="grant_microphone_permission">授权麦克风权限</string>
+    <string name="start_recording">开始录制</string>
+    <string name="tap_to_start_recording">点击开始录制</string>
+    <string name="recording_status">录制中\u2026</string>
+    <string name="paused">已暂停</string>
+    <string name="discard">丢弃</string>
+    <string name="pause">暂停</string>
+    <string name="resume">继续</string>
+    <string name="stop">停止</string>
+    <string name="recording_complete">录制完成</string>
+    <string name="duration_format">时长: %s</string>
+    <string name="title_optional">标题（可选）</string>
+    <string name="title_placeholder">例如: 生物学讲座</string>
+    <string name="process_recording">处理录音</string>
+    <string name="discard_recording">丢弃录音</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">正在上传音频</string>
+    <string name="step_transcribing_audio">正在转录音频</string>
+    <string name="step_identifying_speakers">正在识别说话者</string>
+    <string name="step_analyzing_content">正在分析内容</string>
+    <string name="step_summarizing_key_points">正在总结要点</string>
+    <string name="step_finalizing_note">正在完成笔记</string>
+    <string name="upload_complete_safe">上传已完成，可以安全离开。</string>
+    <string name="processing_info">笔记生成通常需要几分钟。你可以离开此页面，稍后再回来。</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">笔记已就绪！</string>
+    <string name="note_ready_description">我们已转录你的录音并创建了学习资料。</string>
+    <string name="view_note">查看笔记</string>
+    <string name="go_to_home">回到首页</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">出了点问题</string>
+    <string name="try_again_button">重试</string>
+    <string name="go_back">返回</string>
+    <string name="error_not_authenticated">未认证</string>
+    <string name="error_upload_failed">音频上传失败</string>
+    <string name="error_transcribe_failed">音频转录失败</string>
+    <string name="error_start_recording">开始录制失败: %s</string>
+    <string name="error_stop_recording">停止录制失败: %s</string>
+    <string name="error_processing_failed">处理失败</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">关闭</string>
+    <string name="unlock_pro">解锁Scribe AI Pro</string>
+    <string name="unlimited_access">畅享所有功能无限使用</string>
+    <string name="feature_unlimited_notes">从任何来源创建无限笔记</string>
+    <string name="feature_ai_summaries">AI摘要 &amp; 测验</string>
+    <string name="feature_flashcards">记忆卡生成</string>
+    <string name="feature_ai_chat">与笔记AI对话</string>
+    <string name="feature_mind_map">思维导图展示</string>
+    <string name="feature_podcast">音频播客生成</string>
+    <string name="plan_yearly">年付</string>
+    <string name="plan_monthly">月付</string>
+    <string name="per_month_format">%s/月</string>
+    <string name="save_percent_format">省%d%%</string>
+    <string name="loading_plans">正在加载方案\u2026</string>
+    <string name="continue_button">继续</string>
+    <string name="restore_purchases">恢复购买</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">确定吗？</string>
+    <string name="lose_access">你将失去以下访问权限:</string>
+    <string name="stat_notes_created">已创建的笔记</string>
+    <string name="stat_quizzes_generated">已生成的测验</string>
+    <string name="stat_flashcards_created">已创建的记忆卡</string>
+    <string name="stat_audio_hours">小时的音频内容</string>
+    <string name="stay_signed_in">保持登录</string>
+    <string name="sign_out_anyway">仍然退出</string>
+    <string name="delete_account">删除账户？</string>
+    <string name="delete_account_warning">此操作无法撤销。\n以下数据将永久删除:</string>
+    <string name="keep_my_account">保留账户</string>
+    <string name="delete_anyway">仍然删除</string>
+    <string name="before_you_go">请稍等\u2026</string>
+    <string name="feedback_reason">请告诉我们你离开的原因，帮助我们改进</string>
+    <string name="delete_my_account">删除我的账户</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">喜欢Scribe AI吗？</string>
+    <string name="review_subtitle">Scribe AI是否帮助你更快学习、更好理解？</string>
+    <string name="yes_love_it">是的，非常喜欢！</string>
+    <string name="not_yet">还没有</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">YouTube链接</string>
+    <string name="paste_youtube_url">粘贴YouTube视频链接</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">从剪贴板粘贴</string>
+    <string name="create_note">创建笔记</string>
+    <string name="invalid_youtube_url">请输入有效的YouTube链接</string>
+    <string name="creating_note">正在创建笔记\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">上传文档</string>
+    <string name="tap_to_select">点击选择文件</string>
+    <string name="supported_formats">支持PDF、DOCX、PPT、TXT</string>
+    <string name="file_selected">文件已选择</string>
+    <string name="uploading">上传中\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">扫描文档</string>
+    <string name="grant_permission">授予权限</string>
+    <string name="scan_another_page">扫描下一页</string>
+    <string name="save_with_count">保存 (%d)</string>
+    <string name="dismiss">关闭</string>
+    <string name="scanned_pages_format">已扫描 %d 页</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">加入会议</string>
+    <string name="meeting_link">会议链接</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">标题（可选）</string>
+    <string name="meeting_title_placeholder">例如: 团队站会</string>
+    <string name="send_bot">发送机器人</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">会议机器人</string>
+    <string name="no_meetings">暂无会议</string>
+    <string name="no_meetings_hint">加入会议后将自动录制和转录</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">选择主题</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">调试令牌</string>
+    <string name="copy_token">复制令牌到剪贴板</string>
+    <string name="token_copied">令牌已复制！</string>
+
+    <!-- General AI Content -->
+    <string name="loading">加载中\u2026</string>
+    <string name="error_label">错误</string>
+    <string name="generate">生成</string>
+
+    <!-- Language Picker -->
+    <string name="language">语言</string>
+    <string name="language_picker_title">选择语言</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

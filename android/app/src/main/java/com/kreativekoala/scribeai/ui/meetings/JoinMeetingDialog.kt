@@ -9,7 +9,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.models.MeetingPlatform
 import com.kreativekoala.scribeai.viewmodel.CreateMeetingState
 import com.kreativekoala.scribeai.viewmodel.MeetingViewModel
@@ -54,14 +56,14 @@ fun JoinMeetingDialog(
                 onDismiss()
             }
         },
-        title = { Text("Join a Meeting") },
+        title = { Text(stringResource(R.string.join_a_meeting)) },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "Paste your meeting link and our bot will join to record and transcribe.",
+                    text = stringResource(R.string.meeting_link),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -70,8 +72,8 @@ fun JoinMeetingDialog(
                 OutlinedTextField(
                     value = meetingUrl,
                     onValueChange = { meetingUrl = it },
-                    label = { Text("Meeting Link") },
-                    placeholder = { Text("https://zoom.us/j/...") },
+                    label = { Text(stringResource(R.string.meeting_link)) },
+                    placeholder = { Text(stringResource(R.string.meeting_link_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = meetingUrl.isNotBlank() && !validationResult.first,
@@ -103,7 +105,7 @@ fun JoinMeetingDialog(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        "Invalid meeting URL",
+                                        stringResource(R.string.invalid_youtube_url),
                                         color = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -116,15 +118,15 @@ fun JoinMeetingDialog(
                 OutlinedTextField(
                     value = title,
                     onValueChange = { title = it },
-                    label = { Text("Title (optional)") },
-                    placeholder = { Text("e.g., Team Standup") },
+                    label = { Text(stringResource(R.string.meeting_title_optional)) },
+                    placeholder = { Text(stringResource(R.string.meeting_title_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
 
                 // Supported platforms
                 Text(
-                    text = "Supported: Zoom, Google Meet, Teams, Webex",
+                    text = stringResource(R.string.join_meeting_subtitle),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -164,7 +166,7 @@ fun JoinMeetingDialog(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text("Send Bot")
+                Text(stringResource(R.string.send_bot))
             }
         },
         dismissButton = {
@@ -175,7 +177,7 @@ fun JoinMeetingDialog(
                 },
                 enabled = createState !is CreateMeetingState.Loading
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )

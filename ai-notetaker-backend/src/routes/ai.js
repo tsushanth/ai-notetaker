@@ -235,7 +235,7 @@ router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIConte
  *
  * PROTECTED: Requires subscription or trial
  */
-router.get('/podcast/status/:note_id', requireSubscription, asyncHandler(async (req, res) => {
+router.get('/podcast/status/:note_id', asyncHandler(async (req, res) => {
   const { note_id } = req.params;
 
   logger.info('Checking podcast status', { noteId: note_id, userId: req.userId });

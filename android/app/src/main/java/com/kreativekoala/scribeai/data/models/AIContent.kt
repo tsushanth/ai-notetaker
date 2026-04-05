@@ -55,19 +55,19 @@ data class AIContentResponse(
 )
 
 data class PodcastStatusResponse(
-    val success: Boolean,
-    val data: PodcastStatus? = null
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: PodcastStatus? = null
 )
 
 data class PodcastStatus(
-    val status: String, // "generating", "ready", "not_found"
-    val message: String? = null,
-    val id: String? = null,
-    val audio_url: String? = null,
-    val script: String? = null,
-    val duration: String? = null,
-    val style: String? = null,
-    val note_id: String? = null
+    @SerializedName("status") val status: String,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("audio_url") val audio_url: String? = null,
+    @SerializedName("script") val script: String? = null,
+    @SerializedName("duration") val duration: String? = null,
+    @SerializedName("style") val style: String? = null,
+    @SerializedName("note_id") val note_id: String? = null
 )
 
 data class AIContentListResponse(
@@ -326,6 +326,7 @@ data class FeatureAccess(
     val canCreateNotes: Boolean = true,
     val canUseAI: Boolean = true,
     val canGeneratePodcasts: Boolean = false,
+    val canExportNotes: Boolean = false,
     val unlimitedAccess: Boolean = false
 )
 

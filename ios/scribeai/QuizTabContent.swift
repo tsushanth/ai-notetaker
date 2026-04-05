@@ -239,6 +239,8 @@ struct QuizTabContent: View {
                             questions: quizQuestions,
                             createdAt: aiContent.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
+                        // Trigger post-value paywall prompt after AI content generated
+                        PostValueTrialManager.shared.checkAndTriggerPrompt()
                     } else {
                         print("❌ No questions in generated quiz")
                         self.errorMessage = "Failed to generate quiz questions"

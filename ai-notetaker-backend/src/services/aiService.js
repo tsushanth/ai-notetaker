@@ -982,118 +982,38 @@ ${truncateContent(note.content, 8000)}`;
       // Log extraction usage
       await this.logUsage(userId, 'infographic_extraction', extractionCompletion.usage);
 
-      // Step 2: Generate the infographic image using DALL-E 3
-      const styleDescriptions = {
-        modern: 'clean modern design with gradient backgrounds, rounded shapes, and sans-serif typography',
-        colorful: 'vibrant colorful design with bold colors, playful icons, and dynamic layouts',
-        minimal: 'minimalist design with plenty of white space, subtle colors, and elegant typography',
-        professional: 'professional corporate style with structured layout, muted colors, and clear hierarchy'
-      };
+      // Step 2: Fire async SVG infographic generation via Hetzner worker (Claude CLI)
+      const WORKER_URL = process.env.LEARNING_WORKER_URL || 'http://178.156.231.255:3458';
+      const WORKER_SECRET = process.env.LEARNING_WORKER_SECRET;
 
-      const styleDesc = styleDescriptions[style] || styleDescriptions.modern;
+      logger.info('Triggering infographic generation via Claude CLI', { userId, noteId, style });
 
-      // Build the DALL-E prompt
-      const dallePrompt = `Create a professional educational infographic with ${styleDesc}.
-
-Title: "${extractedData.title}"
-${extractedData.subtitle ? `Subtitle: "${extractedData.subtitle}"` : ''}
-
-The infographic should include:
-- A clear visual hierarchy with the title at the top
-- ${extractedData.key_stats?.length || 0} highlighted statistics/facts shown as large numbers with icons
-- ${extractedData.main_sections?.length || 0} distinct sections with icons representing each topic
-- Visual elements like icons, simple illustrations, arrows, and connecting lines
-- A "Key Takeaway" section at the bottom
-
-Design requirements:
-- Use a cohesive color palette (2-3 main colors plus accent)
-- Include relevant simple icons/illustrations for each section
-- Text should be readable and well-spaced
-- Professional infographic layout similar to NotebookLM or Canva infographics
-- Portrait orientation (taller than wide)
-- High contrast for readability
-
-Style: Educational study material infographic, clean and modern`;
-
-      logger.info('Generating infographic with DALL-E 3', { userId, noteId, style });
-
-      let imageResponse;
-      try {
-        imageResponse = await openai.images.generate({
-          model: MODELS.DALLE3,
-          prompt: dallePrompt,
-          n: 1,
-          size: '1024x1792', // Portrait orientation for infographics
-          quality: 'hd',
-          style: 'vivid'
-        });
-      } catch (dalleError) {
-        logger.error('DALL-E 3 image generation failed', {
-          error: dalleError.message,
-          code: dalleError.code,
-          userId,
-          noteId
-        });
-        throw dalleError;
-      }
-
-      const imageUrl = imageResponse.data[0].url;
-      const revisedPrompt = imageResponse.data[0].revised_prompt;
-      logger.info('DALL-E 3 image generated successfully', { userId, noteId, imageUrl: imageUrl.substring(0, 50) + '...' });
-
-      // Step 3: Upload the image to Supabase storage for persistence
-      // DALL-E URLs expire, so we need to download and store
-      const fetch = require('node-fetch');
-      let imageResponseData;
-      try {
-        imageResponseData = await fetch(imageUrl);
-        if (!imageResponseData.ok) {
-          throw new Error(`Failed to download image: ${imageResponseData.status}`);
-        }
-      } catch (fetchError) {
-        logger.error('Failed to download DALL-E image', { error: fetchError.message, userId, noteId });
-        throw new AppError('Failed to download generated image', 500);
-      }
-
-      const imageBuffer = Buffer.from(await imageResponseData.arrayBuffer());
-
-      const { supabaseAdmin } = require('../config/supabase');
-      const fileName = `infographics/${userId}/${noteId}/${Date.now()}.png`;
-
-      const { error: uploadError } = await supabaseAdmin
-        .storage
-        .from('notetaker-files')
-        .upload(fileName, imageBuffer, {
-          contentType: 'image/png',
-          upsert: true
-        });
-
-      if (uploadError) {
-        logger.error('Failed to upload infographic to storage', { error: uploadError.message });
-        throw new AppError('Failed to save infographic', 500);
-      }
-
-      // Get public URL
-      const { data: urlData } = supabaseAdmin
-        .storage
-        .from('notetaker-files')
-        .getPublicUrl(fileName);
-
-      const permanentUrl = urlData.publicUrl;
-
-      // Save AI content
-      const aiContent = await this.saveAIContent(noteId, 'infographic', {
-        image_url: permanentUrl,
-        extracted_data: extractedData,
+      // Fire and forget — worker will call back via webhook
+      const axios = require('axios');
+      axios.post(`${WORKER_URL}/generate-infographic`, {
+        content: truncateContent(note.content, 15000),
+        title: extractedData.title || note.title,
         style,
-        revised_prompt: revisedPrompt,
-        model: MODELS.DALLE3
+        noteId,
+        userId,
+        extractedData
+      }, {
+        headers: { 'Authorization': `Bearer ${WORKER_SECRET}` },
+        timeout: 5000 // just to send the request
+      }).catch(err => {
+        logger.error('Failed to trigger infographic worker', { error: err.message, noteId });
       });
 
-      // Log image generation usage
-      await this.logImageUsage(userId, 'infographic', '1024x1792');
+      // Save a placeholder AI content so the client can poll
+      const aiContent = await this.saveAIContent(noteId, 'infographic', {
+        image_url: null,
+        extracted_data: extractedData,
+        style,
+        model: 'claude-cli-svg',
+        status: 'generating'
+      });
 
-      logger.info('Infographic generated successfully', {
+      logger.info('Infographic generation triggered', {
         userId,
         noteId,
         style,
@@ -1102,10 +1022,11 @@ Style: Educational study material infographic, clean and modern`;
 
       return {
         id: aiContent.id,
-        image_url: permanentUrl,
+        image_url: null,
         extracted_data: extractedData,
         style,
-        note_id: noteId
+        note_id: noteId,
+        status: 'generating'
       };
 
     } catch (error) {
@@ -1303,11 +1224,11 @@ Style: Educational study material infographic, clean and modern`;
   async saveAIContent(noteId, contentType, content) {
     const { data, error } = await supabaseAdmin
       .from('ai_content')
-      .insert({
+      .upsert({
         note_id: noteId,
         content_type: contentType,
         content
-      })
+      }, { onConflict: 'note_id,content_type' })
       .select()
       .single();
 

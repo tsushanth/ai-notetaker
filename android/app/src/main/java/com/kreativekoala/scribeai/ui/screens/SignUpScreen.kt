@@ -16,15 +16,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.viewmodel.AuthState
 import com.kreativekoala.scribeai.viewmodel.AuthViewModel
@@ -45,6 +48,7 @@ fun SignUpScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -100,14 +104,14 @@ fun SignUpScreen(
 
                 // Title
                 Text(
-                    "Create Account",
+                    stringResource(R.string.create_account),
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
 
                 Text(
-                    "Sign up to get started",
+                    stringResource(R.string.sign_up_subtitle),
                     fontSize = 16.sp,
                     color = TextSecondary,
                     modifier = Modifier.padding(top = 8.dp)
@@ -122,8 +126,8 @@ fun SignUpScreen(
                         email = it
                         errorMessage = null
                     },
-                    label = { Text("Email") },
-                    placeholder = { Text("your@email.com") },
+                    label = { Text(stringResource(R.string.email)) },
+                    placeholder = { Text(stringResource(R.string.email_placeholder)) },
                     leadingIcon = {
                         Icon(Icons.Default.Email, contentDescription = null)
                     },
@@ -158,8 +162,8 @@ fun SignUpScreen(
                         password = it
                         errorMessage = null
                     },
-                    label = { Text("Password") },
-                    placeholder = { Text("At least 6 characters") },
+                    label = { Text(stringResource(R.string.password)) },
+                    placeholder = { Text(stringResource(R.string.at_least_6_characters)) },
                     leadingIcon = {
                         Icon(Icons.Default.Lock, contentDescription = null)
                     },
@@ -168,7 +172,7 @@ fun SignUpScreen(
                             Icon(
                                 if (passwordVisible) Icons.Default.Visibility
                                 else Icons.Default.VisibilityOff,
-                                contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                contentDescription = if (passwordVisible) stringResource(R.string.hide_password) else stringResource(R.string.show_password)
                             )
                         }
                     },
@@ -205,8 +209,8 @@ fun SignUpScreen(
                         confirmPassword = it
                         errorMessage = null
                     },
-                    label = { Text("Confirm Password") },
-                    placeholder = { Text("Re-enter password") },
+                    label = { Text(stringResource(R.string.confirm_password)) },
+                    placeholder = { Text(stringResource(R.string.reenter_password)) },
                     leadingIcon = {
                         Icon(Icons.Default.Lock, contentDescription = null)
                     },
@@ -215,7 +219,7 @@ fun SignUpScreen(
                             Icon(
                                 if (confirmPasswordVisible) Icons.Default.Visibility
                                 else Icons.Default.VisibilityOff,
-                                contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password"
+                                contentDescription = if (confirmPasswordVisible) stringResource(R.string.hide_password) else stringResource(R.string.show_password)
                             )
                         }
                     },
@@ -271,27 +275,27 @@ fun SignUpScreen(
                     onClick = {
                         // Validation
                         if (email.isBlank()) {
-                            errorMessage = "Please enter your email"
+                            errorMessage = context.getString(R.string.error_email_required)
                             return@Button
                         }
                         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                            errorMessage = "Please enter a valid email"
+                            errorMessage = context.getString(R.string.error_valid_email)
                             return@Button
                         }
                         if (password.isBlank()) {
-                            errorMessage = "Please enter a password"
+                            errorMessage = context.getString(R.string.error_enter_password)
                             return@Button
                         }
                         if (password.length < 6) {
-                            errorMessage = "Password must be at least 6 characters"
+                            errorMessage = context.getString(R.string.error_password_too_short)
                             return@Button
                         }
                         if (confirmPassword.isBlank()) {
-                            errorMessage = "Please confirm your password"
+                            errorMessage = context.getString(R.string.error_confirm_password)
                             return@Button
                         }
                         if (password != confirmPassword) {
-                            errorMessage = "Passwords do not match"
+                            errorMessage = context.getString(R.string.error_passwords_mismatch)
                             return@Button
                         }
 
@@ -317,7 +321,7 @@ fun SignUpScreen(
                         )
                     } else {
                         Text(
-                            "Sign Up",
+                            stringResource(R.string.sign_up),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -332,13 +336,13 @@ fun SignUpScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Already have an account? ",
+                        stringResource(R.string.already_have_account),
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
                     TextButton(onClick = onNavigateToLogin) {
                         Text(
-                            "Sign In",
+                            stringResource(R.string.sign_in),
                             fontSize = 14.sp,
                             color = Purple80,
                             fontWeight = FontWeight.SemiBold

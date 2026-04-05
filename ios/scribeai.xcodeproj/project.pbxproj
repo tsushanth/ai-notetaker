@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0F615007F41509E3A067CB93 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95DBF6A60A025EF9DC401992 /* Foundation.framework */; };
+		653D2542095CA1C9A19FA28B /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6A8D63E704A41579ABA3BC /* SnapshotHelper.swift */; };
 		881B303A2ECD0DFF003270AA /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30392ECD0DFF003270AA /* Auth */; };
 		881B303C2ECD0DFF003270AA /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 881B303B2ECD0DFF003270AA /* Functions */; };
 		881B303E2ECD0DFF003270AA /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 881B303D2ECD0DFF003270AA /* PostgREST */; };
@@ -17,13 +19,26 @@
 		881B30692ECD26B3003270AA /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30682ECD26B3003270AA /* GoogleSignInSwift */; };
 		8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8845E2972F0C2D7700982F8B /* FirebaseAnalytics */; };
 		88FB00012F51AB00003270AA /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 88FB00002F51AB00003270AA /* FacebookCore */; };
-		88RC00012F51AC00003270AA /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 88RC00002F51AC00003270AA /* RevenueCat */; };
-		88RC00032F51AC00003270AA /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 88RC00022F51AC00003270AA /* RevenueCatUI */; };
+		FD48410CF325031E730F4226 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF06C12585DE802571772034 /* ScreenshotTests.swift */; };
 		PKT000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PKT000000000002 /* PaywallKit */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		3E0A2A89906F859B1AF2328B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 881B300C2ECD0B69003270AA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 881B30132ECD0B69003270AA;
+			remoteInfo = scribeai;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		3D6A8D63E704A41579ABA3BC /* SnapshotHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
+		4BDD55CFC7C619C4232D0CF0 /* scribeaiUITests */ = {isa = PBXFileReference; includeInIndex = 0; path = scribeaiUITests; sourceTree = BUILT_PRODUCTS_DIR; };
 		881B30142ECD0B69003270AA /* scribeai.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = scribeai.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		95DBF6A60A025EF9DC401992 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		FF06C12585DE802571772034 /* ScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -62,20 +77,38 @@
 				881B30672ECD26B3003270AA /* GoogleSignIn in Frameworks */,
 				8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */,
 				88FB00012F51AB00003270AA /* FacebookCore in Frameworks */,
-				88RC00012F51AC00003270AA /* RevenueCat in Frameworks */,
-				88RC00032F51AC00003270AA /* RevenueCatUI in Frameworks */,
 				PKT000000000003 /* PaywallKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8DC07C18BA8303F3C3F39D41 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0F615007F41509E3A067CB93 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		02CA1A20C822FC562695971E /* scribeaiUITests */ = {
+			isa = PBXGroup;
+			children = (
+				3D6A8D63E704A41579ABA3BC /* SnapshotHelper.swift */,
+				FF06C12585DE802571772034 /* ScreenshotTests.swift */,
+			);
+			name = scribeaiUITests;
+			path = scribeaiUITests;
+			sourceTree = "<group>";
+		};
 		881B300B2ECD0B69003270AA = {
 			isa = PBXGroup;
 			children = (
 				881B30162ECD0B69003270AA /* scribeai */,
 				881B30152ECD0B69003270AA /* Products */,
+				FF1674DA8612AD1D349081E6 /* Frameworks */,
+				02CA1A20C822FC562695971E /* scribeaiUITests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -83,13 +116,48 @@
 			isa = PBXGroup;
 			children = (
 				881B30142ECD0B69003270AA /* scribeai.app */,
+				4BDD55CFC7C619C4232D0CF0 /* scribeaiUITests */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		F781175B93773249954BE30A /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				95DBF6A60A025EF9DC401992 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		FF1674DA8612AD1D349081E6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F781175B93773249954BE30A /* iOS */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		7934464151384EA86DC74D9F /* scribeaiUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AFC21EF68474BD70083AE1D3 /* Build configuration list for PBXNativeTarget "scribeaiUITests" */;
+			buildPhases = (
+				F80E43CD23F82ABFB2905EFE /* Sources */,
+				8DC07C18BA8303F3C3F39D41 /* Frameworks */,
+				F98F8D4DEFA6865C8871FC4C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CB6F4E4374876A827FFD67D9 /* PBXTargetDependency */,
+			);
+			name = scribeaiUITests;
+			productName = scribeaiUITests;
+			productReference = 4BDD55CFC7C619C4232D0CF0 /* scribeaiUITests */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		881B30132ECD0B69003270AA /* scribeai */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 881B30222ECD0B6B003270AA /* Build configuration list for PBXNativeTarget "scribeai" */;
@@ -117,8 +185,6 @@
 				881B30682ECD26B3003270AA /* GoogleSignInSwift */,
 				8845E2972F0C2D7700982F8B /* FirebaseAnalytics */,
 				88FB00002F51AB00003270AA /* FacebookCore */,
-				88RC00002F51AC00003270AA /* RevenueCat */,
-				88RC00022F51AC00003270AA /* RevenueCatUI */,
 				PKT000000000002 /* PaywallKit */,
 			);
 			productName = scribeai;
@@ -146,6 +212,15 @@
 			knownRegions = (
 				en,
 				Base,
+				hi,
+				it,
+				"pt-BR",
+				"zh-Hans",
+				de,
+				ko,
+				es,
+				fr,
+				ja,
 			);
 			mainGroup = 881B300B2ECD0B69003270AA;
 			minimizedProjectReferenceProxies = 1;
@@ -154,7 +229,6 @@
 				881B30652ECD26B3003270AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
-				88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */,
 				PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -163,12 +237,20 @@
 			projectRoot = "";
 			targets = (
 				881B30132ECD0B69003270AA /* scribeai */,
+				7934464151384EA86DC74D9F /* scribeaiUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		881B30122ECD0B69003270AA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F98F8D4DEFA6865C8871FC4C /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -185,7 +267,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F80E43CD23F82ABFB2905EFE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				653D2542095CA1C9A19FA28B /* SnapshotHelper.swift in Sources */,
+				FD48410CF325031E730F4226 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CB6F4E4374876A827FFD67D9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = scribeai;
+			target = 881B30132ECD0B69003270AA /* scribeai */;
+			targetProxy = 3E0A2A89906F859B1AF2328B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		881B30202ECD0B6B003270AA /* Debug */ = {
@@ -314,7 +414,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 107;
+				CURRENT_PROJECT_VERSION = 111;
 				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
@@ -332,7 +432,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 99.2;
+				MARKETING_VERSION = 99.5;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -352,7 +452,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 107;
+				CURRENT_PROJECT_VERSION = 111;
 				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
@@ -370,7 +470,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 99.2;
+				MARKETING_VERSION = 99.5;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -380,6 +480,37 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9ECF1EC79F96BD27A5EC0D63 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = scribeai;
+			};
+			name = Debug;
+		};
+		B4C5747E47FA89DD23FF054C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = scribeai;
+				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
@@ -404,7 +535,23 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		AFC21EF68474BD70083AE1D3 /* Build configuration list for PBXNativeTarget "scribeaiUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B4C5747E47FA89DD23FF054C /* Release */,
+				9ECF1EC79F96BD27A5EC0D63 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../PaywallKit;
+		};
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
 		881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
@@ -439,22 +586,7 @@
 				minimumVersion = 17.0.0;
 			};
 		};
-		88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/RevenueCat/purchases-ios";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 5.0.0;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../../PaywallKit;
-		};
-/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		881B30392ECD0DFF003270AA /* Auth */ = {
@@ -506,16 +638,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
 			productName = FacebookCore;
-		};
-		88RC00002F51AC00003270AA /* RevenueCat */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */;
-			productName = RevenueCat;
-		};
-		88RC00022F51AC00003270AA /* RevenueCatUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 88RC00042F51AC00003270AA /* XCRemoteSwiftPackageReference "purchases-ios" */;
-			productName = RevenueCatUI;
 		};
 		PKT000000000002 /* PaywallKit */ = {
 			isa = XCSwiftPackageProductDependency;

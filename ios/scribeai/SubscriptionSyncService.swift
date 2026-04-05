@@ -518,6 +518,7 @@ struct FeatureAccess: Codable {
     let canCreateNotes: Bool
     let canUseAI: Bool
     let canGeneratePodcasts: Bool
+    let canExportNotes: Bool?
     let unlimitedAccess: Bool
 }
 

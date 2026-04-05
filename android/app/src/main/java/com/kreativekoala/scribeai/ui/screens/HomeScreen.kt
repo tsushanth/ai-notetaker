@@ -20,10 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.models.DeletionReason
 import com.kreativekoala.scribeai.data.models.Note
@@ -38,6 +40,12 @@ import com.kreativekoala.scribeai.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import com.kreativekoala.scribeai.utils.SubscriptionManager
+import com.kreativekoala.paywallkit.models.PaywallFeature
+import com.kreativekoala.paywallkit.models.PaywallTheme
+import com.kreativekoala.paywallkit.view.PaywallPreview
+import com.revenuecat.purchases.ui.revenuecatui.Paywall
+import com.revenuecat.purchases.ui.revenuecatui.PaywallListener
+import com.revenuecat.purchases.ui.revenuecatui.PaywallOptions
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,11 +64,14 @@ fun HomeScreen(
     onSignOut: () -> Unit = {}
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+    var showPaywall by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var tapCount by remember { mutableIntStateOf(0) }
+    var showPaywallPreview by remember { mutableStateOf(false) }
 
     // Retention dialog state
     var userStats by remember { mutableStateOf<UserStats?>(null) }
@@ -133,6 +144,23 @@ fun HomeScreen(
         }
     }
 
+    if (showPaywallPreview) {
+        PaywallPreview(
+            appId = "scribeai",
+            appName = "ScribeAI",
+            features = listOf(
+                PaywallFeature("\uD83D\uDCDD", "Unlimited Notes"),
+                PaywallFeature("\uD83C\uDFA4", "Transcription"),
+                PaywallFeature("\uD83E\uDD16", "AI Summaries"),
+                PaywallFeature("\uD83D\uDCC1", "Organization"),
+                PaywallFeature("☁\uFE0F", "Cloud Sync")
+            ),
+            theme = PaywallTheme(accent = Color(0xFF6C63FF), accent2 = Color(0xFF9C27B0)),
+            onDone = { showPaywallPreview = false }
+        )
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -146,7 +174,7 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "SCRIBE AI",  // FIXED: Capitalized
+                            stringResource(R.string.app_title),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -155,15 +183,40 @@ fun HomeScreen(
                 actions = {
                     // Menu button with dropdown
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
                     }
 
                     DropdownMenu(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
+                        if (!isSubscribed) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_upgrade_pro), color = Purple80, fontWeight = FontWeight.SemiBold) },
+                                onClick = {
+                                    showMenu = false
+                                    showPaywall = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Star, contentDescription = null, tint = Purple80)
+                                }
+                            )
+                            HorizontalDivider()
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_manage_subscription)) },
+                                onClick = {
+                                    showMenu = false
+                                    showPaywall = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = Purple80)
+                                }
+                            )
+                            HorizontalDivider()
+                        }
                         DropdownMenuItem(
-                            text = { Text("Language") },
+                            text = { Text(stringResource(R.string.menu_language)) },
                             onClick = {
                                 showMenu = false
                                 showLanguageDialog = true
@@ -175,7 +228,7 @@ fun HomeScreen(
                         HorizontalDivider()
 
                         DropdownMenuItem(
-                            text = { Text("Appearance") },
+                            text = { Text(stringResource(R.string.menu_appearance)) },
                             onClick = {
                                 showMenu = false
                                 showThemeDialog = true
@@ -187,7 +240,7 @@ fun HomeScreen(
                         HorizontalDivider()
 
                         DropdownMenuItem(
-                            text = { Text("Sign Out") },
+                            text = { Text(stringResource(R.string.menu_sign_out)) },
                             onClick = {
                                 showMenu = false
                                 // Load stats and show retention dialog
@@ -205,7 +258,7 @@ fun HomeScreen(
                         HorizontalDivider()
 
                         DropdownMenuItem(
-                            text = { Text("Delete Account", color = AccentRed) },
+                            text = { Text(stringResource(R.string.menu_delete_account), color = AccentRed) },
                             onClick = {
                                 showMenu = false
                                 // Load stats and show retention dialog
@@ -220,6 +273,20 @@ fun HomeScreen(
                                 Icon(Icons.Default.DeleteForever, contentDescription = null, tint = AccentRed)
                             }
                         )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("v1.0.0", color = Color.Gray) },
+                            onClick = {
+                                tapCount++
+                                if (tapCount >= 5) {
+                                    showMenu = false
+                                    showPaywallPreview = true
+                                }
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Info, contentDescription = null, tint = Color.Gray)
+                            }
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -232,7 +299,11 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = {
                     if (authToken != null) {
-                        showCreateSheet = true
+                        if (subscriptionManager.canCreateNotebook()) {
+                            showCreateSheet = true
+                        } else {
+                            showPaywall = true
+                        }
                     }
                 },
                 containerColor = Purple80,
@@ -242,7 +313,7 @@ fun HomeScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
+                    contentDescription = stringResource(R.string.add),
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -264,7 +335,7 @@ fun HomeScreen(
             ) {
                 Column {
                     Text(
-                        "Home",
+                        stringResource(R.string.home),
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -305,12 +376,12 @@ fun HomeScreen(
                                 )
                                 Spacer(Modifier.height(16.dp))
                                 Text(
-                                    "No notes yet",
+                                    stringResource(R.string.no_notes_yet),
                                     fontSize = 18.sp,
                                     color = TextSecondary
                                 )
                                 Text(
-                                    "Tap + to create your first note",
+                                    stringResource(R.string.tap_to_create_first_note),
                                     fontSize = 14.sp,
                                     color = TextTertiary
                                 )
@@ -332,7 +403,7 @@ fun HomeScreen(
                                 if (state.totalNotes > 0) {
                                     item {
                                         Text(
-                                            "${state.notes.size} of ${state.totalNotes} notes",
+                                            stringResource(R.string.notes_count_format, state.notes.size, state.totalNotes),
                                             fontSize = 13.sp,
                                             color = TextSecondary,
                                             modifier = Modifier.padding(bottom = 4.dp)
@@ -409,7 +480,7 @@ fun HomeScreen(
                                                         modifier = Modifier.size(18.dp)
                                                     )
                                                     Spacer(Modifier.width(8.dp))
-                                                    Text("Load More Notes")
+                                                    Text(stringResource(R.string.load_more_notes))
                                                 }
                                             }
                                         }
@@ -447,7 +518,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.height(16.dp))
                             Text(
-                                "Error loading notes",
+                                stringResource(R.string.error_loading_notes),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = TextPrimary
@@ -469,7 +540,7 @@ fun HomeScreen(
                                     containerColor = Purple80
                                 )
                             ) {
-                                Text("Retry")
+                                Text(stringResource(R.string.retry))
                             }
                         }
                     }
@@ -505,6 +576,13 @@ fun HomeScreen(
         )
     }
 
+    // RC Native Paywall in bottom sheet with visible close button
+    if (showPaywall) {
+        RCPaywallSheet(
+            onDismiss = { showPaywall = false }
+        )
+    }
+
     // Sign Out Retention Dialog
     if (showSignOutDialog) {
         SignOutRetentionDialog(
@@ -536,12 +614,12 @@ fun HomeScreen(
                         Log.d("HomeScreen", "Delete account reason: ${reason.name}")
                         isDeletingAccount = false
                         showDeleteAccountDialog = false
-                        Toast.makeText(context, "Account deletion requested. You will be signed out.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.account_deletion_requested), Toast.LENGTH_LONG).show()
                         onSignOut()
                     } catch (e: Exception) {
                         Log.e("HomeScreen", "Delete account failed", e)
                         isDeletingAccount = false
-                        Toast.makeText(context, "Failed to delete account: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.error_delete_account, e.message ?: ""), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -609,12 +687,12 @@ fun HomeScreen(
                 )
             },
             title = {
-                Text("Select Language")
+                Text(stringResource(R.string.select_language))
             },
             text = {
                 Column(modifier = Modifier.heightIn(max = 400.dp)) {
                     Text(
-                        "AI-generated content will be in this language",
+                        stringResource(R.string.language_subtitle),
                         fontSize = 14.sp,
                         color = TextSecondary,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -654,12 +732,12 @@ fun HomeScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -746,7 +824,7 @@ fun NoteCard(
                 ) {
                     Icon(
                         Icons.Default.MoreVert,
-                        contentDescription = "More",
+                        contentDescription = stringResource(R.string.more),
                         tint = TextSecondary
                     )
                 }
@@ -756,7 +834,7 @@ fun NoteCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Edit Title") },
+                        text = { Text(stringResource(R.string.edit_title)) },
                         onClick = {
                             showMenu = false
                             editedTitle = note.title
@@ -771,7 +849,7 @@ fun NoteCard(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text(stringResource(R.string.delete)) },
                         onClick = {
                             showMenu = false
                             showDeleteDialog = true
@@ -804,10 +882,10 @@ fun NoteCard(
                 )
             },
             title = {
-                Text("Delete Note?")
+                Text(stringResource(R.string.delete_note))
             },
             text = {
-                Text("Are you sure you want to delete \"${note.title}\"? This action cannot be undone.")
+                Text(stringResource(R.string.delete_note_message, note.title))
             },
             confirmButton = {
                 Button(
@@ -819,12 +897,12 @@ fun NoteCard(
                         containerColor = AccentRed
                     )
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -842,13 +920,13 @@ fun NoteCard(
                 )
             },
             title = {
-                Text("Edit Title")
+                Text(stringResource(R.string.edit_title))
             },
             text = {
                 OutlinedTextField(
                     value = editedTitle,
                     onValueChange = { editedTitle = it },
-                    label = { Text("Title") },
+                    label = { Text(stringResource(R.string.label_title)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -861,12 +939,12 @@ fun NoteCard(
                     },
                     enabled = editedTitle.isNotBlank() && editedTitle != note.title
                 ) {
-                    Text("Save")
+                    Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditTitleDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -901,34 +979,34 @@ fun CreateOptionsBottomSheet(
         ) {
             CreateOption(
                 icon = Icons.Default.Mic,
-                title = "Record or upload audio",
+                title = stringResource(R.string.record_or_upload),
                 onClick = onRecordAudio
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.VideoLibrary,
-                title = "YouTube video",
+                title = stringResource(R.string.youtube_video),
                 onClick = onYouTube
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.Description,
-                title = "Upload document",
-                subtitle = "Any PDF, DOCX, PPT, TXT, etc!",
+                title = stringResource(R.string.upload_document),
+                subtitle = stringResource(R.string.upload_document_subtitle),
                 onClick = onUploadDocument
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.CameraAlt,
-                title = "Scan Text",
-                subtitle = "Any image with text",
+                title = stringResource(R.string.scan_text),
+                subtitle = stringResource(R.string.scan_text_subtitle),
                 onClick = onScanDocument
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.Videocam,
-                title = "Join Meeting",
-                subtitle = "Record Zoom, Meet, Teams, Webex",
+                title = stringResource(R.string.join_meeting),
+                subtitle = stringResource(R.string.join_meeting_subtitle),
                 onClick = onMeetings
             )
         }
@@ -1041,5 +1119,48 @@ private suspend fun loadUserStats(token: String?, onResult: (UserStats?) -> Unit
     } catch (e: Exception) {
         Log.e("HomeScreen", "Error loading user stats", e)
         onResult(null)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RCPaywallSheet(onDismiss: () -> Unit) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        dragHandle = null,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Paywall(
+                PaywallOptions.Builder(dismissRequest = onDismiss)
+                    .setListener(object : PaywallListener {
+                        override fun onPurchaseStarted(rcPackage: com.revenuecat.purchases.Package) {}
+                        override fun onPurchaseCompleted(
+                            customerInfo: com.revenuecat.purchases.CustomerInfo,
+                            storeTransaction: com.revenuecat.purchases.models.StoreTransaction
+                        ) { onDismiss() }
+                        override fun onPurchaseError(error: com.revenuecat.purchases.PurchasesError) {}
+                        override fun onPurchaseCancelled() { onDismiss() }
+                        override fun onRestoreStarted() {}
+                        override fun onRestoreCompleted(customerInfo: com.revenuecat.purchases.CustomerInfo) { onDismiss() }
+                        override fun onRestoreError(error: com.revenuecat.purchases.PurchasesError) {}
+                    })
+                    .build()
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = "Close",
+                    tint = androidx.compose.ui.graphics.Color.White
+                )
+            }
+        }
     }
 }

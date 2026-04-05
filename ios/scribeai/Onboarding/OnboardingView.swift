@@ -36,15 +36,8 @@ struct OnboardingView: View {
         }
         .onChange(of: manager.currentStep) { newStep in
             stepEntryTime = Date()
-            // Reset and delay skip button on trial screen
             if newStep == .trial {
-                showTrialSkipButton = false
-                // Show skip button after 3 seconds on trial screen
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                    withAnimation(.easeIn(duration: 0.3)) {
-                        showTrialSkipButton = true
-                    }
-                }
+                showTrialSkipButton = true
             }
         }
     }
@@ -66,23 +59,17 @@ struct OnboardingView: View {
 
                 Spacer()
 
-                // Skip button - smaller on trial screen with delayed appearance
+                // Skip button - hidden on trial step (paywall is non-skippable)
                 Button {
-                    // Track trial skip with enhanced data when on trial step
-                    if manager.currentStep == .trial {
-                        let timeSpent = Int(Date().timeIntervalSince(stepEntryTime))
-                        manager.skipTrial(timeSpentSeconds: timeSpent, selectedPlan: nil)
-                    } else {
-                        manager.skipOnboarding()
-                    }
+                    manager.skipOnboarding()
                 } label: {
-                    Text(manager.currentStep == .trial ? "Maybe later" : "Skip")
-                        .font(.system(size: manager.currentStep == .trial ? 13 : 16, weight: .medium))
-                        .foregroundColor(manager.currentStep == .trial ? .textTertiary : .textSecondary)
+                    Text("Skip")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.textSecondary)
                 }
-                // On trial screen, hide until delay passes
-                .opacity(manager.currentStep == .trial ? (showTrialSkipButton ? 1 : 0) : 1)
-                .disabled(manager.currentStep == .trial && !showTrialSkipButton)
+                // Hide skip entirely on trial step to force paywall engagement
+                .opacity(manager.currentStep == .trial ? 0 : 1)
+                .disabled(manager.currentStep == .trial)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)

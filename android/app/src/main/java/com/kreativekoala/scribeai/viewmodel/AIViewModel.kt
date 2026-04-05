@@ -222,7 +222,7 @@ class AIViewModel : ViewModel() {
                             exception,
                             "Failed to start generation for note: $noteId"
                         )
-                        _podcastState.value = AIContentState.Error(exception.message ?: "Failed to start podcast generation")
+                        _podcastState.value = AIContentState.Error("Failed to start podcast generation. Please try again.")
                         return@launch
                     }
                 )

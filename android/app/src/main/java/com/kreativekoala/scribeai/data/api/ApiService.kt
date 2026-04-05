@@ -149,6 +149,21 @@ interface ApiService {
         @Path("noteId") noteId: String
     ): Response<NoteDetailResponse>
 
+    // Export endpoints
+    @GET("api/notes/{noteId}/export/pdf")
+    @Streaming
+    suspend fun exportNotePdf(
+        @Header("Authorization") token: String,
+        @Path("noteId") noteId: String
+    ): Response<okhttp3.ResponseBody>
+
+    @GET("api/notes/{noteId}/export/docx")
+    @Streaming
+    suspend fun exportNoteDocx(
+        @Header("Authorization") token: String,
+        @Path("noteId") noteId: String
+    ): Response<okhttp3.ResponseBody>
+
     @POST("api/ai/chat")
     suspend fun chatWithNote(
         @Header("Authorization") token: String,

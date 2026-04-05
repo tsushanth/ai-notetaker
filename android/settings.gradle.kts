@@ -22,4 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "ScribeAI"
 include(":app")
- 
+include(":paywallkit")
+project(":paywallkit").projectDir = file("/Users/sushanthtiruvaipati/Documents/GitHub/PaywallKit-Android/paywallkit")

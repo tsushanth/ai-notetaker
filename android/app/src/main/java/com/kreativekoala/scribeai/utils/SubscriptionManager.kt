@@ -6,13 +6,23 @@ import android.content.Context
 import com.kreativekoala.scribeai.service.TikTokHelper
 import android.provider.Settings
 import android.util.Log
-import com.android.billingclient.api.*
 import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.models.AccessStatusData
 import com.kreativekoala.scribeai.data.models.SubscriptionEventRequest
 import com.kreativekoala.scribeai.data.models.SubscriptionSyncRequest
 import com.kreativekoala.scribeai.data.models.TrialCheckRequest
 import com.kreativekoala.scribeai.data.models.TrialCheckData
+import com.revenuecat.purchases.CustomerInfo
+import com.revenuecat.purchases.Package
+import com.revenuecat.purchases.PurchaseParams
+import com.revenuecat.purchases.Purchases
+import com.revenuecat.purchases.PurchasesError
+import com.revenuecat.purchases.getCustomerInfoWith
+import com.revenuecat.purchases.getOfferingsWith
+import com.revenuecat.purchases.logInWith
+import com.revenuecat.purchases.logOutWith
+import com.revenuecat.purchases.purchaseWith
+import com.revenuecat.purchases.restorePurchasesWith
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,24 +39,32 @@ import java.util.TimeZone
 import java.util.UUID
 
 /**
- * Manages Google Play Billing and subscription state
+ * Manages RevenueCat subscriptions and subscription state
  */
 class SubscriptionManager(private val context: Context) {
 
     companion object {
         private const val TAG = "SubscriptionManager"
 
-        // Product IDs (must match what you set in Google Play Console)
+        // Product IDs (must match what you set in RevenueCat)
         const val MONTHLY_SUB_ID = "scribe_ai_monthly"
         const val YEARLY_SUB_ID = "scribe_ai_yearly"
 
+        // RevenueCat entitlement identifier
+        private const val ENTITLEMENT_PRO = "premium"
+
         // Free tier limits
         const val FREE_NOTEBOOK_LIMIT = 3
+
+        // Number of free app opens before hard paywall is shown
+        const val FREE_OPEN_LIMIT = 3
 
         // SharedPreferences keys
         private const val PREFS_NAME = "scribe_ai_prefs"
         private const val KEY_LIFETIME_NOTEBOOKS = "lifetime_notebooks_created"
         private const val KEY_DEVICE_ID = "device_id"
+        private const val KEY_IS_SUBSCRIBED = "is_subscribed"
+        private const val KEY_APP_OPEN_COUNT = "app_open_count"
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -54,18 +72,13 @@ class SubscriptionManager(private val context: Context) {
     // Device ID for trial abuse prevention (persisted across app installs where possible)
     @get:SuppressLint("HardwareIds")
     val deviceId: String by lazy {
-        // Try to get existing device ID from prefs
         prefs.getString(KEY_DEVICE_ID, null) ?: run {
-            // Generate a device ID based on Android ID + fallback UUID
             val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
             val newDeviceId = if (androidId != null && androidId != "9774d56d682e549c") {
-                // Use Android ID if available and not the known emulator ID
                 "android_$androidId"
             } else {
-                // Fallback to UUID (will change on reinstall)
                 "uuid_${UUID.randomUUID()}"
             }
-            // Persist it
             prefs.edit().putString(KEY_DEVICE_ID, newDeviceId).apply()
             newDeviceId
         }
@@ -75,7 +88,6 @@ class SubscriptionManager(private val context: Context) {
     private val _deviceTrialExpired = MutableStateFlow(false)
     val deviceTrialExpired: StateFlow<Boolean> = _deviceTrialExpired.asStateFlow()
 
-    private var billingClient: BillingClient? = null
     private var authManager: AuthManager? = null
 
     // Coroutine scope for background operations
@@ -93,8 +105,12 @@ class SubscriptionManager(private val context: Context) {
     private val _subscriptionState = MutableStateFlow<SubscriptionState>(SubscriptionState.Unknown)
     val subscriptionState: StateFlow<SubscriptionState> = _subscriptionState.asStateFlow()
 
-    private val _products = MutableStateFlow<List<ProductDetails>>(emptyList())
-    val products: StateFlow<List<ProductDetails>> = _products.asStateFlow()
+    // RC packages from current offering
+    private val _products = MutableStateFlow<List<Package>>(emptyList())
+    val products: StateFlow<List<Package>> = _products.asStateFlow()
+
+    // Cached customer info
+    private var cachedCustomerInfo: CustomerInfo? = null
 
     sealed class SubscriptionState {
         object Unknown : SubscriptionState()
@@ -115,165 +131,113 @@ class SubscriptionManager(private val context: Context) {
     }
 
     /**
-     * Initialize billing client
+     * Identify the RC user with the logged-in user ID.
+     * Call this after the user successfully logs in.
+     */
+    fun identify(userId: String) {
+        Purchases.sharedInstance.logInWith(
+            appUserID = userId,
+            onError = { error -> Log.e(TAG, "RC login error: ${error.message}") },
+            onSuccess = { customerInfo, created ->
+                Log.d(TAG, "RC user identified: $userId (new=$created)")
+                cachedCustomerInfo = customerInfo
+                updateSubscriptionState(customerInfo)
+            }
+        )
+    }
+
+    /**
+     * Reset RC identity on logout
+     */
+    fun resetIdentity() {
+        Purchases.sharedInstance.logOutWith(
+            onError = { error -> Log.e(TAG, "RC logout error: ${error.message}") },
+            onSuccess = { customerInfo ->
+                Log.d(TAG, "RC user logged out")
+                cachedCustomerInfo = customerInfo
+                updateSubscriptionState(customerInfo)
+            }
+        )
+    }
+
+    /**
+     * Initialize: fetch offerings (packages) and check existing entitlements
      */
     fun initialize(onReady: () -> Unit = {}) {
-        billingClient = BillingClient.newBuilder(context)
-            .setListener { billingResult, purchases ->
-                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
-                    handlePurchases(purchases)
-                }
-            }
-            .enablePendingPurchases(
-                PendingPurchasesParams.newBuilder()
-                    .enableOneTimeProducts()
-                    .enablePrepaidPlans()
-                    .build()
-            )
-            .build()
-
-        startConnection(onReady)
-    }
-
-    private fun startConnection(onReady: () -> Unit) {
-        billingClient?.startConnection(object : BillingClientStateListener {
-            override fun onBillingSetupFinished(billingResult: BillingResult) {
-                if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                    Log.d(TAG, "Billing client connected")
-                    querySubscriptions()
-                    checkExistingSubscriptions()
-                    onReady()
-                } else {
-                    Log.e(TAG, "Billing setup failed: ${billingResult.debugMessage}")
-                }
-            }
-
-            override fun onBillingServiceDisconnected() {
-                Log.w(TAG, "Billing service disconnected")
-                // Retry connection
-            }
-        })
-    }
-
-    /**
-     * Query available subscription products from Play Store
-     */
-    private fun querySubscriptions() {
-        val productList = listOf(
-            QueryProductDetailsParams.Product.newBuilder()
-                .setProductId(MONTHLY_SUB_ID)
-                .setProductType(BillingClient.ProductType.SUBS)
-                .build(),
-            QueryProductDetailsParams.Product.newBuilder()
-                .setProductId(YEARLY_SUB_ID)
-                .setProductType(BillingClient.ProductType.SUBS)
-                .build()
-        )
-
-        val params = QueryProductDetailsParams.newBuilder()
-            .setProductList(productList)
-            .build()
-
-        billingClient?.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
-            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                _products.value = productDetailsList
-                Log.d(TAG, "Products loaded: ${productDetailsList.size}")
-            } else {
-                Log.e(TAG, "Failed to query products: ${billingResult.debugMessage}")
-            }
+        // Emit cached subscribed state immediately so UI doesn't flicker on startup
+        if (prefs.getBoolean(KEY_IS_SUBSCRIBED, false)) {
+            _subscriptionState.value = SubscriptionState.Subscribed(SubscriptionType.MONTHLY, null)
+        } else {
+            _subscriptionState.value = SubscriptionState.Loading
         }
+
+        // Listen for RC customer info changes (e.g. purchase via PaywallDialog)
+        Purchases.sharedInstance.updatedCustomerInfoListener =
+            com.revenuecat.purchases.interfaces.UpdatedCustomerInfoListener { customerInfo ->
+                Log.d(TAG, "RC customer info updated")
+                cachedCustomerInfo = customerInfo
+                updateSubscriptionState(customerInfo)
+            }
+
+        // Load available packages from RC current offering
+        Purchases.sharedInstance.getOfferingsWith(
+            onError = { error ->
+                Log.e(TAG, "RC offerings error: ${error.message}")
+                onReady()
+            },
+            onSuccess = { offerings ->
+                val packages = offerings.current?.availablePackages ?: emptyList()
+                _products.value = packages
+                Log.d(TAG, "RC packages loaded: ${packages.size}")
+                // Now check entitlements
+                checkExistingSubscriptions()
+                onReady()
+            }
+        )
     }
 
     /**
-     * Check if user has existing active subscriptions
+     * Check if user has existing active entitlements via RC
      */
     fun checkExistingSubscriptions() {
-        _subscriptionState.value = SubscriptionState.Loading
-
-        val params = QueryPurchasesParams.newBuilder()
-            .setProductType(BillingClient.ProductType.SUBS)
-            .build()
-
-        billingClient?.queryPurchasesAsync(params) { billingResult, purchases ->
-            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                handlePurchases(purchases)
-            } else {
-                Log.e(TAG, "Failed to query purchases: ${billingResult.debugMessage}")
+        Purchases.sharedInstance.getCustomerInfoWith(
+            onError = { error ->
+                Log.e(TAG, "RC customer info error: ${error.message}")
                 _subscriptionState.value = SubscriptionState.Free
+            },
+            onSuccess = { customerInfo ->
+                cachedCustomerInfo = customerInfo
+                updateSubscriptionState(customerInfo)
             }
-        }
+        )
     }
 
     /**
-     * Handle purchase updates
+     * Derive subscription state from RC CustomerInfo
      */
-    private fun handlePurchases(purchases: List<Purchase>) {
-        if (purchases.isEmpty()) {
-            _subscriptionState.value = SubscriptionState.Free
-            return
-        }
-
-        // Find active subscription
-        val activePurchase = purchases.find { purchase ->
-            purchase.purchaseState == Purchase.PurchaseState.PURCHASED &&
-                    (purchase.products.contains(MONTHLY_SUB_ID) || purchase.products.contains(YEARLY_SUB_ID))
-        }
-
-        if (activePurchase != null) {
-            // Acknowledge purchase if not already acknowledged
-            if (!activePurchase.isAcknowledged) {
-                acknowledgePurchase(activePurchase)
-            }
-
+    private fun updateSubscriptionState(customerInfo: CustomerInfo) {
+        val entitlement = customerInfo.entitlements[ENTITLEMENT_PRO]
+        if (entitlement?.isActive == true) {
+            val productId = entitlement.productIdentifier
             val type = when {
-                activePurchase.products.contains(YEARLY_SUB_ID) -> SubscriptionType.YEARLY
-                activePurchase.products.contains(MONTHLY_SUB_ID) -> SubscriptionType.MONTHLY
+                productId.contains("yearly") || productId.contains("annual") -> SubscriptionType.YEARLY
                 else -> SubscriptionType.MONTHLY
             }
-
-            _subscriptionState.value = SubscriptionState.Subscribed(
-                type = type,
-                expiryDate = null // Would need to call Google API for actual expiry
-            )
-
-            // Track subscription for analytics
-            val productId = if (type == SubscriptionType.YEARLY) YEARLY_SUB_ID else MONTHLY_SUB_ID
-            val price = getFormattedPrice(productId)
-            val currency = getPriceCurrencyCode(productId)
-            AnalyticsService.trackSubscriptionBilled(productId, price, currency)
-
-            // Track on Firebase and TikTok for ad attribution
-            FirebaseAnalyticsHelper.logPurchaseCompleted(productId, price.replace("[^\\d.]".toRegex(), "").toDoubleOrNull())
-            TikTokHelper.trackEvent("purchase_success")
-
-            // Sync with server
-            syncWithServer(activePurchase)
-
-            Log.d(TAG, "Active subscription found: $type")
+            val expiryMs = entitlement.expirationDate?.time
+            _subscriptionState.value = SubscriptionState.Subscribed(type, expiryMs)
+            prefs.edit().putBoolean(KEY_IS_SUBSCRIBED, true).apply()
+            Log.d(TAG, "RC entitlement active: $productId, type=$type")
+            // Sync with backend so it knows the subscription is active
+            syncWithServer()
         } else {
             _subscriptionState.value = SubscriptionState.Free
+            prefs.edit().putBoolean(KEY_IS_SUBSCRIBED, false).apply()
+            Log.d(TAG, "RC entitlement not active")
         }
     }
 
     /**
-     * Acknowledge a purchase
-     */
-    private fun acknowledgePurchase(purchase: Purchase) {
-        val params = AcknowledgePurchaseParams.newBuilder()
-            .setPurchaseToken(purchase.purchaseToken)
-            .build()
-
-        billingClient?.acknowledgePurchase(params) { billingResult ->
-            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
-                Log.d(TAG, "Purchase acknowledged")
-            } else {
-                Log.e(TAG, "Failed to acknowledge: ${billingResult.debugMessage}")
-            }
-        }
-    }
-
-    /**
-     * Launch subscription purchase flow
+     * Launch subscription purchase flow via RevenueCat
      */
     fun launchSubscriptionFlow(
         activity: Activity,
@@ -281,84 +245,102 @@ class SubscriptionManager(private val context: Context) {
         onSuccess: () -> Unit = {},
         onError: (String) -> Unit = {}
     ) {
-        val product = _products.value.find { it.productId == productId }
+        val pkg = _products.value.find { it.product.id == productId || it.product.id.startsWith("$productId:") }
 
-        if (product == null) {
+        if (pkg == null) {
+            Log.e(TAG, "RC package not found for productId=$productId")
             onError("Product not found")
             return
         }
 
-        val offerToken = product.subscriptionOfferDetails?.firstOrNull()?.offerToken
+        Purchases.sharedInstance.purchaseWith(
+            PurchaseParams.Builder(activity, pkg).build(),
+            onError = { error, userCancelled ->
+                if (!userCancelled) {
+                    Log.e(TAG, "RC purchase error: ${error.message}")
+                    onError(error.message)
+                }
+            },
+            onSuccess = { storeTransaction, customerInfo ->
+                Log.d(TAG, "RC purchase success: ${storeTransaction?.productIds}")
+                cachedCustomerInfo = customerInfo
+                updateSubscriptionState(customerInfo)
 
-        if (offerToken == null) {
-            onError("No offer available")
-            return
-        }
+                // Analytics
+                val price = getFormattedPrice(productId)
+                val currency = getPriceCurrencyCode(productId)
+                AnalyticsService.trackSubscriptionBilled(productId, price, currency)
+                FirebaseAnalyticsHelper.logPurchaseCompleted(
+                    productId,
+                    price.replace("[^\\d.]".toRegex(), "").toDoubleOrNull()
+                )
+                TikTokHelper.trackEvent("purchase_success")
 
-        val productDetailsParamsList = listOf(
-            BillingFlowParams.ProductDetailsParams.newBuilder()
-                .setProductDetails(product)
-                .setOfferToken(offerToken)
-                .build()
+                // Sync with server
+                syncWithServer(productId, storeTransaction?.orderId, storeTransaction?.purchaseTime)
+
+                onSuccess()
+            }
         )
+    }
 
-        val billingFlowParams = BillingFlowParams.newBuilder()
-            .setProductDetailsParamsList(productDetailsParamsList)
-            .build()
-
-        val billingResult = billingClient?.launchBillingFlow(activity, billingFlowParams)
-
-        if (billingResult?.responseCode == BillingClient.BillingResponseCode.OK) {
-            Log.d(TAG, "Billing flow launched")
-            onSuccess()
-        } else {
-            onError(billingResult?.debugMessage ?: "Failed to launch billing flow")
-        }
+    /**
+     * Restore purchases via RevenueCat
+     */
+    fun restorePurchases(onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        Purchases.sharedInstance.restorePurchasesWith(
+            onError = { error ->
+                Log.e(TAG, "RC restore error: ${error.message}")
+                onError(error.message)
+            },
+            onSuccess = { customerInfo ->
+                Log.d(TAG, "RC restore success")
+                cachedCustomerInfo = customerInfo
+                updateSubscriptionState(customerInfo)
+                refreshAccessStatus()
+                onSuccess()
+            }
+        )
     }
 
     /**
      * Check if user is subscribed
      */
     fun isSubscribed(): Boolean {
-        return _subscriptionState.value is SubscriptionState.Subscribed
+        return _subscriptionState.value is SubscriptionState.Subscribed ||
+                cachedCustomerInfo?.entitlements?.get(ENTITLEMENT_PRO)?.isActive == true ||
+                prefs.getBoolean(KEY_IS_SUBSCRIBED, false)
     }
 
     /**
-     * Get formatted subscription price from product details
+     * Get formatted price from RC package
      */
     fun getFormattedPrice(productId: String): String {
-        val product = _products.value.find { it.productId == productId }
-        return product?.subscriptionOfferDetails?.firstOrNull()
-            ?.pricingPhases?.pricingPhaseList?.firstOrNull()
-            ?.formattedPrice ?: ""
+        return _products.value.find { it.product.id == productId || it.product.id.startsWith("$productId:") }
+            ?.product?.price?.formatted ?: ""
     }
 
     /**
      * Get price in micros for calculations
      */
     fun getPriceAmountMicros(productId: String): Long {
-        val product = _products.value.find { it.productId == productId }
-        return product?.subscriptionOfferDetails?.firstOrNull()
-            ?.pricingPhases?.pricingPhaseList?.firstOrNull()
-            ?.priceAmountMicros ?: 0L
+        return _products.value.find { it.product.id == productId || it.product.id.startsWith("$productId:") }
+            ?.product?.price?.amountMicros ?: 0L
     }
 
     /**
      * Get currency code for the product
      */
     fun getPriceCurrencyCode(productId: String): String {
-        val product = _products.value.find { it.productId == productId }
-        return product?.subscriptionOfferDetails?.firstOrNull()
-            ?.pricingPhases?.pricingPhaseList?.firstOrNull()
-            ?.priceCurrencyCode ?: "USD"
+        return _products.value.find { it.product.id == productId || it.product.id.startsWith("$productId:") }
+            ?.product?.price?.currencyCode ?: "USD"
     }
 
     /**
-     * Get raw price as Double for calculations (e.g., applying discounts)
+     * Get raw price as Double for calculations
      */
     fun getRawPrice(productId: String): Double {
-        val micros = getPriceAmountMicros(productId)
-        return micros / 1_000_000.0
+        return getPriceAmountMicros(productId) / 1_000_000.0
     }
 
     /**
@@ -383,15 +365,13 @@ class SubscriptionManager(private val context: Context) {
         if (yearlyMicros == 0L) return ""
 
         val currencyCode = getPriceCurrencyCode(YEARLY_SUB_ID)
-        val monthlyMicros = yearlyMicros / 12
-        val monthlyAmount = monthlyMicros / 1_000_000.0
+        val monthlyAmount = yearlyMicros / 12 / 1_000_000.0
 
         return try {
             val format = NumberFormat.getCurrencyInstance()
             format.currency = Currency.getInstance(currencyCode)
             format.format(monthlyAmount)
         } catch (e: Exception) {
-            // Fallback formatting
             String.format("%.2f", monthlyAmount)
         }
     }
@@ -404,15 +384,13 @@ class SubscriptionManager(private val context: Context) {
         if (yearlyMicros == 0L) return ""
 
         val currencyCode = getPriceCurrencyCode(YEARLY_SUB_ID)
-        val weeklyMicros = yearlyMicros / 52
-        val weeklyAmount = weeklyMicros / 1_000_000.0
+        val weeklyAmount = yearlyMicros / 52 / 1_000_000.0
 
         return try {
             val format = NumberFormat.getCurrencyInstance()
             format.currency = Currency.getInstance(currencyCode)
             format.format(weeklyAmount)
         } catch (e: Exception) {
-            // Fallback formatting
             String.format("%.2f", weeklyAmount)
         }
     }
@@ -428,13 +406,11 @@ class SubscriptionManager(private val context: Context) {
 
         val yearlyIfMonthly = monthlyMicros * 12
         val savings = yearlyIfMonthly - yearlyMicros
-        val savingsPercent = (savings.toDouble() / yearlyIfMonthly.toDouble() * 100).toInt()
-
-        return savingsPercent
+        return (savings.toDouble() / yearlyIfMonthly.toDouble() * 100).toInt()
     }
 
     /**
-     * Check if prices are loaded from Play Store
+     * Check if prices are loaded from RC
      */
     fun arePricesLoaded(): Boolean {
         return _products.value.isNotEmpty() &&
@@ -444,64 +420,71 @@ class SubscriptionManager(private val context: Context) {
 
     // ==================== FREE TIER LIMIT TRACKING ====================
 
-    /**
-     * Get the lifetime count of notebooks created (never decreases)
-     */
-    fun getLifetimeNotebooksCreated(): Int {
-        return prefs.getInt(KEY_LIFETIME_NOTEBOOKS, 0)
-    }
+    fun getLifetimeNotebooksCreated(): Int = prefs.getInt(KEY_LIFETIME_NOTEBOOKS, 0)
 
-    /**
-     * Increment the lifetime notebook counter (call this on every notebook creation)
-     */
     fun incrementLifetimeNotebooks() {
         val current = getLifetimeNotebooksCreated()
         prefs.edit().putInt(KEY_LIFETIME_NOTEBOOKS, current + 1).apply()
         Log.d(TAG, "Lifetime notebooks incremented to ${current + 1}")
     }
 
-    /**
-     * Check if user can create a new notebook
-     * Returns true if subscribed OR hasn't hit lifetime limit
-     */
     fun canCreateNotebook(): Boolean {
-        if (isSubscribed()) {
-            return true
-        }
+        if (isSubscribed()) return true
         val lifetime = getLifetimeNotebooksCreated()
-        val canCreate = lifetime < FREE_NOTEBOOK_LIMIT
-        Log.d(TAG, "canCreateNotebook: lifetime=$lifetime, limit=$FREE_NOTEBOOK_LIMIT, canCreate=$canCreate")
-        return canCreate
+        return lifetime < FREE_NOTEBOOK_LIMIT
     }
 
-    /**
-     * Get remaining free notebooks
-     */
     fun getRemainingFreeNotebooks(): Int {
-        val lifetime = getLifetimeNotebooksCreated()
-        return (FREE_NOTEBOOK_LIMIT - lifetime).coerceAtLeast(0)
+        return (FREE_NOTEBOOK_LIMIT - getLifetimeNotebooksCreated()).coerceAtLeast(0)
+    }
+
+    // ==================== APP OPEN TRACKING (HARD PAYWALL) ====================
+
+    /**
+     * Get the total number of app opens recorded.
+     */
+    fun getAppOpenCount(): Int = prefs.getInt(KEY_APP_OPEN_COUNT, 0)
+
+    /**
+     * Increment the app open counter. Call once per cold-start session.
+     */
+    fun incrementAppOpenCount() {
+        val current = getAppOpenCount()
+        prefs.edit().putInt(KEY_APP_OPEN_COUNT, current + 1).apply()
+        Log.d(TAG, "App open count incremented to ${current + 1}")
     }
 
     /**
-     * Clean up resources
+     * Returns true when the user has exceeded the free open limit
+     * and is NOT subscribed, meaning the hard paywall should be shown.
+     */
+    fun shouldShowHardPaywall(): Boolean {
+        if (isSubscribed()) return false
+        return getAppOpenCount() > FREE_OPEN_LIMIT
+    }
+
+    /**
+     * No-op — RC handles its own connection lifecycle
      */
     fun cleanup() {
-        billingClient?.endConnection()
+        // RC SDK manages its own lifecycle
     }
 
     // ==================== SERVER SYNC ====================
 
     /**
-     * Sync subscription status with server
-     * Call this after a successful purchase or periodically to keep server in sync
+     * Sync subscription status with server after a purchase
      */
-    fun syncWithServer(purchase: Purchase? = null) {
+    fun syncWithServer(
+        productId: String? = null,
+        orderId: String? = null,
+        purchaseTimeMs: Long? = null
+    ) {
         scope.launch {
             try {
                 val token = authManager?.getFreshToken() ?: return@launch
 
-                // Determine product ID and type
-                val productId = purchase?.products?.firstOrNull()
+                val resolvedProductId = productId
                     ?: if (isSubscribed()) {
                         when ((_subscriptionState.value as? SubscriptionState.Subscribed)?.type) {
                             SubscriptionType.YEARLY -> YEARLY_SUB_ID
@@ -510,33 +493,29 @@ class SubscriptionManager(private val context: Context) {
                         }
                     } else null
 
-                if (productId == null) {
+                if (resolvedProductId == null) {
                     Log.d(TAG, "No subscription to sync")
                     return@launch
                 }
 
                 val syncRequest = SubscriptionSyncRequest(
-                    productId = productId,
+                    productId = resolvedProductId,
                     platform = "android",
                     status = if (isSubscribed()) "active" else "cancelled",
-                    transactionId = purchase?.orderId,
-                    originalTransactionId = purchase?.orderId,
-                    purchaseDate = purchase?.purchaseTime?.let { isoFormatter.format(Date(it)) },
-                    isTrial = false, // Google Play doesn't expose trial status directly
+                    transactionId = orderId,
+                    originalTransactionId = orderId,
+                    purchaseDate = purchaseTimeMs?.let { isoFormatter.format(Date(it)) },
+                    isTrial = false,
                     autoRenewEnabled = true,
-                    priceAmount = getFormattedPrice(productId).replace(Regex("[^0-9.]"), ""),
-                    priceCurrency = getPriceCurrencyCode(productId),
+                    priceAmount = getFormattedPrice(resolvedProductId).replace(Regex("[^0-9.]"), ""),
+                    priceCurrency = getPriceCurrencyCode(resolvedProductId),
                     deviceId = deviceId
                 )
 
-                val response = RetrofitClient.apiService.syncSubscription(
-                    "Bearer $token",
-                    syncRequest
-                )
+                val response = RetrofitClient.apiService.syncSubscription("Bearer $token", syncRequest)
 
                 if (response.isSuccessful && response.body()?.success == true) {
                     Log.d(TAG, "Subscription synced with server successfully")
-                    // Refresh access status after sync
                     refreshAccessStatus()
                 } else {
                     Log.e(TAG, "Failed to sync subscription: ${response.errorBody()?.string()}")
@@ -548,15 +527,14 @@ class SubscriptionManager(private val context: Context) {
     }
 
     /**
-     * Refresh access status from server
-     * This is the authoritative check for what features the user can access
+     * Refresh access status from server (authoritative feature access check)
      */
     fun refreshAccessStatus() {
         scope.launch {
             try {
                 val token = authManager?.getFreshToken() ?: return@launch
 
-                // First, check trial status with device ID for abuse prevention
+                // Check trial abuse with device ID
                 try {
                     val trialResponse = RetrofitClient.apiService.checkTrialWithDevice(
                         "Bearer $token",
@@ -565,20 +543,18 @@ class SubscriptionManager(private val context: Context) {
                     if (trialResponse.isSuccessful) {
                         val trialData = trialResponse.body()?.data
                         _deviceTrialExpired.value = trialData?.deviceTrialUsed == true && trialData.trialExpired
-                        Log.d(TAG, "📱 Device trial check: used=${trialData?.deviceTrialUsed}, expired=${trialData?.trialExpired}")
+                        Log.d(TAG, "Device trial check: used=${trialData?.deviceTrialUsed}, expired=${trialData?.trialExpired}")
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error checking trial with device", e)
                 }
 
-                // Then get full access status
                 val response = RetrofitClient.apiService.getAccessStatus("Bearer $token")
 
                 if (response.isSuccessful) {
                     val accessData = response.body()?.data
                     _serverAccessStatus.value = accessData
 
-                    // Update local subscription state based on server response
                     if (accessData?.isSubscribed == true || accessData?.isInTrial == true) {
                         val type = when {
                             accessData.productId?.contains("yearly") == true -> SubscriptionType.YEARLY
@@ -587,7 +563,7 @@ class SubscriptionManager(private val context: Context) {
                         _subscriptionState.value = SubscriptionState.Subscribed(type, null)
                     }
 
-                    Log.d(TAG, "Access status refreshed: hasAccess=${accessData?.hasAccess}, isSubscribed=${accessData?.isSubscribed}")
+                    Log.d(TAG, "Access status refreshed: hasAccess=${accessData?.hasAccess}")
                 } else {
                     Log.e(TAG, "Failed to refresh access status: ${response.code()}")
                 }
@@ -597,50 +573,45 @@ class SubscriptionManager(private val context: Context) {
         }
     }
 
-    /**
-     * Check if user has server-verified access to premium features
-     */
-    fun hasServerVerifiedAccess(): Boolean {
-        return _serverAccessStatus.value?.hasAccess == true
-    }
+    fun hasServerVerifiedAccess(): Boolean = _serverAccessStatus.value?.hasAccess == true
 
     /**
-     * Check if user can use AI features (server-authoritative)
-     * SECURITY: Fail-closed - if server status unavailable, only allow if Google Play confirms subscription
+     * Check if user can use AI features (server-authoritative, fail-closed)
      */
     fun canUseAI(): Boolean {
-        // SECURITY: If device trial already expired, deny unless subscribed via Google Play
-        if (_deviceTrialExpired.value && !isSubscribed()) {
-            return false
-        }
-
+        if (_deviceTrialExpired.value && !isSubscribed()) return false
         val serverStatus = _serverAccessStatus.value
-        // Prefer server status if available
         if (serverStatus != null) {
             return serverStatus.features?.canUseAI == true || serverStatus.hasAccess
         }
-        // SECURITY: Only fall back to Google Play verified subscription (not local trial)
         return isSubscribed()
     }
 
     /**
-     * Check if user can generate podcasts (server-authoritative)
-     * SECURITY: Fail-closed - if server status unavailable, only allow if Google Play confirms subscription
+     * Check if user can generate podcasts (server-authoritative, fail-closed)
      */
     fun canGeneratePodcasts(): Boolean {
-        // SECURITY: If device trial already expired, deny unless subscribed via Google Play
-        if (_deviceTrialExpired.value && !isSubscribed()) {
-            return false
-        }
-
+        if (_deviceTrialExpired.value && !isSubscribed()) return false
         val serverStatus = _serverAccessStatus.value
-        // Prefer server status if available
         if (serverStatus != null) {
             return serverStatus.features?.canGeneratePodcasts == true ||
-                   serverStatus.isSubscribed ||
-                   serverStatus.isInTrial
+                    serverStatus.isSubscribed ||
+                    serverStatus.isInTrial
         }
-        // SECURITY: Only fall back to Google Play verified subscription (not local trial)
+        return isSubscribed()
+    }
+
+    /**
+     * Check if user can export notes (server-authoritative, fail-closed)
+     */
+    fun canExportNotes(): Boolean {
+        if (_deviceTrialExpired.value && !isSubscribed()) return false
+        val serverStatus = _serverAccessStatus.value
+        if (serverStatus != null) {
+            return serverStatus.features?.canExportNotes == true ||
+                    serverStatus.isSubscribed ||
+                    serverStatus.isInTrial
+        }
         return isSubscribed()
     }
 
@@ -665,10 +636,7 @@ class SubscriptionManager(private val context: Context) {
                     reason = reason
                 )
 
-                val response = RetrofitClient.apiService.recordSubscriptionEvent(
-                    "Bearer $token",
-                    request
-                )
+                val response = RetrofitClient.apiService.recordSubscriptionEvent("Bearer $token", request)
 
                 if (response.isSuccessful) {
                     Log.d(TAG, "Subscription event recorded: $eventType")

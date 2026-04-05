@@ -11,7 +11,7 @@ const FREE_TIER_LIMITS = {
   notesPerMonth: 3,           // Free users can create 3 notes per month
   aiGenerationsPerMonth: 5,   // Free users get 5 AI generations (summary, quiz, flashcards) per month
   podcastsPerMonth: 0,        // No podcasts for free tier
-  trialDays: 7                // 7-day trial period
+  trialDays: 0                // No auto-trial — trial only starts via explicit Apple/Google purchase
 };
 
 /**
@@ -347,7 +347,19 @@ async function getServerTrialStatus(userId, deviceId = null) {
   }
 
   if (!trialRecord || error) {
-    // No trial record - create one (first time user)
+    // No trial record — new user with no subscription and no trial
+    // Trial is only granted when the user explicitly starts one via Apple/Google purchase
+    // (server /sync endpoint is called with isTrial: true after StoreKit purchase)
+    if (FREE_TIER_LIMITS.trialDays === 0) {
+      return {
+        isInTrial: false,
+        daysRemaining: 0,
+        expiresAt: null,
+        trialExpired: false
+      };
+    }
+
+    // Legacy path: auto-create trial (only if trialDays > 0)
     const trialStart = now;
     const trialEnd = new Date(now.getTime() + FREE_TIER_LIMITS.trialDays * 24 * 60 * 60 * 1000);
 
@@ -361,7 +373,6 @@ async function getServerTrialStatus(userId, deviceId = null) {
         created_at: now.toISOString()
       }, { onConflict: 'user_id' });
 
-    // Also record device trial if device ID provided
     if (deviceId) {
       await supabase
         .from('device_trials')
@@ -378,7 +389,6 @@ async function getServerTrialStatus(userId, deviceId = null) {
       logger.info('New trial started with device tracking', { userId, deviceId });
     }
 
-    // Track metric
     await trackSubscriptionMetric(userId, deviceId, 'trial_started', 'ios', 'auto');
 
     return {
@@ -484,6 +494,9 @@ function getFeatureLimit(featureType) {
  * Middleware to block podcasts for free tier entirely
  */
 const requireSubscriptionForPodcast = async (req, res, next) => {
+  // Subscription gate temporarily disabled — allow all users to generate podcasts
+  return next();
+
   try {
     const userId = req.userId;
 

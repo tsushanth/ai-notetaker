@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">Laman Utama</string>
+    <string name="menu">Menu</string>
+    <string name="menu_language">Bahasa</string>
+    <string name="menu_upgrade_pro">Naik taraf ke Pro</string>
+    <string name="menu_manage_subscription">Urus Langganan</string>
+    <string name="menu_appearance">Penampilan</string>
+    <string name="menu_sign_out">Log Keluar</string>
+    <string name="menu_delete_account">Padam Akaun</string>
+    <string name="add">Tambah</string>
+    <string name="no_notes_yet">Tiada nota lagi</string>
+    <string name="tap_to_create_first_note">Ketik + untuk membuat nota pertama anda</string>
+    <string name="notes_count_format">%1$d daripada %2$d nota</string>
+    <string name="load_more_notes">Muat Lagi Nota</string>
+    <string name="error_loading_notes">Ralat memuatkan nota</string>
+    <string name="retry">Cuba Lagi</string>
+    <string name="account_deletion_requested">Permintaan pemadaman akaun diterima. Anda akan dilog keluar.</string>
+    <string name="error_delete_account">Gagal memadam akaun: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">Pilih Bahasa</string>
+    <string name="language_subtitle">Kandungan yang dijana AI akan dalam bahasa ini</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Batal</string>
+
+    <!-- Note Card -->
+    <string name="more">Lagi</string>
+    <string name="edit_title">Edit Tajuk</string>
+    <string name="delete">Padam</string>
+    <string name="delete_note">Padam Nota?</string>
+    <string name="delete_note_message">Adakah anda pasti mahu memadam \"%s\"? Tindakan ini tidak boleh dibatalkan.</string>
+    <string name="delete_note_detail_message">Adakah anda pasti mahu memadam nota ini? Tindakan ini tidak boleh dibatalkan.</string>
+    <string name="label_title">Tajuk</string>
+    <string name="save">Simpan</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">Rakam atau muat naik audio</string>
+    <string name="youtube_video">Video YouTube</string>
+    <string name="upload_document">Muat naik dokumen</string>
+    <string name="upload_document_subtitle">Sebarang PDF, DOCX, PPT, TXT, dll.!</string>
+    <string name="scan_text">Imbas Teks</string>
+    <string name="scan_text_subtitle">Sebarang imej dengan teks</string>
+    <string name="join_meeting">Sertai Mesyuarat</string>
+    <string name="join_meeting_subtitle">Rakam Zoom, Meet, Teams, Webex</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">Kembali</string>
+    <string name="more_options">Pilihan lain</string>
+    <string name="share">Kongsi</string>
+    <string name="share_note">Kongsi Nota</string>
+    <string name="tab_notes">Nota</string>
+    <string name="tab_chat">Sembang</string>
+    <string name="tab_quiz">Kuiz</string>
+    <string name="tab_cards">Kad</string>
+    <string name="formatting_notes">Memformat nota\u2026</string>
+    <string name="formatted">Diformatkan</string>
+    <string name="raw">Mentah</string>
+    <string name="source_label">Sumber: %s</string>
+    <string name="open_source_link">Buka sumber</string>
+    <string name="characters_words_format">%1$s aksara \u2022 %2$s perkataan</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">Video YouTube</string>
+    <string name="source_audio_recording">Rakaman Audio</string>
+    <string name="source_pdf_document">Dokumen PDF</string>
+    <string name="source_scanned_document">Dokumen Imbasan</string>
+    <string name="source_image">Imej</string>
+    <string name="source_text">Teks</string>
+
+    <!-- Summary Section -->
+    <string name="summary">Ringkasan</string>
+    <string name="generating_summary">Menjana ringkasan\u2026</string>
+    <string name="regenerate">Jana Semula</string>
+    <string name="no_summary_yet">Tiada ringkasan lagi</string>
+    <string name="generate_summary">Jana Ringkasan</string>
+    <string name="no_summary_available">Ringkasan tidak tersedia</string>
+    <string name="summary_length">Panjang Ringkasan</string>
+    <string name="create_summary_description">Buat ringkasan ringkas nota anda</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">Taip mesej\u2026</string>
+    <string name="send">Hantar</string>
+    <string name="voice_mode">Mod suara</string>
+    <string name="text_mode">Mod teks</string>
+    <string name="ask_about_notes">Tanya apa sahaja tentang nota anda</string>
+    <string name="ask_about_notes_description">Saya boleh membantu anda memahami, menganalisis, atau mencari maklumat tertentu dalam nota anda.</string>
+    <string name="suggested_questions">Soalan yang dicadangkan:</string>
+    <string name="chat_suggestion_summarize">Ringkaskan perkara utama</string>
+    <string name="chat_suggestion_explain">Terangkan konsep utama</string>
+    <string name="chat_suggestion_test">Uji saya tentang bahan ini</string>
+    <string name="listening">Mendengar\u2026</string>
+    <string name="tap_to_speak">Ketik untuk bercakap</string>
+    <string name="speaking">Bercakap\u2026</string>
+    <string name="stop_speaking">Berhenti bercakap</string>
+    <string name="could_not_open_link">Tidak dapat membuka pautan</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">Jana Kuiz</string>
+    <string name="generate_quiz_description">Buat kuiz untuk menguji pengetahuan anda</string>
+    <string name="generating_quiz">Menjana kuiz\u2026</string>
+    <string name="question_count_format">Soalan %1$d daripada %2$d</string>
+    <string name="check_answer">Semak Jawapan</string>
+    <string name="next_question">Soalan Seterusnya</string>
+    <string name="correct">Betul!</string>
+    <string name="incorrect">Salah</string>
+    <string name="correct_answer_is">Jawapan yang betul ialah: %s</string>
+    <string name="quiz_complete">Kuiz Selesai!</string>
+    <string name="quiz_score_format">Anda mendapat %1$d daripada %2$d</string>
+    <string name="try_again">Cuba Lagi</string>
+    <string name="new_quiz">Kuiz Baru</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">Jana Kad Imbasan</string>
+    <string name="generate_flashcards_description">Buat kad imbasan untuk belajar</string>
+    <string name="generating_flashcards">Menjana kad imbasan\u2026</string>
+    <string name="flashcard_count_format">Kad %1$d daripada %2$d</string>
+    <string name="tap_to_flip">Ketik untuk terbalikkan</string>
+    <string name="previous">Sebelumnya</string>
+    <string name="next">Seterusnya</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">Selamat Kembali</string>
+    <string name="sign_in_to_continue">Log masuk untuk meneruskan</string>
+    <string name="continue_with_google">Teruskan dengan Google</string>
+    <string name="or_divider">  atau  </string>
+    <string name="email">E-mel</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">Kata Laluan</string>
+    <string name="enter_password">Masukkan kata laluan anda</string>
+    <string name="hide_password">Sembunyikan kata laluan</string>
+    <string name="show_password">Tunjukkan kata laluan</string>
+    <string name="sign_in">Log Masuk</string>
+    <string name="forgot_password">Lupa Kata Laluan?</string>
+    <string name="no_account">Tiada akaun? </string>
+    <string name="sign_up">Daftar</string>
+    <string name="error_invalid_credentials">E-mel atau kata laluan salah. Sila cuba lagi.</string>
+    <string name="error_email_not_confirmed">Sila sahkan e-mel anda sebelum log masuk.</string>
+    <string name="error_user_not_found">Tiada akaun ditemui dengan e-mel ini.</string>
+    <string name="error_network">Ralat rangkaian. Sila semak sambungan anda.</string>
+    <string name="error_no_google_account">Akaun Google tidak ditemui. Sila tambah akaun Google ke peranti anda.</string>
+    <string name="error_google_signin_failed">Log masuk Google gagal</string>
+    <string name="error_email_required">Sila masukkan e-mel anda</string>
+    <string name="error_invalid_email">Sila masukkan alamat e-mel yang sah</string>
+    <string name="error_password_required">Sila masukkan kata laluan anda</string>
+    <string name="error_password_too_short">Kata laluan mestilah sekurang-kurangnya 6 aksara</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">E-mel Dihantar!</string>
+    <string name="reset_password">Tetapkan Semula Kata Laluan</string>
+    <string name="reset_email_sent">Kami telah menghantar pautan tetapan semula kata laluan ke:</string>
+    <string name="check_inbox">Sila semak peti masuk dan folder spam anda.</string>
+    <string name="reset_password_instruction">Masukkan alamat e-mel anda dan kami akan menghantar pautan untuk menetapkan semula kata laluan anda.</string>
+    <string name="done">Selesai</string>
+    <string name="send_reset_link">Hantar Pautan Tetapan Semula</string>
+    <string name="error_enter_valid_email">Sila masukkan e-mel yang sah</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">Buat Akaun</string>
+    <string name="sign_up_subtitle">Daftar untuk bermula</string>
+    <string name="at_least_6_characters">Sekurang-kurangnya 6 aksara</string>
+    <string name="confirm_password">Sahkan Kata Laluan</string>
+    <string name="reenter_password">Masukkan semula kata laluan</string>
+    <string name="already_have_account">Sudah ada akaun? </string>
+    <string name="error_valid_email">Sila masukkan e-mel yang sah</string>
+    <string name="error_enter_password">Sila masukkan kata laluan</string>
+    <string name="error_confirm_password">Sila sahkan kata laluan anda</string>
+    <string name="error_passwords_mismatch">Kata laluan tidak sepadan</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">Rakam Audio</string>
+    <string name="record_audio_subtitle">Rakam kuliah, mesyuarat, atau nota.\nKami akan transkripsi dan mencipta bahan pembelajaran.</string>
+    <string name="grant_microphone_permission">Benarkan Kebenaran Mikrofon</string>
+    <string name="start_recording">Mula Merakam</string>
+    <string name="tap_to_start_recording">Ketik untuk mula merakam</string>
+    <string name="recording_status">Merakam\u2026</string>
+    <string name="paused">Dijeda</string>
+    <string name="discard">Buang</string>
+    <string name="pause">Jeda</string>
+    <string name="resume">Sambung</string>
+    <string name="stop">Berhenti</string>
+    <string name="recording_complete">Rakaman Selesai</string>
+    <string name="duration_format">Tempoh: %s</string>
+    <string name="title_optional">Tajuk (pilihan)</string>
+    <string name="title_placeholder">cth., Kuliah Biologi</string>
+    <string name="process_recording">Proses Rakaman</string>
+    <string name="discard_recording">Buang Rakaman</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">Memuat naik audio</string>
+    <string name="step_transcribing_audio">Mentranskripsi audio</string>
+    <string name="step_identifying_speakers">Mengenal pasti penutur</string>
+    <string name="step_analyzing_content">Menganalisis kandungan</string>
+    <string name="step_summarizing_key_points">Meringkaskan perkara utama</string>
+    <string name="step_finalizing_note">Menyelesaikan nota anda</string>
+    <string name="upload_complete_safe">Muat naik selesai. Anda boleh keluar dengan selamat.</string>
+    <string name="processing_info">Nota biasanya mengambil beberapa minit untuk dijana. Anda boleh meninggalkan skrin ini dan kembali kemudian.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">Nota anda sedia!</string>
+    <string name="note_ready_description">Kami telah mentranskripsi rakaman anda dan mencipta bahan pembelajaran.</string>
+    <string name="view_note">Lihat Nota</string>
+    <string name="go_to_home">Ke Laman Utama</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">Sesuatu tidak kena</string>
+    <string name="try_again_button">Cuba Lagi</string>
+    <string name="go_back">Kembali</string>
+    <string name="error_not_authenticated">Tidak disahkan</string>
+    <string name="error_upload_failed">Gagal memuat naik audio</string>
+    <string name="error_transcribe_failed">Gagal mentranskripsi audio</string>
+    <string name="error_start_recording">Gagal memulakan rakaman: %s</string>
+    <string name="error_stop_recording">Gagal menghentikan rakaman: %s</string>
+    <string name="error_processing_failed">Pemprosesan gagal</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">Tutup</string>
+    <string name="unlock_pro">Buka Kunci Scribe AI Pro</string>
+    <string name="unlimited_access">Dapatkan akses tanpa had ke semua ciri</string>
+    <string name="feature_unlimited_notes">Nota tanpa had dari mana-mana sumber</string>
+    <string name="feature_ai_summaries">Ringkasan &amp; kuiz dikuasakan AI</string>
+    <string name="feature_flashcards">Penjanaan kad imbasan</string>
+    <string name="feature_ai_chat">Sembang AI dengan nota anda</string>
+    <string name="feature_mind_map">Visualisasi peta minda</string>
+    <string name="feature_podcast">Penjanaan podcast audio</string>
+    <string name="plan_yearly">Tahunan</string>
+    <string name="plan_monthly">Bulanan</string>
+    <string name="per_month_format">%s/bln</string>
+    <string name="save_percent_format">Jimat %d%%</string>
+    <string name="loading_plans">Memuatkan pelan\u2026</string>
+    <string name="continue_button">Teruskan</string>
+    <string name="restore_purchases">Pulihkan Pembelian</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">Adakah anda pasti?</string>
+    <string name="lose_access">Anda akan kehilangan akses ke:</string>
+    <string name="stat_notes_created">nota yang dibuat</string>
+    <string name="stat_quizzes_generated">kuiz yang dijana</string>
+    <string name="stat_flashcards_created">kad imbasan yang dibuat</string>
+    <string name="stat_audio_hours">jam kandungan audio</string>
+    <string name="stay_signed_in">Kekal Log Masuk</string>
+    <string name="sign_out_anyway">Log Keluar Juga</string>
+    <string name="delete_account">Padam Akaun?</string>
+    <string name="delete_account_warning">Ini tidak boleh dibatalkan.\nAnda akan kehilangan secara kekal:</string>
+    <string name="keep_my_account">Simpan Akaun Saya</string>
+    <string name="delete_anyway">Padam Juga</string>
+    <string name="before_you_go">Sebelum anda pergi\u2026</string>
+    <string name="feedback_reason">Bantu kami menambah baik dengan memberitahu sebab anda pergi</string>
+    <string name="delete_my_account">Padam Akaun Saya</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Menikmati Scribe AI?</string>
+    <string name="review_subtitle">Adakah Scribe AI membantu anda belajar lebih cepat dan lebih baik?</string>
+    <string name="yes_love_it">Ya, saya suka!</string>
+    <string name="not_yet">Belum lagi</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">URL YouTube</string>
+    <string name="paste_youtube_url">Tampal URL video YouTube</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">Tampal Dari Papan Keratan</string>
+    <string name="create_note">Buat Nota</string>
+    <string name="invalid_youtube_url">Sila masukkan URL YouTube yang sah</string>
+    <string name="creating_note">Membuat nota\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">Muat Naik Dokumen</string>
+    <string name="tap_to_select">Ketik untuk memilih fail</string>
+    <string name="supported_formats">PDF, DOCX, PPT, TXT disokong</string>
+    <string name="file_selected">Fail dipilih</string>
+    <string name="uploading">Memuat naik\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">Imbas Dokumen</string>
+    <string name="grant_permission">Beri Kebenaran</string>
+    <string name="scan_another_page">Imbas Halaman Lain</string>
+    <string name="save_with_count">Simpan (%d)</string>
+    <string name="dismiss">Tutup</string>
+    <string name="scanned_pages_format">%d halaman diimbas</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">Sertai Mesyuarat</string>
+    <string name="meeting_link">Pautan Mesyuarat</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">Tajuk (pilihan)</string>
+    <string name="meeting_title_placeholder">cth., Standup Pasukan</string>
+    <string name="send_bot">Hantar Bot</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">Bot Mesyuarat</string>
+    <string name="no_meetings">Tiada mesyuarat lagi</string>
+    <string name="no_meetings_hint">Sertai mesyuarat untuk dirakam dan ditranskripsi</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">Pilih Tema</string>
+    <string name="theme_system">Lalai Sistem</string>
+    <string name="theme_light">Cerah</string>
+    <string name="theme_dark">Gelap</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">Token Nyahpepijat</string>
+    <string name="copy_token">Salin Token ke Papan Keratan</string>
+    <string name="token_copied">Token disalin!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">Memuatkan\u2026</string>
+    <string name="error_label">Ralat</string>
+    <string name="generate">Jana</string>
+
+    <!-- Language Picker -->
+    <string name="language">Bahasa</string>
+    <string name="language_picker_title">Pilih Bahasa</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

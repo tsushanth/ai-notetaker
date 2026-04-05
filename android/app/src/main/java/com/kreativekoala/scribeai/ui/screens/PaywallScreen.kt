@@ -17,19 +17,23 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.utils.SubscriptionManager
+import com.revenuecat.purchases.Package
 
 @Composable
 fun PaywallScreen(
     subscriptionManager: SubscriptionManager,
     onDismiss: () -> Unit,
-    onSubscribe: () -> Unit
+    onSubscribe: () -> Unit,
+    dismissable: Boolean = true
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -42,8 +46,12 @@ fun PaywallScreen(
     val savingsPercent = subscriptionManager.getSavingsPercentage()
 
     Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        onDismissRequest = { if (dismissable) onDismiss() },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            dismissOnBackPress = dismissable,
+            dismissOnClickOutside = dismissable
+        )
     ) {
         Box(
             modifier = Modifier
@@ -56,13 +64,15 @@ fun PaywallScreen(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Close button
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
+                // Close button (hidden for hard paywall)
+                if (dismissable) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        IconButton(onClick = onDismiss) {
+                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
+                        }
                     }
                 }
 
@@ -70,7 +80,7 @@ fun PaywallScreen(
 
                 // Title
                 Text(
-                    text = "Unlock Scribe AI Pro",
+                    text = stringResource(R.string.unlock_pro),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
@@ -79,7 +89,7 @@ fun PaywallScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Get unlimited access to all features",
+                    text = stringResource(R.string.unlimited_access),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -89,12 +99,12 @@ fun PaywallScreen(
 
                 // Features list
                 val features = listOf(
-                    "Unlimited notes from any source",
-                    "AI-powered summaries & quizzes",
-                    "Flashcard generation",
-                    "AI chat with your notes",
-                    "Mind map visualization",
-                    "Audio podcast generation"
+                    stringResource(R.string.feature_unlimited_notes),
+                    stringResource(R.string.feature_ai_summaries),
+                    stringResource(R.string.feature_flashcards),
+                    stringResource(R.string.feature_ai_chat),
+                    stringResource(R.string.feature_mind_map),
+                    stringResource(R.string.feature_podcast)
                 )
 
                 features.forEach { feature ->
@@ -122,10 +132,10 @@ fun PaywallScreen(
 
                 // Yearly plan
                 PlanCard(
-                    title = "Yearly",
+                    title = stringResource(R.string.plan_yearly),
                     price = yearlyPrice,
-                    perMonth = if (yearlyPerMonth.isNotEmpty()) "$yearlyPerMonth/mo" else "",
-                    badge = if (savingsPercent > 0) "Save ${savingsPercent.toInt()}%" else null,
+                    perMonth = if (yearlyPerMonth.isNotEmpty()) stringResource(R.string.per_month_format, yearlyPerMonth) else "",
+                    badge = if (savingsPercent > 0) stringResource(R.string.save_percent_format, savingsPercent.toInt()) else null,
                     isSelected = selectedPlan == "yearly",
                     onClick = { selectedPlan = "yearly" }
                 )
@@ -134,7 +144,7 @@ fun PaywallScreen(
 
                 // Monthly plan
                 PlanCard(
-                    title = "Monthly",
+                    title = stringResource(R.string.plan_monthly),
                     price = monthlyPrice,
                     perMonth = "",
                     badge = null,
@@ -171,7 +181,7 @@ fun PaywallScreen(
                     enabled = products.isNotEmpty()
                 ) {
                     Text(
-                        text = if (products.isEmpty()) "Loading plans..." else "Continue",
+                        text = if (products.isEmpty()) stringResource(R.string.loading_plans) else stringResource(R.string.continue_button),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -181,11 +191,13 @@ fun PaywallScreen(
 
                 // Restore / Terms
                 TextButton(onClick = {
-                    subscriptionManager.checkExistingSubscriptions()
-                    subscriptionManager.refreshAccessStatus()
+                    subscriptionManager.restorePurchases(
+                        onSuccess = { onSubscribe() },
+                        onError = { /* silently ignore */ }
+                    )
                 }) {
                     Text(
-                        text = "Restore Purchases",
+                        text = stringResource(R.string.restore_purchases),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

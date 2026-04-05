@@ -1,0 +1,455 @@
+/*
+  Localizable.strings (English - Base)
+  scribeai
+
+  Generated for internationalization.
+*/
+
+// MARK: - HomeView / Navigation
+"SCRIBE AI" = "SCRIBE AI";
+"Add Content" = "Add Content";
+"Record Audio" = "Record Audio";
+"Scan Document" = "Scan Document";
+"Upload PDF/Audio" = "Upload PDF/Audio";
+"YouTube Link" = "YouTube Link";
+"Join Meeting" = "Join Meeting";
+"Cancel" = "Cancel";
+
+// MARK: - LoginView
+"scribe ai" = "scribe ai";
+"Your AI-powered note-taking companion" = "Your AI-powered note-taking companion";
+"Email" = "Email";
+"Enter your email" = "Enter your email";
+"Password" = "Password";
+"Enter your password" = "Enter your password";
+"Sign In" = "Sign In";
+"OR" = "OR";
+"Continue with Apple" = "Continue with Apple";
+"Continue with Google" = "Continue with Google";
+"Don't have an account?" = "Don't have an account?";
+"Sign Up" = "Sign Up";
+
+// MARK: - SignUpView
+"Create Account" = "Create Account";
+"Join ScribeAI to start taking smart notes" = "Join ScribeAI to start taking smart notes";
+"Name" = "Name";
+"Enter your name" = "Enter your name";
+"Create a password" = "Create a password";
+"Confirm Password" = "Confirm Password";
+"Confirm your password" = "Confirm your password";
+"Passwords don't match" = "Passwords don't match";
+"Password must:" = "Password must:";
+"Be at least 6 characters" = "Be at least 6 characters";
+
+// MARK: - RecordingView (AudioRecordingView)
+"Record Audio" = "Record Audio";
+"Record lectures, meetings, or notes.\nWe'll transcribe and create study materials." = "Record lectures, meetings, or notes.\nWe'll transcribe and create study materials.";
+"Tap to start recording" = "Tap to start recording";
+"Grant Microphone Permission" = "Grant Microphone Permission";
+"Recording..." = "Recording...";
+"Paused" = "Paused";
+"Recording Complete" = "Recording Complete";
+"Duration: %@" = "Duration: %@";
+"Title (optional)" = "Title (optional)";
+"Process Recording" = "Process Recording";
+"Discard Recording" = "Discard Recording";
+"Discard Recording?" = "Discard Recording?";
+"Keep Recording" = "Keep Recording";
+"Discard" = "Discard";
+"You have an active recording. Are you sure you want to leave? Your recording will be lost." = "You have an active recording. Are you sure you want to leave? Your recording will be lost.";
+"Delete Recording?" = "Delete Recording?";
+"Delete" = "Delete";
+"Are you sure you want to delete this recording? This action cannot be undone." = "Are you sure you want to delete this recording? This action cannot be undone.";
+"Microphone Access Required" = "Microphone Access Required";
+"Open Settings" = "Open Settings";
+"Please enable microphone access in Settings to record audio." = "Please enable microphone access in Settings to record audio.";
+
+// MARK: - NoteListView
+"Search notes..." = "Search notes...";
+"Showing %@ of %@ notes" = "Showing %@ of %@ notes";
+"Delete Note" = "Delete Note";
+"Are you sure you want to delete '%@'? This action cannot be undone." = "Are you sure you want to delete '%@'? This action cannot be undone.";
+"Edit Title" = "Edit Title";
+"Title" = "Title";
+"Save" = "Save";
+"Enter a new title for this note" = "Enter a new title for this note";
+"'%@' deleted" = "'%@' deleted";
+"No notes yet" = "No notes yet";
+"Tap the + button to create your first note" = "Tap the + button to create your first note";
+"Loading..." = "Loading...";
+"Load More Notes" = "Load More Notes";
+"Session expired. Please sign in again." = "Session expired. Please sign in again.";
+
+// MARK: - NoteCardContent
+"YouTube" = "YouTube";
+"Recording" = "Recording";
+"PDF" = "PDF";
+"Scanned" = "Scanned";
+"Upload" = "Upload";
+"Note" = "Note";
+"%@ words" = "%@ words";
+"%@ characters" = "%@ characters";
+"Today" = "Today";
+"Yesterday" = "Yesterday";
+"Recently" = "Recently";
+
+// MARK: - NoteDetailView
+"Source: %@" = "Source: %@";
+"YouTube Video" = "YouTube Video";
+"Audio Recording" = "Audio Recording";
+"PDF Document" = "PDF Document";
+"Scanned Document" = "Scanned Document";
+"Uploaded File" = "Uploaded File";
+"%@ characters • %@ words" = "%@ characters • %@ words";
+"Share" = "Share";
+"Are you sure you want to delete this note? This action cannot be undone." = "Are you sure you want to delete this note? This action cannot be undone.";
+
+// MARK: - NoteDetailTab
+"Notes" = "Notes";
+"Chat" = "Chat";
+"Quiz" = "Quiz";
+"Flashcards" = "Flashcards";
+"Mind Map" = "Mind Map";
+"Infographic" = "Infographic";
+"Podcast" = "Podcast";
+
+// MARK: - ProfileView
+"User" = "User";
+"PRO" = "PRO";
+"ACTIVE" = "ACTIVE";
+"Premium" = "Premium";
+"Monthly Plan" = "Monthly Plan";
+"Yearly Plan" = "Yearly Plan";
+"Premium Plan" = "Premium Plan";
+"Manage Subscription" = "Manage Subscription";
+"Upgrade to Premium" = "Upgrade to Premium";
+"Unlock all features" = "Unlock all features";
+"View Plans" = "View Plans";
+"Appearance" = "Appearance";
+"Language" = "Language";
+"Help & Support" = "Help & Support";
+"Get help with the app" = "Get help with the app";
+"About" = "About";
+"Version 1.0.0" = "Version 1.0.0";
+"Sign Out" = "Sign Out";
+"Are you sure you want to sign out?" = "Are you sure you want to sign out?";
+"Delete Account" = "Delete Account";
+"Permanently delete your account and data" = "Permanently delete your account and data";
+"Deleting account..." = "Deleting account...";
+"About Scribe AI" = "About Scribe AI";
+"Visit Website" = "Visit Website";
+"Privacy Policy" = "Privacy Policy";
+"Terms of Service" = "Terms of Service";
+"OK" = "OK";
+"Scribe AI - Your AI-powered study assistant\n\nVersion 1.0.0\n\n© 2025 Kreative Koala. All rights reserved." = "Scribe AI - Your AI-powered study assistant\n\nVersion 1.0.0\n\n© 2025 Kreative Koala. All rights reserved.";
+"Are you sure you want to delete your account? This will permanently delete:\n\n• Your profile and settings\n• All your notes and recordings\n• All generated content (quizzes, flashcards, podcasts)\n\nThis action cannot be undone." = "Are you sure you want to delete your account? This will permanently delete:\n\n• Your profile and settings\n• All your notes and recordings\n• All generated content (quizzes, flashcards, podcasts)\n\nThis action cannot be undone.";
+"Final Confirmation" = "Final Confirmation";
+"Continue" = "Continue";
+"Delete My Account" = "Delete My Account";
+"This is your last chance. Once deleted, your account and all data cannot be recovered.\n\nAre you absolutely sure?" = "This is your last chance. Once deleted, your account and all data cannot be recovered.\n\nAre you absolutely sure?";
+"Error" = "Error";
+"An error occurred while deleting your account. Please try again or contact support." = "An error occurred while deleting your account. Please try again or contact support.";
+"How would you like to get help?" = "How would you like to get help?";
+"Email Support" = "Email Support";
+"Rate App" = "Rate App";
+"Email Copied" = "Email Copied";
+"Our support email (support@scribeai.online) has been copied to your clipboard. Please paste it into your email app." = "Our support email (support@scribeai.online) has been copied to your clipboard. Please paste it into your email app.";
+
+// MARK: - Language Selection
+"Select Language" = "Select Language";
+"AI-generated content will be in this language" = "AI-generated content will be in this language";
+
+// MARK: - Theme Selection
+"Choose how the app looks" = "Choose how the app looks";
+"Done" = "Done";
+"System" = "System";
+"Light" = "Light";
+"Dark" = "Dark";
+
+// MARK: - UploadOptionsView
+"Choose what you'd like to upload" = "Choose what you'd like to upload";
+"Upload PDF" = "Upload PDF";
+"Extract text from PDF documents" = "Extract text from PDF documents";
+"Upload Audio" = "Upload Audio";
+"Transcribe audio files" = "Transcribe audio files";
+"Take photos and extract text" = "Take photos and extract text";
+"Upload from Camera Roll" = "Upload from Camera Roll";
+"Select photos with text to extract" = "Select photos with text to extract";
+"Analyzing document..." = "Analyzing document...";
+"No Text Found" = "No Text Found";
+"The selected photos don't appear to contain any readable text. Please select photos that contain documents, notes, or other text content." = "The selected photos don't appear to contain any readable text. Please select photos that contain documents, notes, or other text content.";
+
+// MARK: - YouTubeInputView
+"YouTube Transcript" = "YouTube Transcript";
+"Only videos with captions/subtitles are supported" = "Only videos with captions/subtitles are supported";
+"Open YouTube" = "Open YouTube";
+"Paste From Clipboard" = "Paste From Clipboard";
+"Generate Notes" = "Generate Notes";
+"Please enter a valid YouTube URL" = "Please enter a valid YouTube URL";
+"Video ID: %@" = "Video ID: %@";
+"YouTube URL detected" = "YouTube URL detected";
+"About YouTube Transcripts" = "About YouTube Transcripts";
+"Got it" = "Got it";
+"This feature extracts captions/subtitles from YouTube videos.\n\nRequirements:\n• Video must have captions enabled\n• Auto-generated or manual subtitles\n• Works with most public videos" = "This feature extracts captions/subtitles from YouTube videos.\n\nRequirements:\n• Video must have captions enabled\n• Auto-generated or manual subtitles\n• Works with most public videos";
+
+// MARK: - Processing Steps
+"Sending video URL" = "Sending video URL";
+"Fetching transcript" = "Fetching transcript";
+"Analyzing content" = "Analyzing content";
+"Summarizing key points" = "Summarizing key points";
+"Finalizing your note" = "Finalizing your note";
+"Uploading audio" = "Uploading audio";
+"Transcribing audio" = "Transcribing audio";
+"Identifying speakers" = "Identifying speakers";
+"Uploading document" = "Uploading document";
+"Extracting text" = "Extracting text";
+"Uploading scanned images" = "Uploading scanned images";
+"Extracting text (OCR)" = "Extracting text (OCR)";
+"Upload is complete. It's safe to leave now." = "Upload is complete. It's safe to leave now.";
+
+// MARK: - Success View
+"Your note is ready!" = "Your note is ready!";
+"We've processed your content and created study materials." = "We've processed your content and created study materials.";
+"View Note" = "View Note";
+"Go to Home" = "Go to Home";
+
+// MARK: - Error View
+"Something went wrong" = "Something went wrong";
+"Try Again" = "Try Again";
+"Go Back" = "Go Back";
+
+// MARK: - Notification Card
+"Get notified when your notes are ready" = "Get notified when your notes are ready";
+"Notes usually take a few minutes to generate. We'll let you know when they're ready." = "Notes usually take a few minutes to generate. We'll let you know when they're ready.";
+"Notify me" = "Notify me";
+
+// MARK: - PaywallView
+"Unlock ScribeAI Premium" = "Unlock ScribeAI Premium";
+"Get unlimited access to all AI-powered features" = "Get unlimited access to all AI-powered features";
+"Unlimited Notebooks" = "Unlimited Notebooks";
+"Create as many notes as you need" = "Create as many notes as you need";
+"AI Summaries" = "AI Summaries";
+"Instant summaries of your content" = "Instant summaries of your content";
+"Audio Podcasts" = "Audio Podcasts";
+"Convert notes to podcasts" = "Convert notes to podcasts";
+"Quizzes & Flashcards" = "Quizzes & Flashcards";
+"AI-generated study materials" = "AI-generated study materials";
+"AI Chat Assistant" = "AI Chat Assistant";
+"Ask questions about your notes" = "Ask questions about your notes";
+"Cloud Sync" = "Cloud Sync";
+"Access from all your devices" = "Access from all your devices";
+"BEST VALUE" = "BEST VALUE";
+"FOREVER" = "FOREVER";
+"one-time" = "one-time";
+"One-time" = "One-time";
+"Select a Plan" = "Select a Plan";
+"Subscribe for %@/%@" = "Subscribe for %@/%@";
+"Restore Purchases" = "Restore Purchases";
+"Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions in your App Store account settings." = "Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions in your App Store account settings.";
+"Processing..." = "Processing...";
+"Have a promo code?" = "Have a promo code?";
+"Enter promo code" = "Enter promo code";
+"Apply" = "Apply";
+"Code applied!" = "Code applied!";
+"Referred by %@" = "Referred by %@";
+"Hide" = "Hide";
+"Invalid or expired promo code" = "Invalid or expired promo code";
+"Subscribe on Web" = "Subscribe on Web";
+"30% OFF" = "30% OFF";
+"Just %@/week" = "Just %@/week";
+"Save %@%%" = "Save %@%%";
+
+// MARK: - Onboarding - UserType
+"What describes you best?" = "What describes you best?";
+"We use this to personalize your experience :)" = "We use this to personalize your experience :)";
+"Undergraduate Student" = "Undergraduate Student";
+"High School Student" = "High School Student";
+"Middle School Student" = "Middle School Student";
+"Graduate Student" = "Graduate Student";
+"Professional" = "Professional";
+"Educator" = "Educator";
+"Other" = "Other";
+
+// MARK: - Onboarding - UseCase
+"What will you use\nScribeAI for?" = "What will you use\nScribeAI for?";
+"Select all that apply" = "Select all that apply";
+"Lecture Notes" = "Lecture Notes";
+"Study Materials" = "Study Materials";
+"Meeting Notes" = "Meeting Notes";
+"Research" = "Research";
+"Personal Learning" = "Personal Learning";
+
+// MARK: - Onboarding - Features
+"Upload Anything" = "Upload Anything";
+"PDFs  •  YouTube Videos  •  Audio" = "PDFs  •  YouTube Videos  •  Audio";
+"Drop here" = "Drop here";
+"Uploaded!" = "Uploaded!";
+"Try it out!" = "Try it out!";
+"Drag the file to the drop zone" = "Drag the file to the drop zone";
+"We'll create beautiful\nnotes for you." = "We'll create beautiful\nnotes for you.";
+"Master your terms." = "Master your terms.";
+"Memorize key concepts with spaced repetition" = "Memorize key concepts with spaced repetition";
+"Tap to flip" = "Tap to flip";
+"Test your knowledge." = "Test your knowledge.";
+"AI-generated quizzes to reinforce learning" = "AI-generated quizzes to reinforce learning";
+"Learn on the go." = "Learn on the go.";
+"Turn your materials into engaging audio summaries" = "Turn your materials into engaging audio summaries";
+"AI Generated Podcast" = "AI Generated Podcast";
+"Tap play to hear a sample" = "Tap play to hear a sample";
+
+// MARK: - Onboarding - Skip / Navigation
+"Skip" = "Skip";
+"Maybe later" = "Maybe later";
+
+// MARK: - Onboarding - Social Proof
+"100K+" = "100K+";
+"Students trust ScribeAI" = "Students trust ScribeAI";
+"25K+ App Ratings" = "25K+ App Ratings";
+"What students are saying" = "What students are saying";
+"Join 100K+ Students" = "Join 100K+ Students";
+
+// MARK: - Onboarding - Comparison
+"ScribeAI Pro users\nlearn up to 6x more\nefficiently." = "ScribeAI Pro users\nlearn up to 6x more\nefficiently.";
+"FREE" = "FREE";
+"Unlimited Notes" = "Unlimited Notes";
+"AI Podcasts" = "AI Podcasts";
+"Priority Support" = "Priority Support";
+"Early Access Features" = "Early Access Features";
+"All features currently free during beta!" = "All features currently free during beta!";
+
+// MARK: - Onboarding - Trial
+"Try ScribeAI Pro" = "Try ScribeAI Pro";
+"Ace your exams with AI" = "Ace your exams with AI";
+"Study smarter, not harder" = "Study smarter, not harder";
+"Make learning fun with AI" = "Make learning fun with AI";
+"Never miss an action item" = "Never miss an action item";
+"Save hours on lesson prep" = "Save hours on lesson prep";
+"Transform how you learn" = "Transform how you learn";
+"free for 7 days." = "free for 7 days.";
+"No charge today" = "No charge today";
+"How your free trial works:" = "How your free trial works:";
+"Today - Free trial starts" = "Today - Free trial starts";
+"Enjoy full access free for 7 days" = "Enjoy full access free for 7 days";
+"We'll send a reminder - cancel before this if you don't want to continue" = "We'll send a reminder - cancel before this if you don't want to continue";
+"First charge only if you haven't canceled" = "First charge only if you haven't canceled";
+"What you get:" = "What you get:";
+"Unlimited access forever" = "Unlimited access forever";
+"No recurring charges" = "No recurring charges";
+"All future updates included" = "All future updates included";
+"Premium features unlocked" = "Premium features unlocked";
+"One-time payment" = "One-time payment";
+"Pay once, use forever" = "Pay once, use forever";
+"Start your free 7-day trial" = "Start your free 7-day trial";
+"Get Lifetime Access" = "Get Lifetime Access";
+"Yearly" = "Yearly";
+"Monthly" = "Monthly";
+"Lifetime" = "Lifetime";
+"One-time purchase - no subscription" = "One-time purchase - no subscription";
+"We'll remind you 2 days before your trial ends" = "We'll remind you 2 days before your trial ends";
+"Cancel anytime in App Store settings - no charge" = "Cancel anytime in App Store settings - no charge";
+"Secure payment via App Store" = "Secure payment via App Store";
+
+// MARK: - Onboarding - Notifications
+"Never miss what matters" = "Never miss what matters";
+"Get notified about things like..." = "Get notified about things like...";
+"Notes Ready" = "Notes Ready";
+"Your Biology lecture notes are ready to review!" = "Your Biology lecture notes are ready to review!";
+"Exam Prep" = "Exam Prep";
+"Chemistry exam in 3h - You know 85% of the content. Study the rest?" = "Chemistry exam in 3h - You know 85% of the content. Study the rest?";
+"Quiz Generated" = "Quiz Generated";
+"New quiz ready for AP Biology Chapter 3" = "New quiz ready for AP Biology Chapter 3";
+"Skip for now" = "Skip for now";
+"Enable Notifications" = "Enable Notifications";
+
+// MARK: - ReviewPromptView
+"Enjoying Scribe AI?" = "Enjoying Scribe AI?";
+"Is Scribe AI helping you study faster and learn better?" = "Is Scribe AI helping you study faster and learn better?";
+"Yes, I love it!" = "Yes, I love it!";
+"Not yet" = "Not yet";
+
+// MARK: - SubscriptionGate
+"Trial Ended" = "Trial Ended";
+"Your 7-day free trial has ended.\nSubscribe to unlock %@ and all other features." = "Your 7-day free trial has ended.\nSubscribe to unlock %@ and all other features.";
+"Subscribe Now" = "Subscribe Now";
+"%@ day%@ left in trial" = "%@ day%@ left in trial";
+"Upgrade" = "Upgrade";
+"Your 7-day free trial has ended. Subscribe to continue using all features." = "Your 7-day free trial has ended. Subscribe to continue using all features.";
+"Your free trial has already been used on this device. Subscribe to continue using all features." = "Your free trial has already been used on this device. Subscribe to continue using all features.";
+
+// MARK: - SubscriptionSettingsSection
+"Subscription" = "Subscription";
+"Unlimited notes & AI features" = "Unlimited notes & AI features";
+
+// MARK: - PostValueTrialPrompt
+"Loving the AI features?" = "Loving the AI features?";
+"Start your free 7-day trial to keep using unlimited AI features" = "Start your free 7-day trial to keep using unlimited AI features";
+"Free access" = "Free access";
+"Day 5" = "Day 5";
+"Reminder" = "Reminder";
+"Day 7" = "Day 7";
+"First charge" = "First charge";
+"Start Free Trial" = "Start Free Trial";
+
+// MARK: - FeaturePreviewGate
+"You've seen %@ of %@ cards" = "You've seen %@ of %@ cards";
+"Subscribe to unlock all flashcards and study more effectively" = "Subscribe to unlock all flashcards and study more effectively";
+"Unlock All Cards" = "Unlock All Cards";
+"You've answered %@ of %@ questions" = "You've answered %@ of %@ questions";
+"Subscribe to complete the quiz and test your knowledge" = "Subscribe to complete the quiz and test your knowledge";
+"Unlock Full Quiz" = "Unlock Full Quiz";
+"Subscribe to read the full summary" = "Subscribe to read the full summary";
+"Unlock Full Summary" = "Unlock Full Summary";
+"PREVIEW" = "PREVIEW";
+
+// MARK: - JoinMeetingView
+"Join a Meeting" = "Join a Meeting";
+"Paste your meeting link and our bot will join to record and transcribe." = "Paste your meeting link and our bot will join to record and transcribe.";
+"Meeting Link" = "Meeting Link";
+"Meeting Title (optional)" = "Meeting Title (optional)";
+"Supported Platforms" = "Supported Platforms";
+"Please enter a valid Zoom, Google Meet, or Teams link" = "Please enter a valid Zoom, Google Meet, or Teams link";
+"%@ meeting detected" = "%@ meeting detected";
+"Send Bot to Meeting" = "Send Bot to Meeting";
+
+// MARK: - MeetingsView
+"Meeting Bot" = "Meeting Bot";
+"Loading meetings..." = "Loading meetings...";
+"No Meetings Yet" = "No Meetings Yet";
+"Enter a meeting link to have our bot join, record, and transcribe automatically." = "Enter a meeting link to have our bot join, record, and transcribe automatically.";
+"Delete Meeting" = "Delete Meeting";
+"Are you sure you want to delete this meeting?" = "Are you sure you want to delete this meeting?";
+"Untitled Meeting" = "Untitled Meeting";
+"Loading note..." = "Loading note...";
+"Failed to load note" = "Failed to load note";
+
+// MARK: - RetentionViews
+"Are you sure?" = "Are you sure?";
+"You'll lose access to:" = "You'll lose access to:";
+"notes you've created" = "notes you've created";
+"quizzes generated" = "quizzes generated";
+"flashcards created" = "flashcards created";
+"hours of audio content" = "hours of audio content";
+"Stay Signed In" = "Stay Signed In";
+"Sign Out Anyway" = "Sign Out Anyway";
+"Delete Account?" = "Delete Account?";
+"This cannot be undone.\nYou'll permanently lose:" = "This cannot be undone.\nYou'll permanently lose:";
+"Keep My Account" = "Keep My Account";
+"Delete Anyway" = "Delete Anyway";
+"Before you go..." = "Before you go...";
+"Help us improve by telling us why you're leaving" = "Help us improve by telling us why you're leaving";
+"Not useful for my needs" = "Not useful for my needs";
+"Too expensive" = "Too expensive";
+"Found a better alternative" = "Found a better alternative";
+"Privacy concerns" = "Privacy concerns";
+"Technical issues" = "Technical issues";
+
+// MARK: - Subscription Features (gated)
+"AI Chat" = "AI Chat";
+"AI Quizzes" = "AI Quizzes";
+"AI Flashcards" = "AI Flashcards";
+"AI Mind Maps" = "AI Mind Maps";
+"AI Infographics" = "AI Infographics";
+"AI Podcasts" = "AI Podcasts";
+
+// MARK: - Edit Title Menu
+"Edit Title" = "Edit Title";

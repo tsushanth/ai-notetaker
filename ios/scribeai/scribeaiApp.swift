@@ -30,6 +30,9 @@ struct ScribeAIApp: App {
         // Initialize Facebook SDK for Meta Ads attribution
         FacebookSDKHelper.shared.initialize()
 
+        // Apple Search Ads attribution — fetch AdServices token + POST to Apple
+        AttributionService.shared.checkAdServicesAttribution()
+
         // Initialize PaywallKit StoreManager (StoreKit 2)
         StoreManager.shared.configure(productIds: [
             "com.kreativekoala.scribeai.monthly",

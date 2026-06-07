@@ -19,6 +19,7 @@
 		881B30692ECD26B3003270AA /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30682ECD26B3003270AA /* GoogleSignInSwift */; };
 		8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8845E2972F0C2D7700982F8B /* FirebaseAnalytics */; };
 		88FB00012F51AB00003270AA /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 88FB00002F51AB00003270AA /* FacebookCore */; };
+		F8FA1706DC1B3B1B959CF75F /* AdServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C63398A341A4FEDD80AAD07B /* AdServices.framework */; };
 		FD48410CF325031E730F4226 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF06C12585DE802571772034 /* ScreenshotTests.swift */; };
 		PKT000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PKT000000000002 /* PaywallKit */; };
 /* End PBXBuildFile section */
@@ -38,6 +39,7 @@
 		4BDD55CFC7C619C4232D0CF0 /* scribeaiUITests */ = {isa = PBXFileReference; includeInIndex = 0; path = scribeaiUITests; sourceTree = BUILT_PRODUCTS_DIR; };
 		881B30142ECD0B69003270AA /* scribeai.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = scribeai.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		95DBF6A60A025EF9DC401992 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		C63398A341A4FEDD80AAD07B /* AdServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AdServices.framework; path = System/Library/Frameworks/AdServices.framework; sourceTree = SDKROOT; };
 		FF06C12585DE802571772034 /* ScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -78,6 +80,7 @@
 				8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */,
 				88FB00012F51AB00003270AA /* FacebookCore in Frameworks */,
 				PKT000000000003 /* PaywallKit in Frameworks */,
+				F8FA1706DC1B3B1B959CF75F /* AdServices.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -133,6 +136,7 @@
 			isa = PBXGroup;
 			children = (
 				F781175B93773249954BE30A /* iOS */,
+				C63398A341A4FEDD80AAD07B /* AdServices.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

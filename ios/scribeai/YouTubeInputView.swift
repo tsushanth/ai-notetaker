@@ -10,6 +10,13 @@
 import SwiftUI
 import UserNotifications
 
+extension Notification.Name {
+    /// Posted from "View Note" in a generation success view. HomeView listens and
+    /// refreshes + surfaces the newest note. Decoupled so each input flow (YouTube,
+    /// upload, scan, recording) can fire it without dragging navigation state in.
+    static let scribeOpenLatestNote = Notification.Name("scribeOpenLatestNote")
+}
+
 struct YouTubeInputView: View {
     @Environment(\.dismiss) var dismiss
     @State private var youtubeUrl = ""
@@ -54,16 +61,17 @@ struct YouTubeInputView: View {
                 case .success:
                     ScribeSuccessView(
                         onViewNote: {
+                            // Track on user action so the post-value paywall (which trackNoteCreated
+                            // schedules) doesn't race against the success view they're trying to read.
+                            AnalyticsService.shared.trackNoteCreated(sourceType: "youtube")
+                            NotificationCenter.default.post(name: .scribeOpenLatestNote, object: nil)
                             dismiss()
                         },
                         onGoHome: {
+                            AnalyticsService.shared.trackNoteCreated(sourceType: "youtube")
                             dismiss()
                         }
                     )
-                    .onAppear {
-                        // Track success here, not in view body
-                        AnalyticsService.shared.trackNoteCreated(sourceType: "youtube")
-                    }
                     
                 case .error(let message):
                     ScribeErrorView(
@@ -260,7 +268,10 @@ struct YouTubeInputView: View {
                 
                 Spacer()
                 
-                // Generate Notes Button
+                // Generate Notes Button — always tappable; processVideo() reports
+                // inline error if URL is invalid instead of silently no-oping.
+                // (User feedback 2026-06-08: tapping the disabled-looking button after
+                // paste did nothing visible, looked broken.)
                 Button {
                     processVideo()
                 } label: {
@@ -271,11 +282,11 @@ struct YouTubeInputView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(urlValidationState.isValid ? Color.purple80 : Color.purple80.opacity(0.5))
+                    .background(youtubeUrl.isEmpty ? Color.purple80.opacity(0.5) : Color.purple80)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
-                .disabled(!urlValidationState.isValid)
+                .disabled(youtubeUrl.isEmpty)
                 .padding(.horizontal, 24)
                 
                 Spacer()

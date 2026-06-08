@@ -93,7 +93,10 @@ struct ProfileView: View {
                     VStack(spacing: 24) {
                         Spacer()
                             .frame(height: 32)
-                        
+
+                        CrossPromoBanner()
+                            .padding(.horizontal, 16)
+
                         // Profile Header
                         VStack(spacing: 16) {
                             ZStack(alignment: .bottomTrailing) {
@@ -124,11 +127,21 @@ struct ProfileView: View {
                                 }
                             }
                             
-                            if let user = authViewModel.currentUser {
+                            if authViewModel.isAnonymous {
+                                Text("Guest")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.textPrimary)
+
+                                Text("Your notes are saved on this device")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 16)
+                            } else if let user = authViewModel.currentUser {
                                 Text(user.name ?? "User")
                                     .font(.system(size: 24, weight: .bold))
                                     .foregroundColor(.textPrimary)
-                                
+
                                 Text(user.email)
                                     .font(.system(size: 14))
                                     .foregroundColor(.textSecondary)
@@ -208,22 +221,43 @@ struct ProfileView: View {
                         .padding(.horizontal, 24)
                         #endif
 
-                        // Sign Out Button
-                        Button(action: {
-                            showingSignOutAlert = true
-                        }) {
+                        #if DEBUG
+                        Button(action: { OfferCodeManager.shared.presentRedemptionSheet() }) {
                             HStack {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                Text("Sign Out")
+                                Image(systemName: "tag.fill")
+                                Text("Redeem Promo Code")
                                     .font(.system(size: 16, weight: .semibold))
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
-                            .background(Color.accentRed.opacity(0.1))
-                            .foregroundColor(.accentRed)
+                            .background(Color.green.opacity(0.1))
+                            .foregroundColor(.green)
                             .cornerRadius(12)
                         }
                         .padding(.horizontal, 24)
+                        #endif
+
+                        // Sign Out Button — hidden for anonymous users since they
+                        // have nothing to sign out from, and tapping it would
+                        // orphan their notes (anonymous user_id can't be
+                        // recovered).
+                        if !authViewModel.isAnonymous {
+                            Button(action: {
+                                showingSignOutAlert = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    Text("Sign Out")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(Color.accentRed.opacity(0.1))
+                                .foregroundColor(.accentRed)
+                                .cornerRadius(12)
+                            }
+                            .padding(.horizontal, 24)
+                        }
                         
                         // Delete Account Section
                         VStack(spacing: 0) {

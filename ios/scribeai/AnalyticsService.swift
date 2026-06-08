@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import RatingKit
 
 class AnalyticsService {
     static let shared = AnalyticsService()
@@ -364,16 +365,14 @@ class AnalyticsService {
             self.defaults.set(count, forKey: Keys.successActionsCount)
         }
         
-        // Notify review helper (also non-blocking)
-        StoreReviewHelper.shared.recordSuccessfulAction()
+        // Server-controlled rating prompts (variants + analytics)
+        Task { @MainActor in RatingKit.shared.trackAction() }
 
-        // Check if we should prompt for review after this success
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            StoreReviewHelper.shared.checkAndShowPromptIfEligible()
-        }
-
-        // Check if we should show post-value trial prompt (for users who skipped onboarding trial)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        // Check if we should show post-value trial prompt (for users who skipped onboarding trial).
+        // 20s delay — long enough for the success view to be visible and dismissed by the user
+        // before the prompt sheet would otherwise preempt it. (User feedback 2026-06-08: paywall
+        // popped over the "Your note is ready!" screen, hiding the result.)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20.0) {
             PostValueTrialManager.shared.checkAndTriggerPrompt()
         }
     }
@@ -747,7 +746,6 @@ class AnalyticsService {
             "error_type": type,
             "error_message": String(message.prefix(200)) // Limit message length
         ])
-        StoreReviewHelper.shared.recordCriticalError()
     }
     
     func trackPaymentError(message: String) {

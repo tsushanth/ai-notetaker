@@ -133,27 +133,22 @@ struct HomeView: View {
             noteToOpen = match
             pendingNoteIdToOpen = nil
         }
-        .background(
-            // Hidden NavigationLink that fires programmatically when noteToOpen is set.
-            // Using `isActive` (deprecated in iOS 16 but still works) for compatibility
-            // with iOS 16+ deployment target without forcing NavigationStack migration.
-            NavigationLink(
-                destination: Group {
-                    if let n = noteToOpen {
-                        NoteDetailTabView(note: n, viewModel: noteViewModel)
-                    } else {
-                        EmptyView()
+        .fullScreenCover(item: $noteToOpen) { note in
+            // Present the just-created note in a fresh navigation stack so the user
+            // sees it immediately after tapping "View Note". Using fullScreenCover
+            // (rather than a hidden NavigationLink) because programmatic pushes on
+            // NavigationView with isActive bindings are flaky on iOS 17 — they
+            // sometimes don't activate when the destination becomes available on
+            // the same render pass as the binding flip.
+            NavigationStack {
+                NoteDetailTabView(note: note, viewModel: noteViewModel)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Done") { noteToOpen = nil }
+                        }
                     }
-                },
-                isActive: Binding(
-                    get: { noteToOpen != nil },
-                    set: { active in if !active { noteToOpen = nil } }
-                ),
-                label: { EmptyView() }
-            )
-            .opacity(0)
-            .accessibilityHidden(true)
-        )
+            }
+        }
     }
 }
 

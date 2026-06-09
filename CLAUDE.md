@@ -8,7 +8,8 @@ This repo is part of a portfolio shared between Sushanth (`t.sushanth@gmail.com`
 
 | Fly app | Location in repo |
 |---------|------------------|
-
+| `ai-notetaker-backend` | `ai-notetaker-backend/` |
+| `scribe-ai-web` | `web-app/` |
 
 Authoritative deploy steps (run from inside the Fly app's subdir, where the `fly.toml` lives):
 

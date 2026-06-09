@@ -13,6 +13,12 @@ struct HomeView: View {
     @State private var showingProfile = false
     @State private var refreshTrigger = UUID()
     @State private var showHomePaywall = false
+    // Pending: a generation flow asked us to open this specific noteId once it lands
+    // in the loaded notes list. Cleared once we navigate. Backward-compatible:
+    // notifications without a noteId leave this nil and we just refresh the list.
+    @State private var pendingNoteIdToOpen: String? = nil
+    // Drives the programmatic NavigationLink push to NoteDetailTabView.
+    @State private var noteToOpen: Note? = nil
 
     var body: some View {
         NavigationView {
@@ -102,11 +108,52 @@ struct HomeView: View {
                 showHomePaywall = false
             }
         }
-        .onReceive(NotificationCenter.default.publisher(for: .scribeOpenLatestNote)) { _ in
+        .onReceive(NotificationCenter.default.publisher(for: .scribeOpenLatestNote)) { notif in
             // User just tapped "View Note" on a generation success screen.
-            // Force a notes-list refresh so the new note surfaces at the top of the list.
+            // Always refresh the list so the new note surfaces at the top.
             refreshTrigger = UUID()
+            // If the caller knows the new note's id, queue navigation. Once the
+            // refresh completes (noteViewModel.notes updates), .onChange below picks
+            // up the queued id and pushes NoteDetailTabView. If no id was provided
+            // (older callers, or server didn't return one), we just refresh — the
+            // newest note will still be visible at the top.
+            if let id = notif.userInfo?["noteId"] as? String {
+                pendingNoteIdToOpen = id
+                // If it's already in memory (rare race), navigate immediately.
+                if let match = noteViewModel.notes.first(where: { $0.id == id }) {
+                    noteToOpen = match
+                    pendingNoteIdToOpen = nil
+                }
+            }
         }
+        .onChange(of: noteViewModel.notes.map(\.id)) { _, _ in
+            // Whenever the notes list reloads, see if our pending target is now present.
+            guard let id = pendingNoteIdToOpen,
+                  let match = noteViewModel.notes.first(where: { $0.id == id }) else { return }
+            noteToOpen = match
+            pendingNoteIdToOpen = nil
+        }
+        .background(
+            // Hidden NavigationLink that fires programmatically when noteToOpen is set.
+            // Using `isActive` (deprecated in iOS 16 but still works) for compatibility
+            // with iOS 16+ deployment target without forcing NavigationStack migration.
+            NavigationLink(
+                destination: Group {
+                    if let n = noteToOpen {
+                        NoteDetailTabView(note: n, viewModel: noteViewModel)
+                    } else {
+                        EmptyView()
+                    }
+                },
+                isActive: Binding(
+                    get: { noteToOpen != nil },
+                    set: { active in if !active { noteToOpen = nil } }
+                ),
+                label: { EmptyView() }
+            )
+            .opacity(0)
+            .accessibilityHidden(true)
+        )
     }
 }
 

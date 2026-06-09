@@ -12,8 +12,11 @@ import UserNotifications
 
 extension Notification.Name {
     /// Posted from "View Note" in a generation success view. HomeView listens and
-    /// refreshes + surfaces the newest note. Decoupled so each input flow (YouTube,
-    /// upload, scan, recording) can fire it without dragging navigation state in.
+    /// programmatically pushes NoteDetailTabView for the note whose id is in
+    /// `userInfo["noteId"]`. If noteId is missing, HomeView falls back to just
+    /// refreshing the list (so the new note appears at the top).
+    /// Decoupled so each input flow (YouTube, upload, scan, recording) can fire it
+    /// without dragging navigation state in.
     static let scribeOpenLatestNote = Notification.Name("scribeOpenLatestNote")
 }
 
@@ -28,6 +31,7 @@ struct YouTubeInputView: View {
     @State private var processingSteps: [ScribeProcessingStep] = []
     @State private var currentStepIndex = 0
     @State private var uploadComplete = false
+    @State private var createdNoteId: String? = nil
 
     // URL validation states
     enum URLValidationState: Equatable {
@@ -64,7 +68,13 @@ struct YouTubeInputView: View {
                             // Track on user action so the post-value paywall (which trackNoteCreated
                             // schedules) doesn't race against the success view they're trying to read.
                             AnalyticsService.shared.trackNoteCreated(sourceType: "youtube")
-                            NotificationCenter.default.post(name: .scribeOpenLatestNote, object: nil)
+                            // Pass the noteId so HomeView can navigate directly to NoteDetailView.
+                            // If the server didn't return an id (older backend), HomeView falls back
+                            // to refreshing the list only.
+                            var info: [AnyHashable: Any] = [:]
+                            if let id = createdNoteId { info["noteId"] = id }
+                            NotificationCenter.default.post(
+                                name: .scribeOpenLatestNote, object: nil, userInfo: info)
                             dismiss()
                         },
                         onGoHome: {
@@ -339,10 +349,14 @@ struct YouTubeInputView: View {
             do {
                 await updateStep(at: 0, to: .inProgress)
                 
-                let result = try await withTimeout(seconds: 60) {
+                let noteId = try await withTimeout(seconds: 60) {
                     try await APIService.shared.processVideoUrl(token: token, url: cleanedUrl)
                 }
-                
+
+                await MainActor.run {
+                    createdNoteId = noteId
+                }
+
                 await updateStep(at: 0, to: .completed)
                 uploadComplete = true
                 

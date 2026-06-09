@@ -365,8 +365,15 @@ class AnalyticsService {
             self.defaults.set(count, forKey: Keys.successActionsCount)
         }
         
-        // Server-controlled rating prompts (variants + analytics)
-        Task { @MainActor in RatingKit.shared.trackAction() }
+        // Server-controlled rating prompts (variants + analytics).
+        // 5s delay so any post-value navigation (e.g. fullScreenCover into NoteDetailTabView
+        // on a "View Note" tap) lands first and the user gets a beat with the new content
+        // before the gateway rating sheet presents on top. The rating prompt then arrives
+        // in context ("I just made a note, the app asks me if I love it") rather than as
+        // a race against the success view.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            Task { @MainActor in RatingKit.shared.trackAction() }
+        }
 
         // Check if we should show post-value trial prompt (for users who skipped onboarding trial).
         // 20s delay — long enough for the success view to be visible and dismissed by the user

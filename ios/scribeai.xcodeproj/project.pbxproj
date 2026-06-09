@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0F615007F41509E3A067CB93 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95DBF6A60A025EF9DC401992 /* Foundation.framework */; };
+		487A28DE53B7AC3238E6DB2C /* PromoOfferKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6D9DB165D99A390DC7BF7AD6 /* PromoOfferKit */; };
+		5DE7A69A0B8788C735CC23B9 /* TwilioVoice in Frameworks */ = {isa = PBXBuildFile; productRef = BBB666A8BE83F38ADA506EF8 /* TwilioVoice */; };
 		653D2542095CA1C9A19FA28B /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6A8D63E704A41579ABA3BC /* SnapshotHelper.swift */; };
 		881B303A2ECD0DFF003270AA /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30392ECD0DFF003270AA /* Auth */; };
 		881B303C2ECD0DFF003270AA /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 881B303B2ECD0DFF003270AA /* Functions */; };
@@ -19,6 +21,8 @@
 		881B30692ECD26B3003270AA /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30682ECD26B3003270AA /* GoogleSignInSwift */; };
 		8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8845E2972F0C2D7700982F8B /* FirebaseAnalytics */; };
 		88FB00012F51AB00003270AA /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 88FB00002F51AB00003270AA /* FacebookCore */; };
+		8D52BE82FDB46DBA45D4A13E /* RatingKit in Frameworks */ = {isa = PBXBuildFile; productRef = B8B6D2A4DCBF15E1D5D2EBD5 /* RatingKit */; };
+		B52B1B0F9E95EE4EC5E1CE3B /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = BF1D441D96B5AD1BFC3A398A /* TikTokBusinessSDK */; };
 		F8FA1706DC1B3B1B959CF75F /* AdServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C63398A341A4FEDD80AAD07B /* AdServices.framework */; };
 		FD48410CF325031E730F4226 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF06C12585DE802571772034 /* ScreenshotTests.swift */; };
 		PKT000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PKT000000000002 /* PaywallKit */; };
@@ -81,6 +85,10 @@
 				88FB00012F51AB00003270AA /* FacebookCore in Frameworks */,
 				PKT000000000003 /* PaywallKit in Frameworks */,
 				F8FA1706DC1B3B1B959CF75F /* AdServices.framework in Frameworks */,
+				8D52BE82FDB46DBA45D4A13E /* RatingKit in Frameworks */,
+				487A28DE53B7AC3238E6DB2C /* PromoOfferKit in Frameworks */,
+				B52B1B0F9E95EE4EC5E1CE3B /* TikTokBusinessSDK in Frameworks */,
+				5DE7A69A0B8788C735CC23B9 /* TwilioVoice in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -190,6 +198,10 @@
 				8845E2972F0C2D7700982F8B /* FirebaseAnalytics */,
 				88FB00002F51AB00003270AA /* FacebookCore */,
 				PKT000000000002 /* PaywallKit */,
+				B8B6D2A4DCBF15E1D5D2EBD5 /* RatingKit */,
+				6D9DB165D99A390DC7BF7AD6 /* PromoOfferKit */,
+				BF1D441D96B5AD1BFC3A398A /* TikTokBusinessSDK */,
+				BBB666A8BE83F38ADA506EF8 /* TwilioVoice */,
 			);
 			productName = scribeai;
 			productReference = 881B30142ECD0B69003270AA /* scribeai.app */;
@@ -234,6 +246,10 @@
 				8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
 				PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */,
+				39F6840D3C95AFB243B2D302 /* XCRemoteSwiftPackageReference "RatingKit" */,
+				F23CAF2431CAA21D1544C0E7 /* XCRemoteSwiftPackageReference "PromoOfferKit" */,
+				41411DD3CFB5399C2D985656 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */,
+				23ABB40420EDA157A3B592A8 /* XCRemoteSwiftPackageReference "twilio-voice-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 881B30152ECD0B69003270AA /* Products */;
@@ -431,7 +447,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -469,7 +485,7 @@
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -493,7 +509,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai.UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -508,7 +524,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai.UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -558,6 +574,30 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		23ABB40420EDA157A3B592A8 /* XCRemoteSwiftPackageReference "twilio-voice-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/twilio/twilio-voice-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
+		};
+		39F6840D3C95AFB243B2D302 /* XCRemoteSwiftPackageReference "RatingKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tsushanth/RatingKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.1;
+			};
+		};
+		41411DD3CFB5399C2D985656 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tiktok/tiktok-business-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
 		881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -590,9 +630,22 @@
 				minimumVersion = 17.0.0;
 			};
 		};
+		F23CAF2431CAA21D1544C0E7 /* XCRemoteSwiftPackageReference "PromoOfferKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tsushanth/PromoOfferKit.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		6D9DB165D99A390DC7BF7AD6 /* PromoOfferKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F23CAF2431CAA21D1544C0E7 /* XCRemoteSwiftPackageReference "PromoOfferKit" */;
+			productName = PromoOfferKit;
+		};
 		881B30392ECD0DFF003270AA /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
@@ -642,6 +695,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
 			productName = FacebookCore;
+		};
+		B8B6D2A4DCBF15E1D5D2EBD5 /* RatingKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 39F6840D3C95AFB243B2D302 /* XCRemoteSwiftPackageReference "RatingKit" */;
+			productName = RatingKit;
+		};
+		BBB666A8BE83F38ADA506EF8 /* TwilioVoice */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23ABB40420EDA157A3B592A8 /* XCRemoteSwiftPackageReference "twilio-voice-ios" */;
+			productName = TwilioVoice;
+		};
+		BF1D441D96B5AD1BFC3A398A /* TikTokBusinessSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 41411DD3CFB5399C2D985656 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */;
+			productName = TikTokBusinessSDK;
 		};
 		PKT000000000002 /* PaywallKit */ = {
 			isa = XCSwiftPackageProductDependency;

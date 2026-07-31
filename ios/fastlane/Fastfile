@@ -5,6 +5,36 @@ ISSUER_ID   = "17f51aa8-305f-48b3-acbe-fd8ed3dd5fb6"
 KEY_PATH    = File.expand_path("~/private_keys/AuthKey_3WHS49Y787.p8")
 
 platform :ios do
+  desc "Submit already-uploaded build for review"
+  lane :submit_review do
+    api_key = app_store_connect_api_key(
+      key_id: KEY_ID,
+      issuer_id: ISSUER_ID,
+      key_filepath: KEY_PATH,
+      duration: 1200,
+      in_house: false
+    )
+    deliver(
+      api_key: api_key,
+      app_identifier: "KreativeKoala.scribeai",
+      app_version: "101.5.12",
+      build_number: "138",
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      skip_metadata: false,   # 2026-06-09: must be false so release_notes.txt uploads
+      run_precheck_before_submit: false,
+      metadata_path: "./fastlane/metadata",
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+        export_compliance_is_exempt: false
+      }
+    )
+  end
+
   desc "Build and submit to App Store for review"
   lane :build_and_submit do
     api_key = app_store_connect_api_key(
@@ -15,6 +45,8 @@ platform :ios do
       in_house: false
     )
 
+    # Build and upload directly to App Store Connect via xcodebuild
+    # destination: "upload" handles the upload so no separate deliver step needed
     gym(
       workspace: "scribeai.xcworkspace",
       scheme: "scribeai",
@@ -32,16 +64,23 @@ platform :ios do
       clean: true
     )
 
+    # Submit the uploaded build for review via ASC API
     deliver(
       api_key: api_key,
-      app_version: "99.1",
-      ipa: "/tmp/scribeai_build/scribeai.ipa",
+      app_identifier: "KreativeKoala.scribeai",
+      app_version: "101.5.12",
       submit_for_review: true,
       automatic_release: false,
       force: true,
+      skip_binary_upload: true,
       skip_screenshots: true,
       skip_metadata: true,
-      run_precheck_before_submit: false
+      run_precheck_before_submit: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+        export_compliance_is_exempt: false
+      }
     )
   end
 
@@ -57,7 +96,7 @@ platform :ios do
 
     deliver(
       api_key: api_key,
-      app_version: "99.1",
+      app_version: "101.5.12",
       skip_binary_upload: true,
       force: true,
       submit_for_review: false,

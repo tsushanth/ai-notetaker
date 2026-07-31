@@ -6,7 +6,7 @@ const os = require('os');
 
 const PORT = process.env.WORKER_PORT || 3457;
 const WORKER_SECRET = process.env.LEARNING_WORKER_SECRET;
-const BACKEND_URL = process.env.BACKEND_URL || 'https://ai-notetaker-backend-917362189743.us-central1.run.app';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://ai-notetaker-backend.fly.dev';
 
 const server = http.createServer(async (req, res) => {
   // CORS

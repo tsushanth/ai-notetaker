@@ -1,33 +1,33 @@
 /**
  * Text-to-Speech Service
- * Uses OpenAI TTS for all speech synthesis
+ * Uses self-hosted Kokoro TTS (readaloud-tts on Cloud Run)
  */
 
-// Use built-in fetch (Node 18+) - no need for node-fetch
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 
-// OpenAI voices available
-const OPENAI_VOICES = {
-  'alloy': 'alloy',
-  'echo': 'echo',
-  'fable': 'fable',
-  'onyx': 'onyx',
-  'nova': 'nova',
-  'shimmer': 'shimmer',
+// Kokoro voice IDs mapped from legacy OpenAI-style names
+const KOKORO_VOICES = {
+  'nova': 'af_nicole',       // Female - warm
+  'shimmer': 'af_sarah',     // Female - clear
+  'alloy': 'am_adam',        // Male - versatile
+  'echo': 'am_michael',      // Male - deep
+  'fable': 'am_adam',        // Male - narration
+  'onyx': 'am_michael',      // Male - authoritative
 };
 
 // Voice pairs for multi-host podcasts by gender
 const VOICE_PAIRS = {
-  female: ['nova', 'shimmer'],      // Sarah, Emily
-  male: ['echo', 'onyx'],           // James, Marcus
-  mixed: ['nova', 'echo'],          // Sarah, James (default)
+  female: ['nova', 'shimmer'],
+  male: ['echo', 'onyx'],
+  mixed: ['nova', 'echo'],
 };
+
+const TTS_BASE_URL = process.env.SELFHOSTED_TTS_URL || 'https://listenai-tts-worker.fly.dev';
 
 class TTSService {
   constructor() {
-    this.openaiApiKey = process.env.OPENAI_API_KEY;
-    this.MAX_CHUNK_SIZE = 4000;
+    this.MAX_CHUNK_SIZE = 5000;
   }
 
   /**
@@ -37,7 +37,6 @@ class TTSService {
     const chunks = [];
     let currentChunk = '';
 
-    // Split by sentences to avoid cutting mid-sentence
     const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
 
     for (const sentence of sentences) {
@@ -79,32 +78,29 @@ class TTSService {
   }
 
   /**
-   * Synthesize speech using OpenAI TTS
+   * Synthesize speech using self-hosted Kokoro TTS
    */
-  async synthesizeWithOpenAI(text, voice = 'nova', speed = 1.0) {
-    if (!this.openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
+  async synthesizeWithKokoro(text, voice = 'nova', speed = 1.0) {
+    const voiceId = KOKORO_VOICES[voice.toLowerCase()] || KOKORO_VOICES['nova'];
 
-    const openaiVoice = OPENAI_VOICES[voice.toLowerCase()] || 'nova';
-
-    // Use AbortController for timeout with built-in fetch
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    const timeoutId = setTimeout(() => controller.abort(), 120000);
 
     try {
-      const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      const endpoint = text.length > this.MAX_CHUNK_SIZE ? '/synthesize-long' : '/synthesize';
+
+      const response = await fetch(`${TTS_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.openaiApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'tts-1',
-          input: text,
-          voice: openaiVoice,
-          speed: Math.max(0.25, Math.min(4.0, speed)),
-          response_format: 'mp3',
+          text: text,
+          voice_id: voiceId,
+          speed: Math.max(0.5, Math.min(2.0, speed)),
+          model: 'kokoro',
+          language: 'en',
+          max_chunk_chars: this.MAX_CHUNK_SIZE,
         }),
         signal: controller.signal,
       });
@@ -113,16 +109,15 @@ class TTSService {
 
       if (!response.ok) {
         const error = await response.text();
-        throw new Error(`OpenAI TTS error: ${error}`);
+        throw new Error(`Kokoro TTS error (${response.status}): ${error}`);
       }
 
-      // Built-in fetch uses arrayBuffer(), convert to Buffer
       const arrayBuffer = await response.arrayBuffer();
       return Buffer.from(arrayBuffer);
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
-        throw new Error('OpenAI TTS request timed out after 60 seconds');
+        throw new Error('Kokoro TTS request timed out after 120 seconds');
       }
       throw error;
     }
@@ -134,7 +129,6 @@ class TTSService {
   async synthesize(text, options = {}) {
     const { voice = 'nova', speed = 1.0 } = options;
 
-    // Clean and validate text
     const cleanText = this.cleanTextForTTS(text);
     if (!cleanText || cleanText.length === 0) {
       throw new Error('Text is required');
@@ -143,12 +137,11 @@ class TTSService {
     logger.info('TTS synthesis request', {
       textLen: cleanText.length,
       voice,
+      kokoroVoice: KOKORO_VOICES[voice.toLowerCase()] || KOKORO_VOICES['nova'],
     });
 
-    if (cleanText.length > this.MAX_CHUNK_SIZE) {
-      return await this.generateAudioFromChunks(cleanText, voice, speed);
-    }
-    return await this.synthesizeWithOpenAI(cleanText, voice, speed);
+    // Kokoro's /synthesize-long handles chunking server-side
+    return await this.synthesizeWithKokoro(cleanText, voice, speed);
   }
 
   /**
@@ -159,15 +152,15 @@ class TTSService {
   }
 
   /**
-   * Generate audio from multiple chunks
+   * Generate audio from multiple chunks (fallback if needed)
    */
   async generateAudioFromChunks(text, voice, speed = 1.0) {
     const chunks = this.splitTextIntoChunks(text);
-    logger.info(`OpenAI TTS: Processing ${chunks.length} chunks`);
+    logger.info(`Kokoro TTS: Processing ${chunks.length} chunks`);
 
     const audioBuffers = [];
     for (let i = 0; i < chunks.length; i++) {
-      const buffer = await this.synthesizeWithOpenAI(chunks[i], voice, speed);
+      const buffer = await this.synthesizeWithKokoro(chunks[i], voice, speed);
       audioBuffers.push(buffer);
       if (i < chunks.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -179,7 +172,6 @@ class TTSService {
 
   /**
    * Parse podcast script into segments by speaker
-   * Returns array of { speaker: 'Host 1' | 'Host 2' | 'narrator', text: string }
    */
   parsePodcastScript(script) {
     const segments = [];
@@ -187,7 +179,6 @@ class TTSService {
     let currentSpeaker = 'narrator';
     let currentText = '';
 
-    // Log first 800 chars of script for debugging
     logger.info('Parsing podcast script', {
       scriptPreview: script.substring(0, 800),
       totalLength: script.length,
@@ -198,20 +189,13 @@ class TTSService {
     let host2Count = 0;
 
     for (const line of lines) {
-      // Strip markdown bold markers before parsing
       let trimmedLine = line.trim();
       if (!trimmedLine) continue;
 
-      // Remove all markdown bold markers (**) for cleaner parsing
       const cleanLine = trimmedLine.replace(/\*\*/g, '');
-
-      // Match patterns like "Host 1:", "Host 2:", "[Host 1]:", etc.
-      // Also handle Speaker 1, Speaker 2, Person 1, Person 2, etc.
-      // More flexible regex that handles various formats
       const hostMatch = cleanLine.match(/^(?:\[)?(?:Host|Speaker|Person|Voice)\s*(\d+)(?:\])?[:\-]\s*(.*)/i);
 
       if (hostMatch) {
-        // Save previous segment if any
         if (currentText.trim()) {
           segments.push({ speaker: currentSpeaker, text: currentText.trim() });
         }
@@ -219,21 +203,17 @@ class TTSService {
         currentSpeaker = `Host ${hostMatch[1]}`;
         currentText = hostMatch[2] || '';
 
-        // Track host counts for debugging
         if (hostMatch[1] === '1') host1Count++;
         else if (hostMatch[1] === '2') host2Count++;
       } else {
-        // Continue current speaker's text
         currentText += ' ' + trimmedLine;
       }
     }
 
-    // Add final segment
     if (currentText.trim()) {
       segments.push({ speaker: currentSpeaker, text: currentText.trim() });
     }
 
-    // Log parsing results for debugging
     const speakerCounts = {};
     segments.forEach(s => {
       speakerCounts[s.speaker] = (speakerCounts[s.speaker] || 0) + 1;
@@ -255,12 +235,10 @@ class TTSService {
 
   /**
    * Generate multi-voice podcast audio
-   * Assigns different voices to Host 1 and Host 2 based on gender preference
    */
   async generatePodcastAudio(script, options = {}) {
     const { gender = 'female', speed = 1.0 } = options;
 
-    // Get voice pair for the selected gender
     const voicePair = VOICE_PAIRS[gender] || VOICE_PAIRS.female;
     const [voice1, voice2] = voicePair;
 
@@ -271,16 +249,13 @@ class TTSService {
       scriptLength: script.length
     });
 
-    // Parse script into segments
     const segments = this.parsePodcastScript(script);
 
     if (segments.length === 0) {
-      // Fallback: generate with single voice if parsing fails
       logger.warn('Failed to parse podcast script, using single voice');
       return await this.generateAudio(script, voice1);
     }
 
-    // Check if we detected BOTH hosts - if not, we'll alternate voices
     const hasHost1 = segments.some(s => s.speaker === 'Host 1');
     const hasHost2 = segments.some(s => s.speaker === 'Host 2');
     const hasBothHosts = hasHost1 && hasHost2;
@@ -292,24 +267,18 @@ class TTSService {
       willAlternate: !hasBothHosts
     });
 
-    // Generate audio for each segment with appropriate voice
     const audioBuffers = [];
 
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i];
 
-      // Determine voice based on speaker
       let voice;
       if (hasBothHosts) {
-        // We have proper Host 1/Host 2 tags - use them
         voice = segment.speaker === 'Host 2' ? voice2 : voice1;
       } else {
-        // Fallback: alternate voices for each segment
         voice = (i % 2 === 0) ? voice1 : voice2;
-        logger.info(`Alternating voice for segment ${i}`, { voice, originalSpeaker: segment.speaker });
       }
 
-      // Clean the text for TTS (but don't remove host labels since they're already stripped)
       const cleanText = segment.text
         .replace(/\*\*.*?\*\*/g, '')
         .replace(/\[.*?\]/g, '')
@@ -326,17 +295,9 @@ class TTSService {
       });
 
       try {
-        // Handle long segments by chunking
-        let buffer;
-        if (cleanText.length > this.MAX_CHUNK_SIZE) {
-          buffer = await this.generateAudioFromChunks(cleanText, voice, speed);
-        } else {
-          buffer = await this.synthesizeWithOpenAI(cleanText, voice, speed);
-        }
-
+        const buffer = await this.synthesizeWithKokoro(cleanText, voice, speed);
         audioBuffers.push(buffer);
 
-        // Small delay between API calls to avoid rate limiting
         if (i < segments.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
@@ -361,7 +322,7 @@ class TTSService {
    */
   async uploadAudio(audioBuffer, userId, noteId) {
     const timestamp = Date.now();
-    const storagePath = `podcasts/${userId}/${noteId}_${timestamp}.mp3`;
+    const storagePath = `podcasts/${userId}/${noteId}_${timestamp}.wav`;
 
     logger.info('Uploading audio to Supabase', {
       storagePath,
@@ -371,7 +332,7 @@ class TTSService {
     const { error } = await supabaseAdmin.storage
       .from('audio')
       .upload(storagePath, audioBuffer, {
-        contentType: 'audio/mpeg',
+        contentType: 'audio/wav',
         cacheControl: '3600',
         upsert: false,
       });
@@ -389,16 +350,16 @@ class TTSService {
   }
 
   /**
-   * Get available voices (human-friendly names, OpenAI voice IDs)
+   * Get available voices
    */
   getVoices() {
     return [
-      { id: 'nova', name: 'Sarah', gender: 'Female', description: 'Friendly and upbeat' },
-      { id: 'shimmer', name: 'Emily', gender: 'Female', description: 'Clear and professional' },
-      { id: 'alloy', name: 'Alex', gender: 'Neutral', description: 'Balanced and versatile' },
-      { id: 'echo', name: 'James', gender: 'Male', description: 'Warm and engaging' },
-      { id: 'fable', name: 'Daniel', gender: 'Male', description: 'Expressive storyteller' },
-      { id: 'onyx', name: 'Marcus', gender: 'Male', description: 'Deep and authoritative' },
+      { id: 'nova', name: 'Nicole', gender: 'Female', description: 'Warm and friendly' },
+      { id: 'shimmer', name: 'Sarah', gender: 'Female', description: 'Soft and clear' },
+      { id: 'alloy', name: 'Adam', gender: 'Male', description: 'Young and versatile' },
+      { id: 'echo', name: 'Michael', gender: 'Male', description: 'Deep and engaging' },
+      { id: 'fable', name: 'Adam', gender: 'Male', description: 'Expressive narration' },
+      { id: 'onyx', name: 'Michael', gender: 'Male', description: 'Warm and authoritative' },
     ];
   }
 
@@ -406,12 +367,22 @@ class TTSService {
    * Get TTS service status
    */
   async getStatus() {
-    return {
-      openai: {
-        configured: !!this.openaiApiKey,
-      },
-      voiceCount: this.getVoices().length,
-    };
+    try {
+      const response = await fetch(`${TTS_BASE_URL}/health`, { method: 'GET' });
+      return {
+        kokoro: {
+          configured: true,
+          healthy: response.ok,
+          url: TTS_BASE_URL,
+        },
+        voiceCount: this.getVoices().length,
+      };
+    } catch {
+      return {
+        kokoro: { configured: true, healthy: false, url: TTS_BASE_URL },
+        voiceCount: this.getVoices().length,
+      };
+    }
   }
 
   /**
@@ -420,7 +391,6 @@ class TTSService {
   async generateForNote(userId, noteId, options = {}) {
     const { voice = 'nova', speed = 1.0 } = options;
 
-    // Fetch the note content
     const { data: note, error: noteError } = await supabaseAdmin
       .from('notes')
       .select('content, formatted_content, title')
@@ -437,15 +407,13 @@ class TTSService {
       throw new Error('Note has no content');
     }
 
-    // Generate the audio
     const audioBuffer = await this.synthesize(textToSpeak, { voice, speed });
 
-    // Upload to Supabase storage
-    const fileName = `tts/${userId}/${noteId}-${Date.now()}.mp3`;
+    const fileName = `tts/${userId}/${noteId}-${Date.now()}.wav`;
     const { error: uploadError } = await supabaseAdmin.storage
       .from('audio')
       .upload(fileName, audioBuffer, {
-        contentType: 'audio/mpeg',
+        contentType: 'audio/wav',
         upsert: true,
       });
 
@@ -453,17 +421,13 @@ class TTSService {
       throw new Error(`Failed to upload audio: ${uploadError.message}`);
     }
 
-    // Get public URL
     const { data: urlData } = supabaseAdmin.storage
       .from('audio')
       .getPublicUrl(fileName);
 
     const audioUrl = urlData.publicUrl;
-
-    // Estimate duration (rough: ~150 words per minute, ~5 chars per word)
     const estimatedDuration = Math.ceil((textToSpeak.length / 5) / 150 * 60);
 
-    // Save to ai_content table (like podcasts - no user_id, ownership verified via note)
     const { error: dbError } = await supabaseAdmin
       .from('ai_content')
       .upsert({
@@ -489,8 +453,6 @@ class TTSService {
         noteId,
         userId
       });
-      // Don't throw - audio was generated, just save failed
-      // The user can still use the audio, they just won't have it saved
     } else {
       logger.info('TTS saved to ai_content', { noteId, audioUrl });
     }
@@ -509,8 +471,6 @@ class TTSService {
   async getTTSForNote(userId, noteId) {
     logger.info('Fetching saved TTS', { noteId, userId });
 
-    // Query by note_id and content_type only (like podcasts)
-    // User ownership is verified at the route level
     const { data, error } = await supabaseAdmin
       .from('ai_content')
       .select('content, created_at')
@@ -521,7 +481,6 @@ class TTSService {
       .single();
 
     if (error) {
-      // PGRST116 = no rows returned, which is expected when no TTS exists
       if (error.code !== 'PGRST116') {
         logger.warn('Error fetching TTS', { error: error.message, code: error.code, noteId });
       } else {

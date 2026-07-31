@@ -19,8 +19,11 @@
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"
         tools:ignore="SelectedPhotoAccess" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"
-        tools:ignore="SelectedPhotoAccess" />
+    <!-- READ_MEDIA_IMAGES intentionally NOT declared. The app uses
+         ActivityResultContracts.PickVisualMedia (Android Photo Picker), which
+         grants per-pick URI access without any storage permission. Declaring
+         READ_MEDIA_IMAGES triggered a Play Store rejection under the Photo
+         and Video Permissions policy (2026-06-02). Do not re-add. -->
     <application
         android:name=".ScribeAIApplication"
         android:networkSecurityConfig="@xml/network_security_config"
@@ -45,6 +48,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id" />
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

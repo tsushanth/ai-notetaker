@@ -241,16 +241,10 @@ class LearningService {
       lessonNumber: session.total_lessons_completed + 1
     };
 
-    // Fire and forget — worker will call back
-    axios.post(`${HETZNER_WORKER_URL}/generate-lesson`, payload, {
-      headers: {
-        'Authorization': `Bearer ${HETZNER_WORKER_SECRET}`,
-        'Content-Type': 'application/json'
-      },
-      timeout: 5000 // Just to send the request, not wait for completion
-    }).catch(err => {
-      logger.error('Failed to trigger lesson generation', { sessionId, error: err.message });
-      // Mark as failed so user can retry
+    // Direct SDK generation (fire-and-forget). Replaces Hetzner CLI worker
+    // round-trip — eliminates the OAuth-token sync chain across servers.
+    this._generateLessonDirect(payload).catch(err => {
+      logger.error('Lesson generation failed', { sessionId, error: err.message });
       supabaseAdmin
         .from('learning_sessions')
         .update({ generation_status: 'failed' })
@@ -258,11 +252,208 @@ class LearningService {
     });
   }
 
+  async _generateLessonDirect(payload) {
+    const { sessionId, lessonNumber } = payload;
+    const prompt = this._buildLessonPrompt(payload);
+
+    const resp = await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 32000,
+      system: 'You output JSON only. Your entire response must be a single JSON object starting with { and ending with }. No markdown fences, no commentary before or after.',
+      messages: [{ role: 'user', content: prompt }]
+    }, {
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      timeout: 300000
+    });
+
+    const output = resp.data?.content?.[0]?.text || '';
+    const stopReason = resp.data?.stop_reason;
+    if (!output) throw new Error('Empty response from Anthropic');
+
+    const lessonData = this._parseLessonOutput(output, lessonNumber, { sessionId, stopReason });
+    await this.handleGeneratedLesson(sessionId, lessonData);
+    logger.info('Lesson generated via SDK', { sessionId, lessonNumber, stopReason, outputChars: output.length });
+  }
+
+  _buildLessonPrompt(payload) {
+    const {
+      sourceContent, curriculum, compressedHistory, studentProfile,
+      conceptMastery, currentLevel, masteryScore, totalLessonsCompleted,
+      streakCount, recentLessons, lessonNumber
+    } = payload;
+
+    const isFirstLesson = lessonNumber === 1;
+    const recentSummary = (recentLessons || []).map(l =>
+      `- Lesson ${l.lesson_number} (${l.lesson_type}): "${l.title}" — Score: ${l.score !== null ? (l.score * 100).toFixed(0) + '%' : 'N/A'}`
+    ).join('\n') || 'None yet';
+
+    return `You are an expert adaptive learning tutor. Your job is to teach the student the content below using creative, engaging methods.
+
+## SOURCE MATERIAL TO TEACH
+<source_content>
+${(sourceContent || '').substring(0, 50000)}
+</source_content>
+
+${!isFirstLesson ? `## STUDENT PROFILE
+${JSON.stringify(studentProfile, null, 2)}
+
+## CONCEPT MASTERY (0-1 scores)
+${JSON.stringify(conceptMastery, null, 2)}
+
+## LEARNING HISTORY SUMMARY
+${compressedHistory || 'Just starting out'}
+
+## RECENT LESSONS
+${recentSummary}
+
+## CURRENT STATS
+- Lesson number: ${lessonNumber}
+- Current level: ${currentLevel}/10
+- Overall mastery: ${(masteryScore * 100).toFixed(0)}%
+- Streak: ${streakCount} correct in a row
+- Total completed: ${totalLessonsCompleted}
+` : `## FIRST LESSON
+This is the student's first lesson. Start by:1. Analyzing the content and identifying key concepts
+2. Creating a fun, engaging introduction to the material
+3. Use a simple activity to gauge the student's existing knowledge
+`}
+
+## YOUR TASK
+Generate the next learning activity. You MUST respond with a JSON object in this exact format (no markdown fences, no extra text — ONLY the JSON):
+
+{
+  "lessonType": "quiz|game|visualization|mnemonic|song|story|recap|challenge",
+  "title": "Short engaging title",
+  "difficultyLevel": ${currentLevel},
+  "estimatedDuration": 120,
+  "conceptsCovered": ["concept1", "concept2"],
+  "interactionSchema": {
+    "type": "multiple_choice|drag_drop|free_response|matching|sequence|fill_blank|interactive",
+    "questions": 5
+  },
+  "contentHtml": "<FULL SELF-CONTAINED HTML PAGE HERE - see rules below>",
+  ${isFirstLesson ? `"updatedCurriculum": { "concepts": ["list", "of", "key", "concepts"], "teachingOrder": ["ordered", "concept", "list"] },` : ''}
+  "updatedStudentProfile": { "learning_style": "visual|auditory|kinesthetic|reading", "strengths": [], "struggles": [], "engagement_notes": "" },
+  "updatedConceptMastery": {},
+  "updatedCompressedHistory": "Brief summary of all learning progress so far including this lesson"
+}
+
+## RULES FOR contentHtml
+1. MUST be a complete, self-contained HTML page with inline CSS and JS
+2. Dark theme (background: #0a0a0b, text: #ffffff, accent: #9333ea)
+3. Mobile-first design (max-width: 600px, centered)
+4. Make it INTERACTIVE — the student should DO something, not just read
+
+CRITICAL JS SYNTAX RULES (your last attempt broke because of this — read carefully):
+- Use DOUBLE QUOTES for every JavaScript string. Apostrophes in copy ("you're", "don't", "it's", possessives) silently terminate single-quoted JS strings and break the whole <script> block, leaving the page blank.
+- Use backticks (template literals) for any string that itself contains a double quote.
+- Do NOT use unescaped apostrophes inside single-quoted strings. If you must use single quotes, escape every apostrophe as \\'.
+- For HTML attributes inside JS string literals, prefer single-quoted HTML attrs (e.g. \`<div class="x" data-y='1'>\`) so the wrapping double-quoted JS string stays intact.
+
+5. Include a scoring mechanism that calls: window.ScribeAI.submitScore(correct, total)
+6. Vary the activity type! Use:
+   - Visual memory games (match cards, find patterns)
+   - Drag-and-drop sorting/categorization
+   - Fill-in-the-blank with hints
+   - Timed challenges
+   - Story-based scenarios where concepts are applied
+   - Mnemonic devices with visual aids
+   - Mini songs/rhymes (display lyrics with key terms highlighted)
+   - Interactive diagrams/flowcharts
+   - "Teach it back" — student explains a concept
+7. ${currentLevel <= 3 ? 'Keep it simple and encouraging. Lots of hints and positive feedback.' : currentLevel <= 6 ? 'Moderate difficulty. Mix easy wins with challenges.' : 'Push the student. Complex scenarios, fewer hints, time pressure.'}
+8. ${streakCount >= 3 ? 'Student is on a streak! Increase difficulty or try a new activity type.' : ''}
+9. ${masteryScore < 0.4 && totalLessonsCompleted > 2 ? 'Student is struggling. Switch to a more engaging format. Try gamification, storytelling, or visual aids.' : ''}
+10. End with a "Next Lesson" button that calls: window.ScribeAI.nextLesson()
+
+RESPOND WITH ONLY THE JSON OBJECT. NO OTHER TEXT.`;
+  }
+
+  _parseLessonOutput(output, lessonNumber, ctx = {}) {
+    let cleaned = (output || '').trim()
+      .replace(/^```(?:json)?\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+
+    let json;
+    try {
+      json = JSON.parse(cleaned);
+    } catch {
+      // Balanced-brace extraction — handles nested objects (interactionSchema,
+      // updatedConceptMastery, etc.) that a greedy {...} regex would mangle.
+      const start = cleaned.indexOf('{');
+      if (start >= 0) {
+        let depth = 0, inStr = false, esc = false;
+        for (let i = start; i < cleaned.length; i++) {
+          const c = cleaned[i];
+          if (esc) { esc = false; continue; }
+          if (c === '\\' && inStr) { esc = true; continue; }
+          if (c === '"') inStr = !inStr;
+          else if (!inStr) {
+            if (c === '{') depth++;
+            else if (c === '}') {
+              depth--;
+              if (depth === 0) {
+                const candidate = cleaned.substring(start, i + 1);
+                try { json = JSON.parse(candidate); } catch {}
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    if (!json) {
+      logger.warn('Lesson JSON parse fell back', {
+        sessionId: ctx.sessionId,
+        stopReason: ctx.stopReason,
+        outputChars: (output || '').length,
+        outputHead: (output || '').substring(0, 300),
+        outputTail: (output || '').slice(-200)
+      });
+      // Fallback: serve a minimal recap card so the user isn't stuck staring
+      // at a spinner forever. They can tap "Next Lesson" to retry.
+      json = {
+        lessonType: 'recap',
+        title: 'Review Time',
+        difficultyLevel: 1,
+        estimatedDuration: 60,
+        conceptsCovered: [],
+        interactionSchema: { type: 'free_response' },
+        contentHtml: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#0a0a0b;color:#fff;font-family:system-ui;padding:20px;max-width:600px;margin:0 auto}h1{color:#9333ea}button{background:#9333ea;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:16px;cursor:pointer;margin-top:20px}</style></head><body><h1>Let's Review</h1><p>The AI tutor is preparing your next personalized lesson. In the meantime, review the material and tap below when ready.</p><button onclick="window.ScribeAI.submitScore(1,1)">I've Reviewed</button><br><button onclick="window.ScribeAI.nextLesson()" style="margin-top:10px;background:#333">Next Lesson</button></body></html>`,
+        updatedStudentProfile: {},
+        updatedConceptMastery: {},
+        updatedCompressedHistory: ''
+      };
+    }
+
+    return {
+      lessonNumber,
+      lessonType: json.lessonType || 'quiz',
+      title: json.title || `Lesson ${lessonNumber}`,
+      contentHtml: json.contentHtml || '<p>Error generating lesson</p>',
+      conceptsCovered: json.conceptsCovered || [],
+      difficultyLevel: json.difficultyLevel || 1,
+      estimatedDuration: json.estimatedDuration || 120,
+      interactionSchema: json.interactionSchema || {},
+      updatedStudentProfile: json.updatedStudentProfile,
+      updatedConceptMastery: json.updatedConceptMastery,
+      updatedCompressedHistory: json.updatedCompressedHistory,
+      updatedCurriculum: json.updatedCurriculum
+    };
+  }
+
   // ============================================
   // Callback from Hetzner worker with generated lesson
   // ============================================
   async handleGeneratedLesson(sessionId, lessonData, workerSecret) {
-    if (workerSecret !== HETZNER_WORKER_SECRET) {
+    // Secret is only required for external (webhook) calls. Internal callers
+    // (the in-process SDK generator) pass workerSecret=undefined.
+    if (workerSecret !== undefined && workerSecret !== HETZNER_WORKER_SECRET) {
       throw new AppError('Invalid worker secret', 401);
     }
 

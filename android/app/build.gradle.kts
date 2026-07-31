@@ -28,8 +28,8 @@ android {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 26
         targetSdk = 35
-        versionCode = 60
-        versionName = "58.1"
+        versionCode = 78
+        versionName = "58.18"
 
         // 16KB page size support
         ndk {
@@ -46,9 +46,19 @@ android {
             buildConfig = true
         }
 
-        // Add your API base URL here
-        buildConfigField("String", "BASE_URL", "\"https://ai-notetaker-backend-917362189743.us-central1.run.app/\"")
+        // Backend URL. Matches the iOS Constants.baseURL so both clients hit
+        // the same deployment (Fly.io). The Cloud Run instance is no longer
+        // kept in sync — do not point at it.
+        buildConfigField("String", "BASE_URL", "\"https://ai-notetaker-backend.fly.dev/\"")
         buildConfigField("boolean", "DEBUG", "true")
+
+        // Sent as `x-bypass-rate-limit` for subscribed users so the server
+        // exempts them from the 100-req/15min window. Override per-machine
+        // via `RATE_LIMIT_BYPASS_TOKEN` in local.properties.
+        val bypassToken: String = (project.findProperty("RATE_LIMIT_BYPASS_TOKEN")
+            ?: System.getenv("RATE_LIMIT_BYPASS_TOKEN")
+            ?: "ZFkOTdbeZ3RiXM4yAUwySQgfc1Zi039gtNPcOXVNn_c") as String
+        buildConfigField("String", "RATE_LIMIT_BYPASS_TOKEN", "\"$bypassToken\"")
     }
 
     buildTypes {
@@ -159,12 +169,15 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
-    // RevenueCat (Subscriptions + Native Paywall UI)
-    implementation("com.revenuecat.purchases:purchases:8.20.0")
-    implementation("com.revenuecat.purchases:purchases-ui:8.20.0")
+    // Google Play Billing
+    implementation("com.android.billingclient:billing-ktx:7.1.1")
+
+    // Twilio Voice SDK — in-app VoIP phone calls
+    implementation("com.twilio:voice-android:6.9.0")
 
     // PaywallKit
     implementation(project(":paywallkit"))
+    implementation(project(":crosspromokit"))
 
     // Room Database (Local Cache)
     implementation(libs.androidx.room.runtime)
@@ -176,5 +189,8 @@ dependencies {
 
     // TikTok Events SDK (install attribution & event tracking)
     implementation("com.github.tiktok:tiktok-business-android-sdk:1.6.0")
+
+    // Facebook SDK
+    implementation("com.facebook.android:facebook-android-sdk:17.0.2")
 
 }

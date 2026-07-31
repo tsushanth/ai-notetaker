@@ -23,8 +23,11 @@ struct ScribeAIApp: App {
     @State private var showAppOpenPaywall = false
     @Environment(\.scenePhase) private var scenePhase
 
-    private static let paywallTriggerOpens: Set<Int> = [1, 3, 5]
-    private static let paywallRecurringInterval = 3
+    // 2026-06-09: shifted from [1, 3, 5] with 3-open recurrence to delay first
+    // launch paywall after value has been established. Note-creation gate
+    // (3 free notes) is now the primary monetization trigger.
+    private static let paywallTriggerOpens: Set<Int> = [5, 15, 30]
+    private static let paywallRecurringInterval = 10
 
     init() {
         // Initialize Firebase Analytics (free, unlimited)
@@ -62,17 +65,20 @@ struct ScribeAIApp: App {
         RatingKit.configure(appId: "scribeai", apiUrl: "https://paywallkit-api.fly.dev")
         RatingKit.shared.trackAppOpen()
 
-        // Cancel-flow retention: present Apple Promotional Offer to lapsed subscribers
+        // Cancel-flow retention: present Apple Promotional Offer to lapsed subscribers.
+        // 2026-06-09: swapped monthly from `half_3mo` to `winback_7day_free`.
+        // Free-trial win-back typically converts 2-3x higher than a 50% discount for
+        // lapsed users; after 7 days they auto-bill at full price so revenue resumes.
         PromoOfferKit.configure(
             bundleId: "com.kreativekoala.scribeai",
             apiBaseUrl: URL(string: "https://paywallkit-api.fly.dev")!,
             productIdToOfferCode: [
                 "com.kreativekoala.scribeai.yearly":  "half_1yr",
-                "com.kreativekoala.scribeai.monthly": "half_3mo",
+                "com.kreativekoala.scribeai.monthly": "winback_7day_free",
             ],
             isSubscribedProvider: { StoreManager.shared.isPremium },
             onPurchased: { Task { await StoreManager.shared.refreshSubscriptionStatus() } },
-            headline: "Come back at half price"
+            headline: "Come back with a free week"
         )
     }
 

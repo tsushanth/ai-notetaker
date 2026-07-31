@@ -89,7 +89,7 @@ async function debugIOSTrials() {
   // 4. Check if Apple webhook URL is configured
   console.log('\n\n========== APPLE WEBHOOK CONFIG CHECK ==========\n');
   console.log('Apple Server Notifications should be configured in App Store Connect to send to:');
-  console.log('  POST https://ai-notetaker-backend-917362189743.us-central1.run.app/api/subscriptions/webhook/apple');
+  console.log('  POST https://ai-notetaker-backend.fly.dev/api/subscriptions/webhook/apple');
   console.log('\nNo webhook events found in database - verify webhook URL in App Store Connect!');
 
   console.log('\n========== END DEBUG ==========\n');

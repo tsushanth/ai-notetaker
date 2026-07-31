@@ -3,6 +3,7 @@ const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 const storageService = require('./storageService');
+const { supabaseAdmin } = require('../config/supabase');
 
 class PDFService {
   /**
@@ -26,13 +27,31 @@ class PDFService {
         throw new AppError('Could not extract text from document', 400);
       }
 
-      // Upload PDF to storage - PASS USER TOKEN HERE
-      const uploadResult = await storageService.uploadFile(
-        userId, 
-        file, 
-        'pdfs',
-        userToken
-      );
+      // Upload PDF to the public `documents` bucket via the service role so the
+      // resulting public URL is actually readable. The old path went through
+      // storageService → `notetaker-files` bucket, where RLS or bucket privacy
+      // blocked subsequent reads and the iOS app showed
+      // "you don't have permission to view it". This mirrors what scanService
+      // does for scanned-document PDFs, which has been working.
+      const timestamp = Date.now();
+      const sanitizedFilename = (file.originalname || 'upload.pdf')
+        .replace(/[^a-zA-Z0-9._-]/g, '_');
+      const storagePath = `pdfs/${userId}/${timestamp}_${sanitizedFilename}`;
+
+      const { error: uploadError } = await supabaseAdmin.storage
+        .from('documents')
+        .upload(storagePath, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
+      if (uploadError) {
+        logger.error('PDF storage upload failed', { error: uploadError.message, userId, storagePath });
+        throw new AppError('Failed to upload PDF', 500);
+      }
+      const { data: urlData } = supabaseAdmin.storage
+        .from('documents')
+        .getPublicUrl(storagePath);
+      const uploadResult = { path: storagePath, url: urlData.publicUrl };
 
       // Get page count if PDF
       let pageCount = null;

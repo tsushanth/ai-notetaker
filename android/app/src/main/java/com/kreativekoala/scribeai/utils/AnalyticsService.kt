@@ -296,7 +296,7 @@ object AnalyticsService {
                     return@launch
                 }
 
-                val url = "${BuildConfig.BASE_URL}/api/analytics/batch"
+                val url = "${BuildConfig.BASE_URL.trimEnd('/')}/api/analytics/batch"
 
                 val eventsArray = JSONArray().apply {
                     events.forEach { put(it) }

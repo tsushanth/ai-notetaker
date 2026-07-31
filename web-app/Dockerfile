@@ -1,15 +1,21 @@
 # Stage 1: Dependencies
-FROM node:20-alpine AS deps
+FROM node:20-bookworm-slim AS deps
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies for build)
-RUN npm ci
+# Install ALL dependencies (including devDependencies for build).
+# Use `npm install` (not `npm ci`) so npm resolves platform-specific optional
+# native binaries (lightningcss, @tailwindcss/oxide, @swc/core, etc.) for the
+# linux-x64-gnu target. `npm ci` with a macOS-generated lockfile silently skips
+# these, triggering "Cannot find module './*.linux-x64-gnu.node'" build errors.
+# Tradeoff: loses strict lockfile reproducibility, gains correctness on Linux.
+RUN rm -f package-lock.json && \
+    npm install --include=optional --no-audit --no-fund
 
 # Stage 2: Builder
-FROM node:20-alpine AS builder
+FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
 # Copy node_modules from deps stage
@@ -30,15 +36,15 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Stage 3: Runner
-FROM node:20-alpine AS runner
+FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
 # Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && \
+    useradd --system --uid 1001 --gid nodejs nextjs
 
 # Copy built application
 COPY --from=builder /app/public ./public

@@ -4,6 +4,7 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.kreativekoala.scribeai.service.FacebookSDKHelper
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.TutorialManager
 import com.kreativekoala.scribeai.utils.UserIdHelper
@@ -149,6 +150,8 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
                 Log.d("AUTH_FLOW", "==========================================")
 
                 Log.d("AuthViewModel", "✅ Tokens saved successfully")
+                // Meta attribution — dedupes per install, safe to call on every signin.
+                FacebookSDKHelper.logSignUp("email")
                 withContext(Dispatchers.Main) {
                     _authState.value = AuthState.Authenticated(accessToken)
                 }
@@ -287,6 +290,8 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
                 Log.d("AUTH_FLOW", "2️⃣ Tutorial seeding completed")
                 Log.d("AUTH_FLOW", "==========================================")
 
+                // Meta attribution — explicit signup flow.
+                FacebookSDKHelper.logSignUp("email")
                 withContext(Dispatchers.Main) {
                     _authState.value = AuthState.Authenticated(accessToken)
                 }
@@ -379,6 +384,7 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
                 Log.d("AUTH_FLOW", "==========================================")
 
                 Log.d("AuthViewModel", "✅ Google tokens saved successfully")
+                FacebookSDKHelper.logSignUp("google")
                 withContext(Dispatchers.Main) {
                     _authState.value = AuthState.Authenticated(accessToken)
                 }

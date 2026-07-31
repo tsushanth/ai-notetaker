@@ -41,6 +41,8 @@ const createPageRoutes = require('./routes/createPage');
 const competeRoutes = require('./routes/compete');
 const competePageRoutes = require('./routes/competePage');
 const competeCreatePageRoutes = require('./routes/competeCreatePage');
+const phoneRoutes = require('./routes/phone');
+const twilioWebhookRoutes = require('./routes/twilioWebhooks');
 const { createJobRoutes, initializeCronJobs } = require('./jobs/creatorPayoutJobs');
 
 const app = express();
@@ -210,16 +212,36 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  // Proper key generator for Cloud Run/proxied environments
+  // Prefer a per-user key when the request carries an auth token. Falls
+  // back to IP only when truly anonymous. This stops users behind a shared
+  // NAT (or behind one user's testing burst) from being denied service.
   keyGenerator: (req) => {
-    // Google Cloud Run sets X-Forwarded-For header
+    // Token can ride on the Authorization header (API clients) or on
+    // ?token= (server-rendered pages loaded in a WebView).
+    let token = null;
+    const auth = req.headers.authorization;
+    if (auth && auth.startsWith('Bearer ')) {
+      token = auth.substring(7);
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
+    }
+    if (token) {
+      try {
+        // Just decode the JWT body — we don't need to verify the signature
+        // for the purpose of bucketing requests. If the payload is forged
+        // the user still hits their own bucket; downstream auth handles auth.
+        const parts = token.split('.');
+        if (parts.length >= 2) {
+          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
+          if (payload && payload.sub) return `user:${payload.sub}`;
+        }
+      } catch (_) { /* fall through to IP */ }
+    }
     const forwarded = req.headers['x-forwarded-for'];
     if (forwarded) {
-      // X-Forwarded-For can be a comma-separated list, take the first (original client)
-      return forwarded.split(',')[0].trim();
+      return `ip:${forwarded.split(',')[0].trim()}`;
     }
-    // Fallback to req.ip (which works correctly when trust proxy is enabled)
-    return req.ip || req.connection.remoteAddress || 'unknown';
+    return `ip:${req.ip || req.connection.remoteAddress || 'unknown'}`;
   },
   // Skip rate limiting for allowlisted IPs, disabled, or polling endpoints
   skip: (req) => {
@@ -228,6 +250,12 @@ const limiter = rateLimit({
     }
     // Skip rate limiting for podcast status polling (called every 2s during generation)
     if (req.path.includes('/ai/podcast/status/')) {
+      return true;
+    }
+    // Bypass for subscribed clients: the app sends `x-bypass-rate-limit`
+    // with a shared secret only when the user is subscribed.
+    const bypassToken = process.env.RATE_LIMIT_BYPASS_TOKEN;
+    if (bypassToken && req.headers['x-bypass-rate-limit'] === bypassToken) {
       return true;
     }
     const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
@@ -276,6 +304,10 @@ app.use('/api/integrations', integrationsRoutes);
 app.use('/api/learn', learningRoutes);
 app.use('/api/create', createContentRoutes);
 app.use('/api/compete', competeRoutes);
+app.use('/api/phone', phoneRoutes);
+// Twilio webhooks need to be reachable without the /api prefix to match
+// the Voice/Status callback URLs configured in twilioService.js.
+app.use('/v1/webhooks/twilio', twilioWebhookRoutes);
 // learnPageRoutes mounted before helmet() above
 app.use('/api/jobs', createJobRoutes());
 

@@ -91,7 +91,7 @@ class NoteViewModel(
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    private val baseUrl = "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+    private val baseUrl = "https://ai-notetaker-backend.fly.dev"
 
     private val _currentNote = MutableStateFlow<Note?>(null)
     val currentNote: StateFlow<Note?> = _currentNote.asStateFlow()
@@ -158,8 +158,14 @@ class NoteViewModel(
                     // Update cache with server notes only
                     localRepository.cacheNotes(userId, serverNotes)
 
+                    // Server now also stores a copy of the tutorial note (so chat
+                    // works) under a generated UUID with source_type=tutorial.
+                    // Hide that copy from the list — the local sentinel-id
+                    // version is the canonical one for display.
+                    val serverNotesNoTutorial = serverNotes.filter { it.sourceType != "tutorial" }
+
                     // Merge tutorial notes with server notes for display
-                    val allNotes = (tutorialNotes.map { it.toNote() } + serverNotes)
+                    val allNotes = (tutorialNotes.map { it.toNote() } + serverNotesNoTutorial)
                         .distinctBy { it.id }
                         .sortedByDescending { it.createdAt }
 

@@ -1,4 +1,4 @@
-const { openai, MODELS, PRICING } = require('../config/openai');
+const { anthropic, MODELS, PRICING } = require('../config/openai');
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
@@ -87,15 +87,19 @@ Answer questions based on these notes. Be concise, clear, and educational.${getL
         content: question
       });
 
-      // Call OpenAI API
-      const completion = await openai.chat.completions.create({
+      // Extract system message and user/assistant messages
+      const systemContent = messages[0].content;
+      const userMessages = messages.slice(1);
+
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
-        messages: messages,
+        system: systemContent,
+        messages: userMessages,
         temperature: 0.7,
         max_tokens: 1024
       });
 
-      const answer = completion.choices[0].message.content;
+      const answer = completion.content[0].text;
 
       // Log usage
       await this.logUsage(userId, 'chat', completion.usage);
@@ -131,18 +135,15 @@ Answer questions based on these notes. Be concise, clear, and educational.${getL
         ? note.content.substring(0, 3000) + '...'
         : note.content;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
-        messages: [
-          {
-            role: 'system',
-            content: `You are helping a student understand their notes. Based on the content provided, generate exactly 3 thoughtful questions the student might want to ask about this material. The questions should:
+        system: `You are helping a student understand their notes. Based on the content provided, generate exactly 3 thoughtful questions the student might want to ask about this material. The questions should:
 - Be specific to the actual content
 - Help deepen understanding
 - Range from basic comprehension to analytical thinking
 
-Return ONLY a JSON array of 3 strings, no other text. Example: ["Question 1?", "Question 2?", "Question 3?"]${getLanguageInstruction(language)}`
-          },
+Return ONLY a JSON array of 3 strings, no other text. Example: ["Question 1?", "Question 2?", "Question 3?"]${getLanguageInstruction(language)}`,
+        messages: [
           {
             role: 'user',
             content: `Here are the notes:\n\n${truncatedContent}`
@@ -152,7 +153,7 @@ Return ONLY a JSON array of 3 strings, no other text. Example: ["Question 1?", "
         max_tokens: 300
       });
 
-      const responseText = completion.choices[0].message.content.trim();
+      const responseText = completion.content[0].text.trim();
 
       // Parse JSON response
       let suggestions;
@@ -210,13 +211,10 @@ Return ONLY a JSON array of 3 strings, no other text. Example: ["Question 1?", "
 
       const prompt = `Please provide a ${length} summary of the following content ${lengthInstructions[length]}:\n\n${truncateContent(note.content)}`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are a helpful assistant that creates clear, concise summaries of educational content.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are a helpful assistant that creates clear, concise summaries of educational content.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: prompt
@@ -226,7 +224,7 @@ Return ONLY a JSON array of 3 strings, no other text. Example: ["Question 1?", "
         max_tokens: length === 'long' ? 1000 : length === 'medium' ? 500 : 200
       });
 
-      const summary = completion.choices[0].message.content;
+      const summary = completion.content[0].text;
 
       // Save AI content
       const aiContent = await this.saveAIContent(noteId, 'summary', {
@@ -282,24 +280,20 @@ Format your response as a JSON array with this structure:
 Content:
 ${truncateContent(note.content)}`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are an expert educator who creates engaging, educational quiz questions. Always respond with valid JSON only. Do not include any text outside the JSON object.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are an expert educator who creates engaging, educational quiz questions. Always respond with valid JSON only.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: prompt
           }
         ],
         temperature: 0.8,
-        max_tokens: 2000,
-        response_format: { type: 'json_object' }
+        max_tokens: 2000
       });
 
-      const responseContent = completion.choices[0].message.content;
+      const responseContent = completion.content[0].text;
       let questions;
       
       try {
@@ -367,24 +361,20 @@ ${truncateContent(note.content)}`;
       // Scale max_tokens based on card count (approximately 100 tokens per card)
       const maxTokens = Math.min(Math.max(cardCount * 100, 1500), 4000);
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only. Do not include any text outside the JSON object. You MUST create exactly ${cardCount} flashcards - no more, no less.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only. You MUST create exactly ${cardCount} flashcards - no more, no less.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: prompt
           }
         ],
         temperature: 0.7,
-        max_tokens: maxTokens,
-        response_format: { type: 'json_object' }
+        max_tokens: maxTokens
       });
 
-      const responseContent = completion.choices[0].message.content;
+      const responseContent = completion.content[0].text;
       let flashcards;
       
       try {
@@ -471,24 +461,20 @@ Return ONLY valid JSON in this exact structure:
 Content to analyze:
 ${truncateContent(note.content)}`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are an expert educator who creates clear, visually organized mind maps for studying. Create hierarchical structures that help visual learners understand and remember content. Always respond with valid JSON only. Do not include any text outside the JSON object.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are an expert educator who creates clear, visually organized mind maps for studying. Create hierarchical structures that help visual learners understand and remember content. Always respond with valid JSON only.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: prompt
           }
         ],
         temperature: 0.7,
-        max_tokens: 3000,
-        response_format: { type: 'json_object' }
+        max_tokens: 3000
       });
 
-      const responseContent = completion.choices[0].message.content;
+      const responseContent = completion.content[0].text;
       let mindMapData;
 
       try {
@@ -541,13 +527,10 @@ Return ONLY the Mermaid syntax, starting with the diagram type (e.g., "graph TD"
 Content:
 ${note.content.substring(0, 3000)}`; // Limit content length
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are an expert at creating educational diagrams using Mermaid syntax. Return only valid Mermaid syntax.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are an expert at creating educational diagrams using Mermaid syntax. Return only valid Mermaid syntax.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: prompt
@@ -557,7 +540,7 @@ ${note.content.substring(0, 3000)}`; // Limit content length
         max_tokens: 1500
       });
 
-      let diagram = completion.choices[0].message.content.trim();
+      let diagram = completion.content[0].text.trim();
       
       // Remove markdown code fences if present
       diagram = diagram.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '').trim();
@@ -590,6 +573,23 @@ ${note.content.substring(0, 3000)}`; // Limit content length
   /**
    * Generate podcast script from note content
    */
+  /**
+   * Generate podcast script only (no TTS audio).
+   * Used by clients that synthesize on-device (Kokoro) — saves Cloud Run TTS cost.
+   * Returns the same script format as generatePodcast (Host 1: / Host 2: lines).
+   */
+  async generatePodcastScriptOnly(userId, noteId, options = {}) {
+    const opts = { ...options, generate_audio: false };
+    const result = await this.generatePodcast(userId, noteId, opts);
+    return {
+      id: result.id,
+      script: result.script,
+      duration: result.duration,
+      style: result.style,
+      note_id: result.note_id,
+    };
+  }
+
   async generatePodcast(userId, noteId, options = {}) {
     const {
       duration = 'medium',
@@ -657,13 +657,10 @@ ${truncateContent(note.content)}
 
 IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a monologue. Every paragraph must start with "Host 1:" or "Host 2:".`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are an expert podcast scriptwriter who creates engaging, natural-sounding podcast scripts. Write dialogue that sounds authentic and conversational.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are an expert podcast scriptwriter who creates engaging, natural-sounding podcast scripts. Write dialogue that sounds authentic and conversational.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: prompt
@@ -673,7 +670,7 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
         max_tokens: duration === 'long' ? 6000 : duration === 'medium' ? 4000 : 2000
       });
 
-      const script = completion.choices[0].message.content;
+      const script = completion.content[0].text;
 
       // Prepare content object
       const contentData = {
@@ -718,10 +715,10 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
       // Log usage
       await this.logUsage(userId, 'podcast', completion.usage);
 
-      logger.info('Podcast script generated', { 
-        userId, 
-        noteId, 
-        duration, 
+      logger.info('Podcast script generated', {
+        userId,
+        noteId,
+        duration,
         style,
         hasAudio: !!contentData.audio_url
       });
@@ -820,13 +817,10 @@ ${truncateContent(note.content)}
 
 IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a monologue. Every paragraph must start with "Host 1:" or "Host 2:".`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are an expert podcast scriptwriter who creates engaging, natural-sounding podcast scripts. Write dialogue that sounds authentic and conversational.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are an expert podcast scriptwriter who creates engaging, natural-sounding podcast scripts. Write dialogue that sounds authentic and conversational.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: prompt
@@ -836,7 +830,7 @@ IMPORTANT: Write dialogue for BOTH hosts alternating throughout. Do NOT write a 
         max_tokens: duration === 'long' ? 6000 : duration === 'medium' ? 4000 : 2000
       });
 
-      const script = completion.choices[0].message.content;
+      const script = completion.content[0].text;
 
       // Prepare content object
       const contentData = {
@@ -955,26 +949,22 @@ Return a JSON object with:
 Content to analyze:
 ${truncateContent(note.content, 8000)}`;
 
-      const extractionCompletion = await openai.chat.completions.create({
+      const extractionCompletion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: `You are an expert at distilling complex information into clear, visual-friendly summaries for infographics. Extract only the most impactful information. Always respond with valid JSON only. Do not include any text outside the JSON object.${getLanguageInstruction(language)}`,
         messages: [
-          {
-            role: 'system',
-            content: `You are an expert at distilling complex information into clear, visual-friendly summaries for infographics. Extract only the most impactful information. Always respond with valid JSON only.${getLanguageInstruction(language)}`
-          },
           {
             role: 'user',
             content: extractionPrompt
           }
         ],
         temperature: 0.7,
-        max_tokens: 1000,
-        response_format: { type: 'json_object' }
+        max_tokens: 1000
       });
 
       let extractedData;
       try {
-        extractedData = JSON.parse(extractionCompletion.choices[0].message.content);
+        extractedData = JSON.parse(extractionCompletion.content[0].text);
       } catch {
         throw new AppError('Failed to extract infographic data', 500);
       }
@@ -982,35 +972,28 @@ ${truncateContent(note.content, 8000)}`;
       // Log extraction usage
       await this.logUsage(userId, 'infographic_extraction', extractionCompletion.usage);
 
-      // Step 2: Fire async SVG infographic generation via Hetzner worker (Claude CLI)
-      const WORKER_URL = process.env.LEARNING_WORKER_URL || 'http://178.156.231.255:3458';
-      const WORKER_SECRET = process.env.LEARNING_WORKER_SECRET;
-
-      logger.info('Triggering infographic generation via Claude CLI', { userId, noteId, style });
-
-      // Fire and forget — worker will call back via webhook
-      const axios = require('axios');
-      axios.post(`${WORKER_URL}/generate-infographic`, {
-        content: truncateContent(note.content, 15000),
-        title: extractedData.title || note.title,
-        style,
-        noteId,
-        userId,
-        extractedData
-      }, {
-        headers: { 'Authorization': `Bearer ${WORKER_SECRET}` },
-        timeout: 5000 // just to send the request
-      }).catch(err => {
-        logger.error('Failed to trigger infographic worker', { error: err.message, noteId });
-      });
+      // Step 2: Fire async SVG infographic generation via direct SDK call.
+      // Replaces Hetzner CLI worker round-trip — eliminates the OAuth-token
+      // sync chain across servers.
+      logger.info('Triggering infographic generation via SDK', { userId, noteId, style });
 
       // Save a placeholder AI content so the client can poll
       const aiContent = await this.saveAIContent(noteId, 'infographic', {
         image_url: null,
         extracted_data: extractedData,
         style,
-        model: 'claude-cli-svg',
+        model: 'claude-svg',
         status: 'generating'
+      });
+
+      // Fire-and-forget direct generation
+      this._generateInfographicDirect({
+        noteId, userId, style, extractedData,
+        title: extractedData.title || note.title,
+        content: truncateContent(note.content, 15000),
+        aiContentId: aiContent.id
+      }).catch(err => {
+        logger.error('Infographic generation failed', { error: err.message, noteId });
       });
 
       logger.info('Infographic generation triggered', {
@@ -1053,6 +1036,93 @@ ${truncateContent(note.content, 8000)}`;
 
       throw new AppError(`Failed to generate infographic: ${error.message}`, 500);
     }
+  }
+
+  // Direct SDK infographic generation. Builds the SVG prompt in-process,
+  // calls Anthropic, uploads SVG to Supabase storage, then patches the
+  // ai_content row with the public URL. Replaces the Hetzner CLI worker
+  // round-trip that depended on a fragile OAuth-token sync chain.
+  async _generateInfographicDirect({ noteId, userId, style, extractedData, title, content, aiContentId }) {
+    const styleDescs = {
+      modern: 'clean modern design with gradient backgrounds, rounded shapes, dark theme (#0a0a0b background, #9333ea accent purple, white text)',
+      colorful: 'vibrant colorful design with bold gradients, playful icons, dark background (#0a0a0b)',
+      minimal: 'minimalist design with plenty of space, subtle colors on dark background (#0a0a0b)',
+      professional: 'professional corporate style with structured layout, muted colors on dark background (#0a0a0b)'
+    };
+
+    const prompt = `You are an expert infographic designer. Create a COMPLETE, self-contained SVG infographic from the following content.
+
+## CONTENT
+Title: ${title || 'Infographic'}
+${(content || '').substring(0, 15000)}
+
+## REQUIREMENTS
+1. Output ONLY a valid SVG element (no markdown, no explanation, just the raw SVG)
+2. Style: ${styleDescs[style] || styleDescs.modern}
+3. SVG dimensions: width="1024" height="1792" (portrait)
+4. Include:
+   - A compelling title at the top
+   - 2-4 key statistics/facts as large highlighted numbers
+   - 2-3 main sections with icons and bullet points
+   - Visual elements: icons (use simple SVG shapes), dividers, backgrounds
+   - A key takeaway at the bottom
+   - "Created with Scribe AI" footer
+5. Use embedded fonts (system-ui, sans-serif)
+6. Make text readable (min 20px for body, 40px+ for headers)
+7. Use colors: primary #9333ea (purple), accent #a855f7 (light purple), background #0a0a0b, cards #111111, text #ffffff, muted #888888
+
+RESPOND WITH ONLY THE SVG. NO OTHER TEXT.`;
+
+    const axios = require('axios');
+    const resp = await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 16000,
+      messages: [{ role: 'user', content: prompt }]
+    }, {
+      headers: {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json'
+      },
+      timeout: 300000
+    });
+
+    let svg = (resp.data?.content?.[0]?.text || '').trim()
+      .replace(/^```(?:svg|xml)?\s*\n?/i, '')
+      .replace(/\n?```\s*$/i, '')
+      .trim();
+    if (!svg.includes('<svg')) throw new Error('Model did not return valid SVG');
+
+    const { supabaseAdmin } = require('../config/supabase');
+    const fileName = `infographics/${userId}/${noteId}/${Date.now()}.svg`;
+    const { error: uploadError } = await supabaseAdmin
+      .storage
+      .from('notetaker-files')
+      .upload(fileName, Buffer.from(svg, 'utf-8'), {
+        contentType: 'image/svg+xml',
+        upsert: true
+      });
+    if (uploadError) throw new Error(`SVG upload failed: ${uploadError.message}`);
+
+    const { data: urlData } = supabaseAdmin
+      .storage
+      .from('notetaker-files')
+      .getPublicUrl(fileName);
+
+    // Patch the placeholder ai_content row in-place
+    await supabaseAdmin
+      .from('ai_content')
+      .update({
+        content: {
+          image_url: urlData.publicUrl,
+          extracted_data: extractedData,
+          style,
+          model: 'claude-svg'
+        }
+      })
+      .eq('id', aiContentId);
+
+    logger.info('Infographic generated via SDK', { noteId, userId, aiContentId });
   }
 
   /**
@@ -1242,13 +1312,16 @@ ${truncateContent(note.content, 8000)}`;
    */
   async logUsage(userId, actionType, usage) {
     try {
-      const tokensUsed = usage.total_tokens || 0;
+      // Support both OpenAI (prompt_tokens/completion_tokens) and Anthropic (input_tokens/output_tokens) formats
+      const inputTokens = usage.input_tokens || usage.prompt_tokens || 0;
+      const outputTokens = usage.output_tokens || usage.completion_tokens || 0;
+      const tokensUsed = inputTokens + outputTokens;
       const model = MODELS.GPT4_MINI;
       const pricing = PRICING[model] || { input: 0, output: 0 };
-      
+
       const cost = (
-        (usage.prompt_tokens || 0) * pricing.input / 1000 +
-        (usage.completion_tokens || 0) * pricing.output / 1000
+        inputTokens * pricing.input / 1000 +
+        outputTokens * pricing.output / 1000
       );
 
       await supabaseAdmin
@@ -1260,8 +1333,8 @@ ${truncateContent(note.content, 8000)}`;
           cost_usd: cost,
           metadata: {
             model,
-            prompt_tokens: usage.prompt_tokens,
-            completion_tokens: usage.completion_tokens
+            input_tokens: inputTokens,
+            output_tokens: outputTokens
           }
         });
     } catch (error) {

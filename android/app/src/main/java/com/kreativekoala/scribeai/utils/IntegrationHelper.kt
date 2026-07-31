@@ -24,7 +24,7 @@ object IntegrationHelper {
     suspend fun exportToProvider(context: Context, token: String, noteId: String, endpoint: String) {
         withContext(Dispatchers.IO) {
             try {
-                val url = "${BuildConfig.BASE_URL}/api/integrations/$endpoint/$noteId"
+                val url = "${BuildConfig.BASE_URL.trimEnd('/')}/api/integrations/$endpoint/$noteId"
                 val request = Request.Builder()
                     .url(url)
                     .addHeader("Authorization", "Bearer $token")

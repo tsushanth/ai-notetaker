@@ -1,30 +1,94 @@
-<?xml version='1.0' encoding='UTF-8'?>
-<Scheme LastUpgradeVersion='1620' version='1.7'>
-   <BuildAction parallelizeBuildables='YES' buildImplicitDependencies='YES' buildArchitectures='Automatic'>
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme
+   LastUpgradeVersion = "1620"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES"
+      buildArchitectures = "Automatic">
       <BuildActionEntries>
-         <BuildActionEntry buildForTesting='YES' buildForRunning='YES' buildForProfiling='YES' buildForArchiving='YES' buildForAnalyzing='YES'>
-            <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='881B30132ECD0B69003270AA' BuildableName='scribeai.app' BlueprintName='scribeai' ReferencedContainer='container:scribeai.xcodeproj'> </BuildableReference>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "881B30132ECD0B69003270AA"
+               BuildableName = "scribeai.app"
+               BlueprintName = "scribeai"
+               ReferencedContainer = "container:scribeai.xcodeproj">
+            </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
-   <TestAction buildConfiguration='Debug' selectedDebuggerIdentifier='Xcode.DebuggerFoundation.Debugger.LLDB' selectedLauncherIdentifier='Xcode.DebuggerFoundation.Launcher.LLDB' shouldUseLaunchSchemeArgsEnv='YES' shouldAutocreateTestPlan='YES'>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      shouldAutocreateTestPlan = "YES">
       <Testables>
-         <TestableReference skipped='NO' parallelizable='YES'>
-            <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='7934464151384EA86DC74D9F' BuildableName='scribeaiUITests.xctest' BlueprintName='scribeaiUITests' ReferencedContainer='container:scribeai.xcodeproj'/>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "7934464151384EA86DC74D9F"
+               BuildableName = "scribeaiUITests.xctest"
+               BlueprintName = "scribeaiUITests"
+               ReferencedContainer = "container:scribeai.xcodeproj">
+            </BuildableReference>
          </TestableReference>
       </Testables>
    </TestAction>
-   <LaunchAction buildConfiguration='Debug' selectedDebuggerIdentifier='Xcode.DebuggerFoundation.Debugger.LLDB' selectedLauncherIdentifier='Xcode.DebuggerFoundation.Launcher.LLDB' launchStyle='0' useCustomWorkingDirectory='NO' ignoresPersistentStateOnLaunch='NO' debugDocumentVersioning='YES' debugServiceExtension='internal' allowLocationSimulation='YES'>
-      <BuildableProductRunnable runnableDebuggingMode='0'>
-         <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='881B30132ECD0B69003270AA' BuildableName='scribeai.app' BlueprintName='scribeai' ReferencedContainer='container:scribeai.xcodeproj'> </BuildableReference>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "881B30132ECD0B69003270AA"
+            BuildableName = "scribeai.app"
+            BlueprintName = "scribeai"
+            ReferencedContainer = "container:scribeai.xcodeproj">
+         </BuildableReference>
       </BuildableProductRunnable>
-      <StoreKitConfigurationFileReference identifier='../../../../../Library/Developer/Xcode/DerivedData/scribeai-azoahqkdfmewtoeeyevmrpkjqcrq/SourcePackages/checkouts/purchases-ios/Examples/rc-maestro/rc-maestro/Resources/StoreKit/StoreKitConfiguration.storekit'> </StoreKitConfigurationFileReference>
+      <StoreKitConfigurationFileReference
+         identifier = "../scribeai/ScribeAISubscriptions.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
-   <ProfileAction buildConfiguration='Release' shouldUseLaunchSchemeArgsEnv='YES' savedToolIdentifier='' useCustomWorkingDirectory='NO' debugDocumentVersioning='YES'>
-      <BuildableProductRunnable runnableDebuggingMode='0'>
-         <BuildableReference BuildableIdentifier='primary' BlueprintIdentifier='881B30132ECD0B69003270AA' BuildableName='scribeai.app' BlueprintName='scribeai' ReferencedContainer='container:scribeai.xcodeproj'> </BuildableReference>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "881B30132ECD0B69003270AA"
+            BuildableName = "scribeai.app"
+            BlueprintName = "scribeai"
+            ReferencedContainer = "container:scribeai.xcodeproj">
+         </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
-   <AnalyzeAction buildConfiguration='Debug'> </AnalyzeAction>
-   <ArchiveAction buildConfiguration='Release' revealArchiveInOrganizer='YES'> </ArchiveAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
 </Scheme>

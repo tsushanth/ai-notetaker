@@ -13,13 +13,25 @@ class NoteService {
   async createNote(userId, noteData, options = {}) {
     const { skipFormatting = false } = options;
 
+    // Tutorial-note sentinel UUID — historically the iOS/Android clients post
+    // the same hardcoded id for every user's tutorial note. notes.id is a
+    // global PK so only the first user across the platform ever succeeded;
+    // everyone else hit duplicate_key on notes_pkey and 500'd. Drop the id
+    // on the way in so Postgres generates a unique one. AI features on the
+    // tutorial note (chat/mindmap) still need a client-side fix to honour the
+    // returned id, but at least note creation succeeds and the rest of the
+    // app stops 500'ing.
+    const TUTORIAL_SENTINEL_ID = '00000000-0000-0000-0000-000000000001';
+    let insertPayload = { user_id: userId, ...noteData };
+    if (insertPayload.id === TUTORIAL_SENTINEL_ID) {
+      const { id: _ignored, ...rest } = insertPayload;
+      insertPayload = rest;
+    }
+
     try {
       const { data, error } = await supabaseAdmin
         .from('notes')
-        .insert({
-          user_id: userId,
-          ...noteData
-        })
+        .insert(insertPayload)
         .select()
         .single();
 

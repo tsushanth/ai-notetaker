@@ -195,17 +195,6 @@ struct UploadOptionsView: View {
                 showingAudioPicker = true
             }
             
-            // Scanner
-            UploadOptionCard(
-                icon: "camera.fill",
-                title: "Scan Document",
-                description: "Take photos and extract text",
-                color: .green
-            ) {
-                currentUploadType = .scan
-                showingScanner = true
-            }
-
             // Camera Roll / Photo Library
             PhotosPicker(
                 selection: $selectedPhotos,
@@ -306,11 +295,19 @@ struct UploadOptionsView: View {
             uploadComplete = false
             processingState = .processing(steps: processingSteps, currentIndex: 0, uploadComplete: false)
         }
-        
+
+        // Files app provides security-scoped URLs. checkPDFHasExtractableText
+        // already started+stopped its own scope above, so we have to start a
+        // new one before the multipart upload reads the file or
+        // `Data(contentsOf:)` throws a permission error and the upload fails
+        // before hitting the backend.
+        let didStartScope = url.startAccessingSecurityScopedResource()
+        defer { if didStartScope { url.stopAccessingSecurityScopedResource() } }
+
         do {
             // Step 1: Uploading
             await updateStep(at: 0, to: .inProgress)
-            
+
             _ = try await APIService.shared.uploadPDF(token: token, fileURL: url)
             
             await updateStep(at: 0, to: .completed)

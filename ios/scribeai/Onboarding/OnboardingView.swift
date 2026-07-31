@@ -11,7 +11,6 @@ struct OnboardingView: View {
     @StateObject private var manager = OnboardingManager.shared
     @Environment(\.dismiss) private var dismiss
     @State private var stepEntryTime: Date = Date()
-    @State private var showTrialSkipButton = false  // Delayed skip button for trial screen
 
     var body: some View {
         ZStack {
@@ -34,11 +33,8 @@ struct OnboardingView: View {
             AnalyticsService.shared.track(.onboardingStarted, properties: [:])
             stepEntryTime = Date()
         }
-        .onChange(of: manager.currentStep) { newStep in
+        .onChange(of: manager.currentStep) { _ in
             stepEntryTime = Date()
-            if newStep == .trial {
-                showTrialSkipButton = true
-            }
         }
     }
 
@@ -59,7 +55,7 @@ struct OnboardingView: View {
 
                 Spacer()
 
-                // Skip button - hidden on trial step (paywall is non-skippable)
+                // Skip button — always available now that trial step is removed
                 Button {
                     manager.skipOnboarding()
                 } label: {
@@ -67,9 +63,6 @@ struct OnboardingView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.textSecondary)
                 }
-                // Hide skip entirely on trial step to force paywall engagement
-                .opacity(manager.currentStep == .trial ? 0 : 1)
-                .disabled(manager.currentStep == .trial)
             }
             .padding(.horizontal, 20)
             .padding(.top, 16)
@@ -116,8 +109,6 @@ struct OnboardingView: View {
             OnboardingSocialProofView()
         case .comparison:
             OnboardingComparisonView()
-        case .trial:
-            OnboardingTrialView()
         case .notifications:
             OnboardingNotificationsView()
         }

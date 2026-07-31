@@ -325,4 +325,8 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Facebook SDK -->
+    <string name="facebook_app_id">1437624678112846</string>
+    <string name="facebook_client_token">561fcc2909690b6966d1838c475c41aa</string>
 </resources>

@@ -142,9 +142,38 @@ object RetrofitClient {
     )
 
     /**
+     * Adds the rate-limit bypass header on every request when the user is
+     * subscribed. The server checks this against RATE_LIMIT_BYPASS_TOKEN env
+     * var; matching requests skip the global rate-limit window so paid users
+     * never see 429s.
+     */
+    private val subscriptionBypassInterceptor = Interceptor { chain ->
+        val original = chain.request()
+        val hasAccess = try {
+            val ctx = com.kreativekoala.scribeai.ScribeAIApplication.appContext
+            val prefs = ctx.getSharedPreferences("scribe_ai_prefs", android.content.Context.MODE_PRIVATE)
+            // `has_access` covers subscriptions, trials, and server-granted access.
+            // Fall back to `is_subscribed` for users on older builds that haven't
+            // hit refreshAccessStatus yet.
+            prefs.getBoolean("has_access", false) || prefs.getBoolean("is_subscribed", false)
+        } catch (e: Exception) {
+            false
+        }
+        val request = if (hasAccess && BuildConfig.RATE_LIMIT_BYPASS_TOKEN.isNotEmpty()) {
+            original.newBuilder()
+                .header("x-bypass-rate-limit", BuildConfig.RATE_LIMIT_BYPASS_TOKEN)
+                .build()
+        } else {
+            original
+        }
+        chain.proceed(request)
+    }
+
+    /**
      * Default OkHttpClient with standard timeouts
      */
     private val defaultOkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(subscriptionBypassInterceptor)
         .addInterceptor(retryInterceptor)
         .addInterceptor(loggingInterceptor)
         .connectTimeout(DEFAULT_CONNECT_TIMEOUT, TimeUnit.SECONDS)
@@ -156,6 +185,7 @@ object RetrofitClient {
      * Extended timeout client for AI operations and large uploads
      */
     val extendedTimeoutClient: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(subscriptionBypassInterceptor)
         .addInterceptor(retryInterceptor)
         .addInterceptor(loggingInterceptor)
         .connectTimeout(DEFAULT_CONNECT_TIMEOUT, TimeUnit.SECONDS)

@@ -1,4 +1,4 @@
-const { openai, MODELS } = require('../config/openai');
+const { anthropic, MODELS } = require('../config/openai');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
@@ -43,13 +43,10 @@ Make it engaging, informative, and suitable for audio listening. Include an intr
 Content:
 ${note.content}`;
 
-      const completion = await openai.chat.completions.create({
+      const completion = await anthropic.messages.create({
         model: MODELS.GPT4_MINI,
+        system: 'You are an expert podcast scriptwriter who creates engaging, well-paced audio content.',
         messages: [
-          {
-            role: 'system',
-            content: 'You are an expert podcast scriptwriter who creates engaging, well-paced audio content.'
-          },
           {
             role: 'user',
             content: prompt
@@ -59,7 +56,7 @@ ${note.content}`;
         max_tokens: duration === 'long' ? 3000 : duration === 'medium' ? 2000 : 1000
       });
 
-      const script = completion.choices[0].message.content;
+      const script = completion.content[0].text;
 
       // Extract segments from script
       const segments = this.parseScriptSegments(script);
@@ -200,16 +197,9 @@ ${note.content}`;
 
       const script = aiContent.content.script;
 
-      // Generate audio using OpenAI TTS
-      const audioResponse = await openai.audio.speech.create({
-        model: 'tts-1',
-        voice: 'alloy', // Options: alloy, echo, fable, onyx, nova, shimmer
-        input: script,
-        speed: 1.0
-      });
-
-      // Get audio buffer
-      const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+      // Generate audio using ElevenLabs TTS via ttsService
+      const ttsService = require('./ttsService');
+      const audioBuffer = await ttsService.synthesize(script, { voice: 'alloy', speed: 1.0 });
 
       // Upload to storage
       const storageService = require('./storageService');

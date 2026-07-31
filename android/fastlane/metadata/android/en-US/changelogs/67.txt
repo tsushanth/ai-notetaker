@@ -1,0 +1,4 @@
+- Switched backend to the same server iOS uses — fixes the "server error" you may have seen on Compete and Learn
+- Faster, more reliable Safari opens via Cloud-Run-to-Fly migration
+- Fixed double-slash URL bug that broke several actions
+- Misc reliability improvements

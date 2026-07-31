@@ -1025,7 +1025,7 @@ private suspend fun uploadAudio(file: File, token: String, title: String): Strin
                 .build()
 
             val request = Request.Builder()
-                .url("https://ai-notetaker-backend-917362189743.us-central1.run.app/api/recordings/upload")
+                .url("https://ai-notetaker-backend.fly.dev/api/recordings/upload")
                 .addHeader("Authorization", "Bearer $token")
                 .post(requestBody)
                 .build()
@@ -1066,7 +1066,7 @@ private suspend fun startTranscription(recordingId: String, token: String): JSON
                 .toRequestBody("application/json".toMediaType())
 
             val request = Request.Builder()
-                .url("https://ai-notetaker-backend-917362189743.us-central1.run.app/api/recordings/transcribe")
+                .url("https://ai-notetaker-backend.fly.dev/api/recordings/transcribe")
                 .addHeader("Authorization", "Bearer $token")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)

@@ -1,0 +1,6 @@
+- Create tab now matches iOS exactly, including your previous creations history
+- Open any generated content in your default browser if the in-app view has issues
+- Better progress feedback while generating (rotating stage hints + elapsed timer)
+- Clearer rate-limit error messages with retry time
+- Subscribers no longer hit shared-IP rate limits
+- Misc reliability fixes

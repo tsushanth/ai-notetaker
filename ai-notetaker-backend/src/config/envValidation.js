@@ -24,8 +24,8 @@ const requiredEnvVars = [
   { name: 'GOOGLE_IOS_CLIENT_ID', description: 'Google OAuth client ID for iOS app' },
   { name: 'GOOGLE_ANDROID_CLIENT_ID', description: 'Google OAuth client ID for Android app' },
 
-  // OpenAI
-  { name: 'OPENAI_API_KEY', description: 'OpenAI API key for AI features' },
+  // Anthropic
+  { name: 'ANTHROPIC_API_KEY', description: 'Anthropic API key for AI features' },
 
   // YouTube transcript fallback - essential for videos without native captions
   { name: 'SUPADATA_API_KEY', description: 'Supadata API key for YouTube transcript fallback' },

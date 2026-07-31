@@ -63,7 +63,7 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
 <body>
   <div id="app" class="container"></div>
   <script>
-    const API = 'https://ai-notetaker-backend-917362189743.us-central1.run.app';
+    const API = 'https://ai-notetaker-backend.fly.dev';
     const SHARE_TOKEN = '${shareToken}';
     const AUTH_TOKEN = '${token}';
     const MODE = '${mode}';

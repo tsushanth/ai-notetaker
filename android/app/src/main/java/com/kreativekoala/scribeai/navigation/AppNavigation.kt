@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.kreativekoala.scribeai.ui.screens.*
 import com.kreativekoala.scribeai.ui.meetings.MeetingsScreen
+import com.kreativekoala.scribeai.phone.PhoneScreen
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.viewmodel.AuthViewModel
 import com.kreativekoala.scribeai.viewmodel.AuthState
@@ -50,6 +51,7 @@ sealed class Screen(val route: String) {
     object PDFUpload : Screen("pdf-upload")
     object Scan : Screen("scan")
     object Meetings : Screen("meetings")
+    object Phone : Screen("phone")
     object DebugToken : Screen("debug-token")
 }
 
@@ -179,6 +181,9 @@ fun AppNavigation(
                 },
                 onMeetings = {
                     navController.navigate(Screen.Meetings.route)
+                },
+                onPhone = {
+                    navController.navigate(Screen.Phone.route)
                 },
                 onDebugToken = {
                     navController.navigate(Screen.DebugToken.route)
@@ -352,6 +357,14 @@ fun AppNavigation(
                         popUpTo(Screen.Home.route)
                     }
                 }
+            )
+        }
+
+        // Phone Screen (in-app VoIP calls)
+        composable(Screen.Phone.route) {
+            PhoneScreen(
+                authManager = authManager,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 

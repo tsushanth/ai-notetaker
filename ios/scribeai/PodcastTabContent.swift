@@ -391,6 +391,12 @@ struct PodcastTabContent: View {
                         }
                         .padding(.horizontal, 20)
 
+                        // On-device synthesis toggle (only on eligible English devices)
+                        if KokoroModelManager.isDeviceEligible {
+                            OnDevicePodcastToggle()
+                                .padding(.horizontal, 20)
+                        }
+
                         // Instructions Button/Field (Expandable)
                         VStack(alignment: .leading, spacing: 12) {
                             if showInstructionsField {
@@ -771,6 +777,49 @@ struct PodcastTabContent: View {
 
         Task {
             do {
+                // Try on-device synthesis first when eligible (English + iOS 17+ + 4 GB+).
+                // Falls back to cloud on any failure.
+                if APIService.shared.shouldUseOnDevicePodcast() {
+                    do {
+                        print("🎙️ Trying on-device synthesis…")
+                        let onDeviceContent = try await APIService.shared.generatePodcastOnDevice(
+                            token: token,
+                            noteId: note.id,
+                            duration: duration,
+                            gender: gender,
+                            instructions: instructions,
+                            progress: { _, msg in print("📊 \(msg)") }
+                        )
+                        if let audioUrl = onDeviceContent.audioUrl {
+                            await MainActor.run {
+                                self.podcast = Podcast(
+                                    id: onDeviceContent.id ?? UUID().uuidString,
+                                    noteId: note.id,
+                                    audioUrl: audioUrl,
+                                    duration: onDeviceContent.duration,
+                                    status: "completed",
+                                    createdAt: onDeviceContent.createdAt ?? ISO8601DateFormatter().string(from: Date())
+                                )
+                                self.isGenerating = false
+                                PostValueTrialManager.shared.checkAndTriggerPrompt()
+                            }
+                            AnalyticsService.shared.trackPodcastGenerated(durationSeconds: Int(self.audioDuration))
+                            return
+                        }
+                    } catch let error as APIError {
+                        // Auth / subscription errors should NOT silently fall back to cloud
+                        // — they'd hit the same paywall. Re-throw.
+                        switch error {
+                        case .unauthorized, .subscriptionRequired, .freeTierLimitReached:
+                            throw error
+                        default:
+                            print("⚠️ On-device failed (\(error)); falling back to cloud")
+                        }
+                    } catch {
+                        print("⚠️ On-device failed (\(error)); falling back to cloud")
+                    }
+                }
+
                 print("📤 Calling generatePodcast API...")
                 let aiContent = try await APIService.shared.generatePodcast(
                     token: token,
@@ -780,9 +829,9 @@ struct PodcastTabContent: View {
                     gender: gender,
                     instructions: instructions
                 )
-                
+
                 print("✅ API returned: \(aiContent)")
-                
+
                 if let audioUrl = aiContent.audioUrl {
                     let durationSeconds = Int(self.audioDuration)
                         AnalyticsService.shared.trackPodcastGenerated(durationSeconds: durationSeconds)

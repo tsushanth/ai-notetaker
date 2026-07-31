@@ -18,13 +18,21 @@ struct ContentView: View {
     var body: some View {
         Group {
             if isFastlaneSnapshot || authViewModel.isAuthenticated {
-                if isFastlaneSnapshot || onboardingManager.hasCompletedOnboarding {
+                // Anonymous users skip the 11-screen onboarding — they land
+                // directly on HomeView's active empty state so the App Store
+                // promise ("paste a URL, get a summary") is delivered without
+                // any friction wall in between.
+                let skipOnboarding = authViewModel.isAnonymous
+                if isFastlaneSnapshot || onboardingManager.hasCompletedOnboarding || skipOnboarding {
                     HomeView()
                         .postValueTrialPrompt() // Shows trial prompt after user experiences AI value
                 } else {
                     OnboardingView()
                 }
             } else {
+                // Fallback only — checkAuthStatus auto-mints an anonymous
+                // session on cold-start. LoginView appears if anonymous auth
+                // is disabled server-side or the network call failed.
                 LoginView()
             }
         }

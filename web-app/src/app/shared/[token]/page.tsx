@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { FileText, Eye, Calendar, Loader2, AlertCircle, Download } from 'lucide-react';
 
-const API_BASE_URL = 'https://ai-notetaker-backend-917362189743.us-central1.run.app';
+const API_BASE_URL = 'https://ai-notetaker-backend.fly.dev';
 
 interface SharedNoteData {
   note: {

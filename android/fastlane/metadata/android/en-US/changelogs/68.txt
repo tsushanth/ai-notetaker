@@ -1,0 +1,4 @@
+- Notes, Create, Compete, and Learn all working again after the backend move
+- Starting a lesson now keeps preparing in the background if you switch tabs
+- Clearer "Preparing your lesson…" state
+- Faster, more reliable connections

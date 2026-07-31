@@ -54,7 +54,7 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
 <body>
   <div id="app" class="container"></div>
   <script>
-    const API = 'https://ai-notetaker-backend-917362189743.us-central1.run.app';
+    const API = 'https://ai-notetaker-backend.fly.dev';
     const NOTE_ID = '${noteId}';
     const TOKEN = '${token}';
     let createdItems = JSON.parse(localStorage.getItem('create_history_' + NOTE_ID) || '[]');

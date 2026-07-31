@@ -17,7 +17,7 @@ import com.kreativekoala.scribeai.data.models.Note
 fun CompeteTab(note: Note, authToken: String?) {
     if (authToken == null) return
 
-    val url = "${BuildConfig.BASE_URL}/compete-create/${note.id}?token=$authToken"
+    val url = "${BuildConfig.BASE_URL.trimEnd('/')}/compete-create/${note.id}?token=$authToken"
 
     AndroidView(
         factory = { ctx ->

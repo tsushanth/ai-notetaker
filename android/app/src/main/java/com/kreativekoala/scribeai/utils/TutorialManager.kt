@@ -8,6 +8,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.local.NoteCacheRepository as LocalNoteRepository
@@ -30,10 +31,31 @@ class TutorialManager(
         private const val TAG = "TutorialManager"
         private const val DATASTORE_NAME = "tutorial_prefs"
         private val TUTORIAL_SEEDED_KEY = booleanPreferencesKey("tutorial_seeded")
+        // Server assigns its own UUID for the tutorial note (the client-side
+        // sentinel id is global and would collide on notes_pkey). Stored so
+        // server-dependent features (chat) can be routed to the real server id.
+        private val TUTORIAL_SERVER_ID_KEY = stringPreferencesKey("tutorial_server_id")
 
         private val Context.tutorialDataStore: DataStore<Preferences> by preferencesDataStore(
             name = DATASTORE_NAME
         )
+
+        /**
+         * Static read of the tutorial server id from anywhere. Lets non-Hilt
+         * code (e.g. ViewModels without a TutorialManager dependency) translate
+         * the sentinel tutorial id to the real server-side id before calling
+         * server-dependent endpoints like chat.
+         */
+        suspend fun getServerId(context: Context): String? {
+            return try {
+                context.applicationContext.tutorialDataStore.data
+                    .map { it[TUTORIAL_SERVER_ID_KEY] }
+                    .first()
+            } catch (e: Exception) {
+                Log.e(TAG, "Static getServerId error", e)
+                null
+            }
+        }
     }
 
     /**
@@ -56,36 +78,35 @@ class TutorialManager(
      */
     suspend fun seedTutorialIfNeeded(userId: String) {
         try {
-            // Check if already seeded
-            if (isTutorialSeeded(userId)) {
-                Log.d(TAG, "Tutorial already seeded for user: $userId")
-                return
-            }
-
-            // Check if tutorial note already exists in cache
+            val seeded = isTutorialSeeded(userId)
             val existingTutorial = localRepository.getNoteById(TutorialContent.TUTORIAL_ID)
-            if (existingTutorial != null) {
-                Log.d(TAG, "Tutorial note already exists in cache")
-                markTutorialAsSeeded()
+            val serverIdMissing = getTutorialServerId() == null
+
+            if (seeded && existingTutorial != null && !serverIdMissing) {
+                Log.d(TAG, "Tutorial already seeded + server id present for user: $userId")
                 return
             }
 
-            Log.d(TAG, "Seeding tutorial note for new user: $userId")
+            // Build the local note (idempotent — same sentinel id every time)
+            val tutorialNote = existingTutorial ?: TutorialContent.createTutorialNote(userId)
 
-            // Create tutorial note
-            val tutorialNote = TutorialContent.createTutorialNote(userId)
+            if (existingTutorial == null) {
+                Log.d(TAG, "Seeding tutorial note for new user: $userId")
+                localRepository.addNote(userId, tutorialNote)
+            } else {
+                Log.d(TAG, "Tutorial exists locally; retrying server sync (server id missing=$serverIdMissing)")
+            }
 
-            // Add to local cache
-            localRepository.addNote(userId, tutorialNote)
+            // Sync to backend if we don't already have a server id (covers both
+            // fresh seeds and the migration case where an older install seeded
+            // locally before the server-side sentinel fix landed and never
+            // captured a real server id).
+            if (serverIdMissing) {
+                syncTutorialToBackend(tutorialNote)
+            }
 
-            // Sync tutorial note to backend so AI features (chat, mindmap, podcast) work
-            syncTutorialToBackend(tutorialNote)
-
-            // Mark as seeded
             markTutorialAsSeeded()
-
-            Log.d(TAG, "✅ Tutorial note seeded successfully")
-
+            Log.d(TAG, "✅ Tutorial seed flow complete")
         } catch (e: Exception) {
             Log.e(TAG, "Error seeding tutorial", e)
         }
@@ -112,6 +133,7 @@ class TutorialManager(
         try {
             context.tutorialDataStore.edit { preferences ->
                 preferences.remove(TUTORIAL_SEEDED_KEY)
+                preferences.remove(TUTORIAL_SERVER_ID_KEY)
             }
             Log.d(TAG, "Tutorial reset")
         } catch (e: Exception) {
@@ -130,8 +152,11 @@ class TutorialManager(
                 return
             }
 
+            // Don't send the sentinel id — server treats it as "no id" anyway
+            // and would just generate one server-side; sending it costs nothing
+            // but makes intent clearer.
             val request = CreateNoteRequest(
-                id = note.id,
+                id = null,
                 title = note.title,
                 content = note.content,
                 sourceType = note.sourceType ?: "tutorial",
@@ -141,13 +166,41 @@ class TutorialManager(
             val response = RetrofitClient.apiService.createNote("Bearer $token", request)
 
             if (response.isSuccessful) {
-                Log.d(TAG, "✅ Tutorial note synced to backend: ${note.id}")
+                val serverId = response.body()?.data?.id
+                if (serverId != null) {
+                    saveTutorialServerId(serverId)
+                    Log.d(TAG, "✅ Tutorial note synced to backend: serverId=$serverId")
+                } else {
+                    Log.w(TAG, "Backend sync succeeded but response had no id")
+                }
             } else {
                 Log.w(TAG, "Backend sync failed (${response.code()}): ${response.errorBody()?.string()}")
             }
         } catch (e: Exception) {
             // Non-fatal: tutorial still works locally, backend features will fail gracefully
             Log.w(TAG, "Failed to sync tutorial to backend (non-fatal)", e)
+        }
+    }
+
+    /**
+     * The server-side id of the tutorial note for this install. Lives in
+     * DataStore. Returns null if the tutorial has never been synced
+     * successfully (e.g. offline-only install).
+     */
+    suspend fun getTutorialServerId(): String? {
+        return try {
+            context.tutorialDataStore.data.map { it[TUTORIAL_SERVER_ID_KEY] }.first()
+        } catch (e: Exception) {
+            Log.e(TAG, "Error reading tutorial server id", e)
+            null
+        }
+    }
+
+    private suspend fun saveTutorialServerId(serverId: String) {
+        try {
+            context.tutorialDataStore.edit { it[TUTORIAL_SERVER_ID_KEY] = serverId }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving tutorial server id", e)
         }
     }
 

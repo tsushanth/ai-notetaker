@@ -154,6 +154,31 @@ class SupabaseManager {
         )
     }
     
+    // Anonymous sign-in — gives the user a real Supabase JWT (is_anonymous=true)
+    // so they can use the app + backend without entering credentials. Later
+    // they can "upgrade" via signUp/linkIdentity to keep their data on a real
+    // account.
+    func signInAnonymously() async throws -> AuthResponse {
+        let session = try await client.auth.signInAnonymously()
+        KeychainService.shared.save(session.accessToken, forKey: Constants.Keychain.accessToken)
+        KeychainService.shared.save(session.refreshToken, forKey: Constants.Keychain.refreshToken)
+        KeychainService.shared.save(session.user.id.uuidString, forKey: Constants.Keychain.userId)
+        return AuthResponse(
+            success: true,
+            data: AuthData(
+                user: User(
+                    id: session.user.id.uuidString,
+                    email: "",
+                    name: nil,
+                    createdAt: session.user.createdAt.ISO8601Format()
+                ),
+                token: session.accessToken,
+                refreshToken: session.refreshToken
+            ),
+            error: nil
+        )
+    }
+
     // Sign out
     func signOut() async throws {
         try await client.auth.signOut()

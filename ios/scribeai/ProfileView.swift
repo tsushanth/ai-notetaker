@@ -11,6 +11,7 @@
 //
 
 import SwiftUI
+import StoreKit
 #if DEBUG
 import PaywallKit
 #endif
@@ -222,7 +223,15 @@ struct ProfileView: View {
                         #endif
 
                         #if DEBUG
-                        Button(action: { OfferCodeManager.shared.presentRedemptionSheet() }) {
+                        Button(action: {
+                            Task {
+                                if let scene = UIApplication.shared.connectedScenes
+                                    .compactMap({ $0 as? UIWindowScene })
+                                    .first(where: { $0.activationState == .foregroundActive }) {
+                                    try? await AppStore.presentOfferCodeRedeemSheet(in: scene)
+                                }
+                            }
+                        }) {
                             HStack {
                                 Image(systemName: "tag.fill")
                                 Text("Redeem Promo Code")
@@ -500,24 +509,24 @@ struct ProfileView: View {
                             Circle()
                                 .fill(Color.purple80.opacity(0.2))
                                 .frame(width: 44, height: 44)
-                            
+
                             Image(systemName: "crown.fill")
                                 .font(.system(size: 20))
                                 .foregroundColor(.purple80)
                         }
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Upgrade to Premium")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.textPrimary)
-                            
+
                             Text("Unlock all features")
                                 .font(.system(size: 13))
                                 .foregroundColor(.textSecondary)
                         }
-                        
+
                         Spacer()
-                        
+
                         Text("View Plans")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.purple80)
@@ -531,10 +540,53 @@ struct ProfileView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
+
+            // Offer code redemption (always available — Apple offer codes for win-back
+            // and intro-trial campaigns are surfaced here so users with a code can
+            // redeem in-app without needing a redemption URL).
+            Divider()
+                .background(Color.darkSurfaceVariant)
+                .padding(.leading, 56)
+
+            Button(action: presentOfferCodeRedemption) {
+                HStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.purple80.opacity(0.12))
+                            .frame(width: 44, height: 44)
+
+                        Image(systemName: "tag.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.purple80)
+                    }
+
+                    Text("Have a promo code?")
+                        .font(.system(size: 15))
+                        .foregroundColor(.textPrimary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.textTertiary)
+                }
+                .padding()
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
         }
         .background(Color.cardBackground)
         .cornerRadius(12)
         .padding(.horizontal, 24)
+    }
+
+    private func presentOfferCodeRedemption() {
+        // Apple's native offer-code redemption sheet. Works for both
+        // promotional offer codes and subscription offer codes configured
+        // in App Store Connect. iOS 14+.
+        #if !targetEnvironment(macCatalyst)
+        SKPaymentQueue.default().presentCodeRedemptionSheet()
+        #endif
     }
     
     private func subscriptionTypeText(for productId: String) -> String {

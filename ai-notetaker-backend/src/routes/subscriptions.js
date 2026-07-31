@@ -787,7 +787,7 @@ router.post('/stripe/portal', authenticate, asyncHandler(async (req, res) => {
   // Create portal session
   const session = await stripe.billingPortal.sessions.create({
     customer: subscription.stripe_customer_id,
-    return_url: `${process.env.WEB_APP_URL || 'https://scribeai-web-app-917362189743.us-central1.run.app'}/settings`,
+    return_url: `${process.env.WEB_APP_URL || 'https://scribe-ai-web.fly.dev'}/settings`,
   });
 
   res.json({

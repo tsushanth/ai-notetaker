@@ -1,5 +1,5 @@
 {
-  "originHash" : "f1901650afd14d313042476d7c400a08df2eaf041d644669a01b839788ec6e66",
+  "originHash" : "aeb44906cff7cca845cf36f618ce25cdc1ca58102376da541c33e4f9e5248d7e",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -155,6 +155,24 @@
       }
     },
     {
+      "identity" : "promoofferkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tsushanth/PromoOfferKit.git",
+      "state" : {
+        "revision" : "e1026bf543ac4f0c513949d963b15ece9b640300",
+        "version" : "1.0.0"
+      }
+    },
+    {
+      "identity" : "ratingkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tsushanth/RatingKit.git",
+      "state" : {
+        "revision" : "62dd8c3881b316ab56ac72d6d8452d4fe80ee81f",
+        "version" : "2.0.1"
+      }
+    },
+    {
       "identity" : "supabase-swift",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/supabase/supabase-swift",
@@ -206,6 +224,24 @@
       "state" : {
         "revision" : "45eb0224913ea070ec4fba17291b9e7ecf4749ca",
         "version" : "1.5.1"
+      }
+    },
+    {
+      "identity" : "tiktok-business-ios-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tiktok/tiktok-business-ios-sdk",
+      "state" : {
+        "revision" : "4d330d4da158190d2c67b2142c2bd36c9eb5291e",
+        "version" : "1.6.1"
+      }
+    },
+    {
+      "identity" : "twilio-voice-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/twilio/twilio-voice-ios",
+      "state" : {
+        "revision" : "62912513388001394d093b85a6269bf3206cac13",
+        "version" : "6.13.6"
       }
     },
     {

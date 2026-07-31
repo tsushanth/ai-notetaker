@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PaywallKit
 
 // MARK: - Subscription Gate Manager
 
@@ -140,6 +141,20 @@ class SubscriptionGateManager: ObservableObject {
     /// Check if user can access premium features
     /// Returns true if subscribed OR within trial period
     var canAccessPremiumFeatures: Bool {
+        let result = computeHasAccess()
+        // Mirror to UserDefaults so non-MainActor code paths (e.g. URLRequest setup in
+        // APIService) can check premium status synchronously to gate the rate-limit
+        // bypass header without crossing actor boundaries.
+        UserDefaults.standard.set(result, forKey: "scribeai.hasPremiumAccess")
+        return result
+    }
+
+    private func computeHasAccess() -> Bool {
+        // Always trust StoreKit / PaywallKit entitlements first — these are ground truth
+        if StoreKitManager.shared.isSubscribed || StoreManager.shared.isPremium {
+            return true
+        }
+
         // Prefer server status if available
         if let serverStatus = serverAccessStatus {
             return serverStatus.hasAccess
@@ -147,14 +162,8 @@ class SubscriptionGateManager: ObservableObject {
 
         // SECURITY: If device has already used and expired a trial, deny access
         // This prevents reinstall abuse where users create new accounts on same device
-        if deviceTrialExpired && !StoreKitManager.shared.isSubscribed {
+        if deviceTrialExpired {
             return false
-        }
-
-        // Fall back to client-side check
-        // If subscribed, always allow
-        if StoreKitManager.shared.isSubscribed {
-            return true
         }
 
         // If within trial period, allow
@@ -168,10 +177,13 @@ class SubscriptionGateManager: ObservableObject {
 
     /// Check if user is subscribed (not just in trial)
     var isSubscribed: Bool {
+        if StoreKitManager.shared.isSubscribed || StoreManager.shared.isPremium {
+            return true
+        }
         if let serverStatus = serverAccessStatus {
             return serverStatus.isSubscribed
         }
-        return StoreKitManager.shared.isSubscribed
+        return false
     }
 
     /// Feature-specific access checks
@@ -334,6 +346,7 @@ struct SubscriptionGatedModifier: ViewModifier {
             ScribeRemotePaywallView(triggerSource: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))") {
                 showPaywall = false
                 Task {
+                    await StoreKitManager.shared.updateSubscriptionStatus()
                     await SubscriptionGateManager.shared.refreshAccessStatus()
                 }
             }

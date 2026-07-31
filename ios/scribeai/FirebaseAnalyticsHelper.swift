@@ -116,6 +116,16 @@ class FirebaseAnalyticsHelper {
         logEvent("review_prompt_response", parameters: ["response": response])
     }
 
+    /// Log feedback submitted after "Not yet"
+    func logReviewFeedbackSubmitted(_ feedback: String) {
+        logEvent("review_feedback_submitted", parameters: ["feedback": feedback])
+    }
+
+    /// Log feedback sheet dismissed without input
+    func logReviewFeedbackDismissed() {
+        logEvent("review_feedback_dismissed")
+    }
+
     // MARK: - Retention Events
 
     /// Log sign out attempt (before retention screen)

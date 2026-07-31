@@ -2,6 +2,7 @@ package com.kreativekoala.scribeai
 
 import android.app.Activity
 import android.os.Bundle
+import com.kreativekoala.paywallkit.manager.PromoCodeManager
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
@@ -11,6 +12,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -51,6 +53,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PromoCodeManager.handleIntent(intent)
 
         // Initialize managers ONCE - these are the single instances
         authManager = AuthManager(applicationContext)
@@ -85,7 +88,7 @@ class MainActivity : AppCompatActivity() {
         // Track app open count (once per cold-start session)
         subscriptionManager.incrementAppOpenCount()
 
-        // Initialize RevenueCat with auth manager for server sync
+        // Initialize billing with auth manager for server sync
         subscriptionManager.setAuthManager(authManager)
         subscriptionManager.initialize {
             subscriptionManager.refreshAccessStatus()
@@ -124,11 +127,35 @@ class MainActivity : AppCompatActivity() {
                     // Observe subscription state to reactively dismiss paywall
                     val subscriptionState by subscriptionManager.subscriptionState.collectAsState()
                     val isSubscribed = subscriptionState is SubscriptionManager.SubscriptionState.Subscribed
+                    val isStateResolved = subscriptionState !is SubscriptionManager.SubscriptionState.Unknown &&
+                            subscriptionState !is SubscriptionManager.SubscriptionState.Loading
                     val products by subscriptionManager.products.collectAsState()
 
                     // Track whether the user has manually dismissed the paywall this session
                     var paywallDismissed by remember { mutableStateOf(false) }
-                    val shouldShowPaywall = subscriptionManager.shouldShowHardPaywall() && !isSubscribed && !paywallDismissed
+
+                    // Don't surface the paywall until the state has been stable
+                    // (resolved AND non-subscribed) for ~1.5s. This eliminates a
+                    // flash-of-paywall when the billing-query lands as Free but
+                    // the server-side access check (refreshAccessStatus) is about
+                    // to flip the state to Subscribed a few hundred ms later.
+                    var paywallStable by remember { mutableStateOf(false) }
+                    val candidateShow = isStateResolved &&
+                            subscriptionManager.shouldShowHardPaywall() &&
+                            !isSubscribed &&
+                            !paywallDismissed
+                    LaunchedEffect(candidateShow, isSubscribed) {
+                        if (candidateShow) {
+                            kotlinx.coroutines.delay(1500)
+                            // Re-check on the same recomposition cycle — if the
+                            // server-flip already happened, the LaunchedEffect
+                            // would have been re-keyed and we wouldn't reach here.
+                            paywallStable = true
+                        } else {
+                            paywallStable = false
+                        }
+                    }
+                    val shouldShowPaywall = candidateShow && paywallStable
 
                     // FIXED: Pass the SAME authManager to AppNavigation
                     AppNavigation(
@@ -152,14 +179,16 @@ class MainActivity : AppCompatActivity() {
                                 CircularProgressIndicator(color = Color(0xFF6C63FF))
                             }
                         } else {
-                            // Map SubscriptionManager RC packages to PaywallProduct
-                            val paywallProducts = products.map { pkg ->
-                                val productId = pkg.product.id
+                            // Map ProductDetails to PaywallProduct
+                            val paywallProducts = products.map { details ->
+                                val productId = details.productId
+                                val offer = details.subscriptionOfferDetails?.firstOrNull()
+                                val phase = offer?.pricingPhases?.pricingPhaseList?.lastOrNull()
                                 PaywallProduct(
                                     id = productId,
-                                    localizedPrice = pkg.product.price.formatted,
-                                    price = pkg.product.price.amountMicros / 1_000_000.0,
-                                    currencyCode = pkg.product.price.currencyCode,
+                                    localizedPrice = phase?.formattedPrice ?: "",
+                                    price = (phase?.priceAmountMicros ?: 0L) / 1_000_000.0,
+                                    currencyCode = phase?.priceCurrencyCode ?: "USD",
                                     trialDays = 3,
                                     period = when {
                                         productId.contains("yearly") || productId.contains("annual") -> PaywallProduct.Period.YEARLY
@@ -179,6 +208,7 @@ class MainActivity : AppCompatActivity() {
 
                             PaywallView(
                                 appId = "scribeai",
+                                placement = if (com.kreativekoala.paywallkit.manager.PromoCodeManager.activeCode != null) "promo_code_onboarding" else "onboarding",
                                 appName = "ScribeAI",
                                 features = features,
                                 products = paywallProducts,

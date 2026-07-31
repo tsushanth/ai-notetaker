@@ -1,0 +1,5 @@
+What's new in this version:
+
+- Faster start: jump straight into creating notes after setup. The trial paywall no longer blocks the first experience.
+- Promo code redemption is now available directly from your Profile.
+- General improvements and polish.

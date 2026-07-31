@@ -16,6 +16,7 @@
 
 import Foundation
 import StoreKit
+import RatingKit
 
 // MARK: - Subscription Product IDs
 enum SubscriptionProduct: String, CaseIterable {
@@ -204,7 +205,7 @@ class StoreKitManager: ObservableObject {
             originalTransactionId: String(transaction.originalID)
         )
 
-        StoreReviewHelper.shared.recordSubscriptionEvent()
+        Task { @MainActor in RatingKit.shared.trackPurchase() }
         print("📊 Trial started: \(product.id)")
     }
 
@@ -240,7 +241,7 @@ class StoreKitManager: ObservableObject {
             priceCurrency: currency
         )
 
-        StoreReviewHelper.shared.recordSubscriptionEvent()
+        Task { @MainActor in RatingKit.shared.trackPurchase() }
         print("📊 Subscription billed: \(product.id) - \(currency) \(price)")
     }
 

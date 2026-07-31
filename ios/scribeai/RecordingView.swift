@@ -7,6 +7,7 @@
 
 import SwiftUI
 import AVFoundation
+import RatingKit
 
 struct AudioRecordingView: View {
     @Environment(\.dismiss) var dismiss
@@ -566,8 +567,9 @@ struct AudioRecordingView: View {
                 
                 await MainActor.run {
                     processingState = .success(noteId: result.noteId)
+                    RatingKit.shared.trackAction()
                 }
-                
+
             } catch APIError.timeout {
                 await MainActor.run {
                     processingState = .error(message: "Transcription is taking too long. Please try a shorter recording or try again later.")

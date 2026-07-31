@@ -118,6 +118,53 @@ router.post('/flashcards', checkUsageLimits('flashcards'), validate('generateAIC
 }));
 
 /**
+ * Generate podcast SCRIPT ONLY (no TTS audio).
+ * POST /api/ai/podcast/script
+ *
+ * Synchronous — returns the Host 1/Host 2 dialogue text. Used by iOS clients
+ * that synthesize audio on-device via Kokoro (FluidAudio). Saves backend
+ * Cloud Run TTS cost since the device handles synthesis.
+ *
+ * PROTECTED: Same paywall as /podcast (subscription or trial).
+ */
+router.post('/podcast/script', requireSubscriptionForPodcast, validate('generateAIContent'), asyncHandler(async (req, res) => {
+  const { note_id, options } = req.validatedBody;
+
+  logger.info('Starting script-only podcast generation', {
+    userId: req.userId,
+    noteId: note_id,
+    subscription: req.subscription?.reason,
+  });
+
+  await recordUsage(req.userId, 'podcast', { note_id, mode: 'script_only' });
+
+  try {
+    const result = await aiService.generatePodcastScriptOnly(req.userId, note_id, options || {});
+    return res.json({
+      success: true,
+      data: {
+        id: result.id,
+        note_id: result.note_id,
+        script: result.script,
+        duration: result.duration,
+        style: result.style,
+        status: 'ready',
+      },
+    });
+  } catch (error) {
+    logger.error('Script-only podcast generation failed', {
+      error: error.message,
+      userId: req.userId,
+      noteId: note_id,
+    });
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ success: false, error: error.message });
+    }
+    return res.status(500).json({ success: false, error: 'Failed to generate podcast script' });
+  }
+}));
+
+/**
  * Generate podcast script and audio (async)
  * POST /api/ai/podcast
  *

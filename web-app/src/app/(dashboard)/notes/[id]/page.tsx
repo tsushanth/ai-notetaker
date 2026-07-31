@@ -488,7 +488,7 @@ export default function NoteDetailPage() {
         // Add cache-busting timestamp and random to prevent 304 responses
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(7);
-        const url = `https://ai-notetaker-backend-917362189743.us-central1.run.app/api/ai/podcast/status/${noteId}?t=${timestamp}&r=${random}`;
+        const url = `https://ai-notetaker-backend.fly.dev/api/ai/podcast/status/${noteId}?t=${timestamp}&r=${random}`;
 
         console.log('Fetching podcast status from:', url);
 

@@ -9,8 +9,7 @@ const { logger } = require('../utils/logger');
 const axios = require('axios');
 const crypto = require('crypto');
 
-const WORKER_URL = process.env.LEARNING_WORKER_URL || 'http://178.156.231.255:3458';
-const WORKER_SECRET = process.env.LEARNING_WORKER_SECRET;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // ============================================
 // Create a challenge from a note (Premium)
@@ -31,23 +30,66 @@ router.post('/:noteId/create', authenticate, asyncHandler(async (req, res) => {
 
   logger.info('Creating challenge', { userId: req.userId, noteId, challengeType });
 
-  // Generate via worker
-  const workerResponse = await axios.post(`${WORKER_URL}/generate-challenge`, {
-    content,
-    title: note.title,
-    challengeType,
-    numQuestions,
-    noteId
+  // Generate HTML via Anthropic API
+  const typeInstructions = {
+    quiz: `Create a timed multiple-choice quiz with ${numQuestions} questions. Each question has 4 options, one correct. Show a timer counting up. Track correct/total answers.`,
+    speed_round: `Create a speed round with ${numQuestions} rapid-fire true/false questions. Give 10 seconds per question with a countdown timer. Track speed and accuracy.`,
+    memory_game: `Create a memory matching game using ${Math.min(numQuestions, 8)} pairs of key terms and their definitions from the content. Track time to complete and number of attempts.`,
+    word_scramble: `Create a word scramble game with ${numQuestions} key terms from the content. Scramble each word, show a hint (the definition), and track how many they unscramble correctly and time taken.`,
+    true_false: `Create a true/false challenge with ${numQuestions} statements about the content. Some should be true, some subtly false. Track correct answers and time.`
+  };
+
+  const challengePrompt = `You are creating a competitive challenge game that will be shared between friends. It must be fun, engaging, and fair.
+
+## SOURCE MATERIAL
+Title: ${note.title || 'Challenge'}
+${content.substring(0, 20000)}
+
+## CHALLENGE TYPE
+${typeInstructions[challengeType] || typeInstructions.quiz}
+
+## REQUIREMENTS FOR THE HTML PAGE
+1. Output a COMPLETE self-contained HTML page with inline CSS and JS
+2. Dark theme: background #0a0a0b, text #ffffff, accent #9333ea, cards #111111, correct #22c55e, wrong #ef4444
+3. Mobile-first (max-width: 600px, centered)
+4. Show a welcome screen with the challenge title and a "Start" button
+5. Track: correct answers, total questions, time spent (seconds)
+6. At the end show a results screen with score percentage and time
+7. The results screen MUST call: window.ScribeCompete.submitScore(correct, total, timeSeconds)
+8. Also show a "View Leaderboard" button that calls: window.ScribeCompete.showLeaderboard()
+9. Make it visually polished — animations, transitions, progress bar
+10. Include a "Share Challenge" button on the results screen that calls: window.ScribeCompete.shareChallenge()
+11. Show question number progress (e.g., "3 of 10")
+
+CRITICAL: Your ENTIRE response must be ONLY the HTML page, starting with <!DOCTYPE html> and ending with </html>. No text before or after.`;
+
+  const anthropicResponse = await axios.post('https://api.anthropic.com/v1/messages', {
+    model: 'claude-sonnet-4-6',
+    max_tokens: 8000,
+    messages: [{ role: 'user', content: challengePrompt }]
   }, {
-    headers: { 'Authorization': `Bearer ${WORKER_SECRET}` },
-    timeout: 300000
+    headers: {
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json'
+    },
+    timeout: 120000
   });
 
-  if (!workerResponse.data?.success) {
-    throw new AppError('Failed to generate challenge', 500);
-  }
+  let rawHTML = anthropicResponse.data?.content?.[0]?.text || '';
+  if (!rawHTML) throw new AppError('Failed to generate challenge', 500);
 
-  const { html, metadata } = workerResponse.data.data;
+  // Clean up HTML
+  rawHTML = rawHTML.replace(/^```(?:html)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+  const doctypeIdx = rawHTML.indexOf('<!DOCTYPE');
+  const htmlTagIdx = rawHTML.indexOf('<html');
+  const startIdx = doctypeIdx >= 0 ? doctypeIdx : htmlTagIdx;
+  if (startIdx > 0) rawHTML = rawHTML.substring(startIdx);
+  const endIdx = rawHTML.lastIndexOf('</html>');
+  if (endIdx > 0) rawHTML = rawHTML.substring(0, endIdx + 7);
+
+  const html = rawHTML;
+  const metadata = { title: note.title, totalQuestions: numQuestions, type: challengeType };
   const shareToken = crypto.randomBytes(8).toString('hex');
 
   // Store in Supabase
@@ -70,7 +112,7 @@ router.post('/:noteId/create', authenticate, asyncHandler(async (req, res) => {
     throw new AppError('Failed to save challenge', 500);
   }
 
-  const shareUrl = `${process.env.WEB_APP_URL || 'https://ai-notetaker-backend-917362189743.us-central1.run.app'}/compete/${shareToken}`;
+  const shareUrl = `${process.env.WEB_APP_URL || 'https://ai-notetaker-backend.fly.dev'}/compete/${shareToken}`;
 
   // Creator auto-joins as first participant
   res.json({
@@ -217,7 +259,7 @@ router.get('/my-challenges', authenticate, asyncHandler(async (req, res) => {
   const challenges = (data || []).map(c => ({
     ...c,
     participantCount: c.challenge_participants?.[0]?.count || 0,
-    shareUrl: `${process.env.WEB_APP_URL || 'https://ai-notetaker-backend-917362189743.us-central1.run.app'}/compete/${c.share_token}`
+    shareUrl: `${process.env.WEB_APP_URL || 'https://ai-notetaker-backend.fly.dev'}/compete/${c.share_token}`
   }));
 
   res.json({ success: true, data: challenges });

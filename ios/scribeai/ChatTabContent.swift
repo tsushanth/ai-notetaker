@@ -269,6 +269,7 @@ struct ChatTabContent: View {
                 let response = try await APIService.shared.chatWithNote(
                     token: token,
                     noteId: note.id,
+                    noteContent: note.content,
                     question: text,
                     conversationHistory: Array(conversationHistory),
                     contentLength: note.content.count
@@ -376,7 +377,8 @@ struct ChatTabContent: View {
             do {
                 let fetchedSuggestions = try await APIService.shared.getChatSuggestions(
                     token: token,
-                    noteId: note.id
+                    noteId: note.id,
+                    noteContent: note.content
                 )
 
                 await MainActor.run {

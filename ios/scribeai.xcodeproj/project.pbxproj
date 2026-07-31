@@ -434,7 +434,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 111;
+				CURRENT_PROJECT_VERSION = 139;
 				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
@@ -452,7 +452,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 99.5;
+				MARKETING_VERSION = 101.5.12;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
@@ -472,7 +472,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 111;
+				CURRENT_PROJECT_VERSION = 139;
 				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
 				DEVELOPMENT_TEAM = 7RS696YC75;
 				ENABLE_PREVIEWS = YES;
@@ -490,7 +490,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 99.5;
+				MARKETING_VERSION = 101.5.12;
 				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

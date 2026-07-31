@@ -43,9 +43,6 @@ import com.kreativekoala.scribeai.utils.SubscriptionManager
 import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallTheme
 import com.kreativekoala.paywallkit.view.PaywallPreview
-import com.revenuecat.purchases.ui.revenuecatui.Paywall
-import com.revenuecat.purchases.ui.revenuecatui.PaywallListener
-import com.revenuecat.purchases.ui.revenuecatui.PaywallOptions
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,11 +57,16 @@ fun HomeScreen(
     onUploadDocument: () -> Unit,
     onScanDocument: () -> Unit,
     onMeetings: () -> Unit = {},
+    onPhone: () -> Unit = {},
     onDebugToken: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
     var showPaywall by remember { mutableStateOf(false) }
+    // Distinguishes the soft upsell (user tapped "Upgrade to Pro") from the
+    // hard gate (user hit the free notebook limit). Hard-gate hides the close
+    // button + blocks back so the user must convert or background the app.
+    var paywallIsHardGate by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -195,6 +197,7 @@ fun HomeScreen(
                                 text = { Text(stringResource(R.string.menu_upgrade_pro), color = Purple80, fontWeight = FontWeight.SemiBold) },
                                 onClick = {
                                     showMenu = false
+                                    paywallIsHardGate = false
                                     showPaywall = true
                                 },
                                 leadingIcon = {
@@ -207,6 +210,7 @@ fun HomeScreen(
                                 text = { Text(stringResource(R.string.menu_manage_subscription)) },
                                 onClick = {
                                     showMenu = false
+                                    paywallIsHardGate = false
                                     showPaywall = true
                                 },
                                 leadingIcon = {
@@ -302,6 +306,9 @@ fun HomeScreen(
                         if (subscriptionManager.canCreateNotebook()) {
                             showCreateSheet = true
                         } else {
+                            // Hard gate — user has hit the free notebook limit.
+                            // Block dismissal so they must convert or background.
+                            paywallIsHardGate = true
                             showPaywall = true
                         }
                     }
@@ -572,14 +579,27 @@ fun HomeScreen(
             onMeetings = {
                 showCreateSheet = false
                 onMeetings()
+            },
+            onPhone = {
+                showCreateSheet = false
+                onPhone()
             }
         )
     }
 
-    // RC Native Paywall in bottom sheet with visible close button
     if (showPaywall) {
-        RCPaywallSheet(
-            onDismiss = { showPaywall = false }
+        PaywallScreen(
+            subscriptionManager = subscriptionManager,
+            onDismiss = {
+                // Only honor dismiss for soft upsells. Hard-gate dismiss is a no-op
+                // (the BackHandler inside PaywallScreen swallows back too).
+                if (!paywallIsHardGate) showPaywall = false
+            },
+            onSubscribe = {
+                showPaywall = false
+                paywallIsHardGate = false
+            },
+            dismissable = !paywallIsHardGate
         )
     }
 
@@ -959,7 +979,8 @@ fun CreateOptionsBottomSheet(
     onYouTube: () -> Unit,
     onUploadDocument: () -> Unit,
     onScanDocument: () -> Unit,
-    onMeetings: () -> Unit = {}
+    onMeetings: () -> Unit = {},
+    onPhone: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -1008,6 +1029,13 @@ fun CreateOptionsBottomSheet(
                 title = stringResource(R.string.join_meeting),
                 subtitle = stringResource(R.string.join_meeting_subtitle),
                 onClick = onMeetings
+            )
+            Spacer(Modifier.height(12.dp))
+            CreateOption(
+                icon = Icons.Default.Phone,
+                title = "Phone Call",
+                subtitle = "Place a recorded call, transcript saved to your notes",
+                onClick = onPhone
             )
         }
     }
@@ -1122,45 +1150,3 @@ private suspend fun loadUserStats(token: String?, onResult: (UserStats?) -> Unit
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun RCPaywallSheet(onDismiss: () -> Unit) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        dragHandle = null,
-        containerColor = androidx.compose.ui.graphics.Color.Transparent
-    ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            Paywall(
-                PaywallOptions.Builder(dismissRequest = onDismiss)
-                    .setListener(object : PaywallListener {
-                        override fun onPurchaseStarted(rcPackage: com.revenuecat.purchases.Package) {}
-                        override fun onPurchaseCompleted(
-                            customerInfo: com.revenuecat.purchases.CustomerInfo,
-                            storeTransaction: com.revenuecat.purchases.models.StoreTransaction
-                        ) { onDismiss() }
-                        override fun onPurchaseError(error: com.revenuecat.purchases.PurchasesError) {}
-                        override fun onPurchaseCancelled() { onDismiss() }
-                        override fun onRestoreStarted() {}
-                        override fun onRestoreCompleted(customerInfo: com.revenuecat.purchases.CustomerInfo) { onDismiss() }
-                        override fun onRestoreError(error: com.revenuecat.purchases.PurchasesError) {}
-                    })
-                    .build()
-            )
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Close",
-                    tint = androidx.compose.ui.graphics.Color.White
-                )
-            }
-        }
-    }
-}

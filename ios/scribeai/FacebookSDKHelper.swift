@@ -20,6 +20,9 @@ final class FacebookSDKHelper {
 
     /// Initialize Facebook SDK. Call once at app launch.
     func initialize() {
+        Settings.shared.appID = "1550416256518249"
+        Settings.shared.clientToken = "561fcc2909690b6966d1838c475c41aa"
+        Settings.shared.displayName = "Scribe AI"
         Settings.shared.isAutoLogAppEventsEnabled = true
         Settings.shared.isAdvertiserIDCollectionEnabled = true
         ApplicationDelegate.shared.initializeSDK()

@@ -156,6 +156,14 @@ struct WinbackOfferView: View {
                 isPurchasing = false
                 switch result {
                 case .purchased:
+                    TikTokHelper.shared.trackEvent("purchase_success", properties: ["product_id": yearlyId])
+                    do {
+                        let storeProduct = StoreKitManager.shared.products.first(where: { $0.id == yearlyId })
+                        let price = storeProduct.map { NSDecimalNumber(decimal: $0.price).doubleValue } ?? 0
+                        let currency = storeProduct?.priceFormatStyle.currencyCode ?? "USD"
+                        FacebookSDKHelper.shared.logSubscriptionStarted(productId: yearlyId, price: price, currency: currency)
+                    }
+                    PaywallManager.shared.trackEvent(appId: "scribeai", placement: "winback", templateId: "default", event: "winback_purchased", productId: yearlyId)
                     dismiss()
                 case .cancelled:
                     break

@@ -13,10 +13,12 @@ struct User: Codable {
     let email: String
     let name: String?
     let createdAt: String
-    
+    var isAnonymous: Bool = false
+
     enum CodingKeys: String, CodingKey {
         case id, email, name
         case createdAt = "created_at"
+        case isAnonymous = "is_anonymous"
     }
 }
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Loader2, BookOpen, Trophy, Flame, ChevronRight, RefreshCw } from 'lucide-react';
 
-const API_BASE_URL = 'https://ai-notetaker-backend-917362189743.us-central1.run.app';
+const API_BASE_URL = 'https://ai-notetaker-backend.fly.dev';
 
 interface LessonData {
   id: string;

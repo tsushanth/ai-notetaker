@@ -225,7 +225,7 @@ struct QuizTabContent: View {
 
         Task {
             do {
-                let aiContent = try await APIService.shared.generateQuiz(token: token, noteId: note.id, contentLength: note.content.count)
+                let aiContent = try await APIService.shared.generateQuiz(token: token, noteId: note.id, noteContent: note.content, contentLength: note.content.count)
                 
                 await MainActor.run {
                     print("📦 Generated quiz data: \(aiContent)")

@@ -63,7 +63,7 @@ router.get('/:sessionId', (req, res, next) => {
 <body>
   <div id="app"></div>
   <script>
-    const API = 'https://ai-notetaker-backend-917362189743.us-central1.run.app';
+    const API = 'https://ai-notetaker-backend.fly.dev';
     const SESSION_ID = '${sessionId}';
     const TOKEN = '${token}';
     let pollTimer = null;

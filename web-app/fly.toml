@@ -1,0 +1,28 @@
+app = "scribe-ai-web"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+
+  [build.args]
+    NEXT_PUBLIC_API_URL = "https://api.scribeai.online"
+    NEXT_PUBLIC_APPLE_CLIENT_ID = "com.kreativekoala.scribeai.web"
+    NEXT_PUBLIC_APPLE_REDIRECT_URI = "https://app.scribeai.online/api/auth/apple/callback"
+    NEXT_PUBLIC_GOOGLE_CLIENT_ID = "655434901651-u6bjf9lr0no2e4ust6pok76s0aeusnv6.apps.googleusercontent.com"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+[deploy]
+  strategy = "rolling"

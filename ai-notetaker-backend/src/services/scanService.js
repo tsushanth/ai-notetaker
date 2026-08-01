@@ -3,7 +3,7 @@ const path = require('path');
 const os = require('os');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
-const { openai, MODELS } = require('../config/openai');
+const { anthropic, MODELS } = require('../config/openai');
 const noteService = require('./noteService');
 const { supabaseAdmin } = require('../config/supabase');
 
@@ -158,13 +158,10 @@ class ScanService {
    */
   async enhanceOCRText(text) {
     try {
-      const response = await openai.chat.completions.create({
-        model: MODELS.GPT_4O_MINI,
+      const response = await anthropic.messages.create({
+        model: MODELS.GPT4_MINI,
+        system: 'You are an OCR text correction assistant. Fix spelling errors, formatting issues, and improve readability while preserving the original meaning and structure. Do not add any content that was not in the original text.',
         messages: [
-          {
-            role: 'system',
-            content: 'You are an OCR text correction assistant. Fix spelling errors, formatting issues, and improve readability while preserving the original meaning and structure. Do not add any content that was not in the original text.'
-          },
           {
             role: 'user',
             content: `Please correct any OCR errors in this text while preserving its structure:\n\n${text}`
@@ -174,7 +171,7 @@ class ScanService {
         temperature: 0.3
       });
 
-      return response.choices[0].message.content.trim();
+      return response.content[0].text.trim();
     } catch (error) {
       logger.error('Error enhancing OCR text', { error: error.message });
       throw error;

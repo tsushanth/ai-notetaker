@@ -5,13 +5,13 @@
     "backend": {
       "name": "ai-notetaker-backend",
       "source": "ai-notetaker-backend",
-      "url": "https://ai-notetaker-backend-917362189743.us-central1.run.app",
+      "url": "https://ai-notetaker-backend.fly.dev",
       "description": "Node.js Express backend API for ScribeAI"
     },
     "web": {
       "name": "scribe-ai-web",
       "source": "web-app",
-      "url": "https://scribe-ai-web-917362189743.us-central1.run.app",
+      "url": "https://scribe-ai-web.fly.dev",
       "description": "Next.js web application for ScribeAI"
     }
   },

@@ -24,10 +24,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.SubscriptionManager
@@ -47,7 +49,7 @@ import java.util.concurrent.TimeUnit
 private const val MAX_FILE_SIZE_MB = 50
 private const val MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024L
 private const val TAG = "PDFUploadScreen"
-private const val BASE_URL = "https://ai-notetaker-backend-917362189743.us-central1.run.app"
+private const val BASE_URL = "https://ai-notetaker-backend.fly.dev"
 
 // Upload states
 sealed class UploadScreenState {
@@ -141,7 +143,7 @@ fun PDFUploadScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Upload Document") },
+                title = { Text(stringResource(R.string.upload_pdf)) },
                 navigationIcon = {
                     IconButton(onClick = {
                         if (screenState is UploadScreenState.SelectFile ||
@@ -150,7 +152,7 @@ fun PDFUploadScreen(
                             onNavigateBack()
                         }
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -160,7 +162,7 @@ fun PDFUploadScreen(
                             screenState = UploadScreenState.SelectFile
                             // Note: In production, you'd also want to cancel the upload/processing
                         }) {
-                            Text("Cancel", color = AccentRed)
+                            Text(stringResource(R.string.cancel), color = AccentRed)
                         }
                     }
                 },
@@ -296,7 +298,7 @@ private fun FileSelectionContent(
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    if (selectedFileUri != null) "File Selected" else "Tap to Upload",
+                    if (selectedFileUri != null) stringResource(R.string.file_selected) else stringResource(R.string.tap_to_select),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = if (selectedFileUri != null) Purple80 else TextSecondary
@@ -306,7 +308,7 @@ private fun FileSelectionContent(
                     if (selectedFileUri != null) {
                         "$fileName\n${formatFileSize(fileSize)}"
                     } else {
-                        "PDF, DOCX, PPTX, TXT (max ${MAX_FILE_SIZE_MB}MB)"
+                        stringResource(R.string.supported_formats)
                     },
                     fontSize = 14.sp,
                     color = TextTertiary,
@@ -352,7 +354,7 @@ private fun FileSelectionContent(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    "Supported Formats",
+                    stringResource(R.string.supported_formats),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary
@@ -410,7 +412,7 @@ private fun FileSelectionContent(
         ) {
             Icon(Icons.Default.Upload, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Process Document", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.create_note), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(Modifier.height(32.dp))
@@ -438,7 +440,7 @@ private fun UploadingContent(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Uploading...",
+            stringResource(R.string.uploading),
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
             color = TextPrimary
@@ -456,7 +458,7 @@ private fun UploadingContent(
         Spacer(Modifier.height(48.dp))
 
         Text(
-            "Please keep app open until the upload finishes",
+            stringResource(R.string.processing_info),
             fontSize = 14.sp,
             color = TextTertiary,
             textAlign = TextAlign.Center
@@ -499,7 +501,7 @@ private fun ProcessingContent(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    "Please keep app open until the upload finishes",
+                    stringResource(R.string.processing_info),
                     fontSize = 14.sp,
                     color = TextTertiary,
                     textAlign = TextAlign.Center
@@ -674,7 +676,7 @@ private fun SuccessContent(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Document Processed!",
+            stringResource(R.string.note_ready),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -683,7 +685,7 @@ private fun SuccessContent(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Your notes are ready to view",
+            stringResource(R.string.note_ready_description),
             fontSize = 16.sp,
             color = TextSecondary
         )
@@ -698,7 +700,7 @@ private fun SuccessContent(
             colors = ButtonDefaults.buttonColors(containerColor = Purple80),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("View Notes", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.view_note), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -711,7 +713,7 @@ private fun SuccessContent(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Purple80)
         ) {
-            Text("Upload Another", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.upload_pdf), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -739,7 +741,7 @@ private fun ErrorContent(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Processing Failed",
+            stringResource(R.string.error_processing_failed),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -764,7 +766,7 @@ private fun ErrorContent(
             colors = ButtonDefaults.buttonColors(containerColor = Purple80),
             shape = RoundedCornerShape(12.dp)
         ) {
-            Text("Try Again", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.try_again_button), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

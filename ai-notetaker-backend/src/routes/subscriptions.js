@@ -17,11 +17,10 @@ const supabase = createClient(
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// Stripe Price IDs - these need to be created in Stripe Dashboard
-// You'll need to set these after creating products in Stripe
+// Stripe Price IDs — hardcoded fallbacks so deploys can't wipe them
 const STRIPE_PRICES = {
-  monthly: process.env.STRIPE_PRICE_MONTHLY || 'price_monthly_placeholder',
-  yearly: process.env.STRIPE_PRICE_YEARLY || 'price_yearly_placeholder'
+  monthly: process.env.STRIPE_PRICE_MONTHLY || 'price_1Ssq3iKFBTQTkmztweW9EgST',
+  yearly: process.env.STRIPE_PRICE_YEARLY || 'price_1Sjv8UKFBTQTkmztT2AC3ae9'
 };
 
 // ============================================
@@ -259,6 +258,9 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
         canCreateNotes: status.hasAccess || remaining.notes > 0,
         canUseAI: status.hasAccess || remaining.aiGenerations > 0,
         canGeneratePodcasts: status.isSubscribed || status.isInTrial,
+        canExportNotes: status.isSubscribed || status.isInTrial,
+        canShareNotes: true,  // Free: 3/month, premium: unlimited (enforced server-side)
+        canUseIntegrations: status.isSubscribed || status.isInTrial,
         unlimitedAccess: status.isSubscribed || status.isInTrial
       }
     }
@@ -785,7 +787,7 @@ router.post('/stripe/portal', authenticate, asyncHandler(async (req, res) => {
   // Create portal session
   const session = await stripe.billingPortal.sessions.create({
     customer: subscription.stripe_customer_id,
-    return_url: `${process.env.WEB_APP_URL || 'https://scribeai-web-app-917362189743.us-central1.run.app'}/settings`,
+    return_url: `${process.env.WEB_APP_URL || 'https://scribe-ai-web.fly.dev'}/settings`,
   });
 
   res.json({
@@ -1853,6 +1855,115 @@ async function handleStripeWebhook(event, stripeClient) {
       break;
   }
 }
+
+// ============================================
+// RevenueCat Webhook - Handle subscription events
+// ============================================
+router.post('/webhook/revenuecat', express.json(), asyncHandler(async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+
+  if (webhookSecret && authHeader !== webhookSecret) {
+    logger.warn('RevenueCat webhook: invalid authorization header');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { event } = req.body;
+  if (!event) {
+    return res.status(400).json({ error: 'Missing event' });
+  }
+
+  const {
+    type,
+    app_user_id,
+    product_id,
+    period_type,
+    expiration_at_ms,
+    store,
+    price,
+    currency
+  } = event;
+
+  logger.info('RevenueCat webhook received', { type, app_user_id, product_id });
+
+  // Map RC event types to internal status
+  const RC_EVENT_MAP = {
+    INITIAL_PURCHASE:     { status: 'active',       is_trial: false },
+    RENEWAL:              { status: 'active',       is_trial: false },
+    UNCANCELLATION:       { status: 'active',       is_trial: false },
+    TRIAL_STARTED:        { status: 'active',       is_trial: true  },
+    TRIAL_CONVERTED:      { status: 'active',       is_trial: false },
+    TRIAL_CANCELLED:      { status: 'cancelled',    is_trial: true  },
+    CANCELLATION:         { status: 'cancelled',    is_trial: false },
+    EXPIRATION:           { status: 'expired',      is_trial: false },
+    BILLING_ISSUE:        { status: 'grace_period', is_trial: false },
+    SUBSCRIPTION_PAUSED:  { status: 'paused',       is_trial: false },
+  };
+
+  const statusUpdate = RC_EVENT_MAP[type];
+  if (!statusUpdate) {
+    logger.info('RevenueCat webhook: unhandled event type', { type });
+    return res.status(200).json({ received: true });
+  }
+
+  // For INITIAL_PURCHASE, check if it's actually a trial
+  if (type === 'INITIAL_PURCHASE' && period_type === 'TRIAL') {
+    statusUpdate.status = 'active';
+    statusUpdate.is_trial = true;
+  }
+
+  const platform = store === 'PLAY_STORE' ? 'android' : 'ios';
+  const expirationDate = expiration_at_ms ? new Date(expiration_at_ms).toISOString() : null;
+
+  try {
+    // Look up user by RC app_user_id (stored as user ID)
+    const { data: subscription, error: fetchErr } = await supabase
+      .from('subscriptions')
+      .select('id, user_id')
+      .eq('user_id', app_user_id)
+      .single();
+
+    if (fetchErr || !subscription) {
+      logger.warn('RevenueCat webhook: no subscription found for user', { app_user_id });
+      return res.status(200).json({ received: true });
+    }
+
+    const updateData = {
+      ...statusUpdate,
+      product_id: product_id || subscription.product_id,
+      platform,
+      updated_at: new Date().toISOString(),
+      ...(expirationDate && { expiration_date: expirationDate }),
+      ...(type === 'TRIAL_CONVERTED' && { trial_end: new Date().toISOString() }),
+    };
+
+    const { error: updateErr } = await supabase
+      .from('subscriptions')
+      .update(updateData)
+      .eq('user_id', app_user_id);
+
+    if (updateErr) {
+      logger.error('RevenueCat webhook: failed to update subscription', { error: updateErr.message, app_user_id });
+      return res.status(500).json({ error: 'Failed to update subscription' });
+    }
+
+    // Track the event in metrics
+    await trackSubscriptionMetric(
+      app_user_id,
+      null,
+      type.toLowerCase(),
+      platform,
+      'revenuecat_webhook',
+      { product_id, price, currency, period_type }
+    ).catch(err => logger.warn('RC webhook metric tracking failed', { err: err.message }));
+
+    logger.info('RevenueCat webhook processed', { type, app_user_id, status: statusUpdate.status });
+    res.status(200).json({ received: true });
+  } catch (err) {
+    logger.error('RevenueCat webhook error', { error: err.message });
+    res.status(500).json({ error: 'Internal error' });
+  }
+}));
 
 // Export both router and webhook handler
 module.exports = router;

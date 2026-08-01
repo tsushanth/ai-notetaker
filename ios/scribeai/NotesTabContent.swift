@@ -402,6 +402,7 @@ struct NotesTabContent: View {
                 let aiContent = try await APIService.shared.generateSummary(
                     token: token,
                     noteId: note.id,
+                    noteContent: note.content,
                     length: "medium",
                     contentLength: note.content.count
                 )

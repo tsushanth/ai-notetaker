@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "917362189743-4n98540e37mh504qer0m1lihiero6dfh.apps.googleusercontent.com",
+          "client_id": "917362189743-pbhqo7pcoqlthffe5ge215mbtk6g2dif.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kreativekoala.scribeai",
+            "certificate_hash": "fb0ef96042d17077df05681c0c8bbf13f39b709d"
+          }
+        },
+        {
+          "client_id": "917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,15 +35,8 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "917362189743-4n98540e37mh504qer0m1lihiero6dfh.apps.googleusercontent.com",
+              "client_id": "917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "917362189743-a8n80i547bapojm3u5u734ds9hb9kofa.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.kreativekoala.scribeai"
-              }
             }
           ]
         }

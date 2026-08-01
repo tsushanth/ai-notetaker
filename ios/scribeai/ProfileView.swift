@@ -11,6 +11,10 @@
 //
 
 import SwiftUI
+import StoreKit
+#if DEBUG
+import PaywallKit
+#endif
 
 struct ProfileView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -90,7 +94,10 @@ struct ProfileView: View {
                     VStack(spacing: 24) {
                         Spacer()
                             .frame(height: 32)
-                        
+
+                        CrossPromoBanner()
+                            .padding(.horizontal, 16)
+
                         // Profile Header
                         VStack(spacing: 16) {
                             ZStack(alignment: .bottomTrailing) {
@@ -121,11 +128,21 @@ struct ProfileView: View {
                                 }
                             }
                             
-                            if let user = authViewModel.currentUser {
+                            if authViewModel.isAnonymous {
+                                Text("Guest")
+                                    .font(.system(size: 24, weight: .bold))
+                                    .foregroundColor(.textPrimary)
+
+                                Text("Your notes are saved on this device")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.textSecondary)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 16)
+                            } else if let user = authViewModel.currentUser {
                                 Text(user.name ?? "User")
                                     .font(.system(size: 24, weight: .bold))
                                     .foregroundColor(.textPrimary)
-                                
+
                                 Text(user.email)
                                     .font(.system(size: 14))
                                     .foregroundColor(.textSecondary)
@@ -187,23 +204,69 @@ struct ProfileView: View {
                         .background(Color.cardBackground)
                         .cornerRadius(12)
                         .padding(.horizontal, 24)
-                        
-                        // Sign Out Button
+
+                        #if DEBUG
+                        // PaywallKit Debug View
+                        PaywallDebugView(
+                            appId: "scribeai",
+                            appName: "Scribe AI",
+                            features: [
+                                PaywallFeature(icon: "\u{1F4DD}", title: "Unlimited Notebooks", description: "No limits on notes"),
+                                PaywallFeature(icon: "\u{1F916}", title: "AI Summaries & Chat", description: "Summarize and ask questions"),
+                                PaywallFeature(icon: "\u{1F399}\u{FE0F}", title: "Audio Podcasts", description: "Turn notes into podcasts"),
+                                PaywallFeature(icon: "\u{1F9E0}", title: "Quizzes & Flashcards", description: "Auto-generated study material"),
+                                PaywallFeature(icon: "\u{1F5FA}\u{FE0F}", title: "Mind Maps", description: "Visualize complex topics")
+                            ],
+                            theme: PaywallTheme(accent: Color(red: 0.49, green: 0.23, blue: 0.93), accent2: Color(red: 0.66, green: 0.33, blue: 0.97))
+                        )
+                        .padding(.horizontal, 24)
+                        #endif
+
+                        #if DEBUG
                         Button(action: {
-                            showingSignOutAlert = true
+                            Task {
+                                if let scene = UIApplication.shared.connectedScenes
+                                    .compactMap({ $0 as? UIWindowScene })
+                                    .first(where: { $0.activationState == .foregroundActive }) {
+                                    try? await AppStore.presentOfferCodeRedeemSheet(in: scene)
+                                }
+                            }
                         }) {
                             HStack {
-                                Image(systemName: "rectangle.portrait.and.arrow.right")
-                                Text("Sign Out")
+                                Image(systemName: "tag.fill")
+                                Text("Redeem Promo Code")
                                     .font(.system(size: 16, weight: .semibold))
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
-                            .background(Color.accentRed.opacity(0.1))
-                            .foregroundColor(.accentRed)
+                            .background(Color.green.opacity(0.1))
+                            .foregroundColor(.green)
                             .cornerRadius(12)
                         }
                         .padding(.horizontal, 24)
+                        #endif
+
+                        // Sign Out Button — hidden for anonymous users since they
+                        // have nothing to sign out from, and tapping it would
+                        // orphan their notes (anonymous user_id can't be
+                        // recovered).
+                        if !authViewModel.isAnonymous {
+                            Button(action: {
+                                showingSignOutAlert = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    Text("Sign Out")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 56)
+                                .background(Color.accentRed.opacity(0.1))
+                                .foregroundColor(.accentRed)
+                                .cornerRadius(12)
+                            }
+                            .padding(.horizontal, 24)
+                        }
                         
                         // Delete Account Section
                         VStack(spacing: 0) {
@@ -282,10 +345,8 @@ struct ProfileView: View {
             ThemeSelectionSheet()
         }
         .sheet(isPresented: $showingPaywall) {
-            NavigationView {
-                PaywallView(source: "profile") {
-                    showingPaywall = false
-                }
+            ScribeRemotePaywallView(triggerSource: "profile") {
+                showingPaywall = false
             }
             .preferredColorScheme(.dark)  // FIX: Ensure paywall is also dark
         }
@@ -448,24 +509,24 @@ struct ProfileView: View {
                             Circle()
                                 .fill(Color.purple80.opacity(0.2))
                                 .frame(width: 44, height: 44)
-                            
+
                             Image(systemName: "crown.fill")
                                 .font(.system(size: 20))
                                 .foregroundColor(.purple80)
                         }
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text("Upgrade to Premium")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.textPrimary)
-                            
+
                             Text("Unlock all features")
                                 .font(.system(size: 13))
                                 .foregroundColor(.textSecondary)
                         }
-                        
+
                         Spacer()
-                        
+
                         Text("View Plans")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.purple80)
@@ -479,10 +540,53 @@ struct ProfileView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
             }
+
+            // Offer code redemption (always available — Apple offer codes for win-back
+            // and intro-trial campaigns are surfaced here so users with a code can
+            // redeem in-app without needing a redemption URL).
+            Divider()
+                .background(Color.darkSurfaceVariant)
+                .padding(.leading, 56)
+
+            Button(action: presentOfferCodeRedemption) {
+                HStack(spacing: 16) {
+                    ZStack {
+                        Circle()
+                            .fill(Color.purple80.opacity(0.12))
+                            .frame(width: 44, height: 44)
+
+                        Image(systemName: "tag.fill")
+                            .font(.system(size: 18))
+                            .foregroundColor(.purple80)
+                    }
+
+                    Text("Have a promo code?")
+                        .font(.system(size: 15))
+                        .foregroundColor(.textPrimary)
+
+                    Spacer()
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.textTertiary)
+                }
+                .padding()
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PlainButtonStyle())
         }
         .background(Color.cardBackground)
         .cornerRadius(12)
         .padding(.horizontal, 24)
+    }
+
+    private func presentOfferCodeRedemption() {
+        // Apple's native offer-code redemption sheet. Works for both
+        // promotional offer codes and subscription offer codes configured
+        // in App Store Connect. iOS 14+.
+        #if !targetEnvironment(macCatalyst)
+        SKPaymentQueue.default().presentCodeRedemptionSheet()
+        #endif
     }
     
     private func subscriptionTypeText(for productId: String) -> String {

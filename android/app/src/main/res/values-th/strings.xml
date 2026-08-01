@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">หน้าหลัก</string>
+    <string name="menu">เมนู</string>
+    <string name="menu_language">ภาษา</string>
+    <string name="menu_upgrade_pro">อัปเกรดเป็น Pro</string>
+    <string name="menu_manage_subscription">จัดการการสมัครสมาชิก</string>
+    <string name="menu_appearance">ธีม</string>
+    <string name="menu_sign_out">ออกจากระบบ</string>
+    <string name="menu_delete_account">ลบบัญชี</string>
+    <string name="add">เพิ่ม</string>
+    <string name="no_notes_yet">ยังไม่มีบันทึก</string>
+    <string name="tap_to_create_first_note">แตะ + เพื่อสร้างบันทึกแรกของคุณ</string>
+    <string name="notes_count_format">%1$d จาก %2$d บันทึก</string>
+    <string name="load_more_notes">โหลดบันทึกเพิ่มเติม</string>
+    <string name="error_loading_notes">เกิดข้อผิดพลาดในการโหลดบันทึก</string>
+    <string name="retry">ลองอีกครั้ง</string>
+    <string name="account_deletion_requested">ได้รับคำขอลบบัญชีแล้ว คุณจะถูกออกจากระบบ</string>
+    <string name="error_delete_account">ไม่สามารถลบบัญชีได้: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">เลือกภาษา</string>
+    <string name="language_subtitle">เนื้อหาที่สร้างโดย AI จะเป็นภาษานี้</string>
+    <string name="ok">ตกลง</string>
+    <string name="cancel">ยกเลิก</string>
+
+    <!-- Note Card -->
+    <string name="more">เพิ่มเติม</string>
+    <string name="edit_title">แก้ไขชื่อเรื่อง</string>
+    <string name="delete">ลบ</string>
+    <string name="delete_note">ลบบันทึก?</string>
+    <string name="delete_note_message">คุณแน่ใจหรือไม่ว่าต้องการลบ \"%s\"? การกระทำนี้ไม่สามารถย้อนกลับได้</string>
+    <string name="delete_note_detail_message">คุณแน่ใจหรือไม่ว่าต้องการลบบันทึกนี้? การกระทำนี้ไม่สามารถย้อนกลับได้</string>
+    <string name="label_title">ชื่อเรื่อง</string>
+    <string name="save">บันทึก</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">บันทึกหรืออัปโหลดเสียง</string>
+    <string name="youtube_video">วิดีโอ YouTube</string>
+    <string name="upload_document">อัปโหลดเอกสาร</string>
+    <string name="upload_document_subtitle">PDF, DOCX, PPT, TXT ฯลฯ ทุกประเภท!</string>
+    <string name="scan_text">สแกนข้อความ</string>
+    <string name="scan_text_subtitle">รูปภาพใดก็ได้ที่มีข้อความ</string>
+    <string name="join_meeting">เข้าร่วมการประชุม</string>
+    <string name="join_meeting_subtitle">บันทึก Zoom, Meet, Teams, Webex</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">กลับ</string>
+    <string name="more_options">ตัวเลือกเพิ่มเติม</string>
+    <string name="share">แชร์</string>
+    <string name="share_note">แชร์บันทึก</string>
+    <string name="tab_notes">บันทึก</string>
+    <string name="tab_chat">แชท</string>
+    <string name="tab_quiz">แบบทดสอบ</string>
+    <string name="tab_cards">การ์ด</string>
+    <string name="formatting_notes">กำลังจัดรูปแบบบันทึก\u2026</string>
+    <string name="formatted">จัดรูปแบบแล้ว</string>
+    <string name="raw">ดิบ</string>
+    <string name="source_label">แหล่งที่มา: %s</string>
+    <string name="open_source_link">เปิดแหล่งที่มา</string>
+    <string name="characters_words_format">%1$s ตัวอักษร \u2022 %2$s คำ</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">วิดีโอ YouTube</string>
+    <string name="source_audio_recording">การบันทึกเสียง</string>
+    <string name="source_pdf_document">เอกสาร PDF</string>
+    <string name="source_scanned_document">เอกสารที่สแกน</string>
+    <string name="source_image">รูปภาพ</string>
+    <string name="source_text">ข้อความ</string>
+
+    <!-- Summary Section -->
+    <string name="summary">สรุป</string>
+    <string name="generating_summary">กำลังสร้างสรุป\u2026</string>
+    <string name="regenerate">สร้างใหม่</string>
+    <string name="no_summary_yet">ยังไม่มีสรุป</string>
+    <string name="generate_summary">สร้างสรุป</string>
+    <string name="no_summary_available">ไม่มีสรุป</string>
+    <string name="summary_length">ความยาวสรุป</string>
+    <string name="create_summary_description">สร้างสรุปย่อของบันทึกของคุณ</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">พิมพ์ข้อความ\u2026</string>
+    <string name="send">ส่ง</string>
+    <string name="voice_mode">โหมดเสียง</string>
+    <string name="text_mode">โหมดข้อความ</string>
+    <string name="ask_about_notes">ถามอะไรก็ได้เกี่ยวกับบันทึกของคุณ</string>
+    <string name="ask_about_notes_description">ฉันสามารถช่วยคุณทำความเข้าใจ วิเคราะห์ หรือค้นหาข้อมูลเฉพาะในบันทึกของคุณ</string>
+    <string name="suggested_questions">คำถามที่แนะนำ:</string>
+    <string name="chat_suggestion_summarize">สรุปประเด็นสำคัญ</string>
+    <string name="chat_suggestion_explain">อธิบายแนวคิดหลัก</string>
+    <string name="chat_suggestion_test">ทดสอบฉันเกี่ยวกับเนื้อหานี้</string>
+    <string name="listening">กำลังฟัง\u2026</string>
+    <string name="tap_to_speak">แตะเพื่อพูด</string>
+    <string name="speaking">กำลังพูด\u2026</string>
+    <string name="stop_speaking">หยุดพูด</string>
+    <string name="could_not_open_link">ไม่สามารถเปิดลิงก์ได้</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">สร้างแบบทดสอบ</string>
+    <string name="generate_quiz_description">สร้างแบบทดสอบเพื่อทดสอบความรู้ของคุณ</string>
+    <string name="generating_quiz">กำลังสร้างแบบทดสอบ\u2026</string>
+    <string name="question_count_format">คำถามที่ %1$d จาก %2$d</string>
+    <string name="check_answer">ตรวจคำตอบ</string>
+    <string name="next_question">คำถามถัดไป</string>
+    <string name="correct">ถูกต้อง!</string>
+    <string name="incorrect">ไม่ถูกต้อง</string>
+    <string name="correct_answer_is">คำตอบที่ถูกต้องคือ: %s</string>
+    <string name="quiz_complete">แบบทดสอบเสร็จสิ้น!</string>
+    <string name="quiz_score_format">คุณได้ %1$d จาก %2$d</string>
+    <string name="try_again">ลองอีกครั้ง</string>
+    <string name="new_quiz">แบบทดสอบใหม่</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">สร้างแฟลชการ์ด</string>
+    <string name="generate_flashcards_description">สร้างแฟลชการ์ดสำหรับการเรียน</string>
+    <string name="generating_flashcards">กำลังสร้างแฟลชการ์ด\u2026</string>
+    <string name="flashcard_count_format">การ์ดที่ %1$d จาก %2$d</string>
+    <string name="tap_to_flip">แตะเพื่อพลิก</string>
+    <string name="previous">ก่อนหน้า</string>
+    <string name="next">ถัดไป</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">ยินดีต้อนรับกลับ</string>
+    <string name="sign_in_to_continue">เข้าสู่ระบบเพื่อดำเนินการต่อ</string>
+    <string name="continue_with_google">ดำเนินการต่อด้วย Google</string>
+    <string name="or_divider">  หรือ  </string>
+    <string name="email">อีเมล</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">รหัสผ่าน</string>
+    <string name="enter_password">ใส่รหัสผ่านของคุณ</string>
+    <string name="hide_password">ซ่อนรหัสผ่าน</string>
+    <string name="show_password">แสดงรหัสผ่าน</string>
+    <string name="sign_in">เข้าสู่ระบบ</string>
+    <string name="forgot_password">ลืมรหัสผ่าน?</string>
+    <string name="no_account">ยังไม่มีบัญชี? </string>
+    <string name="sign_up">สมัครสมาชิก</string>
+    <string name="error_invalid_credentials">อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาลองอีกครั้ง</string>
+    <string name="error_email_not_confirmed">กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ</string>
+    <string name="error_user_not_found">ไม่พบบัญชีที่ใช้อีเมลนี้</string>
+    <string name="error_network">ข้อผิดพลาดเครือข่าย กรุณาตรวจสอบการเชื่อมต่อของคุณ</string>
+    <string name="error_no_google_account">ไม่พบบัญชี Google กรุณาเพิ่มบัญชี Google ในอุปกรณ์ของคุณ</string>
+    <string name="error_google_signin_failed">เข้าสู่ระบบด้วย Google ล้มเหลว</string>
+    <string name="error_email_required">กรุณาใส่อีเมลของคุณ</string>
+    <string name="error_invalid_email">กรุณาใส่ที่อยู่อีเมลที่ถูกต้อง</string>
+    <string name="error_password_required">กรุณาใส่รหัสผ่านของคุณ</string>
+    <string name="error_password_too_short">รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">ส่งอีเมลแล้ว!</string>
+    <string name="reset_password">รีเซ็ตรหัสผ่าน</string>
+    <string name="reset_email_sent">เราได้ส่งลิงก์รีเซ็ตรหัสผ่านไปที่:</string>
+    <string name="check_inbox">กรุณาตรวจสอบกล่องจดหมายและโฟลเดอร์สแปมของคุณ</string>
+    <string name="reset_password_instruction">ใส่ที่อยู่อีเมลของคุณ แล้วเราจะส่งลิงก์สำหรับรีเซ็ตรหัสผ่านให้คุณ</string>
+    <string name="done">เสร็จสิ้น</string>
+    <string name="send_reset_link">ส่งลิงก์รีเซ็ต</string>
+    <string name="error_enter_valid_email">กรุณาใส่อีเมลที่ถูกต้อง</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">สร้างบัญชี</string>
+    <string name="sign_up_subtitle">สมัครสมาชิกเพื่อเริ่มต้น</string>
+    <string name="at_least_6_characters">อย่างน้อย 6 ตัวอักษร</string>
+    <string name="confirm_password">ยืนยันรหัสผ่าน</string>
+    <string name="reenter_password">ใส่รหัสผ่านอีกครั้ง</string>
+    <string name="already_have_account">มีบัญชีอยู่แล้ว? </string>
+    <string name="error_valid_email">กรุณาใส่อีเมลที่ถูกต้อง</string>
+    <string name="error_enter_password">กรุณาใส่รหัสผ่าน</string>
+    <string name="error_confirm_password">กรุณายืนยันรหัสผ่านของคุณ</string>
+    <string name="error_passwords_mismatch">รหัสผ่านไม่ตรงกัน</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">บันทึกเสียง</string>
+    <string name="record_audio_subtitle">บันทึกการบรรยาย การประชุม หรือบันทึก\nเราจะถอดความและสร้างสื่อการเรียน</string>
+    <string name="grant_microphone_permission">อนุญาตไมโครโฟน</string>
+    <string name="start_recording">เริ่มบันทึก</string>
+    <string name="tap_to_start_recording">แตะเพื่อเริ่มบันทึก</string>
+    <string name="recording_status">กำลังบันทึก\u2026</string>
+    <string name="paused">หยุดชั่วคราว</string>
+    <string name="discard">ทิ้ง</string>
+    <string name="pause">หยุดชั่วคราว</string>
+    <string name="resume">ดำเนินการต่อ</string>
+    <string name="stop">หยุด</string>
+    <string name="recording_complete">บันทึกเสร็จสิ้น</string>
+    <string name="duration_format">ระยะเวลา: %s</string>
+    <string name="title_optional">ชื่อเรื่อง (ไม่บังคับ)</string>
+    <string name="title_placeholder">เช่น การบรรยายวิชาชีววิทยา</string>
+    <string name="process_recording">ประมวลผลการบันทึก</string>
+    <string name="discard_recording">ทิ้งการบันทึก</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">กำลังอัปโหลดเสียง</string>
+    <string name="step_transcribing_audio">กำลังถอดความเสียง</string>
+    <string name="step_identifying_speakers">กำลังระบุผู้พูด</string>
+    <string name="step_analyzing_content">กำลังวิเคราะห์เนื้อหา</string>
+    <string name="step_summarizing_key_points">กำลังสรุปประเด็นสำคัญ</string>
+    <string name="step_finalizing_note">กำลังสรุปบันทึกของคุณ</string>
+    <string name="upload_complete_safe">อัปโหลดเสร็จสิ้น คุณสามารถออกไปได้อย่างปลอดภัย</string>
+    <string name="processing_info">บันทึกมักใช้เวลาสร้างสักครู่ คุณสามารถออกจากหน้าจอนี้แล้วกลับมาทีหลัง</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">บันทึกของคุณพร้อมแล้ว!</string>
+    <string name="note_ready_description">เราได้ถอดความการบันทึกของคุณและสร้างสื่อการเรียนแล้ว</string>
+    <string name="view_note">ดูบันทึก</string>
+    <string name="go_to_home">ไปที่หน้าหลัก</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">เกิดข้อผิดพลาด</string>
+    <string name="try_again_button">ลองอีกครั้ง</string>
+    <string name="go_back">กลับ</string>
+    <string name="error_not_authenticated">ไม่ได้รับการยืนยันตัวตน</string>
+    <string name="error_upload_failed">ไม่สามารถอัปโหลดเสียงได้</string>
+    <string name="error_transcribe_failed">ไม่สามารถถอดความเสียงได้</string>
+    <string name="error_start_recording">ไม่สามารถเริ่มบันทึกได้: %s</string>
+    <string name="error_stop_recording">ไม่สามารถหยุดบันทึกได้: %s</string>
+    <string name="error_processing_failed">การประมวลผลล้มเหลว</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">ปิด</string>
+    <string name="unlock_pro">ปลดล็อก Scribe AI Pro</string>
+    <string name="unlimited_access">เข้าถึงฟีเจอร์ทั้งหมดแบบไม่จำกัด</string>
+    <string name="feature_unlimited_notes">บันทึกไม่จำกัดจากทุกแหล่ง</string>
+    <string name="feature_ai_summaries">สรุปและแบบทดสอบโดย AI</string>
+    <string name="feature_flashcards">สร้างแฟลชการ์ด</string>
+    <string name="feature_ai_chat">แชท AI กับบันทึกของคุณ</string>
+    <string name="feature_mind_map">แผนผังความคิด</string>
+    <string name="feature_podcast">สร้างพอดแคสต์เสียง</string>
+    <string name="plan_yearly">รายปี</string>
+    <string name="plan_monthly">รายเดือน</string>
+    <string name="per_month_format">%s/เดือน</string>
+    <string name="save_percent_format">ประหยัด %d%%</string>
+    <string name="loading_plans">กำลังโหลดแผน\u2026</string>
+    <string name="continue_button">ดำเนินการต่อ</string>
+    <string name="restore_purchases">กู้คืนการซื้อ</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">คุณแน่ใจหรือไม่?</string>
+    <string name="lose_access">คุณจะสูญเสียการเข้าถึง:</string>
+    <string name="stat_notes_created">บันทึกที่คุณสร้าง</string>
+    <string name="stat_quizzes_generated">แบบทดสอบที่สร้างแล้ว</string>
+    <string name="stat_flashcards_created">แฟลชการ์ดที่สร้างแล้ว</string>
+    <string name="stat_audio_hours">ชั่วโมงของเนื้อหาเสียง</string>
+    <string name="stay_signed_in">อยู่ในระบบ</string>
+    <string name="sign_out_anyway">ออกจากระบบต่อไป</string>
+    <string name="delete_account">ลบบัญชี?</string>
+    <string name="delete_account_warning">ไม่สามารถย้อนกลับได้\nคุณจะสูญเสียถาวร:</string>
+    <string name="keep_my_account">เก็บบัญชีของฉัน</string>
+    <string name="delete_anyway">ลบต่อไป</string>
+    <string name="before_you_go">ก่อนที่คุณจะไป\u2026</string>
+    <string name="feedback_reason">ช่วยเราปรับปรุงโดยบอกเหตุผลที่คุณจะไป</string>
+    <string name="delete_my_account">ลบบัญชีของฉัน</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">ชอบ Scribe AI ไหม?</string>
+    <string name="review_subtitle">Scribe AI ช่วยให้คุณเรียนเร็วขึ้นและเข้าใจดีขึ้นหรือไม่?</string>
+    <string name="yes_love_it">ใช่ ชอบมาก!</string>
+    <string name="not_yet">ยังไม่</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">URL YouTube</string>
+    <string name="paste_youtube_url">วาง URL วิดีโอ YouTube</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">วางจากคลิปบอร์ด</string>
+    <string name="create_note">สร้างบันทึก</string>
+    <string name="invalid_youtube_url">กรุณาใส่ URL YouTube ที่ถูกต้อง</string>
+    <string name="creating_note">กำลังสร้างบันทึก\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">อัปโหลดเอกสาร</string>
+    <string name="tap_to_select">แตะเพื่อเลือกไฟล์</string>
+    <string name="supported_formats">รองรับ PDF, DOCX, PPT, TXT</string>
+    <string name="file_selected">เลือกไฟล์แล้ว</string>
+    <string name="uploading">กำลังอัปโหลด\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">สแกนเอกสาร</string>
+    <string name="grant_permission">ให้สิทธิ์</string>
+    <string name="scan_another_page">สแกนหน้าอื่น</string>
+    <string name="save_with_count">บันทึก (%d)</string>
+    <string name="dismiss">ปิด</string>
+    <string name="scanned_pages_format">สแกนแล้ว %d หน้า</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">เข้าร่วมการประชุม</string>
+    <string name="meeting_link">ลิงก์การประชุม</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">ชื่อเรื่อง (ไม่บังคับ)</string>
+    <string name="meeting_title_placeholder">เช่น ประชุมทีมประจำวัน</string>
+    <string name="send_bot">ส่งบอท</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">บอทการประชุม</string>
+    <string name="no_meetings">ยังไม่มีการประชุม</string>
+    <string name="no_meetings_hint">เข้าร่วมการประชุมเพื่อบันทึกและถอดความ</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">เลือกธีม</string>
+    <string name="theme_system">ค่าเริ่มต้นของระบบ</string>
+    <string name="theme_light">สว่าง</string>
+    <string name="theme_dark">มืด</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">โทเค็นดีบัก</string>
+    <string name="copy_token">คัดลอกโทเค็นไปยังคลิปบอร์ด</string>
+    <string name="token_copied">คัดลอกโทเค็นแล้ว!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">กำลังโหลด\u2026</string>
+    <string name="error_label">ข้อผิดพลาด</string>
+    <string name="generate">สร้าง</string>
+
+    <!-- Language Picker -->
+    <string name="language">ภาษา</string>
+    <string name="language_picker_title">เลือกภาษา</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

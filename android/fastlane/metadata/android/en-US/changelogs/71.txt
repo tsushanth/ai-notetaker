@@ -1,0 +1,4 @@
+• In-app phone calls — verify your number, place outbound calls from inside the app, and get a full recording + transcript automatically saved to your notes
+• Tap any past call in history to redial with one tap
+• Cleaner backend connection — faster sync and fewer "server error" hiccups
+• Misc reliability and audio-routing fixes

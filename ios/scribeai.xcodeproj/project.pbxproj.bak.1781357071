@@ -1,0 +1,722 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0F615007F41509E3A067CB93 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 95DBF6A60A025EF9DC401992 /* Foundation.framework */; };
+		487A28DE53B7AC3238E6DB2C /* PromoOfferKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6D9DB165D99A390DC7BF7AD6 /* PromoOfferKit */; };
+		5DE7A69A0B8788C735CC23B9 /* TwilioVoice in Frameworks */ = {isa = PBXBuildFile; productRef = BBB666A8BE83F38ADA506EF8 /* TwilioVoice */; };
+		653D2542095CA1C9A19FA28B /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6A8D63E704A41579ABA3BC /* SnapshotHelper.swift */; };
+		881B303A2ECD0DFF003270AA /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30392ECD0DFF003270AA /* Auth */; };
+		881B303C2ECD0DFF003270AA /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = 881B303B2ECD0DFF003270AA /* Functions */; };
+		881B303E2ECD0DFF003270AA /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = 881B303D2ECD0DFF003270AA /* PostgREST */; };
+		881B30402ECD0DFF003270AA /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 881B303F2ECD0DFF003270AA /* Realtime */; };
+		881B30422ECD0DFF003270AA /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30412ECD0DFF003270AA /* Storage */; };
+		881B30442ECD0DFF003270AA /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30432ECD0DFF003270AA /* Supabase */; };
+		881B30672ECD26B3003270AA /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30662ECD26B3003270AA /* GoogleSignIn */; };
+		881B30692ECD26B3003270AA /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 881B30682ECD26B3003270AA /* GoogleSignInSwift */; };
+		8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 8845E2972F0C2D7700982F8B /* FirebaseAnalytics */; };
+		88FB00012F51AB00003270AA /* FacebookCore in Frameworks */ = {isa = PBXBuildFile; productRef = 88FB00002F51AB00003270AA /* FacebookCore */; };
+		8D52BE82FDB46DBA45D4A13E /* RatingKit in Frameworks */ = {isa = PBXBuildFile; productRef = B8B6D2A4DCBF15E1D5D2EBD5 /* RatingKit */; };
+		B52B1B0F9E95EE4EC5E1CE3B /* TikTokBusinessSDK in Frameworks */ = {isa = PBXBuildFile; productRef = BF1D441D96B5AD1BFC3A398A /* TikTokBusinessSDK */; };
+		F8FA1706DC1B3B1B959CF75F /* AdServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C63398A341A4FEDD80AAD07B /* AdServices.framework */; };
+		FD48410CF325031E730F4226 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF06C12585DE802571772034 /* ScreenshotTests.swift */; };
+		PKT000000000003 /* PaywallKit in Frameworks */ = {isa = PBXBuildFile; productRef = PKT000000000002 /* PaywallKit */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		3E0A2A89906F859B1AF2328B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 881B300C2ECD0B69003270AA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 881B30132ECD0B69003270AA;
+			remoteInfo = scribeai;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		3D6A8D63E704A41579ABA3BC /* SnapshotHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
+		4BDD55CFC7C619C4232D0CF0 /* scribeaiUITests */ = {isa = PBXFileReference; includeInIndex = 0; path = scribeaiUITests; sourceTree = BUILT_PRODUCTS_DIR; };
+		881B30142ECD0B69003270AA /* scribeai.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = scribeai.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		95DBF6A60A025EF9DC401992 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		C63398A341A4FEDD80AAD07B /* AdServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AdServices.framework; path = System/Library/Frameworks/AdServices.framework; sourceTree = SDKROOT; };
+		FF06C12585DE802571772034 /* ScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		881B30642ECD11CC003270AA /* Exceptions for "scribeai" folder in "scribeai" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 881B30132ECD0B69003270AA /* scribeai */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		881B30162ECD0B69003270AA /* scribeai */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				881B30642ECD11CC003270AA /* Exceptions for "scribeai" folder in "scribeai" target */,
+			);
+			path = scribeai;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		881B30112ECD0B69003270AA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				881B303E2ECD0DFF003270AA /* PostgREST in Frameworks */,
+				881B303C2ECD0DFF003270AA /* Functions in Frameworks */,
+				881B30442ECD0DFF003270AA /* Supabase in Frameworks */,
+				881B30692ECD26B3003270AA /* GoogleSignInSwift in Frameworks */,
+				881B303A2ECD0DFF003270AA /* Auth in Frameworks */,
+				881B30422ECD0DFF003270AA /* Storage in Frameworks */,
+				881B30402ECD0DFF003270AA /* Realtime in Frameworks */,
+				881B30672ECD26B3003270AA /* GoogleSignIn in Frameworks */,
+				8845E2982F0C2D7700982F8B /* FirebaseAnalytics in Frameworks */,
+				88FB00012F51AB00003270AA /* FacebookCore in Frameworks */,
+				PKT000000000003 /* PaywallKit in Frameworks */,
+				F8FA1706DC1B3B1B959CF75F /* AdServices.framework in Frameworks */,
+				8D52BE82FDB46DBA45D4A13E /* RatingKit in Frameworks */,
+				487A28DE53B7AC3238E6DB2C /* PromoOfferKit in Frameworks */,
+				B52B1B0F9E95EE4EC5E1CE3B /* TikTokBusinessSDK in Frameworks */,
+				5DE7A69A0B8788C735CC23B9 /* TwilioVoice in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8DC07C18BA8303F3C3F39D41 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0F615007F41509E3A067CB93 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		02CA1A20C822FC562695971E /* scribeaiUITests */ = {
+			isa = PBXGroup;
+			children = (
+				3D6A8D63E704A41579ABA3BC /* SnapshotHelper.swift */,
+				FF06C12585DE802571772034 /* ScreenshotTests.swift */,
+			);
+			name = scribeaiUITests;
+			path = scribeaiUITests;
+			sourceTree = "<group>";
+		};
+		881B300B2ECD0B69003270AA = {
+			isa = PBXGroup;
+			children = (
+				881B30162ECD0B69003270AA /* scribeai */,
+				881B30152ECD0B69003270AA /* Products */,
+				FF1674DA8612AD1D349081E6 /* Frameworks */,
+				02CA1A20C822FC562695971E /* scribeaiUITests */,
+			);
+			sourceTree = "<group>";
+		};
+		881B30152ECD0B69003270AA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				881B30142ECD0B69003270AA /* scribeai.app */,
+				4BDD55CFC7C619C4232D0CF0 /* scribeaiUITests */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F781175B93773249954BE30A /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				95DBF6A60A025EF9DC401992 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		FF1674DA8612AD1D349081E6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F781175B93773249954BE30A /* iOS */,
+				C63398A341A4FEDD80AAD07B /* AdServices.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		7934464151384EA86DC74D9F /* scribeaiUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AFC21EF68474BD70083AE1D3 /* Build configuration list for PBXNativeTarget "scribeaiUITests" */;
+			buildPhases = (
+				F80E43CD23F82ABFB2905EFE /* Sources */,
+				8DC07C18BA8303F3C3F39D41 /* Frameworks */,
+				F98F8D4DEFA6865C8871FC4C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CB6F4E4374876A827FFD67D9 /* PBXTargetDependency */,
+			);
+			name = scribeaiUITests;
+			productName = scribeaiUITests;
+			productReference = 4BDD55CFC7C619C4232D0CF0 /* scribeaiUITests */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		881B30132ECD0B69003270AA /* scribeai */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 881B30222ECD0B6B003270AA /* Build configuration list for PBXNativeTarget "scribeai" */;
+			buildPhases = (
+				881B30102ECD0B69003270AA /* Sources */,
+				881B30112ECD0B69003270AA /* Frameworks */,
+				881B30122ECD0B69003270AA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				881B30162ECD0B69003270AA /* scribeai */,
+			);
+			name = scribeai;
+			packageProductDependencies = (
+				881B30392ECD0DFF003270AA /* Auth */,
+				881B303B2ECD0DFF003270AA /* Functions */,
+				881B303D2ECD0DFF003270AA /* PostgREST */,
+				881B303F2ECD0DFF003270AA /* Realtime */,
+				881B30412ECD0DFF003270AA /* Storage */,
+				881B30432ECD0DFF003270AA /* Supabase */,
+				881B30662ECD26B3003270AA /* GoogleSignIn */,
+				881B30682ECD26B3003270AA /* GoogleSignInSwift */,
+				8845E2972F0C2D7700982F8B /* FirebaseAnalytics */,
+				88FB00002F51AB00003270AA /* FacebookCore */,
+				PKT000000000002 /* PaywallKit */,
+				B8B6D2A4DCBF15E1D5D2EBD5 /* RatingKit */,
+				6D9DB165D99A390DC7BF7AD6 /* PromoOfferKit */,
+				BF1D441D96B5AD1BFC3A398A /* TikTokBusinessSDK */,
+				BBB666A8BE83F38ADA506EF8 /* TwilioVoice */,
+			);
+			productName = scribeai;
+			productReference = 881B30142ECD0B69003270AA /* scribeai.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		881B300C2ECD0B69003270AA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1620;
+				LastUpgradeCheck = 1620;
+				TargetAttributes = {
+					881B30132ECD0B69003270AA = {
+						CreatedOnToolsVersion = 16.2;
+					};
+				};
+			};
+			buildConfigurationList = 881B300F2ECD0B69003270AA /* Build configuration list for PBXProject "scribeai" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+				hi,
+				it,
+				"pt-BR",
+				"zh-Hans",
+				de,
+				ko,
+				es,
+				fr,
+				ja,
+			);
+			mainGroup = 881B300B2ECD0B69003270AA;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */,
+				881B30652ECD26B3003270AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */,
+				PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */,
+				39F6840D3C95AFB243B2D302 /* XCRemoteSwiftPackageReference "RatingKit" */,
+				F23CAF2431CAA21D1544C0E7 /* XCRemoteSwiftPackageReference "PromoOfferKit" */,
+				41411DD3CFB5399C2D985656 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */,
+				23ABB40420EDA157A3B592A8 /* XCRemoteSwiftPackageReference "twilio-voice-ios" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 881B30152ECD0B69003270AA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				881B30132ECD0B69003270AA /* scribeai */,
+				7934464151384EA86DC74D9F /* scribeaiUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		881B30122ECD0B69003270AA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F98F8D4DEFA6865C8871FC4C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		881B30102ECD0B69003270AA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F80E43CD23F82ABFB2905EFE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				653D2542095CA1C9A19FA28B /* SnapshotHelper.swift in Sources */,
+				FD48410CF325031E730F4226 /* ScreenshotTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CB6F4E4374876A827FFD67D9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = scribeai;
+			target = 881B30132ECD0B69003270AA /* scribeai */;
+			targetProxy = 3E0A2A89906F859B1AF2328B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		881B30202ECD0B6B003270AA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		881B30212ECD0B6B003270AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		881B30232ECD0B6B003270AA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 138;
+				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = scribeai/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Scribe AI Learn\nScribe AI Notes";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 101.5.11;
+				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		881B30242ECD0B6B003270AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = scribeai/scribeai.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 138;
+				DEVELOPMENT_ASSET_PATHS = "\"scribeai/Preview Content\"";
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = scribeai/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Scribe AI Learn\nScribe AI Notes";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 101.5.11;
+				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		9ECF1EC79F96BD27A5EC0D63 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = scribeai;
+			};
+			name = Debug;
+		};
+		B4C5747E47FA89DD23FF054C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 7RS696YC75;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = KreativeKoala.scribeai.UITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = scribeai;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		881B300F2ECD0B69003270AA /* Build configuration list for PBXProject "scribeai" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				881B30202ECD0B6B003270AA /* Debug */,
+				881B30212ECD0B6B003270AA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		881B30222ECD0B6B003270AA /* Build configuration list for PBXNativeTarget "scribeai" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				881B30232ECD0B6B003270AA /* Debug */,
+				881B30242ECD0B6B003270AA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AFC21EF68474BD70083AE1D3 /* Build configuration list for PBXNativeTarget "scribeaiUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B4C5747E47FA89DD23FF054C /* Release */,
+				9ECF1EC79F96BD27A5EC0D63 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../PaywallKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		23ABB40420EDA157A3B592A8 /* XCRemoteSwiftPackageReference "twilio-voice-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/twilio/twilio-voice-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
+		};
+		39F6840D3C95AFB243B2D302 /* XCRemoteSwiftPackageReference "RatingKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tsushanth/RatingKit.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.1;
+			};
+		};
+		41411DD3CFB5399C2D985656 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tiktok/tiktok-business-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+		881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+		881B30652ECD26B3003270AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.0.0;
+			};
+		};
+		8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.7.0;
+			};
+		};
+		88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/facebook/facebook-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 17.0.0;
+			};
+		};
+		F23CAF2431CAA21D1544C0E7 /* XCRemoteSwiftPackageReference "PromoOfferKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tsushanth/PromoOfferKit.git";
+			requirement = {
+				kind = exactVersion;
+				version = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6D9DB165D99A390DC7BF7AD6 /* PromoOfferKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = F23CAF2431CAA21D1544C0E7 /* XCRemoteSwiftPackageReference "PromoOfferKit" */;
+			productName = PromoOfferKit;
+		};
+		881B30392ECD0DFF003270AA /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		881B303B2ECD0DFF003270AA /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		881B303D2ECD0DFF003270AA /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		881B303F2ECD0DFF003270AA /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		881B30412ECD0DFF003270AA /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+		881B30432ECD0DFF003270AA /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30382ECD0DFF003270AA /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		881B30662ECD26B3003270AA /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30652ECD26B3003270AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		881B30682ECD26B3003270AA /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 881B30652ECD26B3003270AA /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+		8845E2972F0C2D7700982F8B /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8845E2962F0C2D7700982F8B /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		88FB00002F51AB00003270AA /* FacebookCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 88FB00032F51AB00003270AA /* XCRemoteSwiftPackageReference "facebook-ios-sdk" */;
+			productName = FacebookCore;
+		};
+		B8B6D2A4DCBF15E1D5D2EBD5 /* RatingKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 39F6840D3C95AFB243B2D302 /* XCRemoteSwiftPackageReference "RatingKit" */;
+			productName = RatingKit;
+		};
+		BBB666A8BE83F38ADA506EF8 /* TwilioVoice */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 23ABB40420EDA157A3B592A8 /* XCRemoteSwiftPackageReference "twilio-voice-ios" */;
+			productName = TwilioVoice;
+		};
+		BF1D441D96B5AD1BFC3A398A /* TikTokBusinessSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 41411DD3CFB5399C2D985656 /* XCRemoteSwiftPackageReference "tiktok-business-ios-sdk" */;
+			productName = TikTokBusinessSDK;
+		};
+		PKT000000000002 /* PaywallKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = PKT000000000001 /* XCLocalSwiftPackageReference "PaywallKit" */;
+			productName = PaywallKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 881B300C2ECD0B69003270AA /* Project object */;
+}

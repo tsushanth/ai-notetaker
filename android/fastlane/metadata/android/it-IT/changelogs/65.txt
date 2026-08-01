@@ -1,0 +1,1 @@
+On-device offline read aloud: after generating an audio podcast, tap the new "Read on device" option below the player to hear the script using your phone's voice — no internet needed. Plus, fixed a brief paywall flash for existing subscribers, and bumped the podcast generation timeout so longer podcasts finish reliably.

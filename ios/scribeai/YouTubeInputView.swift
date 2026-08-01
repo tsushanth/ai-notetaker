@@ -10,6 +10,16 @@
 import SwiftUI
 import UserNotifications
 
+extension Notification.Name {
+    /// Posted from "View Note" in a generation success view. HomeView listens and
+    /// programmatically pushes NoteDetailTabView for the note whose id is in
+    /// `userInfo["noteId"]`. If noteId is missing, HomeView falls back to just
+    /// refreshing the list (so the new note appears at the top).
+    /// Decoupled so each input flow (YouTube, upload, scan, recording) can fire it
+    /// without dragging navigation state in.
+    static let scribeOpenLatestNote = Notification.Name("scribeOpenLatestNote")
+}
+
 struct YouTubeInputView: View {
     @Environment(\.dismiss) var dismiss
     @State private var youtubeUrl = ""
@@ -21,6 +31,7 @@ struct YouTubeInputView: View {
     @State private var processingSteps: [ScribeProcessingStep] = []
     @State private var currentStepIndex = 0
     @State private var uploadComplete = false
+    @State private var createdNoteId: String? = nil
 
     // URL validation states
     enum URLValidationState: Equatable {
@@ -54,16 +65,23 @@ struct YouTubeInputView: View {
                 case .success:
                     ScribeSuccessView(
                         onViewNote: {
+                            // Track on user action so the post-value paywall (which trackNoteCreated
+                            // schedules) doesn't race against the success view they're trying to read.
+                            AnalyticsService.shared.trackNoteCreated(sourceType: "youtube")
+                            // Pass the noteId so HomeView can navigate directly to NoteDetailView.
+                            // If the server didn't return an id (older backend), HomeView falls back
+                            // to refreshing the list only.
+                            var info: [AnyHashable: Any] = [:]
+                            if let id = createdNoteId { info["noteId"] = id }
+                            NotificationCenter.default.post(
+                                name: .scribeOpenLatestNote, object: nil, userInfo: info)
                             dismiss()
                         },
                         onGoHome: {
+                            AnalyticsService.shared.trackNoteCreated(sourceType: "youtube")
                             dismiss()
                         }
                     )
-                    .onAppear {
-                        // Track success here, not in view body
-                        AnalyticsService.shared.trackNoteCreated(sourceType: "youtube")
-                    }
                     
                 case .error(let message):
                     ScribeErrorView(
@@ -260,7 +278,10 @@ struct YouTubeInputView: View {
                 
                 Spacer()
                 
-                // Generate Notes Button
+                // Generate Notes Button — always tappable; processVideo() reports
+                // inline error if URL is invalid instead of silently no-oping.
+                // (User feedback 2026-06-08: tapping the disabled-looking button after
+                // paste did nothing visible, looked broken.)
                 Button {
                     processVideo()
                 } label: {
@@ -271,11 +292,11 @@ struct YouTubeInputView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(urlValidationState.isValid ? Color.purple80 : Color.purple80.opacity(0.5))
+                    .background(youtubeUrl.isEmpty ? Color.purple80.opacity(0.5) : Color.purple80)
                     .foregroundColor(.white)
                     .cornerRadius(12)
                 }
-                .disabled(!urlValidationState.isValid)
+                .disabled(youtubeUrl.isEmpty)
                 .padding(.horizontal, 24)
                 
                 Spacer()
@@ -328,10 +349,14 @@ struct YouTubeInputView: View {
             do {
                 await updateStep(at: 0, to: .inProgress)
                 
-                let result = try await withTimeout(seconds: 60) {
+                let noteId = try await withTimeout(seconds: 60) {
                     try await APIService.shared.processVideoUrl(token: token, url: cleanedUrl)
                 }
-                
+
+                await MainActor.run {
+                    createdNoteId = noteId
+                }
+
                 await updateStep(at: 0, to: .completed)
                 uploadComplete = true
                 

@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">Home</string>
+    <string name="menu">Menu</string>
+    <string name="menu_language">Wika</string>
+    <string name="menu_upgrade_pro">I-upgrade sa Pro</string>
+    <string name="menu_manage_subscription">Pamahalaan ang Subscription</string>
+    <string name="menu_appearance">Hitsura</string>
+    <string name="menu_sign_out">Mag-sign Out</string>
+    <string name="menu_delete_account">I-delete ang Account</string>
+    <string name="add">Idagdag</string>
+    <string name="no_notes_yet">Wala pang mga tala</string>
+    <string name="tap_to_create_first_note">I-tap ang + para gumawa ng iyong unang tala</string>
+    <string name="notes_count_format">%1$d sa %2$d na tala</string>
+    <string name="load_more_notes">Mag-load ng Mas Maraming Tala</string>
+    <string name="error_loading_notes">Error sa paglo-load ng mga tala</string>
+    <string name="retry">Subukan Muli</string>
+    <string name="account_deletion_requested">Hiniling ang pagbura ng account. Ilo-log out ka.</string>
+    <string name="error_delete_account">Hindi ma-delete ang account: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">Pumili ng Wika</string>
+    <string name="language_subtitle">Ang nilalamang gawa ng AI ay magiging sa wikang ito</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Kanselahin</string>
+
+    <!-- Note Card -->
+    <string name="more">Higit Pa</string>
+    <string name="edit_title">I-edit ang Pamagat</string>
+    <string name="delete">I-delete</string>
+    <string name="delete_note">I-delete ang Tala?</string>
+    <string name="delete_note_message">Sigurado ka bang gusto mong i-delete ang \"%s\"? Hindi na ito maibabalik.</string>
+    <string name="delete_note_detail_message">Sigurado ka bang gusto mong i-delete ang talang ito? Hindi na ito maibabalik.</string>
+    <string name="label_title">Pamagat</string>
+    <string name="save">I-save</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">Mag-record o mag-upload ng audio</string>
+    <string name="youtube_video">YouTube video</string>
+    <string name="upload_document">Mag-upload ng dokumento</string>
+    <string name="upload_document_subtitle">Anumang PDF, DOCX, PPT, TXT, atbp.!</string>
+    <string name="scan_text">I-scan ang Teksto</string>
+    <string name="scan_text_subtitle">Anumang larawan na may teksto</string>
+    <string name="join_meeting">Sumali sa Meeting</string>
+    <string name="join_meeting_subtitle">I-record ang Zoom, Meet, Teams, Webex</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">Bumalik</string>
+    <string name="more_options">Mga karagdagang opsyon</string>
+    <string name="share">Ibahagi</string>
+    <string name="share_note">Ibahagi ang Tala</string>
+    <string name="tab_notes">Mga Tala</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_quiz">Pagsusulit</string>
+    <string name="tab_cards">Mga Card</string>
+    <string name="formatting_notes">Nag-format ng mga tala\u2026</string>
+    <string name="formatted">Na-format</string>
+    <string name="raw">Raw</string>
+    <string name="source_label">Pinagmulan: %s</string>
+    <string name="open_source_link">Buksan ang pinagmulan</string>
+    <string name="characters_words_format">%1$s mga character \u2022 %2$s mga salita</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">YouTube Video</string>
+    <string name="source_audio_recording">Audio Recording</string>
+    <string name="source_pdf_document">PDF Document</string>
+    <string name="source_scanned_document">Na-scan na Dokumento</string>
+    <string name="source_image">Larawan</string>
+    <string name="source_text">Teksto</string>
+
+    <!-- Summary Section -->
+    <string name="summary">Buod</string>
+    <string name="generating_summary">Gumagawa ng buod\u2026</string>
+    <string name="regenerate">Gawing Muli</string>
+    <string name="no_summary_yet">Wala pang buod</string>
+    <string name="generate_summary">Gumawa ng Buod</string>
+    <string name="no_summary_available">Walang buod na available</string>
+    <string name="summary_length">Haba ng Buod</string>
+    <string name="create_summary_description">Gumawa ng maikling buod ng iyong mga tala</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">Mag-type ng mensahe\u2026</string>
+    <string name="send">Ipadala</string>
+    <string name="voice_mode">Voice mode</string>
+    <string name="text_mode">Text mode</string>
+    <string name="ask_about_notes">Magtanong ng kahit ano tungkol sa iyong mga tala</string>
+    <string name="ask_about_notes_description">Makakatulong ako sa pag-unawa, pag-analisa, o paghahanap ng tiyak na impormasyon sa iyong mga tala.</string>
+    <string name="suggested_questions">Mga iminumungkahing tanong:</string>
+    <string name="chat_suggestion_summarize">Ibuod ang mga pangunahing punto</string>
+    <string name="chat_suggestion_explain">Ipaliwanag ang mga pangunahing konsepto</string>
+    <string name="chat_suggestion_test">Subukan ako sa materyal na ito</string>
+    <string name="listening">Nakikinig\u2026</string>
+    <string name="tap_to_speak">I-tap para magsalita</string>
+    <string name="speaking">Nagsasalita\u2026</string>
+    <string name="stop_speaking">Itigil ang pagsasalita</string>
+    <string name="could_not_open_link">Hindi mabuksan ang link</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">Gumawa ng Pagsusulit</string>
+    <string name="generate_quiz_description">Gumawa ng pagsusulit para subukan ang iyong kaalaman</string>
+    <string name="generating_quiz">Gumagawa ng pagsusulit\u2026</string>
+    <string name="question_count_format">Tanong %1$d sa %2$d</string>
+    <string name="check_answer">Suriin ang Sagot</string>
+    <string name="next_question">Susunod na Tanong</string>
+    <string name="correct">Tama!</string>
+    <string name="incorrect">Mali</string>
+    <string name="correct_answer_is">Ang tamang sagot ay: %s</string>
+    <string name="quiz_complete">Tapos na ang Pagsusulit!</string>
+    <string name="quiz_score_format">Nakakuha ka ng %1$d sa %2$d</string>
+    <string name="try_again">Subukan Muli</string>
+    <string name="new_quiz">Bagong Pagsusulit</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">Gumawa ng mga Flashcard</string>
+    <string name="generate_flashcards_description">Gumawa ng mga flashcard para sa pag-aaral</string>
+    <string name="generating_flashcards">Gumagawa ng mga flashcard\u2026</string>
+    <string name="flashcard_count_format">Card %1$d sa %2$d</string>
+    <string name="tap_to_flip">I-tap para i-flip</string>
+    <string name="previous">Nakaraan</string>
+    <string name="next">Susunod</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">Maligayang Pagbabalik</string>
+    <string name="sign_in_to_continue">Mag-sign in para magpatuloy</string>
+    <string name="continue_with_google">Magpatuloy gamit ang Google</string>
+    <string name="or_divider">  o  </string>
+    <string name="email">Email</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">Password</string>
+    <string name="enter_password">Ilagay ang iyong password</string>
+    <string name="hide_password">Itago ang password</string>
+    <string name="show_password">Ipakita ang password</string>
+    <string name="sign_in">Mag-sign In</string>
+    <string name="forgot_password">Nakalimutan ang Password?</string>
+    <string name="no_account">Wala pang account? </string>
+    <string name="sign_up">Mag-sign Up</string>
+    <string name="error_invalid_credentials">Maling email o password. Pakisubukang muli.</string>
+    <string name="error_email_not_confirmed">Pakikumpirma ang iyong email bago mag-sign in.</string>
+    <string name="error_user_not_found">Walang nahanap na account sa email na ito.</string>
+    <string name="error_network">Error sa network. Pakisuri ang iyong koneksyon.</string>
+    <string name="error_no_google_account">Walang nahanap na Google account. Paki-dagdag ng Google account sa iyong device.</string>
+    <string name="error_google_signin_failed">Nabigo ang Google Sign-In</string>
+    <string name="error_email_required">Pakiusap ilagay ang iyong email</string>
+    <string name="error_invalid_email">Pakiusap maglagay ng wastong email address</string>
+    <string name="error_password_required">Pakiusap ilagay ang iyong password</string>
+    <string name="error_password_too_short">Ang password ay dapat may hindi bababa sa 6 na character</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">Naipadala na ang Email!</string>
+    <string name="reset_password">I-reset ang Password</string>
+    <string name="reset_email_sent">Nagpadala kami ng link para i-reset ang password sa:</string>
+    <string name="check_inbox">Pakisuri ang iyong inbox at spam folder.</string>
+    <string name="reset_password_instruction">Ilagay ang iyong email address at magpapadala kami ng link para i-reset ang iyong password.</string>
+    <string name="done">Tapos</string>
+    <string name="send_reset_link">Magpadala ng Reset Link</string>
+    <string name="error_enter_valid_email">Pakiusap maglagay ng wastong email</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">Gumawa ng Account</string>
+    <string name="sign_up_subtitle">Mag-sign up para magsimula</string>
+    <string name="at_least_6_characters">Hindi bababa sa 6 na character</string>
+    <string name="confirm_password">Kumpirmahin ang Password</string>
+    <string name="reenter_password">Ilagay muli ang password</string>
+    <string name="already_have_account">Mayroon nang account? </string>
+    <string name="error_valid_email">Pakiusap maglagay ng wastong email</string>
+    <string name="error_enter_password">Pakiusap maglagay ng password</string>
+    <string name="error_confirm_password">Pakikumpirma ang iyong password</string>
+    <string name="error_passwords_mismatch">Hindi magkatugma ang mga password</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">Mag-record ng Audio</string>
+    <string name="record_audio_subtitle">Mag-record ng mga lektura, meeting, o tala.\nI-transcribe namin at gagawa ng mga pang-aral na materyales.</string>
+    <string name="grant_microphone_permission">Payagan ang Mikropono</string>
+    <string name="start_recording">Simulan ang Pag-record</string>
+    <string name="tap_to_start_recording">I-tap para simulan ang pag-record</string>
+    <string name="recording_status">Nagre-record\u2026</string>
+    <string name="paused">Naka-pause</string>
+    <string name="discard">Itapon</string>
+    <string name="pause">I-pause</string>
+    <string name="resume">Ipagpatuloy</string>
+    <string name="stop">Itigil</string>
+    <string name="recording_complete">Tapos na ang Recording</string>
+    <string name="duration_format">Tagal: %s</string>
+    <string name="title_optional">Pamagat (opsyonal)</string>
+    <string name="title_placeholder">hal., Lektura sa Biyolohiya</string>
+    <string name="process_recording">I-proseso ang Recording</string>
+    <string name="discard_recording">Itapon ang Recording</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">Ina-upload ang audio</string>
+    <string name="step_transcribing_audio">Tina-transcribe ang audio</string>
+    <string name="step_identifying_speakers">Tinutukoy ang mga nagsasalita</string>
+    <string name="step_analyzing_content">Ina-analisa ang nilalaman</string>
+    <string name="step_summarizing_key_points">Binabuod ang mga pangunahing punto</string>
+    <string name="step_finalizing_note">Tinatapos ang iyong tala</string>
+    <string name="upload_complete_safe">Kumpleto na ang upload. Ligtas nang umalis.</string>
+    <string name="processing_info">Ang mga tala ay karaniwang tumatagal ng ilang minuto para magawa. Maaari kang umalis sa screen na ito at bumalik mamaya.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">Handa na ang iyong tala!</string>
+    <string name="note_ready_description">Na-transcribe namin ang iyong recording at gumawa ng mga pang-aral na materyales.</string>
+    <string name="view_note">Tingnan ang Tala</string>
+    <string name="go_to_home">Pumunta sa Home</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">May nangyaring mali</string>
+    <string name="try_again_button">Subukan Muli</string>
+    <string name="go_back">Bumalik</string>
+    <string name="error_not_authenticated">Hindi na-authenticate</string>
+    <string name="error_upload_failed">Hindi ma-upload ang audio</string>
+    <string name="error_transcribe_failed">Hindi ma-transcribe ang audio</string>
+    <string name="error_start_recording">Hindi masimulan ang recording: %s</string>
+    <string name="error_stop_recording">Hindi mahinto ang recording: %s</string>
+    <string name="error_processing_failed">Nabigo ang pagproseso</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">Isara</string>
+    <string name="unlock_pro">I-unlock ang Scribe AI Pro</string>
+    <string name="unlimited_access">Makakuha ng walang limitasyong access sa lahat ng feature</string>
+    <string name="feature_unlimited_notes">Walang limitasyong tala mula sa anumang pinagmulan</string>
+    <string name="feature_ai_summaries">AI-powered na buod at pagsusulit</string>
+    <string name="feature_flashcards">Paggawa ng flashcard</string>
+    <string name="feature_ai_chat">AI chat kasama ang iyong mga tala</string>
+    <string name="feature_mind_map">Mind map visualization</string>
+    <string name="feature_podcast">Audio podcast generation</string>
+    <string name="plan_yearly">Taunan</string>
+    <string name="plan_monthly">Buwanan</string>
+    <string name="per_month_format">%s/buwan</string>
+    <string name="save_percent_format">Makatipid ng %d%%</string>
+    <string name="loading_plans">Naglo-load ng mga plano\u2026</string>
+    <string name="continue_button">Magpatuloy</string>
+    <string name="restore_purchases">I-restore ang mga Binili</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">Sigurado ka ba?</string>
+    <string name="lose_access">Mawawala ang iyong access sa:</string>
+    <string name="stat_notes_created">mga tala na ginawa</string>
+    <string name="stat_quizzes_generated">mga pagsusulit na ginawa</string>
+    <string name="stat_flashcards_created">mga flashcard na ginawa</string>
+    <string name="stat_audio_hours">oras ng audio content</string>
+    <string name="stay_signed_in">Manatiling Naka-sign In</string>
+    <string name="sign_out_anyway">Mag-sign Out Pa Rin</string>
+    <string name="delete_account">I-delete ang Account?</string>
+    <string name="delete_account_warning">Hindi na ito maibabalik.\nPermanenteng mawawala:</string>
+    <string name="keep_my_account">Panatilihin ang Account Ko</string>
+    <string name="delete_anyway">I-delete Pa Rin</string>
+    <string name="before_you_go">Bago ka umalis\u2026</string>
+    <string name="feedback_reason">Tulungan kaming mapabuti sa pamamagitan ng pagsabi kung bakit ka aalis</string>
+    <string name="delete_my_account">I-delete ang Aking Account</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Nag-e-enjoy ka ba sa Scribe AI?</string>
+    <string name="review_subtitle">Nakakatulong ba ang Scribe AI na mag-aral nang mas mabilis at matuto nang mas mabuti?</string>
+    <string name="yes_love_it">Oo, gusto ko ito!</string>
+    <string name="not_yet">Hindi pa</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">YouTube URL</string>
+    <string name="paste_youtube_url">Mag-paste ng YouTube video URL</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">I-paste Mula sa Clipboard</string>
+    <string name="create_note">Gumawa ng Tala</string>
+    <string name="invalid_youtube_url">Pakiusap maglagay ng wastong YouTube URL</string>
+    <string name="creating_note">Gumagawa ng tala\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">Mag-upload ng Dokumento</string>
+    <string name="tap_to_select">I-tap para pumili ng file</string>
+    <string name="supported_formats">PDF, DOCX, PPT, TXT ang sinusuportahan</string>
+    <string name="file_selected">Napili ang file</string>
+    <string name="uploading">Ina-upload\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">I-scan ang Dokumento</string>
+    <string name="grant_permission">Magbigay ng Pahintulot</string>
+    <string name="scan_another_page">Mag-scan ng Isa Pang Pahina</string>
+    <string name="save_with_count">I-save (%d)</string>
+    <string name="dismiss">I-dismiss</string>
+    <string name="scanned_pages_format">%d na pahina ang na-scan</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">Sumali sa Meeting</string>
+    <string name="meeting_link">Link ng Meeting</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">Pamagat (opsyonal)</string>
+    <string name="meeting_title_placeholder">hal., Team Standup</string>
+    <string name="send_bot">Ipadala ang Bot</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">Meeting Bot</string>
+    <string name="no_meetings">Wala pang mga meeting</string>
+    <string name="no_meetings_hint">Sumali sa isang meeting para ma-record at ma-transcribe</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">Pumili ng Tema</string>
+    <string name="theme_system">Default ng System</string>
+    <string name="theme_light">Maliwanag</string>
+    <string name="theme_dark">Madilim</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">Debug Token</string>
+    <string name="copy_token">Kopyahin ang Token sa Clipboard</string>
+    <string name="token_copied">Nakopya na ang token!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">Naglo-load\u2026</string>
+    <string name="error_label">Error</string>
+    <string name="generate">Gumawa</string>
+
+    <!-- Language Picker -->
+    <string name="language">Wika</string>
+    <string name="language_picker_title">Pumili ng Wika</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

@@ -16,9 +16,14 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://jitpack.io") }
     }
 }
 
 rootProject.name = "ScribeAI"
 include(":app")
- 
+include(":paywallkit")
+project(":paywallkit").projectDir = file("/Users/sushanthtiruvaipati/Documents/GitHub/PaywallKit-Android/paywallkit")
+
+include(":crosspromokit")
+project(":crosspromokit").projectDir = file("/Users/sushanthtiruvaipati/Documents/GitHub/CrossPromoKit-Android/crosspromokit")

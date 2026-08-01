@@ -254,7 +254,7 @@ struct InfographicTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView(source: "infographic_feature_gate") {
+                ScribeRemotePaywallView(triggerSource: "infographic_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()
@@ -335,12 +335,11 @@ struct InfographicTabContent: View {
                             style: aiContent.infographicStyle,
                             createdAt: aiContent.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
-                        AnalyticsService.shared.track(.infographicGenerated, properties: [
-                            "note_id": note.id,
-                            "style": selectedStyle.rawValue
-                        ])
+                        self.isGenerating = false
+                    } else {
+                        // Async generation — poll until ready
+                        self.pollForInfographic(token: token)
                     }
-                    self.isGenerating = false
                 }
             } catch let error as APIError {
                 print("❌ Infographic APIError: \(error)")
@@ -361,6 +360,39 @@ struct InfographicTabContent: View {
                     self.errorMessage = "Failed to generate infographic: \(error.localizedDescription)"
                     self.isGenerating = false
                 }
+            }
+        }
+    }
+
+    private func pollForInfographic(token: String) {
+        Task {
+            // Poll every 5 seconds for up to 5 minutes
+            for _ in 0..<60 {
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
+                do {
+                    let aiContent = try await APIService.shared.getAIContent(token: token, noteId: note.id, contentType: "infographic")
+                    if let imageUrl = aiContent?.infographicImageUrl, !imageUrl.isEmpty {
+                        await MainActor.run {
+                            self.infographic = Infographic(
+                                id: aiContent?.id ?? UUID().uuidString,
+                                noteId: note.id,
+                                imageUrl: imageUrl,
+                                extractedData: aiContent?.infographicExtractedData,
+                                style: aiContent?.infographicStyle,
+                                createdAt: aiContent?.createdAt ?? ISO8601DateFormatter().string(from: Date())
+                            )
+                            self.isGenerating = false
+                        }
+                        return
+                    }
+                } catch {
+                    print("Poll error: \(error)")
+                }
+            }
+            // Timeout
+            await MainActor.run {
+                self.isGenerating = false
+                self.errorMessage = "Infographic generation is taking longer than expected. Please try again."
             }
         }
     }

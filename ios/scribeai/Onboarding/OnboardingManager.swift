@@ -65,6 +65,8 @@ enum UseCase: String, CaseIterable, Codable {
 }
 
 // MARK: - Onboarding Step
+// .trial removed 2026-06-09 — paywall moved to after-value (note creation + delayed launch).
+// OnboardingTrialView.swift remains in the repo as dead code for easy revert.
 enum OnboardingStep: Int, CaseIterable {
     case userType = 0
     case useCase = 1
@@ -75,8 +77,7 @@ enum OnboardingStep: Int, CaseIterable {
     case featureAudio = 6
     case socialProof = 7
     case comparison = 8
-    case trial = 9
-    case notifications = 10
+    case notifications = 9
 
     var totalSteps: Int { OnboardingStep.allCases.count }
 
@@ -165,25 +166,31 @@ class OnboardingManager: ObservableObject {
             "at_step": currentStep.rawValue,
             "step_name": String(describing: currentStep)
         ])
+        // Trial step removed 2026-06-09 — complete onboarding directly.
+        // Paywall now fires after value (note creation + delayed launch).
         completeOnboarding()
     }
 
     func skipTrial(timeSpentSeconds: Int = 0, selectedPlan: String? = nil) {
+        // Kept as a no-op for any lingering OnboardingTrialView call sites
+        // (the view file remains in the repo as dead code for easy revert).
         AnalyticsService.shared.trackTrialScreenSkipped(
             source: "onboarding",
             timeSpentSeconds: timeSpentSeconds,
             selectedPlan: selectedPlan
         )
-        // Move to notifications or complete
-        if currentStep == .trial {
-            nextStep()
-        }
+        nextStep()
     }
 
     // MARK: - Completion
+    static let onboardingCompletedAtKey = "onboardingCompletedAt"
+
     func completeOnboarding() {
         hasCompletedOnboarding = true
         UserDefaults.standard.set(true, forKey: hasCompletedOnboardingKey)
+        // Used by HomeView to suppress the gate paywall right after onboarding —
+        // re-prompting on the first home screen is what the user is trying to avoid.
+        UserDefaults.standard.set(Date(), forKey: Self.onboardingCompletedAtKey)
 
         // Save preferences locally
         if let userType = selectedUserType {

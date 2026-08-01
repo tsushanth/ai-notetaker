@@ -163,7 +163,7 @@ struct QuizTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView(source: "quiz_feature_gate") {
+                ScribeRemotePaywallView(triggerSource: "quiz_feature_gate") {
                     showPaywall = false
                     // Refresh access status after purchase
                     Task {
@@ -225,7 +225,7 @@ struct QuizTabContent: View {
 
         Task {
             do {
-                let aiContent = try await APIService.shared.generateQuiz(token: token, noteId: note.id, contentLength: note.content.count)
+                let aiContent = try await APIService.shared.generateQuiz(token: token, noteId: note.id, noteContent: note.content, contentLength: note.content.count)
                 
                 await MainActor.run {
                     print("📦 Generated quiz data: \(aiContent)")
@@ -239,6 +239,8 @@ struct QuizTabContent: View {
                             questions: quizQuestions,
                             createdAt: aiContent.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
+                        // Trigger post-value paywall prompt after AI content generated
+                        PostValueTrialManager.shared.checkAndTriggerPrompt()
                     } else {
                         print("❌ No questions in generated quiz")
                         self.errorMessage = "Failed to generate quiz questions"

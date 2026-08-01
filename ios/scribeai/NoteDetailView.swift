@@ -14,6 +14,7 @@ struct NoteDetailView: View {
     @Environment(\.dismiss) var dismiss
     @State private var showingDeleteAlert = false
     @State private var showingShareSheet = false
+    @State private var showingExportMenu = false
     
     var body: some View {
         ZStack {
@@ -80,11 +81,17 @@ struct NoteDetailView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button(action: {
+                        showingExportMenu = true
+                    }) {
+                        Label("Export & Share", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button(action: {
                         showingShareSheet = true
                     }) {
-                        Label("Share", systemImage: "square.and.arrow.up")
+                        Label("Quick Share", systemImage: "paperplane")
                     }
-                    
+
                     Button(role: .destructive, action: {
                         showingDeleteAlert = true
                     }) {
@@ -104,8 +111,10 @@ struct NoteDetailView: View {
         } message: {
             Text("Are you sure you want to delete this note? This action cannot be undone.")
         }
+        .sheet(isPresented: $showingExportMenu) {
+            ExportMenuView(note: note)
+        }
         .sheet(isPresented: $showingShareSheet) {
-            // FIX: Use branded share sheet
             BrandedShareSheet(
                 title: note.title,
                 content: note.content,

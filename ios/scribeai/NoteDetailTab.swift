@@ -10,6 +10,9 @@ import SwiftUI
 
 enum NoteDetailTab: String, CaseIterable {
     case notes = "Notes"
+    case learn = "Learn"
+    case create = "Create"
+    case compete = "Compete"
     case chat = "Chat"
     case quiz = "Quiz"
     case flashcards = "Flashcards"
@@ -20,6 +23,9 @@ enum NoteDetailTab: String, CaseIterable {
     var icon: String {
         switch self {
         case .notes: return "doc.text.fill"
+        case .learn: return "graduationcap.fill"
+        case .create: return "sparkles"
+        case .compete: return "trophy.fill"
         case .chat: return "message.fill"
         case .quiz: return "questionmark.circle.fill"
         case .flashcards: return "rectangle.stack.fill"
@@ -29,9 +35,14 @@ enum NoteDetailTab: String, CaseIterable {
         }
     }
 
-    // Tabs shown in the bottom bar
-    static var bottomBarTabs: [NoteDetailTab] {
-        [.notes, .chat, .quiz, .flashcards, .mindMap, .podcast]
+    // Tabs shown directly in the bottom bar
+    static var primaryTabs: [NoteDetailTab] {
+        [.notes, .learn, .create, .compete]
+    }
+
+    // Tabs hidden behind the More menu
+    static var moreTabs: [NoteDetailTab] {
+        [.chat, .quiz, .flashcards, .mindMap, .infographic, .podcast]
     }
 }
 
@@ -43,6 +54,7 @@ struct NoteDetailTabView: View {
     @State private var previousTab: NoteDetailTab = .notes
     @State private var showingDeleteAlert = false
     @State private var showingShareSheet = false
+    @State private var showingExportMenu = false
 
     var body: some View {
         ZStack {
@@ -57,6 +69,18 @@ struct NoteDetailTabView: View {
                 TabView(selection: $selectedTab) {
                     NotesTabContent(note: note)
                         .tag(NoteDetailTab.notes)
+
+                    LearnTabContent(note: note)
+                        .subscriptionGated(featureName: "AI Tutor")
+                        .tag(NoteDetailTab.learn)
+
+                    CreateTabContent(note: note)
+                        .subscriptionGated(featureName: "AI Create")
+                        .tag(NoteDetailTab.create)
+
+                    CompeteTabContent(note: note)
+                        .subscriptionGated(featureName: "AI Compete")
+                        .tag(NoteDetailTab.compete)
 
                     ChatTabContent(note: note)
                         .subscriptionGated(featureName: "AI Chat")
@@ -107,9 +131,15 @@ struct NoteDetailTabView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Menu {
                     Button(action: {
+                        showingExportMenu = true
+                    }) {
+                        Label("Export & Share", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button(action: {
                         showingShareSheet = true
                     }) {
-                        Label("Share", systemImage: "square.and.arrow.up")
+                        Label("Quick Share", systemImage: "paperplane")
                     }
 
                     Button(role: .destructive, action: {
@@ -131,6 +161,9 @@ struct NoteDetailTabView: View {
         } message: {
             Text("Are you sure you want to delete this note? This action cannot be undone.")
         }
+        .sheet(isPresented: $showingExportMenu) {
+            ExportMenuView(note: note)
+        }
         .sheet(isPresented: $showingShareSheet) {
             ShareSheet(items: [note.content])
         }
@@ -142,15 +175,35 @@ struct NoteDetailTabView: View {
 
     // MARK: - Bottom Tab Bar
 
+    private var isMoreTabSelected: Bool {
+        NoteDetailTab.moreTabs.contains(selectedTab)
+    }
+
     private var bottomTabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
-                ForEach(NoteDetailTab.bottomBarTabs, id: \.self) { tab in
-                    BottomTabButton(
-                        title: tab.rawValue,
-                        icon: tab.icon,
-                        isSelected: selectedTab == tab
-                    ) {
+        HStack(spacing: 0) {
+            ForEach(NoteDetailTab.primaryTabs, id: \.self) { tab in
+                BottomTabButton(
+                    title: tab.rawValue,
+                    icon: tab.icon,
+                    isSelected: selectedTab == tab
+                ) {
+                    if selectedTab != tab {
+                        AnalyticsService.shared.trackTabSwitched(
+                            fromTab: selectedTab.rawValue,
+                            toTab: tab.rawValue,
+                            noteId: note.id
+                        )
+                        previousTab = selectedTab
+                        selectedTab = tab
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+
+            // More menu for the remaining tabs
+            Menu {
+                ForEach(NoteDetailTab.moreTabs, id: \.self) { tab in
+                    Button {
                         if selectedTab != tab {
                             AnalyticsService.shared.trackTabSwitched(
                                 fromTab: selectedTab.rawValue,
@@ -160,11 +213,26 @@ struct NoteDetailTabView: View {
                             previousTab = selectedTab
                             selectedTab = tab
                         }
+                    } label: {
+                        Label(tab.rawValue, systemImage: tab.icon)
                     }
                 }
+            } label: {
+                VStack(spacing: 4) {
+                    Image(systemName: isMoreTabSelected ? "ellipsis.circle.fill" : "ellipsis.circle")
+                        .font(.system(size: 22))
+                    Text(isMoreTabSelected ? selectedTab.rawValue : "More")
+                        .font(.system(size: 11, weight: .medium))
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(isMoreTabSelected ? Color.purple80.opacity(0.15) : Color.clear)
+                .cornerRadius(10)
+                .foregroundColor(isMoreTabSelected ? .purple80 : .textSecondary)
             }
-            .padding(.horizontal, 16)
         }
+        .padding(.horizontal, 8)
         .padding(.top, 10)
         .padding(.bottom, 8)
         .background(Color.cardBackground)
@@ -246,7 +314,7 @@ struct BottomTabButton: View {
                     .font(.system(size: 11, weight: .medium))
                     .lineLimit(1)
             }
-            .frame(width: 72)
+            .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
             .background(isSelected ? Color.purple80.opacity(0.15) : Color.clear)
             .cornerRadius(10)

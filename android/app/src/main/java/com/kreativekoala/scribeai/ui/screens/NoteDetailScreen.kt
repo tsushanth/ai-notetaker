@@ -1,6 +1,7 @@
 package com.kreativekoala.scribeai.ui.screens
 
 import android.media.MediaPlayer
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -15,10 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.models.Note
 import com.kreativekoala.scribeai.data.models.CreateNoteRequest
+import com.kreativekoala.scribeai.ui.components.FormattedNoteView
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
@@ -26,6 +30,8 @@ import com.kreativekoala.scribeai.viewmodel.AIViewModel
 import com.kreativekoala.scribeai.viewmodel.AIContentState
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberCoroutineScope
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
@@ -57,6 +63,13 @@ import com.kreativekoala.scribeai.ui.components.FormattedNoteView
 import com.kreativekoala.scribeai.data.models.AIContentData
 import com.kreativekoala.scribeai.data.models.InfographicData
 import com.kreativekoala.scribeai.data.models.InfographicExtractedData
+import com.kreativekoala.scribeai.utils.SubscriptionManager
+import com.kreativekoala.scribeai.utils.ExportManager
+import com.kreativekoala.scribeai.utils.ExportFormat
+import com.kreativekoala.scribeai.utils.ExportResult
+import com.kreativekoala.scribeai.utils.IntegrationHelper
+import android.content.ClipData
+import android.content.ClipboardManager
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 
@@ -66,11 +79,13 @@ fun NoteDetailScreen(
     note: Note,
     authManager: AuthManager,
     noteViewModel: NoteViewModel,
+    subscriptionManager: SubscriptionManager? = null,
     aiViewModel: AIViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
     onNavigateBack: () -> Unit,
     onNoteDeleted: () -> Unit = onNavigateBack
 ) {
-    // Tab indices: 0 = Notes, 1 = Chat, 2 = Quiz, 3 = Flashcards, 4 = Podcast
+    var showPaywall by remember { mutableStateOf(false) }
+    // Tab indices: 0 = Notes, 1 = Learn, 2 = Create, 3 = Compete, 4 = Chat, 5 = Quiz, 6 = Flashcards, 7 = Podcast, 8 = Mind Map
     var selectedTab by remember { mutableStateOf(0) }
     val authToken by authManager.authToken.collectAsState(initial = null)
     val context = LocalContext.current
@@ -109,8 +124,8 @@ fun NoteDetailScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Delete Note", color = TextPrimary) },
-            text = { Text("Are you sure you want to delete this note? This action cannot be undone.", color = TextSecondary) },
+            title = { Text(stringResource(R.string.delete_note), color = TextPrimary) },
+            text = { Text(stringResource(R.string.delete_note_detail_message), color = TextSecondary) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -131,12 +146,12 @@ fun NoteDetailScreen(
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = AccentRed)
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
             containerColor = CardBackground
@@ -164,38 +179,210 @@ fun NoteDetailScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_options))
                         }
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },
                             modifier = Modifier.background(CardBackground)
                         ) {
+                            // Free: Copy to Clipboard
                             DropdownMenuItem(
-                                text = { Text("Share", color = TextPrimary) },
+                                text = { Text("Copy to Clipboard", color = TextPrimary) },
                                 onClick = {
                                     showMenu = false
-                                    // Share note content
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("Note", note.displayContent))
+                                    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                    AnalyticsService.trackEvent("export_clipboard", mapOf("note_id" to note.id))
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = null, tint = TextSecondary)
+                                }
+                            )
+                            // Free: Quick Share (plain text)
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.share), color = TextPrimary) },
+                                onClick = {
+                                    showMenu = false
                                     val shareIntent = Intent().apply {
                                         action = Intent.ACTION_SEND
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_SUBJECT, note.title)
-                                        putExtra(Intent.EXTRA_TEXT, "${note.title}\n\n${note.content}")
+                                        putExtra(Intent.EXTRA_TEXT, "${note.title}\n\n${note.displayContent}\n\n---\nCreated with Scribe AI")
                                     }
-                                    context.startActivity(Intent.createChooser(shareIntent, "Share Note"))
+                                    context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_note)))
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Share, contentDescription = null, tint = TextSecondary)
                                 }
                             )
+                            HorizontalDivider(color = DarkSurfaceVariant)
+                            // Premium: Export as PDF
                             DropdownMenuItem(
-                                text = { Text("Delete", color = AccentRed) },
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Export as PDF", color = TextPrimary)
+                                        if (subscriptionManager?.canExportNotes() != true) {
+                                            Spacer(Modifier.width(6.dp))
+                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = Color(0xFFFFA726), modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    if (subscriptionManager?.canExportNotes() != true) {
+                                        AnalyticsService.trackPaywallViewed("export_pdf")
+                                        showPaywall = true
+                                    } else {
+                                        scope.launch {
+                                            authToken?.let { token ->
+                                                Toast.makeText(context, "Generating PDF...", Toast.LENGTH_SHORT).show()
+                                                when (val result = ExportManager.exportNote(context, token, note.id, note.title, ExportFormat.PDF)) {
+                                                    is ExportResult.Success -> {
+                                                        val intent = ExportManager.createShareIntent(result.fileUri, result.mimeType, note.title)
+                                                        context.startActivity(Intent.createChooser(intent, "Share PDF"))
+                                                    }
+                                                    is ExportResult.PremiumRequired -> {
+                                                        showPaywall = true
+                                                    }
+                                                    is ExportResult.Error -> {
+                                                        Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Purple80)
+                                }
+                            )
+                            // Premium: Export as DOCX
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Export as Word", color = TextPrimary)
+                                        if (subscriptionManager?.canExportNotes() != true) {
+                                            Spacer(Modifier.width(6.dp))
+                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = Color(0xFFFFA726), modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    if (subscriptionManager?.canExportNotes() != true) {
+                                        AnalyticsService.trackPaywallViewed("export_docx")
+                                        showPaywall = true
+                                    } else {
+                                        scope.launch {
+                                            authToken?.let { token ->
+                                                Toast.makeText(context, "Generating document...", Toast.LENGTH_SHORT).show()
+                                                when (val result = ExportManager.exportNote(context, token, note.id, note.title, ExportFormat.DOCX)) {
+                                                    is ExportResult.Success -> {
+                                                        val intent = ExportManager.createShareIntent(result.fileUri, result.mimeType, note.title)
+                                                        context.startActivity(Intent.createChooser(intent, "Share Document"))
+                                                    }
+                                                    is ExportResult.PremiumRequired -> {
+                                                        showPaywall = true
+                                                    }
+                                                    is ExportResult.Error -> {
+                                                        Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Description, contentDescription = null, tint = Purple80)
+                                }
+                            )
+                            HorizontalDivider(color = DarkSurfaceVariant)
+                            // Free: Create Share Link
+                            DropdownMenuItem(
+                                text = { Text("Create Share Link", color = TextPrimary) },
+                                onClick = {
+                                    showMenu = false
+                                    scope.launch {
+                                        authToken?.let { token ->
+                                            Toast.makeText(context, "Creating share link...", Toast.LENGTH_SHORT).show()
+                                            try {
+                                                val api = com.kreativekoala.scribeai.data.api.RetrofitClient.apiService
+                                                val response = okhttp3.OkHttpClient().newCall(
+                                                    okhttp3.Request.Builder()
+                                                        .url("${com.kreativekoala.scribeai.BuildConfig.BASE_URL.trimEnd('/')}/api/notes/${note.id}/share")
+                                                        .addHeader("Authorization", "Bearer $token")
+                                                        .post("{}".toRequestBody("application/json".toMediaType()))
+                                                        .build()
+                                                ).execute()
+                                                val body = response.body?.string()
+                                                val json = org.json.JSONObject(body ?: "{}")
+                                                if (json.optBoolean("success")) {
+                                                    val shareUrl = json.optJSONObject("data")?.optString("shareUrl") ?: ""
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                    clipboard.setPrimaryClip(ClipData.newPlainText("Share Link", shareUrl))
+                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                        Toast.makeText(context, "Share link copied!", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                    AnalyticsService.trackEvent("share_link_created", mapOf("note_id" to note.id))
+                                                } else {
+                                                    val error = json.optString("error", "Failed to create share link")
+                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                                    Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        }
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.Link, contentDescription = null, tint = TextSecondary)
+                                }
+                            )
+                            HorizontalDivider(color = DarkSurfaceVariant)
+                            // Premium: Google Drive
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("Save to Google Drive", color = TextPrimary)
+                                        if (subscriptionManager?.canExportNotes() != true) {
+                                            Spacer(Modifier.width(6.dp))
+                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = Color(0xFFFFA726), modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    showMenu = false
+                                    if (subscriptionManager?.canExportNotes() != true) {
+                                        AnalyticsService.trackPaywallViewed("integration_google_drive")
+                                        showPaywall = true
+                                    } else {
+                                        scope.launch {
+                                            authToken?.let { token ->
+                                                Toast.makeText(context, "Exporting to Google Drive...", Toast.LENGTH_SHORT).show()
+                                                IntegrationHelper.exportToProvider(context, token, note.id, "google-drive/export")
+                                            }
+                                        }
+                                    }
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.CloudUpload, contentDescription = null, tint = Purple80)
+                                }
+                            )
+                            HorizontalDivider(color = DarkSurfaceVariant)
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.delete), color = AccentRed) },
                                 onClick = {
                                     showMenu = false
                                     showDeleteDialog = true
@@ -230,10 +417,14 @@ fun NoteDetailScreen(
                 // Tab Content
                 when (selectedTab) {
                     0 -> NotesTab(note, aiViewModel, authToken, preferredLanguage)
-                    1 -> ChatTab(note, aiViewModel, authToken, preferredLanguage)
-                    2 -> QuizTab(note, aiViewModel, authToken, preferredLanguage)
-                    3 -> FlashcardsTab(note, aiViewModel, authToken, preferredLanguage)
-                    4 -> PodcastTab(note, aiViewModel, authToken, preferredLanguage)
+                    1 -> LearnTab(note, authToken, authManager)
+                    2 -> CreateTab(note, authToken)
+                    3 -> CompeteTab(note, authToken)
+                    4 -> ChatTab(note, aiViewModel, authToken, preferredLanguage)
+                    5 -> QuizTab(note, aiViewModel, authToken, preferredLanguage)
+                    6 -> FlashcardsTab(note, aiViewModel, authToken, preferredLanguage)
+                    7 -> PodcastTab(note, aiViewModel, authToken, preferredLanguage)
+                    8 -> MindMapTab(note, aiViewModel, authToken, preferredLanguage)
                 }
             }
 
@@ -241,20 +432,38 @@ fun NoteDetailScreen(
             HorizontalDivider(color = DarkSurfaceVariant, thickness = 1.dp)
             BottomTabBar(
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+                onTabSelected = { tab ->
+                    if (tab != 0 && subscriptionManager?.isSubscribed() == false) {
+                        showPaywall = true
+                    } else {
+                        selectedTab = tab
+                    }
+                }
             )
         }
+    }
+
+    if (showPaywall && subscriptionManager != null) {
+        PaywallScreen(
+            subscriptionManager = subscriptionManager,
+            onDismiss = { showPaywall = false },
+            onSubscribe = { showPaywall = false },
+            dismissable = true
+        )
     }
 }
 
 /**
- * Bottom tab bar component - fits all tabs without scrolling
+ * Bottom tab bar component - shows 4 primary tabs + "More" which opens a sheet
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BottomTabBar(
     selectedTab: Int,
     onTabSelected: (Int) -> Unit
 ) {
+    var showMoreSheet by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -265,43 +474,101 @@ private fun BottomTabBar(
         // Notes tab
         BottomTabItem(
             icon = Icons.Default.Description,
-            label = "Notes",
+            label = stringResource(R.string.tab_notes),
             isSelected = selectedTab == 0,
             onClick = { onTabSelected(0) },
             modifier = Modifier.weight(1f)
         )
-        // Chat tab
+        // Learn tab
         BottomTabItem(
-            icon = Icons.Default.Message,
-            label = "Chat",
+            icon = Icons.Default.School,
+            label = "Learn",
             isSelected = selectedTab == 1,
             onClick = { onTabSelected(1) },
             modifier = Modifier.weight(1f)
         )
-        // Quiz tab
+        // Create tab
         BottomTabItem(
-            icon = Icons.Default.Quiz,
-            label = "Quiz",
+            icon = Icons.Default.AutoAwesome,
+            label = "Create",
             isSelected = selectedTab == 2,
             onClick = { onTabSelected(2) },
             modifier = Modifier.weight(1f)
         )
-        // Flashcards tab
+        // Compete tab
         BottomTabItem(
-            icon = Icons.Default.Style,
-            label = "Cards",
+            icon = Icons.Default.EmojiEvents,
+            label = "Compete",
             isSelected = selectedTab == 3,
             onClick = { onTabSelected(3) },
             modifier = Modifier.weight(1f)
         )
-        // Podcast tab
+        // More tab - selected when any secondary tab (4-8) is active
         BottomTabItem(
-            icon = Icons.Default.Podcasts,
-            label = "Audio",
-            isSelected = selectedTab == 4,
-            onClick = { onTabSelected(4) },
+            icon = Icons.Default.MoreHoriz,
+            label = "More",
+            isSelected = selectedTab in 4..8,
+            onClick = { showMoreSheet = true },
             modifier = Modifier.weight(1f)
         )
+    }
+
+    if (showMoreSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showMoreSheet = false },
+            containerColor = CardBackground
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp)
+            ) {
+                Text(
+                    text = "More",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+                HorizontalDivider(color = DarkSurfaceVariant)
+                // Secondary tab items
+                val secondaryTabs = listOf(
+                    Triple(Icons.Default.Message, stringResource(R.string.tab_chat), 4),
+                    Triple(Icons.Default.Quiz, stringResource(R.string.tab_quiz), 5),
+                    Triple(Icons.Default.Style, stringResource(R.string.tab_cards), 6),
+                    Triple(Icons.Default.Podcasts, stringResource(R.string.tab_podcast), 7),
+                    Triple(Icons.Default.AccountTree, "Mind Map", 8)
+                )
+                secondaryTabs.forEach { (icon, label, index) ->
+                    val isSelected = selectedTab == index
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(if (isSelected) Purple80.copy(alpha = 0.12f) else Color.Transparent)
+                            .clickable {
+                                onTabSelected(index)
+                                showMoreSheet = false
+                            }
+                            .padding(horizontal = 24.dp, vertical = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = label,
+                            tint = if (isSelected) Purple80 else TextSecondary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = label,
+                            fontSize = 15.sp,
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isSelected) Purple80 else TextPrimary
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -402,10 +669,57 @@ fun NotesTab(
     var isCheckingFormatting by remember { mutableStateOf(false) }
     var showRawContent by remember { mutableStateOf(false) }
     var showSummary by remember { mutableStateOf(false) }
+    var showReadAloud by remember { mutableStateOf(false) }
 
     // Summary state
     val summaryState by aiViewModel.summaryState.collectAsState()
     var isGeneratingSummary by remember { mutableStateOf(false) }
+
+    // TTS state
+    val ttsState by aiViewModel.ttsState.collectAsState()
+    var selectedTtsVoice by remember { mutableStateOf("nova") }
+    var ttsMediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var isTtsPlaying by remember { mutableStateOf(false) }
+    var ttsCurrentPosition by remember { mutableStateOf(0) }
+    var ttsDuration by remember { mutableStateOf(0) }
+    var ttsSpeed by remember { mutableStateOf(1.0f) }
+    var ttsAudioUrl by remember { mutableStateOf<String?>(null) }
+
+    // Load saved TTS when expanding Read Aloud
+    LaunchedEffect(showReadAloud, note.id) {
+        if (showReadAloud && authToken != null && ttsState is AIContentState.Idle) {
+            aiViewModel.loadTTS(authToken, note.id)
+        }
+    }
+
+    // Load TTS audio URL from state
+    LaunchedEffect(ttsState) {
+        if (ttsState is AIContentState.Success<*>) {
+            val data = (ttsState as AIContentState.Success<*>).content as? com.kreativekoala.scribeai.data.models.TTSData
+            if (data != null) {
+                ttsAudioUrl = data.audioUrl
+                selectedTtsVoice = data.voice
+            }
+        }
+    }
+
+    // Update TTS progress
+    LaunchedEffect(isTtsPlaying) {
+        while (isTtsPlaying) {
+            ttsMediaPlayer?.let {
+                ttsCurrentPosition = it.currentPosition
+                if (ttsDuration == 0) ttsDuration = it.duration
+            }
+            delay(200)
+        }
+    }
+
+    // Cleanup TTS media player
+    DisposableEffect(Unit) {
+        onDispose {
+            ttsMediaPlayer?.release()
+        }
+    }
 
     // Get content to display (formatted or raw)
     val displayContent = if (currentNote.hasFormattedContent && !showRawContent) {
@@ -512,7 +826,7 @@ fun NotesTab(
                                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                                                 context.startActivity(intent)
                                             } catch (e: Exception) {
-                                                Toast.makeText(context, "Could not open link", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, context.getString(R.string.could_not_open_link), Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     }
@@ -533,7 +847,7 @@ fun NotesTab(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Source: ${getSourceLabel(sourceType)}",
+                            stringResource(R.string.source_label, getSourceLabel(sourceType)),
                             fontSize = 13.sp,
                             color = if (hasSourceUrl) Purple80 else TextSecondary
                         )
@@ -541,7 +855,7 @@ fun NotesTab(
                             Spacer(Modifier.width(4.dp))
                             Icon(
                                 Icons.Default.OpenInNew,
-                                contentDescription = "Open source",
+                                contentDescription = stringResource(R.string.open_source_link),
                                 tint = Purple80,
                                 modifier = Modifier.size(12.dp)
                             )
@@ -562,7 +876,7 @@ fun NotesTab(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "${"%,d".format(characterCount)} characters • ${"%,d".format(wordCount)} words",
+                        stringResource(R.string.characters_words_format, "%,d".format(characterCount), "%,d".format(wordCount)),
                         fontSize = 13.sp,
                         color = TextSecondary
                     )
@@ -583,7 +897,7 @@ fun NotesTab(
                             )
                             Spacer(Modifier.width(4.dp))
                             Text(
-                                if (showRawContent) "Formatted" else "Raw",
+                                if (showRawContent) stringResource(R.string.formatted) else stringResource(R.string.raw),
                                 fontSize = 12.sp,
                                 color = Purple80
                             )
@@ -604,7 +918,7 @@ fun NotesTab(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            "Formatting notes...",
+                            stringResource(R.string.formatting_notes),
                             fontSize = 12.sp,
                             color = TextTertiary
                         )
@@ -622,6 +936,72 @@ fun NotesTab(
                 onGenerateSummary = {
                     if (authToken != null) {
                         aiViewModel.generateSummary(authToken, note.id, "medium", preferredLanguage)
+                    }
+                }
+            )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        // Collapsible Read Aloud Section
+        item {
+            ReadAloudSection(
+                showReadAloud = showReadAloud,
+                onToggle = { showReadAloud = !showReadAloud },
+                ttsState = ttsState,
+                selectedVoice = selectedTtsVoice,
+                onVoiceSelected = { selectedTtsVoice = it },
+                onGenerateTTS = {
+                    if (authToken != null) {
+                        aiViewModel.generateTTS(authToken, note.id, selectedTtsVoice)
+                    }
+                },
+                ttsAudioUrl = ttsAudioUrl,
+                mediaPlayer = ttsMediaPlayer,
+                isPlaying = isTtsPlaying,
+                currentPosition = ttsCurrentPosition,
+                duration = ttsDuration,
+                speed = ttsSpeed,
+                onSpeedChange = { newSpeed ->
+                    ttsSpeed = newSpeed
+                    ttsMediaPlayer?.playbackParams = ttsMediaPlayer?.playbackParams?.setSpeed(newSpeed) ?: android.media.PlaybackParams().setSpeed(newSpeed)
+                },
+                onPlayPause = {
+                    ttsMediaPlayer?.let { player ->
+                        if (isTtsPlaying) {
+                            player.pause()
+                            isTtsPlaying = false
+                        } else {
+                            player.start()
+                            isTtsPlaying = true
+                        }
+                    } ?: ttsAudioUrl?.let { url ->
+                        try {
+                            val mp = MediaPlayer().apply {
+                                setDataSource(url)
+                                prepareAsync()
+                                setOnPreparedListener { mp ->
+                                    mp.playbackParams = mp.playbackParams.setSpeed(ttsSpeed)
+                                    mp.start()
+                                    isTtsPlaying = true
+                                    ttsDuration = mp.duration
+                                }
+                                setOnCompletionListener {
+                                    isTtsPlaying = false
+                                    ttsCurrentPosition = 0
+                                }
+                            }
+                            ttsMediaPlayer?.release()
+                            ttsMediaPlayer = mp
+                        } catch (e: Exception) {
+                            android.util.Log.e("ReadAloud", "Error playing TTS", e)
+                        }
+                    }
+                },
+                onSkip = { seconds ->
+                    ttsMediaPlayer?.let { player ->
+                        val newPos = (player.currentPosition + seconds * 1000).coerceIn(0, player.duration)
+                        player.seekTo(newPos)
+                        ttsCurrentPosition = newPos
                     }
                 }
             )
@@ -693,7 +1073,7 @@ private fun SummarySection(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Summary",
+                    stringResource(R.string.summary),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
                     color = Purple80
@@ -748,7 +1128,7 @@ private fun SummarySection(
                                 )
                                 Spacer(Modifier.width(8.dp))
                                 Text(
-                                    "Generating summary...",
+                                    stringResource(R.string.generating_summary),
                                     fontSize = 13.sp,
                                     color = TextSecondary
                                 )
@@ -775,7 +1155,7 @@ private fun SummarySection(
                                     ) {
                                         Icon(
                                             Icons.Default.Refresh,
-                                            contentDescription = "Regenerate",
+                                            contentDescription = stringResource(R.string.regenerate),
                                             tint = TextSecondary,
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -802,7 +1182,7 @@ private fun NoSummaryContent(onGenerateSummary: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            "No summary yet",
+            stringResource(R.string.no_summary_yet),
             fontSize = 13.sp,
             color = TextSecondary
         )
@@ -818,9 +1198,281 @@ private fun NoSummaryContent(onGenerateSummary: () -> Unit) {
                 modifier = Modifier.size(16.dp)
             )
             Spacer(Modifier.width(6.dp))
-            Text("Generate Summary", fontSize = 13.sp)
+            Text(stringResource(R.string.generate_summary), fontSize = 13.sp)
         }
     }
+}
+
+/**
+ * Read Aloud Section - collapsible TTS player (like iOS)
+ */
+@Composable
+private fun ReadAloudSection(
+    showReadAloud: Boolean,
+    onToggle: () -> Unit,
+    ttsState: AIContentState,
+    selectedVoice: String,
+    onVoiceSelected: (String) -> Unit,
+    onGenerateTTS: () -> Unit,
+    ttsAudioUrl: String?,
+    mediaPlayer: MediaPlayer?,
+    isPlaying: Boolean,
+    currentPosition: Int,
+    duration: Int,
+    speed: Float,
+    onSpeedChange: (Float) -> Unit,
+    onPlayPause: () -> Unit,
+    onSkip: (Int) -> Unit
+) {
+    val hasAudio = ttsAudioUrl != null
+    val speedOptions = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 1.75f, 2.0f)
+    var showSpeedMenu by remember { mutableStateOf(false) }
+
+    Column {
+        // Header toggle button
+        Card(
+            onClick = onToggle,
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(10.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.3f))
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Icons.Default.VolumeUp,
+                    contentDescription = null,
+                    tint = Purple80,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Read Aloud",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Purple80
+                )
+                if (hasAudio) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = AccentGreen,
+                        modifier = Modifier.size(14.dp)
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                Icon(
+                    if (showReadAloud) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
+        // Expanded content
+        AnimatedVisibility(
+            visible = showReadAloud,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBackground.copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    when (ttsState) {
+                        is AIContentState.Loading -> {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Purple80)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Generating audio...", fontSize = 13.sp, color = TextSecondary)
+                            }
+                        }
+                        is AIContentState.Error -> {
+                            Text(
+                                (ttsState as AIContentState.Error).message,
+                                fontSize = 12.sp,
+                                color = AccentRed,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
+                        }
+                        is AIContentState.Success<*> -> {
+                            if (hasAudio) {
+                                // Audio player UI
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    // Progress slider
+                                    val sliderPosition = if (duration > 0) currentPosition.toFloat() / duration else 0f
+                                    Column {
+                                        Slider(
+                                            value = sliderPosition,
+                                            onValueChange = { fraction ->
+                                                mediaPlayer?.seekTo((fraction * duration).toInt())
+                                            },
+                                            colors = SliderDefaults.colors(thumbColor = Purple80, activeTrackColor = Purple80),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                            Text(formatTTSTime(currentPosition), fontSize = 10.sp, color = TextSecondary)
+                                            Text("-${formatTTSTime(maxOf(0, duration - currentPosition))}", fontSize = 10.sp, color = TextSecondary)
+                                        }
+                                    }
+
+                                    // Playback controls
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Skip backward 10s
+                                        IconButton(onClick = { onSkip(-10) }) {
+                                            Icon(Icons.Default.Replay10, contentDescription = "Skip back 10s", tint = TextPrimary, modifier = Modifier.size(28.dp))
+                                        }
+                                        Spacer(Modifier.width(16.dp))
+                                        // Play/Pause
+                                        Box(
+                                            modifier = Modifier
+                                                .size(56.dp)
+                                                .background(Purple80, androidx.compose.foundation.shape.CircleShape)
+                                                .clickable(onClick = onPlayPause),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                                tint = Color.White,
+                                                modifier = Modifier.size(28.dp)
+                                            )
+                                        }
+                                        Spacer(Modifier.width(16.dp))
+                                        // Skip forward 10s
+                                        IconButton(onClick = { onSkip(10) }) {
+                                            Icon(Icons.Default.Forward10, contentDescription = "Skip forward 10s", tint = TextPrimary, modifier = Modifier.size(28.dp))
+                                        }
+                                    }
+
+                                    // Speed and regenerate row
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Speed button
+                                        Box {
+                                            TextButton(onClick = { showSpeedMenu = true }) {
+                                                Text(
+                                                    if (speed == 1.0f) "1x" else "${speed}x",
+                                                    fontSize = 12.sp,
+                                                    fontWeight = FontWeight.Medium,
+                                                    color = TextPrimary
+                                                )
+                                            }
+                                            DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }, modifier = Modifier.background(CardBackground)) {
+                                                speedOptions.forEach { s ->
+                                                    DropdownMenuItem(
+                                                        text = { Text("${s}x", color = if (speed == s) Purple80 else TextPrimary) },
+                                                        onClick = {
+                                                            onSpeedChange(s)
+                                                            showSpeedMenu = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Spacer(Modifier.weight(1f))
+                                        // Regenerate button
+                                        TextButton(onClick = onGenerateTTS) {
+                                            Icon(Icons.Default.Refresh, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                                            Spacer(Modifier.width(4.dp))
+                                            Text("Regenerate", fontSize = 11.sp, color = TextSecondary)
+                                        }
+                                    }
+                                }
+                            } else {
+                                ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
+                            }
+                        }
+                        else -> {
+                            ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReadAloudGenerateSection(
+    selectedVoice: String,
+    onVoiceSelected: (String) -> Unit,
+    onGenerateTTS: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Voice selection
+        Column {
+            Text("Voice", fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextSecondary)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                ttsVoices.forEach { voice ->
+                    val isSelected = selectedVoice == voice.id
+                    Column(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isSelected) Purple80 else DarkSurfaceVariant)
+                            .clickable { onVoiceSelected(voice.id) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(voice.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (isSelected) Color.White else TextPrimary)
+                        Text(voice.gender, fontSize = 9.sp, color = if (isSelected) Color.White.copy(alpha = 0.7f) else TextTertiary)
+                    }
+                }
+            }
+        }
+
+        // Generate button
+        Button(
+            onClick = onGenerateTTS,
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Purple80),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Generate Audio", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        }
+
+        Text(
+            "Convert your notes to speech using AI voices",
+            fontSize = 11.sp,
+            color = TextTertiary,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
+private fun formatTTSTime(ms: Int): String {
+    val totalSeconds = ms / 1000
+    val minutes = totalSeconds / 60
+    val seconds = totalSeconds % 60
+    return "%d:%02d".format(minutes, seconds)
 }
 
 private fun formatNoteDate(dateString: String): String {
@@ -837,14 +1489,15 @@ private fun formatNoteDate(dateString: String): String {
 /**
  * Get a user-friendly label for the source type
  */
+@Composable
 private fun getSourceLabel(sourceType: String): String {
     return when (sourceType.lowercase()) {
-        "video" -> "YouTube Video"
-        "recording" -> "Audio Recording"
-        "pdf" -> "PDF Document"
-        "scan" -> "Scanned Document"
-        "image" -> "Image"
-        "text" -> "Text"
+        "video" -> stringResource(R.string.source_youtube_video)
+        "recording" -> stringResource(R.string.source_audio_recording)
+        "pdf" -> stringResource(R.string.source_pdf_document)
+        "scan" -> stringResource(R.string.source_scanned_document)
+        "image" -> stringResource(R.string.source_image)
+        "text" -> stringResource(R.string.source_text)
         else -> sourceType.replaceFirstChar { it.uppercase() }
     }
 }
@@ -864,7 +1517,7 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                 Column {
                     // Length selector
                     Text(
-                        "Summary Length",
+                        stringResource(R.string.summary_length),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = TextPrimary,
@@ -889,8 +1542,8 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
 
                     GenerateContentPrompt(
                         icon = Icons.Default.Summarize,
-                        title = "Generate Summary",
-                        description = "Create a concise summary of your notes",
+                        title = stringResource(R.string.generate_summary),
+                        description = stringResource(R.string.create_summary_description),
                         onGenerate = {
                             if (authToken != null) {
                                 aiViewModel.generateSummary(authToken, note.id, selectedLength, language)
@@ -900,7 +1553,7 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                 }
             }
             is AIContentState.Loading -> {
-                LoadingContent("Generating summary...")
+                LoadingContent(stringResource(R.string.generating_summary))
             }
             is AIContentState.Success<*> -> {
                 val aiContent = state.content as? AIContentData
@@ -917,7 +1570,7 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "Summary",
+                                    stringResource(R.string.summary),
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.SemiBold,
                                     color = Purple80
@@ -931,14 +1584,14 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                                 ) {
                                     Icon(
                                         Icons.Default.Refresh,
-                                        contentDescription = "Regenerate",
+                                        contentDescription = stringResource(R.string.regenerate),
                                         tint = Purple80
                                     )
                                 }
                             }
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                aiContent?.summary ?: "No summary available",
+                                aiContent?.summary ?: stringResource(R.string.no_summary_available),
                                 fontSize = 15.sp,
                                 lineHeight = 22.sp,
                                 color = TextPrimary
@@ -1065,7 +1718,7 @@ fun ChatTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        if (isVoiceMode) "Voice Conversation Mode" else "Text Chat Mode",
+                        if (isVoiceMode) stringResource(R.string.voice_mode) else stringResource(R.string.text_mode),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = if (isVoiceMode) Purple80 else TextPrimary
@@ -1207,7 +1860,7 @@ private fun WelcomeMessage(isVoiceMode: Boolean) {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                if (isVoiceMode) "Have a voice conversation" else "Ask anything about your notes",
+                if (isVoiceMode) stringResource(R.string.voice_mode) else stringResource(R.string.ask_about_notes),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
@@ -1216,9 +1869,9 @@ private fun WelcomeMessage(isVoiceMode: Boolean) {
             Spacer(Modifier.height(8.dp))
             Text(
                 if (isVoiceMode)
-                    "Tap the microphone to start talking. I'll respond with voice too!"
+                    stringResource(R.string.tap_to_speak)
                 else
-                    "Type or use voice to ask questions",
+                    stringResource(R.string.ask_about_notes_description),
                 fontSize = 14.sp,
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1254,7 +1907,7 @@ private fun VoiceModeStatusBar(isListening: Boolean, isSpeaking: Boolean, isLoad
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Listening...",
+                            stringResource(R.string.listening),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = Purple80
@@ -1269,7 +1922,7 @@ private fun VoiceModeStatusBar(isListening: Boolean, isSpeaking: Boolean, isLoad
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Speaking...",
+                            stringResource(R.string.speaking),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
                             color = Purple80
@@ -1283,7 +1936,7 @@ private fun VoiceModeStatusBar(isListening: Boolean, isSpeaking: Boolean, isLoad
                         )
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Thinking...",
+                            stringResource(R.string.loading),
                             fontSize = 15.sp,
                             color = TextSecondary
                         )
@@ -1322,7 +1975,7 @@ private fun VoiceModeInput(
                 ) {
                     Icon(
                         Icons.Default.Stop,
-                        contentDescription = "Stop speaking",
+                        contentDescription = stringResource(R.string.stop_speaking),
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -1339,7 +1992,7 @@ private fun VoiceModeInput(
                 ) {
                     Icon(
                         Icons.Default.Mic,
-                        contentDescription = if (isListening) "Listening..." else "Tap to speak",
+                        contentDescription = if (isListening) stringResource(R.string.listening) else stringResource(R.string.tap_to_speak),
                         modifier = Modifier.size(36.dp)
                     )
                 }
@@ -1418,7 +2071,7 @@ private fun WelcomeMessage() {
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                "Ask anything about your notes",
+                stringResource(R.string.ask_about_notes),
                 fontSize = 18.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
@@ -1426,7 +2079,7 @@ private fun WelcomeMessage() {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Type or use voice to ask questions",
+                stringResource(R.string.ask_about_notes_description),
                 fontSize = 14.sp,
                 color = TextSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -1450,7 +2103,7 @@ private fun LoadingIndicator() {
         )
         Spacer(Modifier.width(8.dp))
         Text(
-            "Thinking...",
+            stringResource(R.string.loading),
             fontSize = 14.sp,
             color = TextSecondary
         )
@@ -1483,7 +2136,7 @@ fun ChatInputArea(
             ) {
                 Icon(
                     Icons.Default.Mic,
-                    contentDescription = "Voice input",
+                    contentDescription = stringResource(R.string.voice_mode),
                     tint = if (isLoading) TextTertiary else Purple80,
                     modifier = Modifier.size(24.dp)
                 )
@@ -1496,7 +2149,7 @@ fun ChatInputArea(
                 value = inputText,
                 onValueChange = onInputChange,
                 modifier = Modifier.weight(1f),
-                placeholder = { Text("Ask a question...", fontSize = 14.sp) },
+                placeholder = { Text(stringResource(R.string.type_a_message), fontSize = 14.sp) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Purple80,
                     unfocusedBorderColor = DarkSurfaceVariant,
@@ -1528,7 +2181,7 @@ fun ChatInputArea(
             ) {
                 Icon(
                     Icons.Default.Send,
-                    contentDescription = "Send",
+                    contentDescription = stringResource(R.string.send),
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -1556,13 +2209,23 @@ fun ChatMessageBubble(message: ChatMessage) {
                 bottomEnd = if (message.isUser) 4.dp else 16.dp
             )
         ) {
-            Text(
-                message.text,
-                modifier = Modifier.padding(12.dp),
-                fontSize = 14.sp,
-                color = if (message.isUser) DarkBackground else TextPrimary,
-                lineHeight = 20.sp
-            )
+            if (message.isUser) {
+                Text(
+                    message.text,
+                    modifier = Modifier.padding(12.dp),
+                    fontSize = 14.sp,
+                    color = DarkBackground,
+                    lineHeight = 20.sp
+                )
+            } else {
+                // AI responses come back as Markdown (## headings, **bold**,
+                // bullets, code, etc). Render them via the in-house parser so
+                // we don't show raw "##" literals.
+                FormattedNoteView(
+                    content = message.text,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
         }
     }
 }
@@ -1832,7 +2495,7 @@ fun InfographicTab(
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Regenerate", color = Purple80, fontSize = 13.sp)
+                                Text(stringResource(R.string.regenerate), color = Purple80, fontSize = 13.sp)
                             }
                         }
 
@@ -1887,7 +2550,7 @@ fun InfographicTab(
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_TEXT, data.imageUrl)
                                     }
-                                    context.startActivity(Intent.createChooser(intent, "Share Infographic"))
+                                    context.startActivity(Intent.createChooser(intent, context.getString(R.string.share)))
                                 },
                                 modifier = Modifier
                                     .weight(1f)
@@ -1896,7 +2559,7 @@ fun InfographicTab(
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Share", fontSize = 14.sp)
+                                Text(stringResource(R.string.share), fontSize = 14.sp)
                             }
 
                             Button(
@@ -1914,7 +2577,7 @@ fun InfographicTab(
                             ) {
                                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
-                                Text("Save", fontSize = 14.sp)
+                                Text(stringResource(R.string.save), fontSize = 14.sp)
                             }
                         }
                     }
@@ -2135,7 +2798,7 @@ private fun InfographicFullScreenDialog(
             ) {
                 Icon(
                     Icons.Default.Close,
-                    contentDescription = "Close",
+                    contentDescription = stringResource(R.string.close),
                     tint = TextPrimary,
                     modifier = Modifier.size(32.dp)
                 )
@@ -2144,11 +2807,36 @@ private fun InfographicFullScreenDialog(
     }
 }
 
-// Voice options enum (like iOS)
-enum class PodcastVoice(val value: String, val displayName: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    FEMALE("nova", "Female", Icons.Default.Face),
-    MALE("onyx", "Male", Icons.Default.Person)
+// Voice gender grouping for podcast (like iOS)
+enum class VoiceGender(val displayName: String) {
+    FEMALE("Female"),
+    MALE("Male")
 }
+
+// Individual voice options (like iOS) - maps human names to TTS voice IDs
+enum class PodcastVoice(
+    val value: String,
+    val displayName: String,
+    val gender: VoiceGender,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    SARAH("nova", "Sarah", VoiceGender.FEMALE, Icons.Default.Face),
+    EMILY("shimmer", "Emily", VoiceGender.FEMALE, Icons.Default.Face),
+    JAMES("echo", "James", VoiceGender.MALE, Icons.Default.Person),
+    DANIEL("fable", "Daniel", VoiceGender.MALE, Icons.Default.Person),
+    MARCUS("onyx", "Marcus", VoiceGender.MALE, Icons.Default.Person)
+}
+
+// TTS voice options for Read Aloud
+data class TTSVoice(val id: String, val name: String, val gender: String)
+
+val ttsVoices = listOf(
+    TTSVoice("nova", "Sarah", "Female"),
+    TTSVoice("shimmer", "Emily", "Female"),
+    TTSVoice("echo", "James", "Male"),
+    TTSVoice("fable", "Daniel", "Male"),
+    TTSVoice("onyx", "Marcus", "Male")
+)
 
 // Duration options
 data class DurationOption(val id: String, val label: String, val description: String)
@@ -2164,9 +2852,11 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
 
     // Podcast generation options
     var selectedDuration by remember { mutableStateOf("short") }
-    var selectedVoice by remember { mutableStateOf(PodcastVoice.FEMALE) }
+    var selectedGender by remember { mutableStateOf(VoiceGender.FEMALE) }
+    var selectedVoice by remember { mutableStateOf(PodcastVoice.SARAH) }
     var showInstructions by remember { mutableStateOf(false) }
     var instructions by remember { mutableStateOf("") }
+    var showOnDeviceReadAloud by remember { mutableStateOf(false) }
 
     val durationOptions = listOf(
         DurationOption("short", "Short", "3-5 min"),
@@ -2215,6 +2905,11 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
     ) {
         when (val state = podcastState) {
             is AIContentState.Idle -> {
+                val wordCount = remember(note.content) {
+                    note.content.split(Regex("\\s+")).filter { it.isNotEmpty() }.size
+                }
+                val hasEnoughContent = wordCount >= 50
+
                 // Podcast generation options UI
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -2235,11 +2930,37 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Transform your notes into an AI-generated podcast",
+                        "Creates a 2-host AI conversation from your note content",
                         fontSize = 14.sp,
                         color = TextSecondary,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
+                    Spacer(Modifier.height(12.dp))
+                    // Word count indicator
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .background(
+                                if (hasEnoughContent) Purple80.copy(alpha = 0.1f) else AccentRed.copy(alpha = 0.1f),
+                                RoundedCornerShape(20.dp)
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            if (hasEnoughContent) Icons.Default.CheckCircle else Icons.Default.Info,
+                            contentDescription = null,
+                            tint = if (hasEnoughContent) Purple80 else AccentRed,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            if (hasEnoughContent) "$wordCount words — ready to generate"
+                            else "$wordCount words — needs at least 50 words",
+                            fontSize = 13.sp,
+                            color = if (hasEnoughContent) Purple80 else AccentRed,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
 
                     Spacer(Modifier.height(24.dp))
 
@@ -2268,7 +2989,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
 
                     Spacer(Modifier.height(20.dp))
 
-                    // Voice selector
+                    // Voice selector - gender then individual voice
                     Text(
                         "Voice",
                         fontSize = 14.sp,
@@ -2276,17 +2997,43 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         color = TextPrimary,
                         modifier = Modifier.align(Alignment.Start)
                     )
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(8.dp))
+                    // Gender selector
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        PodcastVoice.entries.forEach { voice ->
-                            VoiceOptionCard(
-                                voice = voice,
-                                isSelected = selectedVoice == voice,
+                        VoiceGender.entries.forEach { gender ->
+                            FilterChip(
+                                selected = selectedGender == gender,
+                                onClick = {
+                                    selectedGender = gender
+                                    // Auto-select first voice of that gender
+                                    selectedVoice = PodcastVoice.entries.first { it.gender == gender }
+                                },
+                                label = { Text(gender.displayName) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Purple80,
+                                    selectedLabelColor = DarkBackground
+                                )
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    // Individual voice names for selected gender
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        PodcastVoice.entries.filter { it.gender == selectedGender }.forEach { voice ->
+                            FilterChip(
+                                selected = selectedVoice == voice,
                                 onClick = { selectedVoice = voice },
-                                modifier = Modifier.weight(1f)
+                                label = { Text(voice.displayName) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = Purple80.copy(alpha = 0.3f),
+                                    selectedLabelColor = Purple80
+                                )
                             )
                         }
                     }
@@ -2310,7 +3057,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                 IconButton(onClick = { showInstructions = false; instructions = "" }) {
                                     Icon(
                                         Icons.Default.Close,
-                                        contentDescription = "Remove",
+                                        contentDescription = stringResource(R.string.close),
                                         tint = TextSecondary,
                                         modifier = Modifier.size(18.dp)
                                     )
@@ -2362,7 +3109,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                     // Generate button
                     Button(
                         onClick = {
-                            if (authToken != null) {
+                            if (authToken != null && hasEnoughContent) {
                                 val trimmedInstructions = instructions.trim().ifEmpty { null }
                                 aiViewModel.generatePodcast(
                                     authToken,
@@ -2375,10 +3122,14 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                 )
                             }
                         },
+                        enabled = hasEnoughContent && authToken != null,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Purple80),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Purple80,
+                            disabledContainerColor = Purple80.copy(alpha = 0.3f)
+                        ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(22.dp))
@@ -2410,9 +3161,10 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "This may take 30-60 seconds",
+                            "Usually 1–3 minutes. You can leave and come back.",
                             fontSize = 14.sp,
-                            color = TextSecondary
+                            color = TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
                         )
                         Spacer(Modifier.height(16.dp))
 
@@ -2433,33 +3185,29 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         Spacer(Modifier.height(32.dp))
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = CardBackground
-                            )
+                            colors = CardDefaults.cardColors(containerColor = CardBackground)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Lightbulb,
-                                        contentDescription = null,
-                                        tint = Purple80,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        "Did you know?",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Purple80
-                                    )
-                                }
-                                Spacer(Modifier.height(8.dp))
-                                Text(
-                                    "AI is converting your notes into natural-sounding audio using advanced text-to-speech technology.",
-                                    fontSize = 13.sp,
-                                    color = TextSecondary,
-                                    lineHeight = 18.sp
+                                val steps = listOf(
+                                    "Writing a 2-host conversation script",
+                                    "Converting script to natural speech",
+                                    "Mixing and finalizing audio"
                                 )
+                                steps.forEachIndexed { i, step ->
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(22.dp)
+                                                .background(Purple80.copy(alpha = 0.15f), RoundedCornerShape(11.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("${i + 1}", fontSize = 12.sp, color = Purple80, fontWeight = FontWeight.Bold)
+                                        }
+                                        Spacer(Modifier.width(10.dp))
+                                        Text(step, fontSize = 13.sp, color = TextSecondary)
+                                    }
+                                    if (i < steps.lastIndex) Spacer(Modifier.height(8.dp))
+                                }
                             }
                         }
                     }
@@ -2517,6 +3265,26 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                     fontSize = 14.sp,
                                     color = TextSecondary
                                 )
+
+                                // Read Aloud (on-device system TTS) — works offline
+                                // and skips streaming the cloud MP3. Only shown
+                                // when the script came back with the podcast.
+                                val podcastScript = (state.content as? AIContentData)?.script
+                                if (!podcastScript.isNullOrBlank()) {
+                                    Spacer(Modifier.height(12.dp))
+                                    OutlinedButton(
+                                        onClick = { showOnDeviceReadAloud = true },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    ) {
+                                        Icon(
+                                            Icons.Default.VolumeUp,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Read on device (offline)")
+                                    }
+                                }
 
                                 Spacer(Modifier.height(32.dp))
 
@@ -2594,7 +3362,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                 ) {
                                     Icon(
                                         if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                        contentDescription = if (isPlaying) "Pause" else "Play",
+                                        contentDescription = if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.generate),
                                         modifier = Modifier.size(40.dp)
                                     )
                                 }
@@ -2608,63 +3376,88 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                     color = if (isPlaying) Purple80 else TextSecondary,
                                     fontWeight = if (isPlaying) FontWeight.Medium else FontWeight.Normal
                                 )
+
+                                Spacer(Modifier.height(20.dp))
+
+                                // Regenerate button
+                                OutlinedButton(
+                                    onClick = { aiViewModel.resetState("podcast") },
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.4f))
+                                ) {
+                                    Icon(
+                                        Icons.Default.Refresh,
+                                        contentDescription = null,
+                                        tint = Purple80,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    Text("Regenerate", color = Purple80, fontSize = 14.sp)
+                                }
                             }
                         }
                     }
                 } ?: run {
-                    // No audio available
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(32.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.ErrorOutline,
-                                contentDescription = null,
-                                modifier = Modifier.size(64.dp),
-                                tint = AccentRed
-                            )
-                            Spacer(Modifier.height(16.dp))
-                            Text(
-                                "Audio generation failed",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextPrimary
-                            )
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                "Please try generating again",
-                                fontSize = 14.sp,
-                                color = TextSecondary
-                            )
-                            Spacer(Modifier.height(24.dp))
-                            Button(
-                                onClick = {
-                                    if (authToken != null) {
-                                        aiViewModel.generatePodcast(authToken, note.id, generateAudio = true, language = preferredLanguage)
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Purple80
-                                )
-                            ) {
-                                Text("Retry")
-                            }
-                        }
+                    // No audio — reset to Idle so user can try again with options
+                    LaunchedEffect(Unit) {
+                        aiViewModel.resetState("podcast")
                     }
                 }
             }
             is AIContentState.Error -> {
-                ErrorContent(state.message) {
-                    if (authToken != null) {
-                        aiViewModel.generatePodcast(authToken, note.id, generateAudio = true, language = preferredLanguage)
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ErrorOutline,
+                            contentDescription = null,
+                            modifier = Modifier.size(56.dp),
+                            tint = AccentRed
+                        )
+                        Spacer(Modifier.height(16.dp))
+                        Text(
+                            "Generation failed",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextPrimary
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            state.message,
+                            fontSize = 13.sp,
+                            color = TextSecondary,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            lineHeight = 18.sp
+                        )
+                        Spacer(Modifier.height(24.dp))
+                        Button(
+                            onClick = { aiViewModel.resetState("podcast") },
+                            colors = ButtonDefaults.buttonColors(containerColor = Purple80),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Try Again")
+                        }
                     }
                 }
             }
         }
+    }
+
+    if (showOnDeviceReadAloud) {
+        val script = (podcastState as? AIContentState.Success<*>)?.let {
+            (it.content as? AIContentData)?.script
+        } ?: ""
+        com.kreativekoala.scribeai.tts.ReadAloudSheet(
+            text = script,
+            onDismiss = { showOnDeviceReadAloud = false }
+        )
     }
 }
 
@@ -2707,8 +3500,8 @@ fun QuizTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
             is AIContentState.Idle -> {
                 GenerateContentPrompt(
                     icon = Icons.Default.Quiz,
-                    title = "Generate Quiz",
-                    description = "Test your knowledge with AI-generated questions",
+                    title = stringResource(R.string.generate_quiz),
+                    description = stringResource(R.string.generate_quiz_description),
                     onGenerate = {
                         if (authToken != null) {
                             aiViewModel.generateQuiz(authToken, note.id, language = preferredLanguage)
@@ -2717,7 +3510,7 @@ fun QuizTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
                 )
             }
             is AIContentState.Loading -> {
-                LoadingContent("Generating quiz questions...")
+                LoadingContent(stringResource(R.string.generating_quiz))
             }
             is AIContentState.Success<*> -> {
                 val questions = (state.content as? AIContentData)?.questions?.quizQuestions
@@ -2728,7 +3521,7 @@ fun QuizTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No questions generated", color = TextSecondary)
+                        Text(stringResource(R.string.generate_quiz_description), color = TextSecondary)
                     }
                 } else if (quizCompleted) {
                     // Show results
@@ -2762,7 +3555,7 @@ fun QuizTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "${questions.size} Questions",
+                                stringResource(R.string.question_count_format, questions.size, questions.size),
                                 fontSize = 14.sp,
                                 color = TextSecondary
                             )
@@ -2781,7 +3574,7 @@ fun QuizTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Generate More", color = Purple80, fontSize = 14.sp)
+                                Text(stringResource(R.string.generate), color = Purple80, fontSize = 14.sp)
                             }
                         }
 
@@ -2872,7 +3665,7 @@ fun InteractiveQuizQuestion(
         // Progress header
         Column(modifier = Modifier.padding(bottom = 16.dp)) {
             Text(
-                "Question $questionNumber of $totalQuestions",
+                stringResource(R.string.question_count_format, questionNumber, totalQuestions),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextSecondary
@@ -2968,7 +3761,7 @@ fun InteractiveQuizQuestion(
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(
-                    "Check Answer",
+                    stringResource(R.string.check_answer),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -2984,7 +3777,7 @@ fun InteractiveQuizQuestion(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        if (questionNumber < totalQuestions) "Next Question" else "View Results",
+                        if (questionNumber < totalQuestions) stringResource(R.string.next_question) else stringResource(R.string.quiz_complete),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -3132,7 +3925,7 @@ fun QuizResultsView(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "$score out of $total correct",
+            stringResource(R.string.quiz_score_format, score, total),
             fontSize = 18.sp,
             color = TextSecondary
         )
@@ -3153,7 +3946,7 @@ fun QuizResultsView(
                 Icon(Icons.Default.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Restart Quiz",
+                    stringResource(R.string.try_again),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -3177,7 +3970,7 @@ fun QuizResultsView(
                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Generate New Quiz",
+                    stringResource(R.string.new_quiz),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -3195,10 +3988,12 @@ fun FlashcardsTab(
 ) {
     val flashcardsState by aiViewModel.flashcardsState.collectAsState()
     var timeElapsed by remember { mutableStateOf(0) }
-    var selectedCount by remember { mutableStateOf(10) }
+    var selectedCount by remember { mutableStateOf(20) }
+    var showCustomInstructions by remember { mutableStateOf(false) }
+    var customInstructions by remember { mutableStateOf("") }
 
-    // Flashcard count options
-    val countOptions = listOf(5, 10, 15, 20)
+    // Flashcard count options (default 20 per iOS)
+    val countOptions = listOf(5, 10, 15, 20, 25, 30)
 
     LaunchedEffect(flashcardsState) {
         if (flashcardsState is AIContentState.Loading) {
@@ -3231,14 +4026,14 @@ fun FlashcardsTab(
                     )
                     Spacer(Modifier.height(24.dp))
                     Text(
-                        "Generate Flashcards",
+                        stringResource(R.string.generate_flashcards),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "Create flashcards for effective studying",
+                        stringResource(R.string.generate_flashcards_description),
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
@@ -3247,13 +4042,14 @@ fun FlashcardsTab(
 
                     // Count selector
                     Text(
-                        "Number of Cards",
+                        "Number of Flashcards",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium,
                         color = TextPrimary
                     )
                     Spacer(Modifier.height(12.dp))
                     Row(
+                        modifier = Modifier.horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         countOptions.forEach { count ->
@@ -3269,7 +4065,47 @@ fun FlashcardsTab(
                         }
                     }
 
-                    Spacer(Modifier.height(32.dp))
+                    Spacer(Modifier.height(16.dp))
+
+                    // Custom instructions (expandable)
+                    TextButton(
+                        onClick = { showCustomInstructions = !showCustomInstructions },
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(
+                            if (showCustomInstructions) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            tint = Purple80,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "Custom Instructions (Optional)",
+                            fontSize = 13.sp,
+                            color = Purple80
+                        )
+                    }
+
+                    AnimatedVisibility(visible = showCustomInstructions, enter = expandVertically(), exit = shrinkVertically()) {
+                        OutlinedTextField(
+                            value = customInstructions,
+                            onValueChange = { customInstructions = it },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = { Text("e.g., Focus on definitions, use simple language...", color = TextTertiary, fontSize = 13.sp) },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Purple80,
+                                unfocusedBorderColor = DarkSurfaceVariant,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = Purple80
+                            ),
+                            minLines = 2,
+                            maxLines = 4,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                    }
+
+                    Spacer(Modifier.height(24.dp))
 
                     Button(
                         onClick = {
@@ -3290,7 +4126,7 @@ fun FlashcardsTab(
                     ) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text("Generate $selectedCount Flashcards", fontSize = 16.sp)
+                        Text(stringResource(R.string.generate_flashcards), fontSize = 16.sp)
                     }
                 }
             }
@@ -3302,7 +4138,7 @@ fun FlashcardsTab(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = Purple80, modifier = Modifier.size(64.dp))
                         Spacer(Modifier.height(24.dp))
-                        Text("Generating flashcards...", fontSize = 18.sp, color = TextPrimary)
+                        Text(stringResource(R.string.generating_flashcards), fontSize = 18.sp, color = TextPrimary)
                         Spacer(Modifier.height(8.dp))
                         Text("This may take 20-40 seconds", fontSize = 14.sp, color = TextSecondary)
                         Spacer(Modifier.height(16.dp))
@@ -3317,7 +4153,7 @@ fun FlashcardsTab(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("No flashcards generated", color = TextSecondary)
+                        Text(stringResource(R.string.generate_flashcards_description), color = TextSecondary)
                     }
                 } else {
                     Column(modifier = Modifier.fillMaxSize()) {
@@ -3330,7 +4166,7 @@ fun FlashcardsTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                "${flashcards.size} Flashcards",
+                                stringResource(R.string.flashcard_count_format, flashcards.size, flashcards.size),
                                 fontSize = 14.sp,
                                 color = TextSecondary
                             )
@@ -3349,7 +4185,7 @@ fun FlashcardsTab(
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
-                                Text("Generate More", color = Purple80, fontSize = 14.sp)
+                                Text(stringResource(R.string.generate), color = Purple80, fontSize = 14.sp)
                             }
                         }
 
@@ -3421,7 +4257,7 @@ fun GenerateContentPrompt(
             ) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Generate", fontSize = 16.sp)
+                Text(stringResource(R.string.generate), fontSize = 16.sp)
             }
         }
     }
@@ -3458,7 +4294,7 @@ fun ErrorContent(message: String, onRetry: () -> Unit) {
             Text(message, color = TextSecondary)
             Spacer(Modifier.height(16.dp))
             Button(onClick = onRetry) {
-                Text("Retry")
+                Text(stringResource(R.string.retry))
             }
         }
     }
@@ -3566,7 +4402,7 @@ fun FlashcardItem(number: Int, front: String, back: String) {
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    if (flipped) "Answer" else "Question",
+                    stringResource(R.string.tap_to_flip),
                     fontSize = 12.sp,
                     color = if (flipped) Purple80 else TextTertiary
                 )
@@ -3578,6 +4414,378 @@ fun FlashcardItem(number: Int, front: String, back: String) {
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
             }
+        }
+    }
+}
+
+// ============================================================
+// MIND MAP TAB
+// ============================================================
+
+@Composable
+fun MindMapTab(
+    note: Note,
+    aiViewModel: AIViewModel,
+    authToken: String?,
+    preferredLanguage: String
+) {
+    val mindMapState by aiViewModel.mindMapState.collectAsState()
+    var includeExploration by remember { mutableStateOf(true) }
+    var expandedNodes by remember { mutableStateOf(setOf<String>()) }
+
+    // Load existing mind map on open
+    LaunchedEffect(note.id) {
+        if (authToken != null && mindMapState is AIContentState.Idle) {
+            aiViewModel.loadMindMap(authToken, note.id)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        when (val state = mindMapState) {
+            is AIContentState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = Purple80, modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(16.dp))
+                        Text("Creating your mind map...", fontSize = 16.sp, color = TextSecondary)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Analyzing content and building connections", fontSize = 13.sp, color = TextTertiary)
+                    }
+                }
+            }
+
+            is AIContentState.Success<*> -> {
+                val data = state.content as? com.kreativekoala.scribeai.data.models.MindMapData
+                val nodes = data?.nodes
+                if (data != null && !nodes.isNullOrEmpty()) {
+                    // Mind Map Display
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        item {
+                            // Header
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    data.title ?: "Mind Map",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(
+                                    onClick = {
+                                        aiViewModel.resetState("mindmap")
+                                        if (authToken != null) {
+                                            aiViewModel.generateMindMap(authToken, note.id, includeExploration, preferredLanguage)
+                                        }
+                                    }
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Purple80, modifier = Modifier.size(14.dp))
+                                    Spacer(Modifier.width(4.dp))
+                                    Text("Regenerate", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = Purple80)
+                                }
+                            }
+                        }
+
+                        // Main branch nodes (level 0, non-exploratory)
+                        val mainBranches = nodes.filter { it.level == 0 && !it.isExploratory }
+                        items(mainBranches) { branch ->
+                            val children = nodes.filter { it.parentId == branch.id && !it.isExploratory }
+                            val isExpanded = expandedNodes.contains(branch.id)
+                            MindMapBranchCard(
+                                branch = branch,
+                                children = children,
+                                isExpanded = isExpanded,
+                                onToggle = {
+                                    expandedNodes = if (isExpanded) {
+                                        expandedNodes - branch.id
+                                    } else {
+                                        expandedNodes + branch.id
+                                    }
+                                }
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
+
+                        // Exploratory nodes section
+                        val exploratoryNodes = nodes.filter { it.isExploratory }
+                        if (exploratoryNodes.isNotEmpty()) {
+                            item {
+                                Spacer(Modifier.height(16.dp))
+                                Text(
+                                    "Explore Further",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Purple80,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                            items(exploratoryNodes) { node ->
+                                ExploratoryNodeCard(node = node)
+                                Spacer(Modifier.height(8.dp))
+                            }
+                        }
+
+                        item { Spacer(Modifier.height(32.dp)) }
+                    }
+                } else {
+                    MindMapGeneratePrompt(
+                        includeExploration = includeExploration,
+                        onIncludeExplorationChange = { includeExploration = it },
+                        errorMessage = null,
+                        onGenerate = {
+                            if (authToken != null) {
+                                aiViewModel.generateMindMap(authToken, note.id, includeExploration, preferredLanguage)
+                            }
+                        }
+                    )
+                }
+            }
+
+            is AIContentState.Error -> {
+                MindMapGeneratePrompt(
+                    includeExploration = includeExploration,
+                    onIncludeExplorationChange = { includeExploration = it },
+                    errorMessage = state.message,
+                    onGenerate = {
+                        if (authToken != null) {
+                            aiViewModel.generateMindMap(authToken, note.id, includeExploration, preferredLanguage)
+                        }
+                    }
+                )
+            }
+
+            else -> {
+                MindMapGeneratePrompt(
+                    includeExploration = includeExploration,
+                    onIncludeExplorationChange = { includeExploration = it },
+                    errorMessage = null,
+                    onGenerate = {
+                        if (authToken != null) {
+                            aiViewModel.generateMindMap(authToken, note.id, includeExploration, preferredLanguage)
+                        }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MindMapGeneratePrompt(
+    includeExploration: Boolean,
+    onIncludeExplorationChange: (Boolean) -> Unit,
+    errorMessage: String?,
+    onGenerate: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.height(40.dp))
+
+        // Icon
+        Box(
+            modifier = Modifier
+                .size(100.dp)
+                .background(Purple80.copy(alpha = 0.2f), androidx.compose.foundation.shape.CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.AccountTree,
+                contentDescription = null,
+                tint = Purple80,
+                modifier = Modifier.size(50.dp)
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+        Text("Generate Mind Map", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Visualize concepts and their connections",
+            fontSize = 14.sp,
+            color = TextSecondary,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+
+        Spacer(Modifier.height(24.dp))
+
+        // Options card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Include Exploration", fontSize = 15.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                    Text("Add suggested topics to deepen understanding", fontSize = 12.sp, color = TextSecondary)
+                }
+                Switch(
+                    checked = includeExploration,
+                    onCheckedChange = onIncludeExplorationChange,
+                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = Purple80)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Feature list
+        listOf(
+            "Visual hierarchy of concepts",
+            "Tap nodes to expand/collapse",
+            "AI-suggested topics to explore",
+            "Color-coded branches"
+        ).forEach { feature ->
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Purple80, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(feature, fontSize = 14.sp, color = TextSecondary)
+            }
+        }
+
+        if (errorMessage != null) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                errorMessage,
+                fontSize = 13.sp,
+                color = AccentRed,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(AccentRed.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                    .padding(12.dp)
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = onGenerate,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = Purple80),
+            shape = RoundedCornerShape(28.dp)
+        ) {
+            Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Generate Mind Map", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        }
+
+        Spacer(Modifier.height(32.dp))
+    }
+}
+
+@Composable
+private fun MindMapBranchCard(
+    branch: com.kreativekoala.scribeai.data.models.MindMapNode,
+    children: List<com.kreativekoala.scribeai.data.models.MindMapNode>,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val branchColors = listOf(Purple80, Color(0xFF3B82F6), Color(0xFF10B981), Color(0xFFEF4444), Color(0xFFF59E0B))
+    val colorIndex = branch.id.hashCode().and(0x7FFFFFFF) % branchColors.size
+    val branchColor = branchColors[colorIndex]
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(2.dp, branchColor.copy(alpha = 0.6f))
+    ) {
+        Column {
+            // Branch header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onToggle)
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(branchColor, androidx.compose.foundation.shape.CircleShape)
+                )
+                Spacer(Modifier.width(10.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(branch.label, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    if (branch.content.isNotBlank()) {
+                        Text(branch.content, fontSize = 12.sp, color = TextSecondary, maxLines = 2)
+                    }
+                }
+                if (children.isNotEmpty()) {
+                    Icon(
+                        if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = TextSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            // Children nodes
+            AnimatedVisibility(visible = isExpanded && children.isNotEmpty(), enter = expandVertically(), exit = shrinkVertically()) {
+                Column(modifier = Modifier.padding(start = 24.dp, end = 12.dp, bottom = 12.dp)) {
+                    children.forEach { child ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Box(
+                                modifier = Modifier.padding(top = 6.dp).size(6.dp).background(branchColor.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Column {
+                                Text(child.label, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                                if (child.content.isNotBlank()) {
+                                    Text(child.content, fontSize = 12.sp, color = TextSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploratoryNodeCard(node: com.kreativekoala.scribeai.data.models.MindMapNode) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Purple80.copy(alpha = 0.08f)),
+        shape = RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Lightbulb, contentDescription = null, tint = Purple80, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(node.label, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Purple80)
+                if (node.content.isNotBlank()) {
+                    Text(node.content, fontSize = 12.sp, color = TextSecondary)
+                }
+            }
+            Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Purple80.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
         }
     }
 }

@@ -1,0 +1,325 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">Trang chủ</string>
+    <string name="menu">Menu</string>
+    <string name="menu_language">Ngôn ngữ</string>
+    <string name="menu_appearance">Giao diện</string>
+    <string name="menu_sign_out">Đăng xuất</string>
+    <string name="menu_delete_account">Xóa tài khoản</string>
+    <string name="add">Thêm</string>
+    <string name="no_notes_yet">Chưa có ghi chú nào</string>
+    <string name="tap_to_create_first_note">Nhấn + để tạo ghi chú đầu tiên</string>
+    <string name="notes_count_format">%1$d trong %2$d ghi chú</string>
+    <string name="load_more_notes">Tải thêm ghi chú</string>
+    <string name="error_loading_notes">Lỗi khi tải ghi chú</string>
+    <string name="retry">Thử lại</string>
+    <string name="account_deletion_requested">Yêu cầu xóa tài khoản đã được gửi. Bạn sẽ được đăng xuất.</string>
+    <string name="error_delete_account">Không thể xóa tài khoản: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">Chọn ngôn ngữ</string>
+    <string name="language_subtitle">Nội dung do AI tạo sẽ bằng ngôn ngữ này</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Hủy</string>
+
+    <!-- Note Card -->
+    <string name="more">Thêm</string>
+    <string name="edit_title">Sửa tiêu đề</string>
+    <string name="delete">Xóa</string>
+    <string name="delete_note">Xóa ghi chú?</string>
+    <string name="delete_note_message">Bạn có chắc muốn xóa \"%s\" không? Hành động này không thể hoàn tác.</string>
+    <string name="delete_note_detail_message">Bạn có chắc muốn xóa ghi chú này không? Hành động này không thể hoàn tác.</string>
+    <string name="label_title">Tiêu đề</string>
+    <string name="save">Lưu</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">Ghi âm hoặc tải lên âm thanh</string>
+    <string name="youtube_video">Video YouTube</string>
+    <string name="upload_document">Tải lên tài liệu</string>
+    <string name="upload_document_subtitle">Bất kỳ PDF, DOCX, PPT, TXT nào!</string>
+    <string name="scan_text">Quét văn bản</string>
+    <string name="scan_text_subtitle">Bất kỳ hình ảnh nào có văn bản</string>
+    <string name="join_meeting">Tham gia cuộc họp</string>
+    <string name="join_meeting_subtitle">Ghi lại Zoom, Meet, Teams, Webex</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">Quay lại</string>
+    <string name="more_options">Tùy chọn khác</string>
+    <string name="share">Chia sẻ</string>
+    <string name="share_note">Chia sẻ ghi chú</string>
+    <string name="tab_notes">Ghi chú</string>
+    <string name="tab_chat">Trò chuyện</string>
+    <string name="tab_quiz">Trắc nghiệm</string>
+    <string name="tab_cards">Thẻ</string>
+    <string name="formatting_notes">Đang định dạng ghi chú\u2026</string>
+    <string name="formatted">Đã định dạng</string>
+    <string name="raw">Thô</string>
+    <string name="source_label">Nguồn: %s</string>
+    <string name="open_source_link">Mở nguồn</string>
+    <string name="characters_words_format">%1$s ký tự \u2022 %2$s từ</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">Video YouTube</string>
+    <string name="source_audio_recording">Bản ghi âm</string>
+    <string name="source_pdf_document">Tài liệu PDF</string>
+    <string name="source_scanned_document">Tài liệu quét</string>
+    <string name="source_image">Hình ảnh</string>
+    <string name="source_text">Văn bản</string>
+
+    <!-- Summary Section -->
+    <string name="summary">Tóm tắt</string>
+    <string name="generating_summary">Đang tạo tóm tắt\u2026</string>
+    <string name="regenerate">Tạo lại</string>
+    <string name="no_summary_yet">Chưa có tóm tắt</string>
+    <string name="generate_summary">Tạo tóm tắt</string>
+    <string name="no_summary_available">Không có tóm tắt</string>
+    <string name="summary_length">Độ dài tóm tắt</string>
+    <string name="create_summary_description">Tạo tóm tắt ngắn gọn cho ghi chú của bạn</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">Nhập tin nhắn\u2026</string>
+    <string name="send">Gửi</string>
+    <string name="voice_mode">Chế độ giọng nói</string>
+    <string name="text_mode">Chế độ văn bản</string>
+    <string name="ask_about_notes">Hỏi bất cứ điều gì về ghi chú của bạn</string>
+    <string name="ask_about_notes_description">Tôi có thể giúp bạn hiểu, phân tích hoặc tìm thông tin cụ thể trong ghi chú của bạn.</string>
+    <string name="suggested_questions">Câu hỏi gợi ý:</string>
+    <string name="chat_suggestion_summarize">Tóm tắt các điểm chính</string>
+    <string name="chat_suggestion_explain">Giải thích các khái niệm chính</string>
+    <string name="chat_suggestion_test">Kiểm tra tôi về tài liệu này</string>
+    <string name="listening">Đang nghe\u2026</string>
+    <string name="tap_to_speak">Nhấn để nói</string>
+    <string name="speaking">Đang nói\u2026</string>
+    <string name="stop_speaking">Dừng nói</string>
+    <string name="could_not_open_link">Không thể mở liên kết</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">Tạo trắc nghiệm</string>
+    <string name="generate_quiz_description">Tạo trắc nghiệm để kiểm tra kiến thức</string>
+    <string name="generating_quiz">Đang tạo trắc nghiệm\u2026</string>
+    <string name="question_count_format">Câu hỏi %1$d trên %2$d</string>
+    <string name="check_answer">Kiểm tra đáp án</string>
+    <string name="next_question">Câu hỏi tiếp theo</string>
+    <string name="correct">Đúng!</string>
+    <string name="incorrect">Sai</string>
+    <string name="correct_answer_is">Đáp án đúng là: %s</string>
+    <string name="quiz_complete">Hoàn thành trắc nghiệm!</string>
+    <string name="quiz_score_format">Bạn đạt %1$d trên %2$d</string>
+    <string name="try_again">Thử lại</string>
+    <string name="new_quiz">Trắc nghiệm mới</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">Tạo thẻ ghi nhớ</string>
+    <string name="generate_flashcards_description">Tạo thẻ ghi nhớ để học</string>
+    <string name="generating_flashcards">Đang tạo thẻ ghi nhớ\u2026</string>
+    <string name="flashcard_count_format">Thẻ %1$d trên %2$d</string>
+    <string name="tap_to_flip">Nhấn để lật</string>
+    <string name="previous">Trước</string>
+    <string name="next">Tiếp</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">Chào mừng trở lại</string>
+    <string name="sign_in_to_continue">Đăng nhập để tiếp tục</string>
+    <string name="continue_with_google">Tiếp tục với Google</string>
+    <string name="or_divider">  hoặc  </string>
+    <string name="email">Email</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">Mật khẩu</string>
+    <string name="enter_password">Nhập mật khẩu của bạn</string>
+    <string name="hide_password">Ẩn mật khẩu</string>
+    <string name="show_password">Hiện mật khẩu</string>
+    <string name="sign_in">Đăng nhập</string>
+    <string name="forgot_password">Quên mật khẩu?</string>
+    <string name="no_account">Chưa có tài khoản? </string>
+    <string name="sign_up">Đăng ký</string>
+    <string name="error_invalid_credentials">Email hoặc mật khẩu không đúng. Vui lòng thử lại.</string>
+    <string name="error_email_not_confirmed">Vui lòng xác minh email trước khi đăng nhập.</string>
+    <string name="error_user_not_found">Không tìm thấy tài khoản với email này.</string>
+    <string name="error_network">Lỗi mạng. Vui lòng kiểm tra kết nối của bạn.</string>
+    <string name="error_no_google_account">Không tìm thấy tài khoản Google. Vui lòng thêm tài khoản Google vào thiết bị của bạn.</string>
+    <string name="error_google_signin_failed">Đăng nhập Google thất bại</string>
+    <string name="error_email_required">Vui lòng nhập email của bạn</string>
+    <string name="error_invalid_email">Vui lòng nhập địa chỉ email hợp lệ</string>
+    <string name="error_password_required">Vui lòng nhập mật khẩu của bạn</string>
+    <string name="error_password_too_short">Mật khẩu phải có ít nhất 6 ký tự</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">Đã gửi email!</string>
+    <string name="reset_password">Đặt lại mật khẩu</string>
+    <string name="reset_email_sent">Chúng tôi đã gửi liên kết đặt lại mật khẩu đến:</string>
+    <string name="check_inbox">Vui lòng kiểm tra hộp thư đến và thư mục spam.</string>
+    <string name="reset_password_instruction">Nhập địa chỉ email và chúng tôi sẽ gửi cho bạn liên kết để đặt lại mật khẩu.</string>
+    <string name="done">Xong</string>
+    <string name="send_reset_link">Gửi liên kết đặt lại</string>
+    <string name="error_enter_valid_email">Vui lòng nhập email hợp lệ</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">Tạo tài khoản</string>
+    <string name="sign_up_subtitle">Đăng ký để bắt đầu</string>
+    <string name="at_least_6_characters">Ít nhất 6 ký tự</string>
+    <string name="confirm_password">Xác nhận mật khẩu</string>
+    <string name="reenter_password">Nhập lại mật khẩu</string>
+    <string name="already_have_account">Đã có tài khoản? </string>
+    <string name="error_valid_email">Vui lòng nhập email hợp lệ</string>
+    <string name="error_enter_password">Vui lòng nhập mật khẩu</string>
+    <string name="error_confirm_password">Vui lòng xác nhận mật khẩu</string>
+    <string name="error_passwords_mismatch">Mật khẩu không khớp</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">Ghi âm</string>
+    <string name="record_audio_subtitle">Ghi âm bài giảng, cuộc họp hoặc ghi chú.\nChúng tôi sẽ chuyển đổi và tạo tài liệu học tập.</string>
+    <string name="grant_microphone_permission">Cấp quyền micro</string>
+    <string name="start_recording">Bắt đầu ghi âm</string>
+    <string name="tap_to_start_recording">Nhấn để bắt đầu ghi âm</string>
+    <string name="recording_status">Đang ghi âm\u2026</string>
+    <string name="paused">Đã tạm dừng</string>
+    <string name="discard">Hủy bỏ</string>
+    <string name="pause">Tạm dừng</string>
+    <string name="resume">Tiếp tục</string>
+    <string name="stop">Dừng</string>
+    <string name="recording_complete">Ghi âm hoàn tất</string>
+    <string name="duration_format">Thời lượng: %s</string>
+    <string name="title_optional">Tiêu đề (tùy chọn)</string>
+    <string name="title_placeholder">VD: Bài giảng Sinh học</string>
+    <string name="process_recording">Xử lý bản ghi</string>
+    <string name="discard_recording">Hủy bản ghi</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">Đang tải lên âm thanh</string>
+    <string name="step_transcribing_audio">Đang chuyển đổi âm thanh</string>
+    <string name="step_identifying_speakers">Đang nhận diện người nói</string>
+    <string name="step_analyzing_content">Đang phân tích nội dung</string>
+    <string name="step_summarizing_key_points">Đang tóm tắt điểm chính</string>
+    <string name="step_finalizing_note">Đang hoàn thiện ghi chú</string>
+    <string name="upload_complete_safe">Tải lên hoàn tất. Bạn có thể rời đi an toàn.</string>
+    <string name="processing_info">Ghi chú thường mất vài phút để tạo. Bạn có thể rời khỏi màn hình này và quay lại sau.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">Ghi chú của bạn đã sẵn sàng!</string>
+    <string name="note_ready_description">Chúng tôi đã chuyển đổi bản ghi âm và tạo tài liệu học tập.</string>
+    <string name="view_note">Xem ghi chú</string>
+    <string name="go_to_home">Về trang chủ</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">Đã xảy ra lỗi</string>
+    <string name="try_again_button">Thử lại</string>
+    <string name="go_back">Quay lại</string>
+    <string name="error_not_authenticated">Chưa xác thực</string>
+    <string name="error_upload_failed">Không thể tải lên âm thanh</string>
+    <string name="error_transcribe_failed">Không thể chuyển đổi âm thanh</string>
+    <string name="error_start_recording">Không thể bắt đầu ghi âm: %s</string>
+    <string name="error_stop_recording">Không thể dừng ghi âm: %s</string>
+    <string name="error_processing_failed">Xử lý thất bại</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">Đóng</string>
+    <string name="unlock_pro">Mở khóa Scribe AI Pro</string>
+    <string name="unlimited_access">Truy cập không giới hạn mọi tính năng</string>
+    <string name="feature_unlimited_notes">Ghi chú không giới hạn từ mọi nguồn</string>
+    <string name="feature_ai_summaries">Tóm tắt &amp; trắc nghiệm bằng AI</string>
+    <string name="feature_flashcards">Tạo thẻ ghi nhớ</string>
+    <string name="feature_ai_chat">Trò chuyện AI với ghi chú</string>
+    <string name="feature_mind_map">Bản đồ tư duy</string>
+    <string name="feature_podcast">Tạo podcast âm thanh</string>
+    <string name="plan_yearly">Hàng năm</string>
+    <string name="plan_monthly">Hàng tháng</string>
+    <string name="per_month_format">%s/tháng</string>
+    <string name="save_percent_format">Tiết kiệm %d%%</string>
+    <string name="loading_plans">Đang tải gói\u2026</string>
+    <string name="continue_button">Tiếp tục</string>
+    <string name="restore_purchases">Khôi phục giao dịch mua</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">Bạn có chắc không?</string>
+    <string name="lose_access">Bạn sẽ mất quyền truy cập vào:</string>
+    <string name="stat_notes_created">ghi chú đã tạo</string>
+    <string name="stat_quizzes_generated">trắc nghiệm đã tạo</string>
+    <string name="stat_flashcards_created">thẻ ghi nhớ đã tạo</string>
+    <string name="stat_audio_hours">giờ nội dung âm thanh</string>
+    <string name="stay_signed_in">Giữ đăng nhập</string>
+    <string name="sign_out_anyway">Vẫn đăng xuất</string>
+    <string name="delete_account">Xóa tài khoản?</string>
+    <string name="delete_account_warning">Không thể hoàn tác.\nBạn sẽ mất vĩnh viễn:</string>
+    <string name="keep_my_account">Giữ tài khoản</string>
+    <string name="delete_anyway">Vẫn xóa</string>
+    <string name="before_you_go">Trước khi bạn đi\u2026</string>
+    <string name="feedback_reason">Giúp chúng tôi cải thiện bằng cách cho biết lý do bạn rời đi</string>
+    <string name="delete_my_account">Xóa tài khoản của tôi</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Bạn thích Scribe AI?</string>
+    <string name="review_subtitle">Scribe AI có giúp bạn học nhanh hơn và tốt hơn không?</string>
+    <string name="yes_love_it">Có, tôi rất thích!</string>
+    <string name="not_yet">Chưa</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">URL YouTube</string>
+    <string name="paste_youtube_url">Dán URL video YouTube</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">Dán từ bộ nhớ tạm</string>
+    <string name="create_note">Tạo ghi chú</string>
+    <string name="invalid_youtube_url">Vui lòng nhập URL YouTube hợp lệ</string>
+    <string name="creating_note">Đang tạo ghi chú\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">Tải lên tài liệu</string>
+    <string name="tap_to_select">Nhấn để chọn tệp</string>
+    <string name="supported_formats">Hỗ trợ PDF, DOCX, PPT, TXT</string>
+    <string name="file_selected">Đã chọn tệp</string>
+    <string name="uploading">Đang tải lên\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">Quét tài liệu</string>
+    <string name="grant_permission">Cấp quyền</string>
+    <string name="scan_another_page">Quét trang khác</string>
+    <string name="save_with_count">Lưu (%d)</string>
+    <string name="dismiss">Đóng</string>
+    <string name="scanned_pages_format">Đã quét %d trang</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">Tham gia cuộc họp</string>
+    <string name="meeting_link">Liên kết cuộc họp</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">Tiêu đề (tùy chọn)</string>
+    <string name="meeting_title_placeholder">VD: Họp nhóm hàng ngày</string>
+    <string name="send_bot">Gửi Bot</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">Bot cuộc họp</string>
+    <string name="no_meetings">Chưa có cuộc họp</string>
+    <string name="no_meetings_hint">Tham gia cuộc họp để được ghi lại và chuyển đổi</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">Chọn chủ đề</string>
+    <string name="theme_system">Mặc định hệ thống</string>
+    <string name="theme_light">Sáng</string>
+    <string name="theme_dark">Tối</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">Token gỡ lỗi</string>
+    <string name="copy_token">Sao chép token vào bộ nhớ tạm</string>
+    <string name="token_copied">Đã sao chép token!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">Đang tải\u2026</string>
+    <string name="error_label">Lỗi</string>
+    <string name="generate">Tạo</string>
+
+    <!-- Language Picker -->
+    <string name="language">Ngôn ngữ</string>
+    <string name="language_picker_title">Chọn ngôn ngữ</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

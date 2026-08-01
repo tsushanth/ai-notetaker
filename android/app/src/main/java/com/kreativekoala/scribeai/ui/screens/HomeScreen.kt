@@ -3,6 +3,7 @@ package com.kreativekoala.scribeai.ui.screens
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,10 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import android.content.Context
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.models.DeletionReason
 import com.kreativekoala.scribeai.data.models.Note
@@ -37,6 +40,9 @@ import com.kreativekoala.scribeai.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import com.kreativekoala.scribeai.utils.SubscriptionManager
+import com.kreativekoala.paywallkit.models.PaywallFeature
+import com.kreativekoala.paywallkit.models.PaywallTheme
+import com.kreativekoala.paywallkit.view.PaywallPreview
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,16 +57,23 @@ fun HomeScreen(
     onUploadDocument: () -> Unit,
     onScanDocument: () -> Unit,
     onMeetings: () -> Unit = {},
+    onPhone: () -> Unit = {},
     onDebugToken: () -> Unit = {},
     onSignOut: () -> Unit = {}
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) }
     var showPaywall by remember { mutableStateOf(false) }
+    // Distinguishes the soft upsell (user tapped "Upgrade to Pro") from the
+    // hard gate (user hit the free notebook limit). Hard-gate hides the close
+    // button + blocks back so the user must convert or background the app.
+    var paywallIsHardGate by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
+    var tapCount by remember { mutableIntStateOf(0) }
+    var showPaywallPreview by remember { mutableStateOf(false) }
 
     // Retention dialog state
     var userStats by remember { mutableStateOf<UserStats?>(null) }
@@ -78,7 +91,6 @@ fun HomeScreen(
     // Observe states
     val uiState by viewModel.uiState.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
-    val shouldShowPaywall by viewModel.shouldShowPaywall.collectAsState()
     val subscriptionState by subscriptionManager.subscriptionState.collectAsState()
 
     val coroutineScope = rememberCoroutineScope()
@@ -113,11 +125,6 @@ fun HomeScreen(
         Log.d("HomeScreen", "🟡 authToken changed: ${authToken?.take(20)}...")
     }
 
-    // Show paywall when triggered by ViewModel
-    LaunchedEffect(shouldShowPaywall) {
-        showPaywall = shouldShowPaywall
-    }
-
     LaunchedEffect(Unit) {
         try {
             Log.d("HomeScreen", "=== HomeScreen Starting ===")
@@ -139,6 +146,23 @@ fun HomeScreen(
         }
     }
 
+    if (showPaywallPreview) {
+        PaywallPreview(
+            appId = "scribeai",
+            appName = "ScribeAI",
+            features = listOf(
+                PaywallFeature("\uD83D\uDCDD", "Unlimited Notes"),
+                PaywallFeature("\uD83C\uDFA4", "Transcription"),
+                PaywallFeature("\uD83E\uDD16", "AI Summaries"),
+                PaywallFeature("\uD83D\uDCC1", "Organization"),
+                PaywallFeature("☁\uFE0F", "Cloud Sync")
+            ),
+            theme = PaywallTheme(accent = Color(0xFF6C63FF), accent2 = Color(0xFF9C27B0)),
+            onDone = { showPaywallPreview = false }
+        )
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -152,44 +176,16 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            "SCRIBE AI",  // FIXED: Capitalized
+                            stringResource(R.string.app_title),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 },
                 actions = {
-                    // Subscription badge
-                    if (isSubscribed) {
-                        Surface(
-                            color = Purple80,
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.padding(end = 8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(14.dp),
-                                    tint = Color.White
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(
-                                    "PRO",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-
                     // Menu button with dropdown
                     IconButton(onClick = { showMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.menu))
                     }
 
                     DropdownMenu(
@@ -198,9 +194,10 @@ fun HomeScreen(
                     ) {
                         if (!isSubscribed) {
                             DropdownMenuItem(
-                                text = { Text("Upgrade to Pro") },
+                                text = { Text(stringResource(R.string.menu_upgrade_pro), color = Purple80, fontWeight = FontWeight.SemiBold) },
                                 onClick = {
                                     showMenu = false
+                                    paywallIsHardGate = false
                                     showPaywall = true
                                 },
                                 leadingIcon = {
@@ -208,10 +205,22 @@ fun HomeScreen(
                                 }
                             )
                             HorizontalDivider()
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.menu_manage_subscription)) },
+                                onClick = {
+                                    showMenu = false
+                                    paywallIsHardGate = false
+                                    showPaywall = true
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = Purple80)
+                                }
+                            )
+                            HorizontalDivider()
                         }
-
                         DropdownMenuItem(
-                            text = { Text("Language") },
+                            text = { Text(stringResource(R.string.menu_language)) },
                             onClick = {
                                 showMenu = false
                                 showLanguageDialog = true
@@ -223,7 +232,7 @@ fun HomeScreen(
                         HorizontalDivider()
 
                         DropdownMenuItem(
-                            text = { Text("Appearance") },
+                            text = { Text(stringResource(R.string.menu_appearance)) },
                             onClick = {
                                 showMenu = false
                                 showThemeDialog = true
@@ -235,7 +244,7 @@ fun HomeScreen(
                         HorizontalDivider()
 
                         DropdownMenuItem(
-                            text = { Text("Sign Out") },
+                            text = { Text(stringResource(R.string.menu_sign_out)) },
                             onClick = {
                                 showMenu = false
                                 // Load stats and show retention dialog
@@ -253,7 +262,7 @@ fun HomeScreen(
                         HorizontalDivider()
 
                         DropdownMenuItem(
-                            text = { Text("Delete Account", color = AccentRed) },
+                            text = { Text(stringResource(R.string.menu_delete_account), color = AccentRed) },
                             onClick = {
                                 showMenu = false
                                 // Load stats and show retention dialog
@@ -266,6 +275,20 @@ fun HomeScreen(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.DeleteForever, contentDescription = null, tint = AccentRed)
+                            }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("v1.0.0", color = Color.Gray) },
+                            onClick = {
+                                tapCount++
+                                if (tapCount >= 5) {
+                                    showMenu = false
+                                    showPaywallPreview = true
+                                }
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Info, contentDescription = null, tint = Color.Gray)
                             }
                         )
                     }
@@ -283,6 +306,9 @@ fun HomeScreen(
                         if (subscriptionManager.canCreateNotebook()) {
                             showCreateSheet = true
                         } else {
+                            // Hard gate — user has hit the free notebook limit.
+                            // Block dismissal so they must convert or background.
+                            paywallIsHardGate = true
                             showPaywall = true
                         }
                     }
@@ -294,7 +320,7 @@ fun HomeScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
+                    contentDescription = stringResource(R.string.add),
                     modifier = Modifier.size(32.dp)
                 )
             }
@@ -316,55 +342,14 @@ fun HomeScreen(
             ) {
                 Column {
                     Text(
-                        "Home",
+                        stringResource(R.string.home),
                         fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
 
-                    // Show usage for free users (based on lifetime count)
-                    if (!isSubscribed) {
-                        Spacer(Modifier.height(4.dp))
-                        val remaining = subscriptionManager.getRemainingFreeNotebooks()
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                if (remaining > 0)
-                                    "$remaining free notebook${if (remaining > 1) "s" else ""} remaining"
-                                else
-                                    "Free limit reached",
-                                fontSize = 13.sp,
-                                color = if (remaining == 0) AccentRed else TextSecondary
-                            )
-                            if (remaining == 0) {
-                                Spacer(Modifier.width(8.dp))
-                                TextButton(
-                                    onClick = { showPaywall = true },
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-                                ) {
-                                    Text(
-                                        "Upgrade",
-                                        fontSize = 12.sp,
-                                        color = Purple80
-                                    )
-                                }
-                            }
-                        }
-                    }
                 }
 
-                // FIXED: New Folder button now shows "Coming Soon" toast
-                OutlinedButton(
-                    onClick = {
-                        Toast.makeText(context, "Folders coming soon!", Toast.LENGTH_SHORT).show()
-                    },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Purple80
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text("New Folder")
-                }
             }
 
             // Notes List
@@ -398,53 +383,16 @@ fun HomeScreen(
                                 )
                                 Spacer(Modifier.height(16.dp))
                                 Text(
-                                    "No notes yet",
+                                    stringResource(R.string.no_notes_yet),
                                     fontSize = 18.sp,
                                     color = TextSecondary
                                 )
                                 Text(
-                                    "Tap + to create your first note",
+                                    stringResource(R.string.tap_to_create_first_note),
                                     fontSize = 14.sp,
                                     color = TextTertiary
                                 )
 
-                                if (!isSubscribed) {
-                                    Spacer(Modifier.height(24.dp))
-                                    val remaining = subscriptionManager.getRemainingFreeNotebooks()
-                                    Card(
-                                        onClick = {
-                                            if (remaining == 0) {
-                                                showPaywall = true
-                                            }
-                                        },
-                                        colors = CardDefaults.cardColors(
-                                            containerColor = Purple80.copy(alpha = 0.1f)
-                                        )
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(16.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Icon(
-                                                if (remaining > 0) Icons.Default.Info else Icons.Default.Star,
-                                                contentDescription = null,
-                                                tint = Purple80,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                            Spacer(Modifier.height(8.dp))
-                                            Text(
-                                                if (remaining > 0)
-                                                    "You can create $remaining free notebook${if (remaining > 1) "s" else ""}"
-                                                else
-                                                    "Upgrade for unlimited notebooks →",
-                                                fontSize = 13.sp,
-                                                color = if (remaining > 0) TextSecondary else Purple80,
-                                                textAlign = TextAlign.Center,
-                                                fontWeight = if (remaining == 0) FontWeight.Medium else FontWeight.Normal
-                                            )
-                                        }
-                                    }
-                                }
                             }
                         }
                     } else {
@@ -462,7 +410,7 @@ fun HomeScreen(
                                 if (state.totalNotes > 0) {
                                     item {
                                         Text(
-                                            "${state.notes.size} of ${state.totalNotes} notes",
+                                            stringResource(R.string.notes_count_format, state.notes.size, state.totalNotes),
                                             fontSize = 13.sp,
                                             color = TextSecondary,
                                             modifier = Modifier.padding(bottom = 4.dp)
@@ -539,7 +487,7 @@ fun HomeScreen(
                                                         modifier = Modifier.size(18.dp)
                                                     )
                                                     Spacer(Modifier.width(8.dp))
-                                                    Text("Load More Notes")
+                                                    Text(stringResource(R.string.load_more_notes))
                                                 }
                                             }
                                         }
@@ -577,7 +525,7 @@ fun HomeScreen(
                             )
                             Spacer(Modifier.height(16.dp))
                             Text(
-                                "Error loading notes",
+                                stringResource(R.string.error_loading_notes),
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = TextPrimary
@@ -599,7 +547,7 @@ fun HomeScreen(
                                     containerColor = Purple80
                                 )
                             ) {
-                                Text("Retry")
+                                Text(stringResource(R.string.retry))
                             }
                         }
                     }
@@ -631,32 +579,27 @@ fun HomeScreen(
             onMeetings = {
                 showCreateSheet = false
                 onMeetings()
+            },
+            onPhone = {
+                showCreateSheet = false
+                onPhone()
             }
         )
     }
 
-    // Paywall
     if (showPaywall) {
         PaywallScreen(
             subscriptionManager = subscriptionManager,
             onDismiss = {
-                showPaywall = false
-                viewModel.dismissPaywall()
+                // Only honor dismiss for soft upsells. Hard-gate dismiss is a no-op
+                // (the BackHandler inside PaywallScreen swallows back too).
+                if (!paywallIsHardGate) showPaywall = false
             },
             onSubscribe = {
                 showPaywall = false
-                viewModel.dismissPaywall()
-                // Reload subscription state and notes
-                subscriptionManager.checkExistingSubscriptions()
-                subscriptionManager.refreshAccessStatus()
-                // Reload notes with fresh token
-                coroutineScope.launch {
-                    val token = authManager.getFreshToken()
-                    if (token != null) {
-                        viewModel.loadNotes(token, forceRefresh = true)
-                    }
-                }
-            }
+                paywallIsHardGate = false
+            },
+            dismissable = !paywallIsHardGate
         )
     }
 
@@ -691,12 +634,12 @@ fun HomeScreen(
                         Log.d("HomeScreen", "Delete account reason: ${reason.name}")
                         isDeletingAccount = false
                         showDeleteAccountDialog = false
-                        Toast.makeText(context, "Account deletion requested. You will be signed out.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.account_deletion_requested), Toast.LENGTH_LONG).show()
                         onSignOut()
                     } catch (e: Exception) {
                         Log.e("HomeScreen", "Delete account failed", e)
                         isDeletingAccount = false
-                        Toast.makeText(context, "Failed to delete account: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.error_delete_account, e.message ?: ""), Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -764,12 +707,12 @@ fun HomeScreen(
                 )
             },
             title = {
-                Text("Select Language")
+                Text(stringResource(R.string.select_language))
             },
             text = {
                 Column(modifier = Modifier.heightIn(max = 400.dp)) {
                     Text(
-                        "AI-generated content will be in this language",
+                        stringResource(R.string.language_subtitle),
                         fontSize = 14.sp,
                         color = TextSecondary,
                         modifier = Modifier.padding(bottom = 16.dp)
@@ -809,12 +752,12 @@ fun HomeScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showLanguageDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -901,7 +844,7 @@ fun NoteCard(
                 ) {
                     Icon(
                         Icons.Default.MoreVert,
-                        contentDescription = "More",
+                        contentDescription = stringResource(R.string.more),
                         tint = TextSecondary
                     )
                 }
@@ -911,7 +854,7 @@ fun NoteCard(
                     onDismissRequest = { showMenu = false }
                 ) {
                     DropdownMenuItem(
-                        text = { Text("Edit Title") },
+                        text = { Text(stringResource(R.string.edit_title)) },
                         onClick = {
                             showMenu = false
                             editedTitle = note.title
@@ -926,7 +869,7 @@ fun NoteCard(
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Delete") },
+                        text = { Text(stringResource(R.string.delete)) },
                         onClick = {
                             showMenu = false
                             showDeleteDialog = true
@@ -959,10 +902,10 @@ fun NoteCard(
                 )
             },
             title = {
-                Text("Delete Note?")
+                Text(stringResource(R.string.delete_note))
             },
             text = {
-                Text("Are you sure you want to delete \"${note.title}\"? This action cannot be undone.")
+                Text(stringResource(R.string.delete_note_message, note.title))
             },
             confirmButton = {
                 Button(
@@ -974,12 +917,12 @@ fun NoteCard(
                         containerColor = AccentRed
                     )
                 ) {
-                    Text("Delete")
+                    Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -997,13 +940,13 @@ fun NoteCard(
                 )
             },
             title = {
-                Text("Edit Title")
+                Text(stringResource(R.string.edit_title))
             },
             text = {
                 OutlinedTextField(
                     value = editedTitle,
                     onValueChange = { editedTitle = it },
-                    label = { Text("Title") },
+                    label = { Text(stringResource(R.string.label_title)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1016,12 +959,12 @@ fun NoteCard(
                     },
                     enabled = editedTitle.isNotBlank() && editedTitle != note.title
                 ) {
-                    Text("Save")
+                    Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditTitleDialog = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -1036,7 +979,8 @@ fun CreateOptionsBottomSheet(
     onYouTube: () -> Unit,
     onUploadDocument: () -> Unit,
     onScanDocument: () -> Unit,
-    onMeetings: () -> Unit = {}
+    onMeetings: () -> Unit = {},
+    onPhone: () -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
@@ -1056,35 +1000,42 @@ fun CreateOptionsBottomSheet(
         ) {
             CreateOption(
                 icon = Icons.Default.Mic,
-                title = "Record or upload audio",
+                title = stringResource(R.string.record_or_upload),
                 onClick = onRecordAudio
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.VideoLibrary,
-                title = "YouTube video",
+                title = stringResource(R.string.youtube_video),
                 onClick = onYouTube
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.Description,
-                title = "Upload document",
-                subtitle = "Any PDF, DOCX, PPT, TXT, etc!",
+                title = stringResource(R.string.upload_document),
+                subtitle = stringResource(R.string.upload_document_subtitle),
                 onClick = onUploadDocument
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.CameraAlt,
-                title = "Scan Text",
-                subtitle = "Any image with text",
+                title = stringResource(R.string.scan_text),
+                subtitle = stringResource(R.string.scan_text_subtitle),
                 onClick = onScanDocument
             )
             Spacer(Modifier.height(12.dp))
             CreateOption(
                 icon = Icons.Default.Videocam,
-                title = "Join Meeting",
-                subtitle = "Record Zoom, Meet, Teams, Webex",
+                title = stringResource(R.string.join_meeting),
+                subtitle = stringResource(R.string.join_meeting_subtitle),
                 onClick = onMeetings
+            )
+            Spacer(Modifier.height(12.dp))
+            CreateOption(
+                icon = Icons.Default.Phone,
+                title = "Phone Call",
+                subtitle = "Place a recorded call, transcript saved to your notes",
+                onClick = onPhone
             )
         }
     }
@@ -1198,3 +1149,4 @@ private suspend fun loadUserStats(token: String?, onResult: (UserStats?) -> Unit
         onResult(null)
     }
 }
+

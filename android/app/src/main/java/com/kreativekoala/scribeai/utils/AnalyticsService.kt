@@ -189,6 +189,36 @@ object AnalyticsService {
     // MARK: - Core Tracking (Fire and Forget)
 
     /**
+     * Track a custom event by name string (convenience for ad-hoc events)
+     */
+    fun trackEvent(eventName: String, properties: Map<String, Any>? = null) {
+        scope.launch {
+            try {
+                val eventData = JSONObject().apply {
+                    put("event", eventName)
+                    put("timestamp", isoFormatter.format(Date()))
+                    put("user_id", prefs?.getString(Keys.USER_ID, "unknown") ?: "unknown")
+                    put("app_version", getAppVersion())
+                    put("days_since_install", daysSinceInstall)
+                    put("has_reached_value", hasReachedValue)
+                    put("success_actions_count", successActionsCount)
+
+                    if (properties != null) {
+                        put("properties", JSONObject(properties))
+                    }
+                }
+                bufferEvent(eventData)
+
+                if (BuildConfig.DEBUG) {
+                    Log.d(TAG, "📊 $eventName")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to track event: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Track event - completely non-blocking
      */
     fun track(event: Event, properties: Map<String, Any>? = null) {
@@ -266,7 +296,7 @@ object AnalyticsService {
                     return@launch
                 }
 
-                val url = "${BuildConfig.BASE_URL}/api/analytics/batch"
+                val url = "${BuildConfig.BASE_URL.trimEnd('/')}/api/analytics/batch"
 
                 val eventsArray = JSONArray().apply {
                     events.forEach { put(it) }

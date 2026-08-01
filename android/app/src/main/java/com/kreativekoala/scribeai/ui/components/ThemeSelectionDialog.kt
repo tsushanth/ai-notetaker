@@ -10,10 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AppTheme
 import com.kreativekoala.scribeai.utils.ThemeManager
@@ -40,7 +42,7 @@ fun ThemeSelectionDialog(
             ) {
                 // Title
                 Text(
-                    text = "Appearance",
+                    text = stringResource(R.string.select_theme),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
@@ -49,7 +51,7 @@ fun ThemeSelectionDialog(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "Choose how the app looks",
+                    text = stringResource(R.string.menu_appearance),
                     fontSize = 14.sp,
                     color = TextSecondary
                 )
@@ -86,7 +88,7 @@ fun ThemeSelectionDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                 ) {
                     Text(
-                        text = "Done",
+                        text = stringResource(R.string.cancel),
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )

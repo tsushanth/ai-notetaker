@@ -570,26 +570,116 @@ struct NoteCard: View {
 }
 
 struct EmptyStateView: View {
+    @State private var showingYouTube = false
+    @State private var showingUpload = false
+    @State private var showingScanner = false
+    @State private var showingRecording = false
+
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 24) {
             Spacer()
-            
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.system(size: 64))
-                .foregroundColor(.textTertiary)
-            
-            Text("No notes yet")
-                .font(.system(size: 20, weight: .semibold))
-                .foregroundColor(.textPrimary)
-            
-            Text("Tap the + button to create your first note")
-                .font(.system(size: 14))
-                .foregroundColor(.textSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            
+
+            VStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 48))
+                    .foregroundColor(.purple80)
+
+                Text("What do you want to summarize?")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundColor(.textPrimary)
+                    .multilineTextAlignment(.center)
+
+                Text("Paste a YouTube link, upload a PDF, or record audio — Scribe AI turns it into notes in seconds.")
+                    .font(.system(size: 14))
+                    .foregroundColor(.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+            }
+
+            VStack(spacing: 12) {
+                EmptyStateCTA(
+                    icon: "play.rectangle.fill",
+                    title: "Paste a YouTube link",
+                    subtitle: "Lectures, tutorials, podcasts",
+                    iconColor: .red
+                ) { showingYouTube = true }
+
+                EmptyStateCTA(
+                    icon: "doc.fill",
+                    title: "Upload a PDF",
+                    subtitle: "Articles, papers, study notes",
+                    iconColor: .blue
+                ) { showingUpload = true }
+
+                EmptyStateCTA(
+                    icon: "camera.fill",
+                    title: "Scan a document",
+                    subtitle: "Whiteboards, handouts, books",
+                    iconColor: .green
+                ) { showingScanner = true }
+
+                EmptyStateCTA(
+                    icon: "mic.fill",
+                    title: "Record audio",
+                    subtitle: "Voice notes, meetings",
+                    iconColor: .purple80
+                ) { showingRecording = true }
+            }
+            .padding(.horizontal, 20)
+
             Spacer()
         }
+        .sheet(isPresented: $showingYouTube) { YouTubeInputView() }
+        .sheet(isPresented: $showingUpload) { UploadOptionsView() }
+        .sheet(isPresented: $showingRecording) { AudioRecordingView() }
+        .fullScreenCover(isPresented: $showingScanner) {
+            ScannerViewWithProcessing(
+                onComplete: { _ in showingScanner = false },
+                onError: { _ in showingScanner = false },
+                onCancel: { showingScanner = false }
+            )
+        }
+    }
+}
+
+private struct EmptyStateCTA: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let iconColor: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 14) {
+                Image(systemName: icon)
+                    .font(.system(size: 22))
+                    .foregroundColor(iconColor)
+                    .frame(width: 40, height: 40)
+                    .background(iconColor.opacity(0.15))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.textPrimary)
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(.textSecondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.textTertiary)
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(Color.cardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
     }
 }
 

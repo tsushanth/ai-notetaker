@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import PaywallKit
 
 // MARK: - Subscription Gate Manager
 
@@ -15,8 +16,11 @@ class SubscriptionGateManager: ObservableObject {
 
     private let defaults = UserDefaults.standard
 
-    // Trial configuration
-    static let trialDays = 7
+    // Trial configuration — set to 0 to disable auto-trial (paywall on first premium access)
+    static let trialDays = 0
+
+    // Free note creation limit — non-subscribers can only create this many notes
+    static let freeNoteLimit = 3
 
     private enum Keys {
         static let installDate = "analytics_install_date"  // Reuse from AnalyticsService
@@ -137,6 +141,20 @@ class SubscriptionGateManager: ObservableObject {
     /// Check if user can access premium features
     /// Returns true if subscribed OR within trial period
     var canAccessPremiumFeatures: Bool {
+        let result = computeHasAccess()
+        // Mirror to UserDefaults so non-MainActor code paths (e.g. URLRequest setup in
+        // APIService) can check premium status synchronously to gate the rate-limit
+        // bypass header without crossing actor boundaries.
+        UserDefaults.standard.set(result, forKey: "scribeai.hasPremiumAccess")
+        return result
+    }
+
+    private func computeHasAccess() -> Bool {
+        // Always trust StoreKit / PaywallKit entitlements first — these are ground truth
+        if StoreKitManager.shared.isSubscribed || StoreManager.shared.isPremium {
+            return true
+        }
+
         // Prefer server status if available
         if let serverStatus = serverAccessStatus {
             return serverStatus.hasAccess
@@ -144,14 +162,8 @@ class SubscriptionGateManager: ObservableObject {
 
         // SECURITY: If device has already used and expired a trial, deny access
         // This prevents reinstall abuse where users create new accounts on same device
-        if deviceTrialExpired && !StoreKitManager.shared.isSubscribed {
+        if deviceTrialExpired {
             return false
-        }
-
-        // Fall back to client-side check
-        // If subscribed, always allow
-        if StoreKitManager.shared.isSubscribed {
-            return true
         }
 
         // If within trial period, allow
@@ -165,10 +177,13 @@ class SubscriptionGateManager: ObservableObject {
 
     /// Check if user is subscribed (not just in trial)
     var isSubscribed: Bool {
+        if StoreKitManager.shared.isSubscribed || StoreManager.shared.isPremium {
+            return true
+        }
         if let serverStatus = serverAccessStatus {
             return serverStatus.isSubscribed
         }
-        return StoreKitManager.shared.isSubscribed
+        return false
     }
 
     /// Feature-specific access checks
@@ -189,6 +204,13 @@ class SubscriptionGateManager: ObservableObject {
     var canGeneratePodcasts: Bool {
         if let serverStatus = serverAccessStatus {
             return serverStatus.features.canGeneratePodcasts
+        }
+        return canAccessPremiumFeatures
+    }
+
+    var canExportNotes: Bool {
+        if let serverStatus = serverAccessStatus {
+            return serverStatus.features.canExportNotes ?? false
         }
         return canAccessPremiumFeatures
     }
@@ -222,6 +244,29 @@ class SubscriptionGateManager: ObservableObject {
 
     var usageLimits: UsageLimits? {
         return serverAccessStatus?.usage.limits
+    }
+
+    // MARK: - Free Note Creation Limit
+
+    private static let noteCountKey = "com.scribeai.noteCount"
+
+    /// Check if the user can create a new note (premium users always can; free users limited)
+    func canCreateNote() -> Bool {
+        guard !canAccessPremiumFeatures else { return true }
+        let count = defaults.integer(forKey: Self.noteCountKey)
+        return count < Self.freeNoteLimit
+    }
+
+    /// Record that a note was created (call after successful note creation)
+    func recordNoteCreation() {
+        let count = defaults.integer(forKey: Self.noteCountKey) + 1
+        defaults.set(count, forKey: Self.noteCountKey)
+    }
+
+    /// Number of free notes remaining
+    func remainingFreeNotes() -> Int {
+        let count = defaults.integer(forKey: Self.noteCountKey)
+        return max(0, Self.freeNoteLimit - count)
     }
 
     // MARK: - For debugging
@@ -279,25 +324,30 @@ struct SubscriptionGatedModifier: ViewModifier {
             if gateManager.canAccessPremiumFeatures {
                 content
             } else {
-                // Show paywall blocker
+                // Show lock screen but auto-present paywall sheet
                 TrialExpiredView(
                     featureName: featureName,
                     onSubscribe: {
-                        // Track paywall view from feature gate
-                        AnalyticsService.shared.trackPaywallViewed(source: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))")
                         showPaywall = true
                     }
                 )
+                .onAppear {
+                    // Auto-present paywall when gated feature is accessed
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if !showPaywall {
+                            AnalyticsService.shared.trackPaywallViewed(source: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))")
+                            showPaywall = true
+                        }
+                    }
+                }
             }
         }
         .sheet(isPresented: $showPaywall) {
-            NavigationView {
-                PaywallView(source: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))") {
-                    showPaywall = false
-                    // Refresh access status after purchase attempt
-                    Task {
-                        await SubscriptionGateManager.shared.refreshAccessStatus()
-                    }
+            ScribeRemotePaywallView(triggerSource: "feature_gate_\(featureName.lowercased().replacingOccurrences(of: " ", with: "_"))") {
+                showPaywall = false
+                Task {
+                    await StoreKitManager.shared.updateSubscriptionStatus()
+                    await SubscriptionGateManager.shared.refreshAccessStatus()
                 }
             }
         }
@@ -397,10 +447,8 @@ struct TrialBannerView: View {
                 )
             )
             .sheet(isPresented: $showPaywall) {
-                NavigationView {
-                    PaywallView(source: "trial_banner") {
-                        showPaywall = false
-                    }
+                ScribeRemotePaywallView(triggerSource: "trial_banner") {
+                    showPaywall = false
                 }
             }
         }

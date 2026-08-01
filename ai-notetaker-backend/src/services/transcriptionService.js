@@ -1,5 +1,5 @@
 const { supabase, supabaseAdmin } = require('../config/supabase');
-const { openai, MODELS } = require('../config/openai');
+const { MODELS } = require('../config/openai');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
@@ -121,17 +121,28 @@ class TranscriptionService {
         tempFilePath
       });
 
-      // Read the file and create a File object for OpenAI
+      // Transcribe with Deepgram
       const fileBuffer = await fs.readFile(tempFilePath);
-      const fileName = `audio_${recordingId}.${extension}`;
-      
-      // Transcribe with OpenAI Whisper
-      const transcription = await openai.audio.transcriptions.create({
-        file: new File([fileBuffer], fileName, { type: mimeType }),
-        model: MODELS.WHISPER,
-        language: 'en', // Can be made dynamic based on user preference
-        response_format: 'verbose_json'
+
+      const dgResponse = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&language=en&smart_format=true', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`,
+          'Content-Type': mimeType,
+        },
+        body: fileBuffer,
       });
+
+      if (!dgResponse.ok) {
+        const errText = await dgResponse.text();
+        throw new Error(`Deepgram API error (${dgResponse.status}): ${errText}`);
+      }
+
+      const dgResult = await dgResponse.json();
+      const transcription = {
+        text: dgResult.results?.channels?.[0]?.alternatives?.[0]?.transcript || '',
+        duration: dgResult.metadata?.duration || 0,
+      };
 
       // Clean up temp file
       await this.cleanupTempFile(tempFilePath);

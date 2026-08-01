@@ -16,6 +16,7 @@
 
 import SwiftUI
 import StoreKit
+import PaywallKit
 
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
@@ -84,6 +85,7 @@ struct PaywallView: View {
                 timeSpentSeconds: timeSpent,
                 selectedPlan: selectedProduct?.id
             )
+            PaywallCoordinator.shared.trackDismiss()
             dismiss()
         } label: {
             Image(systemName: "xmark")
@@ -540,6 +542,10 @@ struct PaywallView: View {
         Task {
             do {
                 try await storeManager.purchase(product)
+
+                TikTokHelper.shared.trackEvent("purchase_success", properties: ["product_id": product.id])
+                FacebookSDKHelper.shared.logSubscriptionStarted(productId: product.id, price: NSDecimalNumber(decimal: product.price).doubleValue, currency: product.priceFormatStyle.currencyCode ?? "USD")
+                PaywallManager.shared.trackEvent(appId: "scribeai", placement: "paywall", templateId: "default", event: "purchased", productId: product.id)
 
                 await MainActor.run {
                     isPurchasing = false

@@ -1,0 +1,4 @@
+- Removed podcast generation feature (temporarily disabled)
+- Fixed non-responsive UI elements
+- Fixed external payment policy compliance
+- Bug fixes and stability improvements

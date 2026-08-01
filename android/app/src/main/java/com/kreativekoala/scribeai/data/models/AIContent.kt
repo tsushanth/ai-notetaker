@@ -55,19 +55,19 @@ data class AIContentResponse(
 )
 
 data class PodcastStatusResponse(
-    val success: Boolean,
-    val data: PodcastStatus? = null
+    @SerializedName("success") val success: Boolean,
+    @SerializedName("data") val data: PodcastStatus? = null
 )
 
 data class PodcastStatus(
-    val status: String, // "generating", "ready", "not_found"
-    val message: String? = null,
-    val id: String? = null,
-    val audio_url: String? = null,
-    val script: String? = null,
-    val duration: String? = null,
-    val style: String? = null,
-    val note_id: String? = null
+    @SerializedName("status") val status: String,
+    @SerializedName("message") val message: String? = null,
+    @SerializedName("id") val id: String? = null,
+    @SerializedName("audio_url") val audio_url: String? = null,
+    @SerializedName("script") val script: String? = null,
+    @SerializedName("duration") val duration: String? = null,
+    @SerializedName("style") val style: String? = null,
+    @SerializedName("note_id") val note_id: String? = null
 )
 
 data class AIContentListResponse(
@@ -142,7 +142,92 @@ data class AIContentData(
     @SerializedName("image_url")
     val imageUrl: String? = null,
     @SerializedName("extracted_data")
-    val extractedData: InfographicExtractedData? = null
+    val extractedData: InfographicExtractedData? = null,
+    // Mind Map fields
+    @SerializedName("mind_map_title")
+    val mindMapTitle: String? = null,
+    @SerializedName("nodes")
+    val mindMapNodes: List<MindMapNode>? = null
+)
+
+// ============================================
+// Mind Map Models
+// ============================================
+
+data class MindMap(
+    val id: String,
+    val noteId: String,
+    val title: String,
+    val nodes: List<MindMapNode>,
+    val createdAt: String
+)
+
+data class MindMapNode(
+    val id: String,
+    val label: String,
+    val content: String,
+    val level: Int,
+    @SerializedName("parentId")
+    val parentId: String? = null,
+    val color: String? = null,
+    @SerializedName("isExploratory")
+    val isExploratory: Boolean = false
+)
+
+data class MindMapGenerateRequest(
+    @SerializedName("note_id")
+    val noteId: String,
+    @SerializedName("content_type")
+    val contentType: String = "mindmap",
+    val options: MindMapOptions? = null
+)
+
+data class MindMapOptions(
+    val language: String = "english",
+    @SerializedName("includeExploration")
+    val includeExploration: Boolean = true
+)
+
+data class MindMapResponse(
+    val success: Boolean,
+    val data: MindMapData? = null,
+    val error: String? = null
+)
+
+data class MindMapData(
+    val id: String? = null,
+    @SerializedName("note_id")
+    val noteId: String? = null,
+    val title: String? = null,
+    val nodes: List<MindMapNode>? = null,
+    @SerializedName("created_at")
+    val createdAt: String? = null
+)
+
+// ============================================
+// TTS Models
+// ============================================
+
+data class TTSGenerateRequest(
+    @SerializedName("note_id")
+    val noteId: String,
+    val voice: String = "nova",
+    val speed: Double = 1.0
+)
+
+data class TTSResponse(
+    val success: Boolean,
+    val data: TTSData? = null,
+    val error: String? = null
+)
+
+data class TTSData(
+    @SerializedName("audio_url")
+    val audioUrl: String,
+    val voice: String = "nova",
+    val speed: Double = 1.0,
+    @SerializedName("duration_seconds")
+    val durationSeconds: Int = 0
 )
 
 // MARK: - Infographic Models
@@ -326,6 +411,7 @@ data class FeatureAccess(
     val canCreateNotes: Boolean = true,
     val canUseAI: Boolean = true,
     val canGeneratePodcasts: Boolean = false,
+    val canExportNotes: Boolean = false,
     val unlimitedAccess: Boolean = false
 )
 
@@ -365,4 +451,32 @@ data class OnboardingPreferencesRequest(
     val userType: String?,
     @SerializedName("use_cases")
     val useCases: List<String>
+)
+
+data class CreateContentData(
+    val html: String,
+    val prompt: String? = null
+)
+
+data class CreateContentResponse(
+    val success: Boolean,
+    val data: CreateContentData? = null,
+    val error: String? = null
+)
+
+// On-device script-only generation
+data class PodcastScriptResponse(
+    val success: Boolean,
+    val data: PodcastScriptData? = null,
+    val error: String? = null
+)
+
+data class PodcastScriptData(
+    val id: String? = null,
+    @SerializedName("note_id")
+    val noteId: String? = null,
+    val script: String? = null,
+    val duration: String? = null,
+    val style: String? = null,
+    val status: String? = null
 )

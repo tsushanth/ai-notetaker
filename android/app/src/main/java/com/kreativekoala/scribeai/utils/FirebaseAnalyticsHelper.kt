@@ -113,6 +113,22 @@ object FirebaseAnalyticsHelper {
         logEvent("content_generated", params)
     }
 
+    fun logPaywallViewed(source: String? = null) {
+        val params = Bundle().apply {
+            source?.let { putString("source", it) }
+        }
+        logEvent("paywall_viewed", params)
+    }
+
+    fun logPurchaseCompleted(productId: String, revenue: Double? = null) {
+        val params = Bundle().apply {
+            putString("product_id", productId)
+            revenue?.let { putDouble(FirebaseAnalytics.Param.VALUE, it) }
+            putString(FirebaseAnalytics.Param.CURRENCY, "USD")
+        }
+        logEvent(FirebaseAnalytics.Event.PURCHASE, params)
+    }
+
     /**
      * Log subscription events
      */

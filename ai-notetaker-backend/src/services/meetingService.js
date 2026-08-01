@@ -145,6 +145,7 @@ class MeetingService {
       try {
         const recallStatus = await recallService.getBotStatus(activeBotRun.recall_bot_id);
         meeting.recallStatus = recallStatus;
+        await this.reconcileFromRecall(activeBotRun.recall_bot_id, recallStatus);
       } catch (e) {
         logger.warn('Failed to get Recall bot status', {
           botId: activeBotRun.recall_bot_id,
@@ -153,7 +154,57 @@ class MeetingService {
       }
     }
 
+    // Re-fetch the meeting if we may have just updated its status, so the
+    // response reflects the latest state to the client.
+    if (activeBotRun?.recall_bot_id) {
+      const { data: fresh } = await supabaseAdmin
+        .from('meetings')
+        .select(`*, bot_runs (*), meeting_recordings (*)`)
+        .eq('id', meetingId)
+        .eq('user_id', userId)
+        .single();
+      if (fresh) {
+        fresh.recallStatus = meeting.recallStatus;
+        return fresh;
+      }
+    }
+
     return meeting;
+  }
+
+  /**
+   * Bring DB state in sync with Recall.ai's current view of a bot.
+   *
+   * Recall.ai webhooks are configured at the account level via the dashboard.
+   * If they're missing or pointing at a stale URL, status updates never reach
+   * us and the meeting gets stuck in `bot_joining` even though the bot has
+   * already joined and is recording. We fix that by treating any polled status
+   * read as a synthetic webhook event and running it through the same handler.
+   *
+   * Idempotent — if a real webhook beats us to it, the rows already match and
+   * the update is a no-op write.
+   *
+   * @param {string} botId - Recall bot id
+   * @param {Object} recallStatus - Full bot detail from Recall.ai API
+   */
+  async reconcileFromRecall(botId, recallStatus) {
+    try {
+      const changes = recallStatus?.status_changes || [];
+      if (!changes.length) return;
+      const latest = changes[changes.length - 1];
+      const code = latest.code;
+      if (!code) return;
+
+      await this.handleBotStatusWebhook({
+        event: `bot.${code}`,
+        data: {
+          bot: { id: botId },
+          data: { code, created_at: latest.created_at, sub_code: latest.sub_code },
+        },
+      });
+    } catch (e) {
+      logger.warn('reconcileFromRecall failed', { botId, error: e.message });
+    }
   }
 
   /**
@@ -184,8 +235,41 @@ class MeetingService {
       throw new AppError('Failed to fetch meetings', 500);
     }
 
+    // Self-heal stuck meetings: for any meeting still in an active bot state,
+    // reconcile against Recall.ai. iOS polls this endpoint every 5s while a
+    // bot is active, so this is the path that drives status updates when the
+    // Recall webhook isn't firing.
+    const meetings = data || [];
+    const reconcileTargets = [];
+    for (const m of meetings) {
+      const active = m.bot_runs?.find((br) =>
+        ['joining', 'in_call', 'recording'].includes(br.status) && br.recall_bot_id
+      );
+      if (active) reconcileTargets.push(active.recall_bot_id);
+    }
+    if (reconcileTargets.length) {
+      await Promise.all(
+        reconcileTargets.map(async (botId) => {
+          try {
+            const status = await recallService.getBotStatus(botId);
+            await this.reconcileFromRecall(botId, status);
+          } catch (e) {
+            logger.warn('list reconcile failed', { botId, error: e.message });
+          }
+        })
+      );
+      // Re-fetch the page once with the updated statuses applied
+      const { data: refreshed } = await query;
+      return {
+        meetings: refreshed || meetings,
+        pagination: {
+          page, limit, total: count || 0, pages: Math.ceil((count || 0) / limit),
+        },
+      };
+    }
+
     return {
-      meetings: data || [],
+      meetings,
       pagination: {
         page,
         limit,

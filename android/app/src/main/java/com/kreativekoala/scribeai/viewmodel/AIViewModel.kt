@@ -7,10 +7,14 @@ import com.kreativekoala.scribeai.data.models.AIContentData
 import com.kreativekoala.scribeai.data.models.AIOptions
 import com.kreativekoala.scribeai.data.models.GenerateAIRequest
 import com.kreativekoala.scribeai.data.models.InfographicData
+import com.kreativekoala.scribeai.data.models.MindMapData
+import com.kreativekoala.scribeai.data.models.TTSData
+import com.kreativekoala.scribeai.ScribeAIApplication
 import com.kreativekoala.scribeai.data.repository.NoteRepository
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.ErrorReportingService
 import com.kreativekoala.scribeai.utils.TutorialContent
+import com.kreativekoala.scribeai.utils.TutorialManager
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,6 +51,12 @@ class AIViewModel : ViewModel() {
 
     private val _infographicState = MutableStateFlow<AIContentState>(AIContentState.Idle)
     val infographicState: StateFlow<AIContentState> = _infographicState.asStateFlow()
+
+    private val _mindMapState = MutableStateFlow<AIContentState>(AIContentState.Idle)
+    val mindMapState: StateFlow<AIContentState> = _mindMapState.asStateFlow()
+
+    private val _ttsState = MutableStateFlow<AIContentState>(AIContentState.Idle)
+    val ttsState: StateFlow<AIContentState> = _ttsState.asStateFlow()
 
     fun generateSummary(token: String, noteId: String, length: String = "medium", language: String = "english") {
         viewModelScope.launch {
@@ -222,13 +232,16 @@ class AIViewModel : ViewModel() {
                             exception,
                             "Failed to start generation for note: $noteId"
                         )
-                        _podcastState.value = AIContentState.Error(exception.message ?: "Failed to start podcast generation")
+                        _podcastState.value = AIContentState.Error("Failed to start podcast generation. Please try again.")
                         return@launch
                     }
                 )
 
-                // Poll for completion every 2 seconds, up to 3 minutes (90 attempts)
-                repeat(90) { attempt ->
+                // Poll for completion every 2 seconds, up to 7 minutes (210 attempts).
+                // Long-duration podcasts (15-20 min runtime) can have 25-30 segments
+                // each TTS-rendered server-side at ~2s each, plus script generation
+                // and upload — well over the previous 3-minute cap.
+                repeat(210) { attempt ->
                     delay(2000) // Wait 2 seconds
 
                     val statusResult = repository.getPodcastStatus(token, noteId)
@@ -275,11 +288,11 @@ class AIViewModel : ViewModel() {
                     )
                 }
 
-                // Timeout after 3 minutes
+                // Timeout after 7 minutes (210 attempts × 2s)
                 val timeoutError = "Podcast generation is taking longer than expected. Try loading this note again in a few minutes."
                 ErrorReportingService.reportError(
                     ErrorReportingService.UserFlow.GENERATE_PODCAST,
-                    Exception("Timeout after 3 minutes"),
+                    Exception("Timeout after 7 minutes"),
                     "Note: $noteId"
                 )
                 _podcastState.value = AIContentState.Error(timeoutError)
@@ -409,8 +422,16 @@ class AIViewModel : ViewModel() {
         conversationHistory: List<ChatMessage> = emptyList(),
         language: String = "english"
     ): String = withContext(Dispatchers.IO) {
+        // Tutorial sentinel id (00000000-...) doesn't exist on the server —
+        // server-side it lives under a per-install generated UUID. Translate
+        // before hitting chat so we don't 404.
+        val effectiveNoteId = if (noteId == TutorialContent.TUTORIAL_ID) {
+            TutorialManager.getServerId(ScribeAIApplication.appContext) ?: noteId
+        } else {
+            noteId
+        }
         try {
-            val result = repository.chatWithNote(authToken, noteId, question, conversationHistory, language)
+            val result = repository.chatWithNote(authToken, effectiveNoteId, question, conversationHistory, language)
             result.fold(
                 onSuccess = { response ->
                     AnalyticsService.trackChatMessageSent(noteId, question.length)
@@ -435,6 +456,8 @@ class AIViewModel : ViewModel() {
             "podcast" -> _podcastState.value = AIContentState.Idle
             "diagram" -> _diagramState.value = AIContentState.Idle
             "infographic" -> _infographicState.value = AIContentState.Idle
+            "mindmap" -> _mindMapState.value = AIContentState.Idle
+            "tts" -> _ttsState.value = AIContentState.Idle
         }
     }
 
@@ -449,6 +472,93 @@ class AIViewModel : ViewModel() {
         _podcastState.value = AIContentState.Idle
         _diagramState.value = AIContentState.Idle
         _infographicState.value = AIContentState.Idle
+        _mindMapState.value = AIContentState.Idle
+        _ttsState.value = AIContentState.Idle
+    }
+
+    fun generateMindMap(
+        token: String,
+        noteId: String,
+        includeExploration: Boolean = true,
+        language: String = "english"
+    ) {
+        viewModelScope.launch {
+            _mindMapState.value = AIContentState.Loading
+            try {
+                repository.generateMindMap(token, noteId, includeExploration, language).fold(
+                    onSuccess = { data ->
+                        _mindMapState.value = AIContentState.Success(data)
+                    },
+                    onFailure = { exception ->
+                        Log.e("AIViewModel", "Failed to generate mind map", exception)
+                        _mindMapState.value = AIContentState.Error(exception.message ?: "Failed to generate mind map")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AIViewModel", "Unexpected error generating mind map", e)
+                _mindMapState.value = AIContentState.Error(e.message ?: "Failed to generate mind map")
+            }
+        }
+    }
+
+    fun loadMindMap(token: String, noteId: String) {
+        viewModelScope.launch {
+            _mindMapState.value = AIContentState.Loading
+            try {
+                repository.getMindMap(token, noteId).fold(
+                    onSuccess = { data ->
+                        if (data != null) {
+                            _mindMapState.value = AIContentState.Success(data)
+                        } else {
+                            _mindMapState.value = AIContentState.Idle
+                        }
+                    },
+                    onFailure = {
+                        _mindMapState.value = AIContentState.Idle
+                    }
+                )
+            } catch (e: Exception) {
+                _mindMapState.value = AIContentState.Idle
+            }
+        }
+    }
+
+    fun generateTTS(token: String, noteId: String, voice: String = "nova") {
+        viewModelScope.launch {
+            _ttsState.value = AIContentState.Loading
+            try {
+                repository.generateTTSForNote(token, noteId, voice).fold(
+                    onSuccess = { data ->
+                        _ttsState.value = AIContentState.Success(data)
+                    },
+                    onFailure = { exception ->
+                        Log.e("AIViewModel", "Failed to generate TTS", exception)
+                        _ttsState.value = AIContentState.Error(exception.message ?: "Failed to generate audio")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("AIViewModel", "Unexpected error generating TTS", e)
+                _ttsState.value = AIContentState.Error(e.message ?: "Failed to generate audio")
+            }
+        }
+    }
+
+    fun loadTTS(token: String, noteId: String) {
+        viewModelScope.launch {
+            try {
+                repository.getTTSForNote(token, noteId).fold(
+                    onSuccess = { data ->
+                        if (data != null) {
+                            _ttsState.value = AIContentState.Success(data)
+                        }
+                        // else keep Idle
+                    },
+                    onFailure = { /* keep Idle */ }
+                )
+            } catch (e: Exception) {
+                // keep Idle
+            }
+        }
     }
 }
 

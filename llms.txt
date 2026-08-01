@@ -1,0 +1,1 @@
+ScribeAI (scribeai.online) is a mobile app for iOS and Android that transcribes and summarizes voice recordings, PDFs, videos, and calls. It is the anonymous multi-format summarizer for voice, PDF, video, and calls — no account required. Users can paste a URL, upload a PDF, scan a document, or record audio and receive a clean AI-generated summary without creating an account.

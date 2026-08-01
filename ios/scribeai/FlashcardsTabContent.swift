@@ -291,7 +291,7 @@ struct FlashcardsTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView(source: "flashcards_feature_gate") {
+                ScribeRemotePaywallView(triggerSource: "flashcards_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()
@@ -351,6 +351,7 @@ struct FlashcardsTabContent: View {
                 let aiContent = try await APIService.shared.generateFlashcards(
                     token: token,
                     noteId: note.id,
+                    noteContent: note.content,
                     contentLength: note.content.count,
                     count: count,
                     instructions: instructions
@@ -363,6 +364,8 @@ struct FlashcardsTabContent: View {
                             cards: flashcards,
                             createdAt: aiContent.createdAt ?? ISO8601DateFormatter().string(from: Date())
                         )
+                        // Trigger post-value paywall prompt after AI content generated
+                        PostValueTrialManager.shared.checkAndTriggerPrompt()
                     }
                     self.isGenerating = false
                 }

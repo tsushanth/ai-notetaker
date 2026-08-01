@@ -16,7 +16,11 @@ class AuthViewModel: NSObject, ObservableObject {
     @Published var currentUser: User?
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
+    // True when the active session is a Supabase anonymous user. We keep them
+    // "authenticated" so the rest of the app works, but suppress onboarding +
+    // surface upgrade prompts at value moments.
+    @Published var isAnonymous = false
+
     private var currentNonce: String?
     
     override init() {
@@ -29,7 +33,7 @@ class AuthViewModel: NSObject, ObservableObject {
         Task {
             if let _ = await TokenManager.shared.getValidToken() {
                 isAuthenticated = true
-                
+
                 // Try to get current session
                 do {
                     if let session = try await SupabaseManager.shared.getCurrentSession() {
@@ -37,8 +41,10 @@ class AuthViewModel: NSObject, ObservableObject {
                             id: session.user.id.uuidString,
                             email: session.user.email ?? "",
                             name: session.user.userMetadata["name"] as? String,
-                            createdAt: session.user.createdAt.ISO8601Format()
+                            createdAt: session.user.createdAt.ISO8601Format(),
+                            isAnonymous: session.user.isAnonymous
                         )
+                        self.isAnonymous = session.user.isAnonymous
                     }
                 } catch {
                     print("Failed to get session: \(error)")
@@ -47,7 +53,33 @@ class AuthViewModel: NSObject, ObservableObject {
                 }
             } else {
                 isAuthenticated = false
+                // No prior session — auto-create an anonymous one so the user
+                // can use the app immediately without hitting a login wall.
+                // If anonymous auth is disabled server-side this will fail and
+                // we leave the user on the LoginView fallback.
+                await signInAnonymously()
             }
+        }
+    }
+
+    // Anonymous Supabase sign-in. Called automatically on cold-start when no
+    // session exists. Backend accepts the resulting JWT exactly like any other
+    // Supabase token.
+    func signInAnonymously() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            let response = try await SupabaseManager.shared.signInAnonymously()
+            if let data = response.data {
+                self.currentUser = data.user
+                self.isAuthenticated = true
+                self.isAnonymous = true
+            }
+            self.isLoading = false
+        } catch {
+            print("Anonymous sign-in failed: \(error.localizedDescription)")
+            self.isLoading = false
+            // Fall through — user will see LoginView as the existing fallback
         }
     }
     
@@ -62,6 +94,7 @@ class AuthViewModel: NSObject, ObservableObject {
             if response.success, let data = response.data {
                 self.currentUser = data.user
                 self.isAuthenticated = true
+                self.isAnonymous = false
                 // Sync onboarding preferences to backend after successful login
                 OnboardingManager.shared.syncPreferencesToBackendIfNeeded()
             } else {
@@ -130,6 +163,7 @@ class AuthViewModel: NSObject, ObservableObject {
             if response.success, let data = response.data {
                 self.currentUser = data.user
                 self.isAuthenticated = true
+                self.isAnonymous = false
                 // Sync onboarding preferences to backend after successful sign up
                 OnboardingManager.shared.syncPreferencesToBackendIfNeeded()
             } else {
@@ -205,6 +239,7 @@ class AuthViewModel: NSObject, ObservableObject {
             if response.success, let data = response.data {
                 self.currentUser = data.user
                 self.isAuthenticated = true
+                self.isAnonymous = false
                 print("✅ User authenticated: \(data.user.email)")
                 // Sync onboarding preferences to backend after OAuth success
                 OnboardingManager.shared.syncPreferencesToBackendIfNeeded()
@@ -234,9 +269,14 @@ class AuthViewModel: NSObject, ObservableObject {
             await MainActor.run {
                 TokenManager.shared.clearTokens()  // ✅ Use TokenManager
                 self.isAuthenticated = false
+                self.isAnonymous = false
                 self.currentUser = nil
                 print("✅ User signed out")
             }
+            // checkAuthStatus on next cold-start will auto-mint a fresh
+            // anonymous session if there's no token. We don't auto-mint here
+            // because the user explicitly signed out — re-creating a session
+            // would mask that.
         }
     }
     
@@ -348,6 +388,7 @@ extension AuthViewModel: ASAuthorizationControllerDelegate {
                 if response.success, let data = response.data {
                     self.currentUser = data.user
                     self.isAuthenticated = true
+                    self.isAnonymous = false
                     print("✅ User authenticated: \(data.user.email)")
                     // Sync onboarding preferences to backend after Apple Sign In success
                     OnboardingManager.shared.syncPreferencesToBackendIfNeeded()

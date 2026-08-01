@@ -1,0 +1,3 @@
+• Better attribution for trial starts and signups so future promotional offers reach you
+• Faster review prompt timing — only after happy moments
+• Performance polish and bug fixes

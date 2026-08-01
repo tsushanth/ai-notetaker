@@ -26,11 +26,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.SubscriptionManager
@@ -49,13 +51,13 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 // Processing steps for recording
-enum class RecordingStep(val title: String, val index: Int) {
-    UPLOADING_AUDIO("Uploading audio", 0),
-    TRANSCRIBING_AUDIO("Transcribing audio", 1),
-    IDENTIFYING_SPEAKERS("Identifying speakers", 2),
-    ANALYZING_CONTENT("Analyzing content", 3),
-    SUMMARIZING_KEY_POINTS("Summarizing key points", 4),
-    FINALIZING_NOTE("Finalizing your note", 5)
+enum class RecordingStep(val titleResId: Int, val index: Int) {
+    UPLOADING_AUDIO(R.string.step_uploading_audio, 0),
+    TRANSCRIBING_AUDIO(R.string.step_transcribing_audio, 1),
+    IDENTIFYING_SPEAKERS(R.string.step_identifying_speakers, 2),
+    ANALYZING_CONTENT(R.string.step_analyzing_content, 3),
+    SUMMARIZING_KEY_POINTS(R.string.step_summarizing_key_points, 4),
+    FINALIZING_NOTE(R.string.step_finalizing_note, 5)
 }
 
 // Screen states
@@ -159,7 +161,7 @@ fun RecordingScreen(
             Log.d("RecordingScreen", "Recording started: ${file.absolutePath}")
         } catch (e: Exception) {
             Log.e("RecordingScreen", "Failed to start recording", e)
-            screenState = RecordingScreenState.Error("Failed to start recording: ${e.message}")
+            screenState = RecordingScreenState.Error(context.getString(R.string.error_start_recording, e.message))
         }
     }
 
@@ -196,7 +198,7 @@ fun RecordingScreen(
             Log.d("RecordingScreen", "Recording stopped. File size: ${audioFile?.length() ?: 0}")
         } catch (e: Exception) {
             Log.e("RecordingScreen", "Failed to stop recording", e)
-            screenState = RecordingScreenState.Error("Failed to stop recording: ${e.message}")
+            screenState = RecordingScreenState.Error(context.getString(R.string.error_stop_recording, e.message))
         }
     }
 
@@ -211,7 +213,7 @@ fun RecordingScreen(
     fun processRecording() {
         val file = audioFile ?: return
         val token = authManager.getCurrentToken() ?: run {
-            screenState = RecordingScreenState.Error("Not authenticated")
+            screenState = RecordingScreenState.Error(context.getString(R.string.error_not_authenticated))
             return
         }
 
@@ -226,7 +228,7 @@ fun RecordingScreen(
                 val recordingId = uploadAudio(file, token, recordingTitle)
 
                 if (recordingId == null) {
-                    screenState = RecordingScreenState.Error("Failed to upload audio")
+                    screenState = RecordingScreenState.Error(context.getString(R.string.error_upload_failed))
                     return@launch
                 }
 
@@ -241,7 +243,7 @@ fun RecordingScreen(
                 val result = startTranscription(recordingId, token)
 
                 if (result == null) {
-                    screenState = RecordingScreenState.Error("Failed to transcribe audio")
+                    screenState = RecordingScreenState.Error(context.getString(R.string.error_transcribe_failed))
                     return@launch
                 }
 
@@ -279,7 +281,7 @@ fun RecordingScreen(
 
             } catch (e: Exception) {
                 Log.e("RecordingScreen", "Processing failed", e)
-                screenState = RecordingScreenState.Error(e.message ?: "Processing failed")
+                screenState = RecordingScreenState.Error(e.message ?: context.getString(R.string.error_processing_failed))
             }
         }
     }
@@ -304,7 +306,7 @@ fun RecordingScreen(
                     }) {
                         Icon(
                             Icons.Default.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.back),
                             tint = TextPrimary
                         )
                     }
@@ -409,7 +411,7 @@ private fun IdleContent(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Record Audio",
+            stringResource(R.string.record_audio),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -418,7 +420,7 @@ private fun IdleContent(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Record lectures, meetings, or notes.\nWe'll transcribe and create study materials.",
+            stringResource(R.string.record_audio_subtitle),
             fontSize = 16.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -437,7 +439,7 @@ private fun IdleContent(
             ) {
                 Icon(Icons.Default.Mic, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("Grant Microphone Permission", fontSize = 16.sp)
+                Text(stringResource(R.string.grant_microphone_permission), fontSize = 16.sp)
             }
         } else {
             // Large record button
@@ -449,7 +451,7 @@ private fun IdleContent(
             ) {
                 Icon(
                     Icons.Default.Mic,
-                    contentDescription = "Start Recording",
+                    contentDescription = stringResource(R.string.start_recording),
                     modifier = Modifier.size(48.dp)
                 )
             }
@@ -457,7 +459,7 @@ private fun IdleContent(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                "Tap to start recording",
+                stringResource(R.string.tap_to_start_recording),
                 fontSize = 14.sp,
                 color = TextSecondary
             )
@@ -531,7 +533,7 @@ private fun RecordingContent(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            if (isRecording) "Recording..." else "Paused",
+            if (isRecording) stringResource(R.string.recording_status) else stringResource(R.string.paused),
             fontSize = 16.sp,
             color = if (isRecording) Color(0xFFE53935) else TextSecondary
         )
@@ -555,7 +557,7 @@ private fun RecordingContent(
             ) {
                 Icon(
                     Icons.Default.Delete,
-                    contentDescription = "Discard",
+                    contentDescription = stringResource(R.string.discard),
                     tint = TextSecondary
                 )
             }
@@ -571,7 +573,7 @@ private fun RecordingContent(
                 ) {
                     Icon(
                         if (isRecording) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isRecording) "Pause" else "Resume",
+                        contentDescription = if (isRecording) stringResource(R.string.pause) else stringResource(R.string.resume),
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -587,7 +589,7 @@ private fun RecordingContent(
             ) {
                 Icon(
                     Icons.Default.Stop,
-                    contentDescription = "Stop",
+                    contentDescription = stringResource(R.string.stop),
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -621,7 +623,7 @@ private fun ReviewContent(
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "Recording Complete",
+            stringResource(R.string.recording_complete),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -630,7 +632,7 @@ private fun ReviewContent(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Duration: ${formatDuration(duration)}",
+            stringResource(R.string.duration_format, formatDuration(duration)),
             fontSize = 16.sp,
             color = TextSecondary
         )
@@ -641,8 +643,8 @@ private fun ReviewContent(
         OutlinedTextField(
             value = title,
             onValueChange = onTitleChange,
-            label = { Text("Title (optional)") },
-            placeholder = { Text("e.g., Lecture on Biology") },
+            label = { Text(stringResource(R.string.title_optional)) },
+            placeholder = { Text(stringResource(R.string.title_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Purple80,
@@ -669,13 +671,13 @@ private fun ReviewContent(
         ) {
             Icon(Icons.Default.AutoAwesome, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Process Recording", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.process_recording), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(Modifier.height(12.dp))
 
         TextButton(onClick = onDiscard) {
-            Text("Discard Recording", color = TextSecondary)
+            Text(stringResource(R.string.discard_recording), color = TextSecondary)
         }
 
         Spacer(Modifier.height(24.dp))
@@ -704,7 +706,7 @@ private fun RecordingProcessingContent(
             val isCurrent = step == currentStep && step !in completedSteps
 
             ProcessingStepItem(
-                title = step.title,
+                title = stringResource(step.titleResId),
                 isCompleted = isCompleted,
                 isCurrent = isCurrent,
                 isLast = index == steps.lastIndex
@@ -737,7 +739,7 @@ private fun RecordingProcessingContent(
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
-                        "Upload is complete. It's safe to leave now.",
+                        stringResource(R.string.upload_complete_safe),
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
@@ -747,7 +749,7 @@ private fun RecordingProcessingContent(
 
         Spacer(Modifier.height(24.dp))
 
-        // Notification card
+        // Info card about processing time
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
@@ -755,46 +757,23 @@ private fun RecordingProcessingContent(
             ),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Column(
-                modifier = Modifier.padding(20.dp)
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.Top
             ) {
                 Icon(
-                    Icons.Default.Notifications,
+                    Icons.Default.Info,
                     contentDescription = null,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(28.dp)
+                    tint = Purple80,
+                    modifier = Modifier.size(24.dp)
                 )
-
-                Spacer(Modifier.height(12.dp))
-
+                Spacer(Modifier.width(12.dp))
                 Text(
-                    "Get notified when your notes are ready",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-
-                Spacer(Modifier.height(4.dp))
-
-                Text(
-                    "Notes usually take a few minutes to generate. We'll let you know when they're ready.",
+                    stringResource(R.string.processing_info),
                     fontSize = 14.sp,
                     color = TextSecondary,
                     lineHeight = 20.sp
                 )
-
-                Spacer(Modifier.height(16.dp))
-
-                Button(
-                    onClick = { /* TODO: Enable notifications */ },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkSurface
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Notify me", color = TextPrimary)
-                }
             }
         }
     }
@@ -912,7 +891,7 @@ private fun SuccessContent(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Your note is ready!",
+            stringResource(R.string.note_ready),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -921,7 +900,7 @@ private fun SuccessContent(
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "We've transcribed your recording and created study materials.",
+            stringResource(R.string.note_ready_description),
             fontSize = 16.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -939,13 +918,13 @@ private fun SuccessContent(
         ) {
             Icon(Icons.Default.Visibility, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("View Note", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(stringResource(R.string.view_note), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
 
         Spacer(Modifier.height(12.dp))
 
         TextButton(onClick = onGoHome) {
-            Text("Go to Home", color = TextSecondary)
+            Text(stringResource(R.string.go_to_home), color = TextSecondary)
         }
     }
 }
@@ -973,7 +952,7 @@ private fun ErrorContent(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            "Something went wrong",
+            stringResource(R.string.something_went_wrong),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
@@ -1000,13 +979,13 @@ private fun ErrorContent(
         ) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Try Again", fontSize = 16.sp)
+            Text(stringResource(R.string.try_again_button), fontSize = 16.sp)
         }
 
         Spacer(Modifier.height(12.dp))
 
         TextButton(onClick = onGoBack) {
-            Text("Go Back", color = TextSecondary)
+            Text(stringResource(R.string.go_back), color = TextSecondary)
         }
     }
 }
@@ -1046,7 +1025,7 @@ private suspend fun uploadAudio(file: File, token: String, title: String): Strin
                 .build()
 
             val request = Request.Builder()
-                .url("https://ai-notetaker-backend-917362189743.us-central1.run.app/api/recordings/upload")
+                .url("https://ai-notetaker-backend.fly.dev/api/recordings/upload")
                 .addHeader("Authorization", "Bearer $token")
                 .post(requestBody)
                 .build()
@@ -1087,7 +1066,7 @@ private suspend fun startTranscription(recordingId: String, token: String): JSON
                 .toRequestBody("application/json".toMediaType())
 
             val request = Request.Builder()
-                .url("https://ai-notetaker-backend-917362189743.us-central1.run.app/api/recordings/transcribe")
+                .url("https://ai-notetaker-backend.fly.dev/api/recordings/transcribe")
                 .addHeader("Authorization", "Bearer $token")
                 .addHeader("Content-Type", "application/json")
                 .post(requestBody)

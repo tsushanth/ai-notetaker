@@ -1,6 +1,6 @@
 // API client for communicating with the backend
 // Hardcoded for reliability in production builds
-const API_BASE_URL = 'https://ai-notetaker-backend-917362189743.us-central1.run.app';
+const API_BASE_URL = 'https://ai-notetaker-backend.fly.dev';
 
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';

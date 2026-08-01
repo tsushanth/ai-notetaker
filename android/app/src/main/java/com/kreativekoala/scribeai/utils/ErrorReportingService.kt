@@ -120,7 +120,7 @@ object ErrorReportingService {
     }
 
     private suspend fun sendErrorReport(flow: UserFlow, errorMessage: String, additionalInfo: String?) {
-        val url = "${BuildConfig.BASE_URL}/api/alerts/error"
+        val url = "${BuildConfig.BASE_URL.trimEnd('/')}/api/alerts/error"
 
         // Build full error message
         val fullErrorMessage = buildString {

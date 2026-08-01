@@ -7,17 +7,79 @@
 
 import SwiftUI
 import GoogleSignIn
+import FacebookCore
+import PaywallKit
+import RatingKit
+import PromoOfferKit
 
 @main
 struct ScribeAIApp: App {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var themeManager = ThemeManager.shared
+    @StateObject private var paywallCoordinator = PaywallCoordinator.shared
+    @StateObject private var offerCodeManager = OfferCodeManager.shared
     @State private var showingSplash = true
+    @State private var showLaunchPaywall = false
+    @State private var showAppOpenPaywall = false
     @Environment(\.scenePhase) private var scenePhase
+
+    // 2026-06-09: shifted from [1, 3, 5] with 3-open recurrence to delay first
+    // launch paywall after value has been established. Note-creation gate
+    // (3 free notes) is now the primary monetization trigger.
+    private static let paywallTriggerOpens: Set<Int> = [5, 15, 30]
+    private static let paywallRecurringInterval = 10
 
     init() {
         // Initialize Firebase Analytics (free, unlimited)
         FirebaseAnalyticsHelper.shared.initialize()
+
+        // Initialize Facebook SDK for Meta Ads attribution
+        FacebookSDKHelper.shared.initialize()
+
+        // Initialize TikTok SDK for TikTok Ads attribution
+        TikTokHelper.shared.initialize()
+
+        // Apple Search Ads attribution — fetch AdServices token + POST to Apple
+        AttributionService.shared.checkAdServicesAttribution()
+
+        // Initialize PaywallKit StoreManager (StoreKit 2)
+        StoreManager.shared.configure(productIds: [
+            "com.kreativekoala.scribeai.monthly",
+            "com.kreativekoala.scribeai.yearly",
+            "com.kreativekoala.scribeai.lifetime1"
+        ])
+
+        // Initialize PaywallKit SDK (offer-after-dismiss, promo codes)
+        PaywallKitSDK.shared.configure(
+            appId: "ScribeAI",
+            appName: "ScribeAI",
+            productIds: [
+                "com.kreativekoala.scribeai.monthly",
+                "com.kreativekoala.scribeai.yearly",
+                "com.kreativekoala.scribeai.lifetime1"
+            ]
+        )
+    
+        // Server-driven rating prompts (variant testing + analytics).
+        // Currently in simple mode — uses native SKStoreReviewController, no UI overlay.
+        RatingKit.configure(appId: "scribeai", apiUrl: "https://paywallkit-api.fly.dev")
+        RatingKit.shared.trackAppOpen()
+
+        // Cancel-flow retention: present Apple Promotional Offer to lapsed subscribers.
+        // 2026-06-09: swapped monthly from `half_3mo` to `winback_7day_free`.
+        // Free-trial win-back typically converts 2-3x higher than a 50% discount for
+        // lapsed users; after 7 days they auto-bill at full price so revenue resumes.
+        PromoOfferKit.configure(
+            bundleId: "com.kreativekoala.scribeai",
+            apiBaseUrl: URL(string: "https://paywallkit-api.fly.dev")!,
+            productIdToOfferCode: [
+                "com.kreativekoala.scribeai.yearly":  "half_1yr",
+                "com.kreativekoala.scribeai.monthly": "winback_7day_free",
+            ],
+            isSubscribedProvider: { StoreManager.shared.isPremium },
+            onPurchased: { Task { await StoreManager.shared.refreshSubscriptionStatus() } },
+            headline: "Come back with a free week"
+        )
     }
 
     var body: some Scene {
@@ -25,12 +87,15 @@ struct ScribeAIApp: App {
             ZStack {
                 // Main content
                 ContentView()
+                    .ratingPrompt()
+                    .promoOffer()
                     .environmentObject(authViewModel)
                     .onOpenURL { url in
                         print("📱 Received URL: \(url)")
 
                         // Handle Google Sign-In callback (for native flow)
                         GIDSignIn.sharedInstance.handle(url)
+                        PromoCodeManager.shared.handleURL(url)
 
                         // Handle Supabase OAuth callback (for web-based flows)
                         if url.scheme == "kreativekoala.scribeai" {
@@ -50,6 +115,12 @@ struct ScribeAIApp: App {
             }
             .preferredColorScheme(themeManager.colorScheme)
             .onAppear {
+                // Don't auto-read the clipboard on cold launch — iOS shows a
+                // "ScribeAI Learn would like to paste from <other device>"
+                // prompt every time, which scares users. The paywall already
+                // has a manual promo-code entry field; if a deep-link / URL
+                // promo arrives we handle it in `handleURL` instead.
+                Task { await OfferCodeManager.shared.refresh(appId: "scribeai") }
                 // Track app launch
                 AnalyticsService.shared.trackAppLaunch()
                 AnalyticsService.shared.startSession()
@@ -57,10 +128,41 @@ struct ScribeAIApp: App {
                 // Firebase: Log app open for DAU tracking
                 FirebaseAnalyticsHelper.shared.logAppOpen()
 
+                // Facebook: Log app launch
+                FacebookSDKHelper.shared.logAppLaunch()
+
                 // Dismiss splash after animation completes
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                let snapshotDelay: Double = ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") ? 0.0 : 2.5
+                DispatchQueue.main.asyncAfter(deadline: .now() + snapshotDelay) {
                     withAnimation(.easeOut(duration: 0.5)) {
                         showingSplash = false
+                    }
+
+                    // Show paywall on launch if trial expired and not subscribed
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        FacebookSDKHelper.shared.requestTrackingPermission()
+                        TikTokHelper.shared.requestTrackingPermission()
+
+                        // Refresh both StoreKit and server access status
+                        Task {
+                            await StoreManager.shared.refreshSubscriptionStatus()
+                            await SubscriptionGateManager.shared.refreshAccessStatus()
+
+                            await MainActor.run {
+                                if !ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
+                                    // Skip launch + app-open paywalls during onboarding;
+                                    // the trial step covers that surface and re-showing
+                                    // overtop of the onboarding flow looks broken.
+                                    guard OnboardingManager.shared.hasCompletedOnboarding else { return }
+
+                                    let gate = SubscriptionGateManager.shared
+                                    if !gate.canAccessPremiumFeatures && !gate.isInTrialPeriod {
+                                        showLaunchPaywall = true
+                                    }
+                                    checkAppOpenPaywall()
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -68,6 +170,9 @@ struct ScribeAIApp: App {
                 switch newPhase {
                 case .active:
                     AnalyticsService.shared.startSession()
+                    if !ProcessInfo.processInfo.arguments.contains("FASTLANE_SNAPSHOT") {
+                        paywallCoordinator.checkWinbackEligibility()
+                    }
                 case .background:
                     AnalyticsService.shared.endSession()
                 case .inactive:
@@ -76,6 +181,47 @@ struct ScribeAIApp: App {
                     break
                 }
             }
+            .sheet(isPresented: $paywallCoordinator.showWinbackOffer) {
+                WinbackOfferView()
+            }
+            .sheet(isPresented: $showLaunchPaywall, onDismiss: maybeShowOfferCode) {
+                ScribeRemotePaywallView(triggerSource: "launch_expired") {
+                    showLaunchPaywall = false
+                }
+            }
+            .fullScreenCover(isPresented: $showAppOpenPaywall, onDismiss: maybeShowOfferCode) {
+                ScribeRemotePaywallView(triggerSource: "app_open") {
+                    showAppOpenPaywall = false
+                }
+            }
+            // OfferCodeView removed: not exported by current PaywallKit version. Apple's
+            // native redemption sheet (via SKPaymentQueue.default().presentCodeRedemptionSheet())
+            // is used instead at the call sites that previously opened this sheet.
+            // (Left the OfferCodeManager flag wiring intact so re-enabling is a one-line restore
+            // if PaywallKit ships a public OfferCodeView again.)
+        }
+    }
+
+    /// Shows the offer-code sheet if the user dismissed a paywall without purchasing
+    /// and the server config is enabled.
+    private func maybeShowOfferCode() {
+        guard !StoreManager.shared.isPremium else { return }
+        guard !SubscriptionGateManager.shared.canAccessPremiumFeatures else { return }
+        guard offerCodeManager.shouldShow() else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            offerCodeManager.isShowingOfferSheet = true
+        }
+    }
+
+    private func checkAppOpenPaywall() {
+        guard !SubscriptionGateManager.shared.canAccessPremiumFeatures else { return }
+        let key = "com.scribeai.appOpenCount"
+        let count = UserDefaults.standard.integer(forKey: key) + 1
+        UserDefaults.standard.set(count, forKey: key)
+        let shouldShow = Self.paywallTriggerOpens.contains(count)
+            || (count > 5 && (count - 5) % Self.paywallRecurringInterval == 0)
+        if shouldShow {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { showAppOpenPaywall = true }
         }
     }
 }

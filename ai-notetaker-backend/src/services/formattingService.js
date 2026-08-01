@@ -1,4 +1,4 @@
-const { openai, MODELS } = require('../config/openai');
+const { anthropic, MODELS } = require('../config/openai');
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 
@@ -37,12 +37,7 @@ class FormattingService {
 
       const prompt = this.buildFormattingPrompt(contentToFormat, sourceType, title);
 
-      const completion = await openai.chat.completions.create({
-        model: MODELS.GPT4_MINI,
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert note formatter. Transform raw notes into beautifully organized, highly readable content with rich formatting.
+      const systemPrompt = `You are an expert note formatter. Transform raw notes into beautifully organized, highly readable content with rich formatting.
 
 FORMATTING RULES:
 
@@ -84,18 +79,22 @@ IMPORTANT:
 • Use white space generously between sections
 • The output will be displayed on mobile, so keep lines readable
 
-OUTPUT: Return ONLY the formatted markdown content. No explanations or meta-commentary.`
-          },
+OUTPUT: Return ONLY the formatted markdown content. No explanations or meta-commentary.`;
+
+      const completion = await anthropic.messages.create({
+        model: MODELS.GPT4_MINI,
+        system: systemPrompt,
+        messages: [
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.3, // Lower temperature for more consistent formatting
+        temperature: 0.3,
         max_tokens: 16000
       });
 
-      const formattedContent = completion.choices[0].message.content;
+      const formattedContent = completion.content[0].text;
 
       logger.info('Note formatted successfully', {
         originalLength: rawContent.length,

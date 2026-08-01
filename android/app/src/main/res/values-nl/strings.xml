@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">Home</string>
+    <string name="menu">Menu</string>
+    <string name="menu_language">Taal</string>
+    <string name="menu_upgrade_pro">Upgraden naar Pro</string>
+    <string name="menu_manage_subscription">Abonnement Beheren</string>
+    <string name="menu_appearance">Weergave</string>
+    <string name="menu_sign_out">Uitloggen</string>
+    <string name="menu_delete_account">Account verwijderen</string>
+    <string name="add">Toevoegen</string>
+    <string name="no_notes_yet">Nog geen notities</string>
+    <string name="tap_to_create_first_note">Tik op + om je eerste notitie te maken</string>
+    <string name="notes_count_format">%1$d van %2$d notities</string>
+    <string name="load_more_notes">Meer notities laden</string>
+    <string name="error_loading_notes">Fout bij laden van notities</string>
+    <string name="retry">Opnieuw proberen</string>
+    <string name="account_deletion_requested">Verzoek tot verwijdering van account ontvangen. Je wordt uitgelogd.</string>
+    <string name="error_delete_account">Kan account niet verwijderen: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">Selecteer taal</string>
+    <string name="language_subtitle">AI-gegenereerde inhoud zal in deze taal zijn</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Annuleren</string>
+
+    <!-- Note Card -->
+    <string name="more">Meer</string>
+    <string name="edit_title">Titel bewerken</string>
+    <string name="delete">Verwijderen</string>
+    <string name="delete_note">Notitie verwijderen?</string>
+    <string name="delete_note_message">Weet je zeker dat je \"%s\" wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.</string>
+    <string name="delete_note_detail_message">Weet je zeker dat je deze notitie wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.</string>
+    <string name="label_title">Titel</string>
+    <string name="save">Opslaan</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">Audio opnemen of uploaden</string>
+    <string name="youtube_video">YouTube-video</string>
+    <string name="upload_document">Document uploaden</string>
+    <string name="upload_document_subtitle">Elke PDF, DOCX, PPT, TXT, enz.!</string>
+    <string name="scan_text">Tekst scannen</string>
+    <string name="scan_text_subtitle">Elke afbeelding met tekst</string>
+    <string name="join_meeting">Vergadering bijwonen</string>
+    <string name="join_meeting_subtitle">Zoom, Meet, Teams, Webex opnemen</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">Terug</string>
+    <string name="more_options">Meer opties</string>
+    <string name="share">Delen</string>
+    <string name="share_note">Notitie delen</string>
+    <string name="tab_notes">Notities</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_quiz">Quiz</string>
+    <string name="tab_cards">Kaarten</string>
+    <string name="formatting_notes">Notities formatteren\u2026</string>
+    <string name="formatted">Geformatteerd</string>
+    <string name="raw">Onbewerkt</string>
+    <string name="source_label">Bron: %s</string>
+    <string name="open_source_link">Bron openen</string>
+    <string name="characters_words_format">%1$s tekens \u2022 %2$s woorden</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">YouTube-video</string>
+    <string name="source_audio_recording">Audio-opname</string>
+    <string name="source_pdf_document">PDF-document</string>
+    <string name="source_scanned_document">Gescand document</string>
+    <string name="source_image">Afbeelding</string>
+    <string name="source_text">Tekst</string>
+
+    <!-- Summary Section -->
+    <string name="summary">Samenvatting</string>
+    <string name="generating_summary">Samenvatting genereren\u2026</string>
+    <string name="regenerate">Opnieuw genereren</string>
+    <string name="no_summary_yet">Nog geen samenvatting</string>
+    <string name="generate_summary">Samenvatting genereren</string>
+    <string name="no_summary_available">Geen samenvatting beschikbaar</string>
+    <string name="summary_length">Lengte samenvatting</string>
+    <string name="create_summary_description">Maak een beknopte samenvatting van je notities</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">Typ een bericht\u2026</string>
+    <string name="send">Verzenden</string>
+    <string name="voice_mode">Spraak modus</string>
+    <string name="text_mode">Tekst modus</string>
+    <string name="ask_about_notes">Stel alles over je notities</string>
+    <string name="ask_about_notes_description">Ik kan je helpen om specifieke informatie in je notities te begrijpen, analyseren of vinden.</string>
+    <string name="suggested_questions">Voorgestelde vragen:</string>
+    <string name="chat_suggestion_summarize">Vat de kernpunten samen</string>
+    <string name="chat_suggestion_explain">Leg de hoofdconcepten uit</string>
+    <string name="chat_suggestion_test">Toets me over dit materiaal</string>
+    <string name="listening">Luisteren\u2026</string>
+    <string name="tap_to_speak">Tik om te spreken</string>
+    <string name="speaking">Spreken\u2026</string>
+    <string name="stop_speaking">Stop met spreken</string>
+    <string name="could_not_open_link">Kan link niet openen</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">Quiz genereren</string>
+    <string name="generate_quiz_description">Maak een quiz om je kennis te testen</string>
+    <string name="generating_quiz">Quiz genereren\u2026</string>
+    <string name="question_count_format">Vraag %1$d van %2$d</string>
+    <string name="check_answer">Antwoord controleren</string>
+    <string name="next_question">Volgende vraag</string>
+    <string name="correct">Juist!</string>
+    <string name="incorrect">Onjuist</string>
+    <string name="correct_answer_is">Het juiste antwoord is: %s</string>
+    <string name="quiz_complete">Quiz voltooid!</string>
+    <string name="quiz_score_format">Je scoorde %1$d van %2$d</string>
+    <string name="try_again">Opnieuw proberen</string>
+    <string name="new_quiz">Nieuwe quiz</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">Flashcards genereren</string>
+    <string name="generate_flashcards_description">Maak flashcards om te studeren</string>
+    <string name="generating_flashcards">Flashcards genereren\u2026</string>
+    <string name="flashcard_count_format">Kaart %1$d van %2$d</string>
+    <string name="tap_to_flip">Tik om te draaien</string>
+    <string name="previous">Vorige</string>
+    <string name="next">Volgende</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">Welkom terug</string>
+    <string name="sign_in_to_continue">Log in om door te gaan</string>
+    <string name="continue_with_google">Doorgaan met Google</string>
+    <string name="or_divider">  of  </string>
+    <string name="email">E-mail</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">Wachtwoord</string>
+    <string name="enter_password">Voer je wachtwoord in</string>
+    <string name="hide_password">Wachtwoord verbergen</string>
+    <string name="show_password">Wachtwoord tonen</string>
+    <string name="sign_in">Inloggen</string>
+    <string name="forgot_password">Wachtwoord vergeten?</string>
+    <string name="no_account">Geen account? </string>
+    <string name="sign_up">Registreren</string>
+    <string name="error_invalid_credentials">Onjuist e-mailadres of wachtwoord. Probeer het opnieuw.</string>
+    <string name="error_email_not_confirmed">Verifieer je e-mail voordat je inlogt.</string>
+    <string name="error_user_not_found">Geen account gevonden met dit e-mailadres.</string>
+    <string name="error_network">Netwerkfout. Controleer je verbinding.</string>
+    <string name="error_no_google_account">Geen Google-account gevonden. Voeg een Google-account toe aan je apparaat.</string>
+    <string name="error_google_signin_failed">Inloggen met Google mislukt</string>
+    <string name="error_email_required">Voer je e-mailadres in</string>
+    <string name="error_invalid_email">Voer een geldig e-mailadres in</string>
+    <string name="error_password_required">Voer je wachtwoord in</string>
+    <string name="error_password_too_short">Wachtwoord moet minimaal 6 tekens bevatten</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">E-mail verzonden!</string>
+    <string name="reset_password">Wachtwoord resetten</string>
+    <string name="reset_email_sent">We hebben een link om je wachtwoord te resetten gestuurd naar:</string>
+    <string name="check_inbox">Controleer je inbox en spammap.</string>
+    <string name="reset_password_instruction">Voer je e-mailadres in en we sturen je een link om je wachtwoord te resetten.</string>
+    <string name="done">Klaar</string>
+    <string name="send_reset_link">Resetlink verzenden</string>
+    <string name="error_enter_valid_email">Voer een geldig e-mailadres in</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">Account aanmaken</string>
+    <string name="sign_up_subtitle">Registreer om te beginnen</string>
+    <string name="at_least_6_characters">Minimaal 6 tekens</string>
+    <string name="confirm_password">Wachtwoord bevestigen</string>
+    <string name="reenter_password">Voer wachtwoord opnieuw in</string>
+    <string name="already_have_account">Heb je al een account? </string>
+    <string name="error_valid_email">Voer een geldig e-mailadres in</string>
+    <string name="error_enter_password">Voer een wachtwoord in</string>
+    <string name="error_confirm_password">Bevestig je wachtwoord</string>
+    <string name="error_passwords_mismatch">Wachtwoorden komen niet overeen</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">Audio opnemen</string>
+    <string name="record_audio_subtitle">Neem colleges, vergaderingen of notities op.\nWe transcriberen en maken studiemateriaal.</string>
+    <string name="grant_microphone_permission">Microfoon toestemming verlenen</string>
+    <string name="start_recording">Opname starten</string>
+    <string name="tap_to_start_recording">Tik om opname te starten</string>
+    <string name="recording_status">Opnemen\u2026</string>
+    <string name="paused">Gepauzeerd</string>
+    <string name="discard">Verwijderen</string>
+    <string name="pause">Pauze</string>
+    <string name="resume">Hervatten</string>
+    <string name="stop">Stop</string>
+    <string name="recording_complete">Opname voltooid</string>
+    <string name="duration_format">Duur: %s</string>
+    <string name="title_optional">Titel (optioneel)</string>
+    <string name="title_placeholder">bijv. College Biologie</string>
+    <string name="process_recording">Opname verwerken</string>
+    <string name="discard_recording">Opname verwijderen</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">Audio uploaden</string>
+    <string name="step_transcribing_audio">Audio transcriberen</string>
+    <string name="step_identifying_speakers">Sprekers identificeren</string>
+    <string name="step_analyzing_content">Inhoud analyseren</string>
+    <string name="step_summarizing_key_points">Kernpunten samenvatten</string>
+    <string name="step_finalizing_note">Notitie afronden</string>
+    <string name="upload_complete_safe">Upload voltooid. Je kunt nu veilig vertrekken.</string>
+    <string name="processing_info">Notities duren meestal een paar minuten om te genereren. Je kunt dit scherm verlaten en later terugkomen.</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">Je notitie is klaar!</string>
+    <string name="note_ready_description">We hebben je opname getranscribeerd en studiemateriaal gemaakt.</string>
+    <string name="view_note">Notitie bekijken</string>
+    <string name="go_to_home">Naar Home</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">Er ging iets mis</string>
+    <string name="try_again_button">Opnieuw proberen</string>
+    <string name="go_back">Terug</string>
+    <string name="error_not_authenticated">Niet geverifieerd</string>
+    <string name="error_upload_failed">Audio uploaden mislukt</string>
+    <string name="error_transcribe_failed">Audio transcriberen mislukt</string>
+    <string name="error_start_recording">Opname starten mislukt: %s</string>
+    <string name="error_stop_recording">Opname stoppen mislukt: %s</string>
+    <string name="error_processing_failed">Verwerking mislukt</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">Sluiten</string>
+    <string name="unlock_pro">Ontgrendel Scribe AI Pro</string>
+    <string name="unlimited_access">Krijg onbeperkt toegang tot alle functies</string>
+    <string name="feature_unlimited_notes">Onbeperkt notities van elke bron</string>
+    <string name="feature_ai_summaries">AI-aangedreven samenvattingen &amp; quizzen</string>
+    <string name="feature_flashcards">Flashcard generatie</string>
+    <string name="feature_ai_chat">AI-chat met je notities</string>
+    <string name="feature_mind_map">Mindmap visualisatie</string>
+    <string name="feature_podcast">Audio podcast generatie</string>
+    <string name="plan_yearly">Jaarlijks</string>
+    <string name="plan_monthly">Maandelijks</string>
+    <string name="per_month_format">%s/mnd</string>
+    <string name="save_percent_format">Bespaar %d%%</string>
+    <string name="loading_plans">Abonnementen laden\u2026</string>
+    <string name="continue_button">Doorgaan</string>
+    <string name="restore_purchases">Aankopen herstellen</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">Weet je het zeker?</string>
+    <string name="lose_access">Je verliest toegang tot:</string>
+    <string name="stat_notes_created">notities die je hebt gemaakt</string>
+    <string name="stat_quizzes_generated">gegenereerde quizzen</string>
+    <string name="stat_flashcards_created">gemaakte flashcards</string>
+    <string name="stat_audio_hours">uren audio-inhoud</string>
+    <string name="stay_signed_in">Ingelogd blijven</string>
+    <string name="sign_out_anyway">Toch uitloggen</string>
+    <string name="delete_account">Account verwijderen?</string>
+    <string name="delete_account_warning">Dit kan niet ongedaan worden gemaakt.\nJe verliest permanent:</string>
+    <string name="keep_my_account">Mijn account behouden</string>
+    <string name="delete_anyway">Toch verwijderen</string>
+    <string name="before_you_go">Voordat je gaat\u2026</string>
+    <string name="feedback_reason">Help ons verbeteren door te vertellen waarom je vertrekt</string>
+    <string name="delete_my_account">Mijn account verwijderen</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Geniet je van Scribe AI?</string>
+    <string name="review_subtitle">Helpt Scribe AI je sneller te studeren en beter te leren?</string>
+    <string name="yes_love_it">Ja, ik vind het geweldig!</string>
+    <string name="not_yet">Nog niet</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">YouTube URL</string>
+    <string name="paste_youtube_url">Plak een YouTube video URL</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">Plakken vanuit klembord</string>
+    <string name="create_note">Notitie maken</string>
+    <string name="invalid_youtube_url">Voer een geldige YouTube URL in</string>
+    <string name="creating_note">Notitie aanmaken\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">Document uploaden</string>
+    <string name="tap_to_select">Tik om een bestand te selecteren</string>
+    <string name="supported_formats">PDF, DOCX, PPT, TXT ondersteund</string>
+    <string name="file_selected">Bestand geselecteerd</string>
+    <string name="uploading">Uploaden\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">Document scannen</string>
+    <string name="grant_permission">Toestemming verlenen</string>
+    <string name="scan_another_page">Nog een pagina scannen</string>
+    <string name="save_with_count">Opslaan (%d)</string>
+    <string name="dismiss">Sluiten</string>
+    <string name="scanned_pages_format">%d pagina\'s gescand</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">Vergadering bijwonen</string>
+    <string name="meeting_link">Vergaderlink</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">Titel (optioneel)</string>
+    <string name="meeting_title_placeholder">bijv. Team Standup</string>
+    <string name="send_bot">Bot verzenden</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">Vergaderbot</string>
+    <string name="no_meetings">Nog geen vergaderingen</string>
+    <string name="no_meetings_hint">Neem deel aan een vergadering om op te nemen en te transcriberen</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">Thema selecteren</string>
+    <string name="theme_system">Systeemstandaard</string>
+    <string name="theme_light">Licht</string>
+    <string name="theme_dark">Donker</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">Debug Token</string>
+    <string name="copy_token">Token naar klembord kopiëren</string>
+    <string name="token_copied">Token gekopieerd!</string>
+
+    <!-- General AI Content -->
+    <string name="loading">Laden\u2026</string>
+    <string name="error_label">Fout</string>
+    <string name="generate">Genereren</string>
+
+    <!-- Language Picker -->
+    <string name="language">Taal</string>
+    <string name="language_picker_title">Selecteer taal</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

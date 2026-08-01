@@ -158,11 +158,16 @@ class YouTubeTranscriptService {
 
     logger.info('Fetching transcript from Supadata', { videoId });
 
-    // Build URL with parameters
+    // Build URL with parameters.
+    // mode=native: only use the 1-credit native-caption path. The 'auto'
+    // mode silently falls through to AI generation at 2 credits/minute,
+    // which on captionless videos can spike a single fetch to 30+ credits.
+    // Refusing those means the caller sees "no transcript" and the upstream
+    // pipeline can choose a cheaper local-Whisper path instead.
     const params = new URLSearchParams({
       url: videoUrl,
-      text: 'true',       // Return plain text instead of timestamped chunks
-      mode: 'auto'        // Try native first, generate with AI if needed
+      text: 'true',
+      mode: 'native'
     });
 
     const response = await fetch(`${this.supadataBaseUrl}/transcript?${params}`, {

@@ -41,9 +41,15 @@ class PostValueTrialManager: ObservableObject {
             if hoursSinceLastPrompt < 24 { return }
         }
 
-        // Don't show more than 3 times total
+        // Cooldown: reduce frequency after many dismissals but never fully stop
         let dismissCount = defaults.integer(forKey: Keys.promptDismissCount)
-        if dismissCount >= 3 { return }
+        if dismissCount >= 5 {
+            // After 5 dismissals, only show every 72 hours instead of 24
+            if let lastPrompt = defaults.object(forKey: Keys.lastPromptDate) as? Date {
+                let hoursSinceLastPrompt = Date().timeIntervalSince(lastPrompt) / 3600
+                if hoursSinceLastPrompt < 72 { return }
+            }
+        }
 
         // Show the prompt
         shouldShowPrompt = true
@@ -194,7 +200,7 @@ struct PostValueTrialPromptView: View {
         .cornerRadius(20, corners: [.topLeft, .topRight])
         .sheet(isPresented: $showFullPaywall) {
             NavigationView {
-                PaywallView(source: "post_value_prompt") {
+                ScribeRemotePaywallView(triggerSource: "post_value_prompt") {
                     showFullPaywall = false
                     manager.dismissPrompt()
                 }

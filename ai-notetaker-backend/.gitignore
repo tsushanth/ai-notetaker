@@ -38,3 +38,4 @@ temp/
 
 # Uploaded files (for local dev)
 uploads/
+.fly-secrets.sh

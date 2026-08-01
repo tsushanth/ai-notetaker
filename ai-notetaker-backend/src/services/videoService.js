@@ -5,7 +5,7 @@ const os = require('os');
 const { spawn } = require('child_process');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
-const { openai, MODELS } = require('../config/openai');
+const { MODELS } = require('../config/openai');
 const noteService = require('./noteService');
 
 const INVIDIOUS_INSTANCES = [
@@ -124,14 +124,28 @@ class VideoService {
         method: useInvidious ? 'invidious' : 'yt-dlp'
       });
 
-      // Transcribe with OpenAI Whisper
+      // Transcribe with Deepgram
       const audioBuffer = await fs.readFile(tempAudioPath);
-      const transcription = await openai.audio.transcriptions.create({
-        file: await this.createFile(audioBuffer, 'audio.mp3'),
-        model: MODELS.WHISPER,
-        language: 'en',
-        response_format: 'verbose_json'
+
+      const dgResponse = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&language=en&smart_format=true', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`,
+          'Content-Type': 'audio/mpeg',
+        },
+        body: audioBuffer,
       });
+
+      if (!dgResponse.ok) {
+        const errText = await dgResponse.text();
+        throw new Error(`Deepgram API error (${dgResponse.status}): ${errText}`);
+      }
+
+      const dgResult = await dgResponse.json();
+      const transcription = {
+        text: dgResult.results?.channels?.[0]?.alternatives?.[0]?.transcript || '',
+        duration: dgResult.metadata?.duration || 0,
+      };
 
       // Clean up temp file
       await fs.unlink(tempAudioPath).catch(() => {});

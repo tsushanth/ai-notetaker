@@ -1,0 +1,451 @@
+/*
+  Localizable.strings (Spanish - es)
+  scribeai
+
+  Generated for internationalization.
+*/
+
+// MARK: - HomeView / Navigation
+"SCRIBE AI" = "SCRIBE AI";
+"Add Content" = "Agregar Contenido";
+"Record Audio" = "Grabar Audio";
+"Scan Document" = "Escanear Documento";
+"Upload PDF/Audio" = "Subir PDF/Audio";
+"YouTube Link" = "Enlace de YouTube";
+"Join Meeting" = "Unirse a Reunión";
+"Cancel" = "Cancelar";
+
+// MARK: - LoginView
+"scribe ai" = "scribe ai";
+"Your AI-powered note-taking companion" = "Tu compañero de notas con inteligencia artificial";
+"Email" = "Correo electrónico";
+"Enter your email" = "Ingresa tu correo electrónico";
+"Password" = "Contraseña";
+"Enter your password" = "Ingresa tu contraseña";
+"Sign In" = "Iniciar Sesión";
+"OR" = "O";
+"Continue with Apple" = "Continuar con Apple";
+"Continue with Google" = "Continuar con Google";
+"Don't have an account?" = "¿No tienes una cuenta?";
+"Sign Up" = "Registrarse";
+
+// MARK: - SignUpView
+"Create Account" = "Crear Cuenta";
+"Join ScribeAI to start taking smart notes" = "Únete a ScribeAI para tomar notas inteligentes";
+"Name" = "Nombre";
+"Enter your name" = "Ingresa tu nombre";
+"Create a password" = "Crea una contraseña";
+"Confirm Password" = "Confirmar Contraseña";
+"Confirm your password" = "Confirma tu contraseña";
+"Passwords don't match" = "Las contraseñas no coinciden";
+"Password must:" = "La contraseña debe:";
+"Be at least 6 characters" = "Tener al menos 6 caracteres";
+
+// MARK: - RecordingView (AudioRecordingView)
+"Record lectures, meetings, or notes.\nWe'll transcribe and create study materials." = "Graba clases, reuniones o notas.\nTranscribiremos y crearemos materiales de estudio.";
+"Tap to start recording" = "Toca para comenzar a grabar";
+"Grant Microphone Permission" = "Otorgar Permiso de Micrófono";
+"Recording..." = "Grabando...";
+"Paused" = "Pausado";
+"Recording Complete" = "Grabación Completa";
+"Duration: %@" = "Duración: %@";
+"Title (optional)" = "Título (opcional)";
+"Process Recording" = "Procesar Grabación";
+"Discard Recording" = "Descartar Grabación";
+"Discard Recording?" = "¿Descartar Grabación?";
+"Keep Recording" = "Mantener Grabación";
+"Discard" = "Descartar";
+"You have an active recording. Are you sure you want to leave? Your recording will be lost." = "Tienes una grabación activa. ¿Estás seguro de que quieres salir? Tu grabación se perderá.";
+"Delete Recording?" = "¿Eliminar Grabación?";
+"Delete" = "Eliminar";
+"Are you sure you want to delete this recording? This action cannot be undone." = "¿Estás seguro de que quieres eliminar esta grabación? Esta acción no se puede deshacer.";
+"Microphone Access Required" = "Se Requiere Acceso al Micrófono";
+"Open Settings" = "Abrir Configuración";
+"Please enable microphone access in Settings to record audio." = "Por favor, habilita el acceso al micrófono en Configuración para grabar audio.";
+
+// MARK: - NoteListView
+"Search notes..." = "Buscar notas...";
+"Showing %@ of %@ notes" = "Mostrando %@ de %@ notas";
+"Delete Note" = "Eliminar Nota";
+"Are you sure you want to delete '%@'? This action cannot be undone." = "¿Estás seguro de que quieres eliminar '%@'? Esta acción no se puede deshacer.";
+"Edit Title" = "Editar Título";
+"Title" = "Título";
+"Save" = "Guardar";
+"Enter a new title for this note" = "Ingresa un nuevo título para esta nota";
+"'%@' deleted" = "'%@' eliminado";
+"No notes yet" = "Aún no hay notas";
+"Tap the + button to create your first note" = "Toca el botón + para crear tu primera nota";
+"Loading..." = "Cargando...";
+"Load More Notes" = "Cargar Más Notas";
+"Session expired. Please sign in again." = "Sesión expirada. Por favor, inicia sesión de nuevo.";
+
+// MARK: - NoteCardContent
+"YouTube" = "YouTube";
+"Recording" = "Grabación";
+"PDF" = "PDF";
+"Scanned" = "Escaneado";
+"Upload" = "Subido";
+"Note" = "Nota";
+"%@ words" = "%@ palabras";
+"%@ characters" = "%@ caracteres";
+"Today" = "Hoy";
+"Yesterday" = "Ayer";
+"Recently" = "Reciente";
+
+// MARK: - NoteDetailView
+"Source: %@" = "Fuente: %@";
+"YouTube Video" = "Video de YouTube";
+"Audio Recording" = "Grabación de Audio";
+"PDF Document" = "Documento PDF";
+"Scanned Document" = "Documento Escaneado";
+"Uploaded File" = "Archivo Subido";
+"%@ characters • %@ words" = "%@ caracteres • %@ palabras";
+"Share" = "Compartir";
+"Are you sure you want to delete this note? This action cannot be undone." = "¿Estás seguro de que quieres eliminar esta nota? Esta acción no se puede deshacer.";
+
+// MARK: - NoteDetailTab
+"Notes" = "Notas";
+"Chat" = "Chat";
+"Quiz" = "Quiz";
+"Flashcards" = "Tarjetas";
+"Mind Map" = "Mapa Mental";
+"Infographic" = "Infografía";
+"Podcast" = "Podcast";
+
+// MARK: - ProfileView
+"User" = "Usuario";
+"PRO" = "PRO";
+"ACTIVE" = "ACTIVO";
+"Premium" = "Premium";
+"Monthly Plan" = "Plan Mensual";
+"Yearly Plan" = "Plan Anual";
+"Premium Plan" = "Plan Premium";
+"Manage Subscription" = "Administrar Suscripción";
+"Upgrade to Premium" = "Actualizar a Premium";
+"Unlock all features" = "Desbloquear todas las funciones";
+"View Plans" = "Ver Planes";
+"Appearance" = "Apariencia";
+"Language" = "Idioma";
+"Help & Support" = "Ayuda y Soporte";
+"Get help with the app" = "Obtén ayuda con la aplicación";
+"About" = "Acerca de";
+"Version 1.0.0" = "Versión 1.0.0";
+"Sign Out" = "Cerrar Sesión";
+"Are you sure you want to sign out?" = "¿Estás seguro de que quieres cerrar sesión?";
+"Delete Account" = "Eliminar Cuenta";
+"Permanently delete your account and data" = "Eliminar permanentemente tu cuenta y datos";
+"Deleting account..." = "Eliminando cuenta...";
+"About Scribe AI" = "Acerca de Scribe AI";
+"Visit Website" = "Visitar Sitio Web";
+"Privacy Policy" = "Política de Privacidad";
+"Terms of Service" = "Términos de Servicio";
+"OK" = "OK";
+"Scribe AI - Your AI-powered study assistant\n\nVersion 1.0.0\n\n© 2025 Kreative Koala. All rights reserved." = "Scribe AI - Tu asistente de estudio con IA\n\nVersión 1.0.0\n\n© 2025 Kreative Koala. Todos los derechos reservados.";
+"Are you sure you want to delete your account? This will permanently delete:\n\n• Your profile and settings\n• All your notes and recordings\n• All generated content (quizzes, flashcards, podcasts)\n\nThis action cannot be undone." = "¿Estás seguro de que quieres eliminar tu cuenta? Esto eliminará permanentemente:\n\n• Tu perfil y configuración\n• Todas tus notas y grabaciones\n• Todo el contenido generado (cuestionarios, tarjetas, podcasts)\n\nEsta acción no se puede deshacer.";
+"Final Confirmation" = "Confirmación Final";
+"Continue" = "Continuar";
+"Delete My Account" = "Eliminar Mi Cuenta";
+"This is your last chance. Once deleted, your account and all data cannot be recovered.\n\nAre you absolutely sure?" = "Esta es tu última oportunidad. Una vez eliminada, tu cuenta y todos los datos no se pueden recuperar.\n\n¿Estás completamente seguro?";
+"Error" = "Error";
+"An error occurred while deleting your account. Please try again or contact support." = "Ocurrió un error al eliminar tu cuenta. Por favor, intenta de nuevo o contacta a soporte.";
+"How would you like to get help?" = "¿Cómo te gustaría obtener ayuda?";
+"Email Support" = "Soporte por Correo";
+"Rate App" = "Calificar App";
+"Email Copied" = "Correo Copiado";
+"Our support email (support@scribeai.online) has been copied to your clipboard. Please paste it into your email app." = "Nuestro correo de soporte (support@scribeai.online) se ha copiado a tu portapapeles. Por favor, pégalo en tu aplicación de correo.";
+
+// MARK: - Language Selection
+"Select Language" = "Seleccionar Idioma";
+"AI-generated content will be in this language" = "El contenido generado por IA será en este idioma";
+
+// MARK: - Theme Selection
+"Choose how the app looks" = "Elige cómo se ve la aplicación";
+"Done" = "Listo";
+"System" = "Sistema";
+"Light" = "Claro";
+"Dark" = "Oscuro";
+
+// MARK: - UploadOptionsView
+"Choose what you'd like to upload" = "Elige lo que te gustaría subir";
+"Upload PDF" = "Subir PDF";
+"Extract text from PDF documents" = "Extraer texto de documentos PDF";
+"Upload Audio" = "Subir Audio";
+"Transcribe audio files" = "Transcribir archivos de audio";
+"Take photos and extract text" = "Tomar fotos y extraer texto";
+"Upload from Camera Roll" = "Subir desde la Galería";
+"Select photos with text to extract" = "Selecciona fotos con texto para extraer";
+"Analyzing document..." = "Analizando documento...";
+"No Text Found" = "No se Encontró Texto";
+"The selected photos don't appear to contain any readable text. Please select photos that contain documents, notes, or other text content." = "Las fotos seleccionadas no parecen contener texto legible. Por favor, selecciona fotos que contengan documentos, notas u otro contenido de texto.";
+
+// MARK: - YouTubeInputView
+"YouTube Transcript" = "Transcripción de YouTube";
+"Only videos with captions/subtitles are supported" = "Solo se admiten videos con subtítulos";
+"Open YouTube" = "Abrir YouTube";
+"Paste From Clipboard" = "Pegar del Portapapeles";
+"Generate Notes" = "Generar Notas";
+"Please enter a valid YouTube URL" = "Por favor, ingresa una URL de YouTube válida";
+"Video ID: %@" = "ID del Video: %@";
+"YouTube URL detected" = "URL de YouTube detectada";
+"About YouTube Transcripts" = "Acerca de las Transcripciones de YouTube";
+"Got it" = "Entendido";
+"This feature extracts captions/subtitles from YouTube videos.\n\nRequirements:\n• Video must have captions enabled\n• Auto-generated or manual subtitles\n• Works with most public videos" = "Esta función extrae subtítulos de videos de YouTube.\n\nRequisitos:\n• El video debe tener subtítulos habilitados\n• Subtítulos automáticos o manuales\n• Funciona con la mayoría de los videos públicos";
+
+// MARK: - Processing Steps
+"Sending video URL" = "Enviando URL del video";
+"Fetching transcript" = "Obteniendo transcripción";
+"Analyzing content" = "Analizando contenido";
+"Summarizing key points" = "Resumiendo puntos clave";
+"Finalizing your note" = "Finalizando tu nota";
+"Uploading audio" = "Subiendo audio";
+"Transcribing audio" = "Transcribiendo audio";
+"Identifying speakers" = "Identificando hablantes";
+"Uploading document" = "Subiendo documento";
+"Extracting text" = "Extrayendo texto";
+"Uploading scanned images" = "Subiendo imágenes escaneadas";
+"Extracting text (OCR)" = "Extrayendo texto (OCR)";
+"Upload is complete. It's safe to leave now." = "La carga está completa. Es seguro salir ahora.";
+
+// MARK: - Success View
+"Your note is ready!" = "¡Tu nota está lista!";
+"We've processed your content and created study materials." = "Hemos procesado tu contenido y creado materiales de estudio.";
+"View Note" = "Ver Nota";
+"Go to Home" = "Ir al Inicio";
+
+// MARK: - Error View
+"Something went wrong" = "Algo salió mal";
+"Try Again" = "Intentar de Nuevo";
+"Go Back" = "Volver";
+
+// MARK: - Notification Card
+"Get notified when your notes are ready" = "Recibe notificaciones cuando tus notas estén listas";
+"Notes usually take a few minutes to generate. We'll let you know when they're ready." = "Las notas generalmente tardan unos minutos en generarse. Te avisaremos cuando estén listas.";
+"Notify me" = "Notificarme";
+
+// MARK: - PaywallView
+"Unlock ScribeAI Premium" = "Desbloquear ScribeAI Premium";
+"Get unlimited access to all AI-powered features" = "Obtén acceso ilimitado a todas las funciones con IA";
+"Unlimited Notebooks" = "Cuadernos Ilimitados";
+"Create as many notes as you need" = "Crea tantas notas como necesites";
+"AI Summaries" = "Resúmenes con IA";
+"Instant summaries of your content" = "Resúmenes instantáneos de tu contenido";
+"Audio Podcasts" = "Podcasts de Audio";
+"Convert notes to podcasts" = "Convierte notas en podcasts";
+"Quizzes & Flashcards" = "Cuestionarios y Tarjetas";
+"AI-generated study materials" = "Materiales de estudio generados por IA";
+"AI Chat Assistant" = "Asistente de Chat con IA";
+"Ask questions about your notes" = "Haz preguntas sobre tus notas";
+"Cloud Sync" = "Sincronización en la Nube";
+"Access from all your devices" = "Accede desde todos tus dispositivos";
+"BEST VALUE" = "MEJOR VALOR";
+"FOREVER" = "PARA SIEMPRE";
+"one-time" = "pago único";
+"One-time" = "Pago Único";
+"Select a Plan" = "Seleccionar un Plan";
+"Subscribe for %@/%@" = "Suscribirse por %@/%@";
+"Restore Purchases" = "Restaurar Compras";
+"Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions in your App Store account settings." = "Las suscripciones se renuevan automáticamente a menos que se cancelen al menos 24 horas antes del final del período actual. Puedes administrar y cancelar tus suscripciones en la configuración de tu cuenta de App Store.";
+"Processing..." = "Procesando...";
+"Have a promo code?" = "¿Tienes un código promocional?";
+"Enter promo code" = "Ingresa código promocional";
+"Apply" = "Aplicar";
+"Code applied!" = "¡Código aplicado!";
+"Referred by %@" = "Referido por %@";
+"Hide" = "Ocultar";
+"Invalid or expired promo code" = "Código promocional inválido o expirado";
+"Subscribe on Web" = "Suscribirse en la Web";
+"30% OFF" = "30% DE DESCUENTO";
+"Just %@/week" = "Solo %@/semana";
+"Save %@%%" = "Ahorra %@%%";
+
+// MARK: - Onboarding - UserType
+"What describes you best?" = "¿Qué te describe mejor?";
+"We use this to personalize your experience :)" = "Usamos esto para personalizar tu experiencia :)";
+"Undergraduate Student" = "Estudiante Universitario";
+"High School Student" = "Estudiante de Secundaria";
+"Middle School Student" = "Estudiante de Escuela Media";
+"Graduate Student" = "Estudiante de Posgrado";
+"Professional" = "Profesional";
+"Educator" = "Educador";
+"Other" = "Otro";
+
+// MARK: - Onboarding - UseCase
+"What will you use\nScribeAI for?" = "¿Para qué usarás\nScribeAI?";
+"Select all that apply" = "Selecciona todos los que apliquen";
+"Lecture Notes" = "Notas de Clase";
+"Study Materials" = "Materiales de Estudio";
+"Meeting Notes" = "Notas de Reunión";
+"Research" = "Investigación";
+"Personal Learning" = "Aprendizaje Personal";
+
+// MARK: - Onboarding - Features
+"Upload Anything" = "Sube Cualquier Cosa";
+"PDFs  •  YouTube Videos  •  Audio" = "PDFs  •  Videos de YouTube  •  Audio";
+"Drop here" = "Soltar aquí";
+"Uploaded!" = "¡Subido!";
+"Try it out!" = "¡Pruébalo!";
+"Drag the file to the drop zone" = "Arrastra el archivo a la zona de soltar";
+"We'll create beautiful\nnotes for you." = "Crearemos hermosas\nnotas para ti.";
+"Master your terms." = "Domina tus términos.";
+"Memorize key concepts with spaced repetition" = "Memoriza conceptos clave con repetición espaciada";
+"Tap to flip" = "Toca para voltear";
+"Test your knowledge." = "Pon a prueba tu conocimiento.";
+"AI-generated quizzes to reinforce learning" = "Cuestionarios generados por IA para reforzar el aprendizaje";
+"Learn on the go." = "Aprende en cualquier lugar.";
+"Turn your materials into engaging audio summaries" = "Convierte tus materiales en resúmenes de audio atractivos";
+"AI Generated Podcast" = "Podcast Generado por IA";
+"Tap play to hear a sample" = "Toca reproducir para escuchar una muestra";
+
+// MARK: - Onboarding - Skip / Navigation
+"Skip" = "Omitir";
+"Maybe later" = "Quizás después";
+
+// MARK: - Onboarding - Social Proof
+"100K+" = "100K+";
+"Students trust ScribeAI" = "Estudiantes confían en ScribeAI";
+"25K+ App Ratings" = "25K+ Calificaciones";
+"What students are saying" = "Lo que dicen los estudiantes";
+"Join 100K+ Students" = "Únete a más de 100K Estudiantes";
+
+// MARK: - Onboarding - Comparison
+"ScribeAI Pro users\nlearn up to 6x more\nefficiently." = "Los usuarios de ScribeAI Pro\naprenden hasta 6 veces más\neficientemente.";
+"FREE" = "GRATIS";
+"Unlimited Notes" = "Notas Ilimitadas";
+"AI Podcasts" = "Podcasts con IA";
+"Priority Support" = "Soporte Prioritario";
+"Early Access Features" = "Acceso Anticipado a Funciones";
+"All features currently free during beta!" = "¡Todas las funciones actualmente gratis durante la beta!";
+
+// MARK: - Onboarding - Trial
+"Try ScribeAI Pro" = "Prueba ScribeAI Pro";
+"Ace your exams with AI" = "Aprueba tus exámenes con IA";
+"Study smarter, not harder" = "Estudia de forma más inteligente";
+"Make learning fun with AI" = "Haz que aprender sea divertido con IA";
+"Never miss an action item" = "Nunca pierdas un punto de acción";
+"Save hours on lesson prep" = "Ahorra horas en preparación de clases";
+"Transform how you learn" = "Transforma cómo aprendes";
+"free for 7 days." = "gratis por 7 días.";
+"No charge today" = "Sin cargos hoy";
+"How your free trial works:" = "Cómo funciona tu prueba gratuita:";
+"Today - Free trial starts" = "Hoy - Comienza la prueba gratuita";
+"Enjoy full access free for 7 days" = "Disfruta acceso completo gratis por 7 días";
+"We'll send a reminder - cancel before this if you don't want to continue" = "Te enviaremos un recordatorio - cancela antes si no quieres continuar";
+"First charge only if you haven't canceled" = "Primer cobro solo si no has cancelado";
+"What you get:" = "Lo que obtienes:";
+"Unlimited access forever" = "Acceso ilimitado para siempre";
+"No recurring charges" = "Sin cargos recurrentes";
+"All future updates included" = "Todas las actualizaciones futuras incluidas";
+"Premium features unlocked" = "Funciones premium desbloqueadas";
+"One-time payment" = "Pago único";
+"Pay once, use forever" = "Paga una vez, úsalo para siempre";
+"Start your free 7-day trial" = "Comienza tu prueba gratuita de 7 días";
+"Get Lifetime Access" = "Obtener Acceso de por Vida";
+"Yearly" = "Anual";
+"Monthly" = "Mensual";
+"Lifetime" = "De por Vida";
+"One-time purchase - no subscription" = "Compra única - sin suscripción";
+"We'll remind you 2 days before your trial ends" = "Te recordaremos 2 días antes de que termine tu prueba";
+"Cancel anytime in App Store settings - no charge" = "Cancela en cualquier momento en la configuración de App Store - sin cargos";
+"Secure payment via App Store" = "Pago seguro a través de App Store";
+
+// MARK: - Onboarding - Notifications
+"Never miss what matters" = "Nunca te pierdas lo importante";
+"Get notified about things like..." = "Recibe notificaciones sobre cosas como...";
+"Notes Ready" = "Notas Listas";
+"Your Biology lecture notes are ready to review!" = "¡Tus notas de la clase de Biología están listas para revisar!";
+"Exam Prep" = "Preparación de Examen";
+"Chemistry exam in 3h - You know 85% of the content. Study the rest?" = "Examen de Química en 3h - Sabes el 85% del contenido. ¿Estudias el resto?";
+"Quiz Generated" = "Quiz Generado";
+"New quiz ready for AP Biology Chapter 3" = "Nuevo quiz listo para Biología AP Capítulo 3";
+"Skip for now" = "Omitir por ahora";
+"Enable Notifications" = "Activar Notificaciones";
+
+// MARK: - ReviewPromptView
+"Enjoying Scribe AI?" = "¿Disfrutando Scribe AI?";
+"Is Scribe AI helping you study faster and learn better?" = "¿Scribe AI te ayuda a estudiar más rápido y aprender mejor?";
+"Yes, I love it!" = "¡Sí, me encanta!";
+"Not yet" = "Aún no";
+
+// MARK: - SubscriptionGate
+"Trial Ended" = "Prueba Terminada";
+"Your 7-day free trial has ended.\nSubscribe to unlock %@ and all other features." = "Tu prueba gratuita de 7 días ha terminado.\nSuscríbete para desbloquear %@ y todas las demás funciones.";
+"Subscribe Now" = "Suscribirse Ahora";
+"%@ day%@ left in trial" = "%@ día%@ restantes de prueba";
+"Upgrade" = "Actualizar";
+"Your 7-day free trial has ended. Subscribe to continue using all features." = "Tu prueba gratuita de 7 días ha terminado. Suscríbete para seguir usando todas las funciones.";
+"Your free trial has already been used on this device. Subscribe to continue using all features." = "Tu prueba gratuita ya fue utilizada en este dispositivo. Suscríbete para seguir usando todas las funciones.";
+
+// MARK: - SubscriptionSettingsSection
+"Subscription" = "Suscripción";
+"Unlimited notes & AI features" = "Notas ilimitadas y funciones de IA";
+
+// MARK: - PostValueTrialPrompt
+"Loving the AI features?" = "¿Te encantan las funciones de IA?";
+"Start your free 7-day trial to keep using unlimited AI features" = "Comienza tu prueba gratuita de 7 días para seguir usando funciones de IA ilimitadas";
+"Free access" = "Acceso gratuito";
+"Day 5" = "Día 5";
+"Reminder" = "Recordatorio";
+"Day 7" = "Día 7";
+"First charge" = "Primer cobro";
+"Start Free Trial" = "Comenzar Prueba Gratuita";
+
+// MARK: - FeaturePreviewGate
+"You've seen %@ of %@ cards" = "Has visto %@ de %@ tarjetas";
+"Subscribe to unlock all flashcards and study more effectively" = "Suscríbete para desbloquear todas las tarjetas y estudiar más efectivamente";
+"Unlock All Cards" = "Desbloquear Todas las Tarjetas";
+"You've answered %@ of %@ questions" = "Has respondido %@ de %@ preguntas";
+"Subscribe to complete the quiz and test your knowledge" = "Suscríbete para completar el quiz y probar tu conocimiento";
+"Unlock Full Quiz" = "Desbloquear Quiz Completo";
+"Subscribe to read the full summary" = "Suscríbete para leer el resumen completo";
+"Unlock Full Summary" = "Desbloquear Resumen Completo";
+"PREVIEW" = "VISTA PREVIA";
+
+// MARK: - JoinMeetingView
+"Join a Meeting" = "Unirse a una Reunión";
+"Paste your meeting link and our bot will join to record and transcribe." = "Pega el enlace de tu reunión y nuestro bot se unirá para grabar y transcribir.";
+"Meeting Link" = "Enlace de Reunión";
+"Meeting Title (optional)" = "Título de la Reunión (opcional)";
+"Supported Platforms" = "Plataformas Compatibles";
+"Please enter a valid Zoom, Google Meet, or Teams link" = "Por favor, ingresa un enlace válido de Zoom, Google Meet o Teams";
+"%@ meeting detected" = "Reunión de %@ detectada";
+"Send Bot to Meeting" = "Enviar Bot a la Reunión";
+
+// MARK: - MeetingsView
+"Meeting Bot" = "Bot de Reunión";
+"Loading meetings..." = "Cargando reuniones...";
+"No Meetings Yet" = "Aún No Hay Reuniones";
+"Enter a meeting link to have our bot join, record, and transcribe automatically." = "Ingresa un enlace de reunión para que nuestro bot se una, grabe y transcriba automáticamente.";
+"Delete Meeting" = "Eliminar Reunión";
+"Are you sure you want to delete this meeting?" = "¿Estás seguro de que quieres eliminar esta reunión?";
+"Untitled Meeting" = "Reunión Sin Título";
+"Loading note..." = "Cargando nota...";
+"Failed to load note" = "No se pudo cargar la nota";
+
+// MARK: - RetentionViews
+"Are you sure?" = "¿Estás seguro?";
+"You'll lose access to:" = "Perderás acceso a:";
+"notes you've created" = "notas que has creado";
+"quizzes generated" = "cuestionarios generados";
+"flashcards created" = "tarjetas creadas";
+"hours of audio content" = "horas de contenido de audio";
+"Stay Signed In" = "Mantener Sesión";
+"Sign Out Anyway" = "Cerrar Sesión de Todos Modos";
+"Delete Account?" = "¿Eliminar Cuenta?";
+"This cannot be undone.\nYou'll permanently lose:" = "Esto no se puede deshacer.\nPerderás permanentemente:";
+"Keep My Account" = "Mantener Mi Cuenta";
+"Delete Anyway" = "Eliminar de Todos Modos";
+"Before you go..." = "Antes de irte...";
+"Help us improve by telling us why you're leaving" = "Ayúdanos a mejorar contándonos por qué te vas";
+"Not useful for my needs" = "No es útil para mis necesidades";
+"Too expensive" = "Muy costoso";
+"Found a better alternative" = "Encontré una mejor alternativa";
+"Privacy concerns" = "Preocupaciones de privacidad";
+"Technical issues" = "Problemas técnicos";
+
+// MARK: - Subscription Features (gated)
+"AI Chat" = "Chat con IA";
+"AI Quizzes" = "Cuestionarios con IA";
+"AI Flashcards" = "Tarjetas con IA";
+"AI Mind Maps" = "Mapas Mentales con IA";
+"AI Infographics" = "Infografías con IA";
+"AI Podcasts" = "Podcasts con IA";

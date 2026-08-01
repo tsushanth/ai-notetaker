@@ -1,0 +1,1 @@
+notas ia,resumo vídeo,notas aula,transcrição,flashcards,resumo,quiz,estudo

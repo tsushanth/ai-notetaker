@@ -269,6 +269,7 @@ struct ChatTabContent: View {
                 let response = try await APIService.shared.chatWithNote(
                     token: token,
                     noteId: note.id,
+                    noteContent: note.content,
                     question: text,
                     conversationHistory: Array(conversationHistory),
                     contentLength: note.content.count
@@ -278,11 +279,14 @@ struct ChatTabContent: View {
                     let aiMessage = ChatMessage(id: UUID().uuidString, role: "assistant", text: response.answer)
                     messages.append(aiMessage)
                     isLoading = false
-                    
+
                     // Speak response in voice mode
                     if speakResponse && isVoiceMode {
                         speakText(response.answer)
                     }
+
+                    // Trigger post-value paywall prompt after AI chat response
+                    PostValueTrialManager.shared.checkAndTriggerPrompt()
                 }
             } catch {
                 await MainActor.run {
@@ -373,7 +377,8 @@ struct ChatTabContent: View {
             do {
                 let fetchedSuggestions = try await APIService.shared.getChatSuggestions(
                     token: token,
-                    noteId: note.id
+                    noteId: note.id,
+                    noteContent: note.content
                 )
 
                 await MainActor.run {

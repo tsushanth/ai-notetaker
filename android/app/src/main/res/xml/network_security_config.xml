@@ -10,7 +10,7 @@
 
     <!-- Specific domain configuration -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">ai-notetaker-backend-917362189743.us-central1.run.app</domain>
+        <domain includeSubdomains="true">ai-notetaker-backend.fly.dev</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>

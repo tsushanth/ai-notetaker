@@ -1,0 +1,327 @@
+<resources>
+    <string name="app_name">ScribeAI Pro</string>
+    <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
+
+    <!-- Home Screen -->
+    <string name="app_title">SCRIBE AI</string>
+    <string name="home">ホーム</string>
+    <string name="menu">メニュー</string>
+    <string name="menu_language">言語</string>
+    <string name="menu_upgrade_pro">Proにアップグレード</string>
+    <string name="menu_manage_subscription">サブスクリプションを管理</string>
+    <string name="menu_appearance">外観</string>
+    <string name="menu_sign_out">サインアウト</string>
+    <string name="menu_delete_account">アカウント削除</string>
+    <string name="add">追加</string>
+    <string name="no_notes_yet">ノートはまだありません</string>
+    <string name="tap_to_create_first_note">+をタップして最初のノートを作成</string>
+    <string name="notes_count_format">%1$d / %2$d ノート</string>
+    <string name="load_more_notes">さらに読み込む</string>
+    <string name="error_loading_notes">ノートの読み込みエラー</string>
+    <string name="retry">再試行</string>
+    <string name="account_deletion_requested">アカウント削除がリクエストされました。サインアウトします。</string>
+    <string name="error_delete_account">アカウント削除に失敗しました: %s</string>
+
+    <!-- Language Dialog -->
+    <string name="select_language">言語を選択</string>
+    <string name="language_subtitle">AI生成コンテンツはこの言語で表示されます</string>
+    <string name="ok">OK</string>
+    <string name="cancel">キャンセル</string>
+
+    <!-- Note Card -->
+    <string name="more">その他</string>
+    <string name="edit_title">タイトルを編集</string>
+    <string name="delete">削除</string>
+    <string name="delete_note">ノートを削除しますか？</string>
+    <string name="delete_note_message">「%s」を削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="delete_note_detail_message">このノートを削除してもよろしいですか？この操作は取り消せません。</string>
+    <string name="label_title">タイトル</string>
+    <string name="save">保存</string>
+
+    <!-- Create Options Bottom Sheet -->
+    <string name="record_or_upload">録音またはオーディオをアップロード</string>
+    <string name="youtube_video">YouTube動画</string>
+    <string name="upload_document">ドキュメントをアップロード</string>
+    <string name="upload_document_subtitle">PDF、DOCX、PPT、TXTなどに対応！</string>
+    <string name="scan_text">テキストをスキャン</string>
+    <string name="scan_text_subtitle">文字を含む画像</string>
+    <string name="join_meeting">ミーティングに参加</string>
+    <string name="join_meeting_subtitle">Zoom、Meet、Teams、Webexを録音</string>
+
+    <!-- Note Detail Screen -->
+    <string name="back">戻る</string>
+    <string name="more_options">その他のオプション</string>
+    <string name="share">共有</string>
+    <string name="share_note">ノートを共有</string>
+    <string name="tab_notes">ノート</string>
+    <string name="tab_chat">チャット</string>
+    <string name="tab_quiz">クイズ</string>
+    <string name="tab_cards">カード</string>
+    <string name="formatting_notes">ノートを整形中\u2026</string>
+    <string name="formatted">整形済み</string>
+    <string name="raw">原文</string>
+    <string name="source_label">ソース: %s</string>
+    <string name="open_source_link">ソースを開く</string>
+    <string name="characters_words_format">%1$s 文字 \u2022 %2$s 単語</string>
+
+    <!-- Source Labels -->
+    <string name="source_youtube_video">YouTube動画</string>
+    <string name="source_audio_recording">音声録音</string>
+    <string name="source_pdf_document">PDFドキュメント</string>
+    <string name="source_scanned_document">スキャンドキュメント</string>
+    <string name="source_image">画像</string>
+    <string name="source_text">テキスト</string>
+
+    <!-- Summary Section -->
+    <string name="summary">要約</string>
+    <string name="generating_summary">要約を生成中\u2026</string>
+    <string name="regenerate">再生成</string>
+    <string name="no_summary_yet">要約はまだありません</string>
+    <string name="generate_summary">要約を生成</string>
+    <string name="no_summary_available">要約がありません</string>
+    <string name="summary_length">要約の長さ</string>
+    <string name="create_summary_description">ノートの簡潔な要約を作成</string>
+
+    <!-- Chat Tab -->
+    <string name="type_a_message">メッセージを入力\u2026</string>
+    <string name="send">送信</string>
+    <string name="voice_mode">音声モード</string>
+    <string name="text_mode">テキストモード</string>
+    <string name="ask_about_notes">ノートについて何でも質問できます</string>
+    <string name="ask_about_notes_description">ノートの理解、分析、または特定の情報の検索をお手伝いします。</string>
+    <string name="suggested_questions">おすすめの質問:</string>
+    <string name="chat_suggestion_summarize">要点をまとめて</string>
+    <string name="chat_suggestion_explain">主要な概念を説明して</string>
+    <string name="chat_suggestion_test">この内容をテストして</string>
+    <string name="listening">聞き取り中\u2026</string>
+    <string name="tap_to_speak">タップして話す</string>
+    <string name="speaking">話しています\u2026</string>
+    <string name="stop_speaking">音声を停止</string>
+    <string name="could_not_open_link">リンクを開けませんでした</string>
+
+    <!-- Quiz Tab -->
+    <string name="generate_quiz">クイズを生成</string>
+    <string name="generate_quiz_description">知識をテストするクイズを作成</string>
+    <string name="generating_quiz">クイズを生成中\u2026</string>
+    <string name="question_count_format">問題 %1$d / %2$d</string>
+    <string name="check_answer">解答を確認</string>
+    <string name="next_question">次の問題</string>
+    <string name="correct">正解！</string>
+    <string name="incorrect">不正解</string>
+    <string name="correct_answer_is">正解は: %s</string>
+    <string name="quiz_complete">クイズ完了！</string>
+    <string name="quiz_score_format">%1$d / %2$d 問正解</string>
+    <string name="try_again">もう一度</string>
+    <string name="new_quiz">新しいクイズ</string>
+
+    <!-- Flashcards Tab -->
+    <string name="generate_flashcards">フラッシュカードを生成</string>
+    <string name="generate_flashcards_description">学習用フラッシュカードを作成</string>
+    <string name="generating_flashcards">フラッシュカードを生成中\u2026</string>
+    <string name="flashcard_count_format">カード %1$d / %2$d</string>
+    <string name="tap_to_flip">タップして裏返す</string>
+    <string name="previous">前へ</string>
+    <string name="next">次へ</string>
+
+    <!-- Login Screen -->
+    <string name="welcome_back">おかえりなさい</string>
+    <string name="sign_in_to_continue">サインインして続ける</string>
+    <string name="continue_with_google">Googleで続ける</string>
+    <string name="or_divider">  または  </string>
+    <string name="email">メール</string>
+    <string name="email_placeholder">your@email.com</string>
+    <string name="password">パスワード</string>
+    <string name="enter_password">パスワードを入力</string>
+    <string name="hide_password">パスワードを隠す</string>
+    <string name="show_password">パスワードを表示</string>
+    <string name="sign_in">サインイン</string>
+    <string name="forgot_password">パスワードをお忘れですか？</string>
+    <string name="no_account">アカウントをお持ちでない方 </string>
+    <string name="sign_up">サインアップ</string>
+    <string name="error_invalid_credentials">メールアドレスまたはパスワードが正しくありません。もう一度お試しください。</string>
+    <string name="error_email_not_confirmed">サインインする前にメールアドレスを確認してください。</string>
+    <string name="error_user_not_found">このメールアドレスのアカウントが見つかりません。</string>
+    <string name="error_network">ネットワークエラーです。接続を確認してください。</string>
+    <string name="error_no_google_account">Googleアカウントが見つかりません。デバイスにGoogleアカウントを追加してください。</string>
+    <string name="error_google_signin_failed">Googleサインインに失敗しました</string>
+    <string name="error_email_required">メールアドレスを入力してください</string>
+    <string name="error_invalid_email">有効なメールアドレスを入力してください</string>
+    <string name="error_password_required">パスワードを入力してください</string>
+    <string name="error_password_too_short">パスワードは6文字以上で入力してください</string>
+
+    <!-- Forgot Password Dialog -->
+    <string name="email_sent">メール送信完了！</string>
+    <string name="reset_password">パスワードをリセット</string>
+    <string name="reset_email_sent">パスワードリセットリンクを送信しました:</string>
+    <string name="check_inbox">受信トレイと迷惑メールフォルダを確認してください。</string>
+    <string name="reset_password_instruction">メールアドレスを入力してください。パスワードリセットリンクを送信します。</string>
+    <string name="done">完了</string>
+    <string name="send_reset_link">リセットリンクを送信</string>
+    <string name="error_enter_valid_email">有効なメールアドレスを入力してください</string>
+
+    <!-- Sign Up Screen -->
+    <string name="create_account">アカウント作成</string>
+    <string name="sign_up_subtitle">サインアップして始めましょう</string>
+    <string name="at_least_6_characters">6文字以上</string>
+    <string name="confirm_password">パスワードの確認</string>
+    <string name="reenter_password">パスワードを再入力</string>
+    <string name="already_have_account">すでにアカウントをお持ちですか？ </string>
+    <string name="error_valid_email">有効なメールアドレスを入力してください</string>
+    <string name="error_enter_password">パスワードを入力してください</string>
+    <string name="error_confirm_password">パスワードを確認してください</string>
+    <string name="error_passwords_mismatch">パスワードが一致しません</string>
+
+    <!-- Recording Screen -->
+    <string name="record_audio">音声を録音</string>
+    <string name="record_audio_subtitle">講義、会議、メモを録音。\n書き起こしと学習資料を自動作成します。</string>
+    <string name="grant_microphone_permission">マイクの権限を許可</string>
+    <string name="start_recording">録音開始</string>
+    <string name="tap_to_start_recording">タップして録音開始</string>
+    <string name="recording_status">録音中\u2026</string>
+    <string name="paused">一時停止</string>
+    <string name="discard">破棄</string>
+    <string name="pause">一時停止</string>
+    <string name="resume">再開</string>
+    <string name="stop">停止</string>
+    <string name="recording_complete">録音完了</string>
+    <string name="duration_format">長さ: %s</string>
+    <string name="title_optional">タイトル（任意）</string>
+    <string name="title_placeholder">例: 生物学の講義</string>
+    <string name="process_recording">録音を処理</string>
+    <string name="discard_recording">録音を破棄</string>
+
+    <!-- Recording Processing Steps -->
+    <string name="step_uploading_audio">音声をアップロード中</string>
+    <string name="step_transcribing_audio">音声を書き起こし中</string>
+    <string name="step_identifying_speakers">話者を識別中</string>
+    <string name="step_analyzing_content">コンテンツを分析中</string>
+    <string name="step_summarizing_key_points">要点をまとめ中</string>
+    <string name="step_finalizing_note">ノートを仕上げ中</string>
+    <string name="upload_complete_safe">アップロードが完了しました。画面を離れても大丈夫です。</string>
+    <string name="processing_info">ノートの生成には通常数分かかります。この画面を離れて後で戻ることができます。</string>
+
+    <!-- Recording Success -->
+    <string name="note_ready">ノートが完成しました！</string>
+    <string name="note_ready_description">録音を書き起こし、学習資料を作成しました。</string>
+    <string name="view_note">ノートを見る</string>
+    <string name="go_to_home">ホームへ</string>
+
+    <!-- Recording Error -->
+    <string name="something_went_wrong">エラーが発生しました</string>
+    <string name="try_again_button">もう一度試す</string>
+    <string name="go_back">戻る</string>
+    <string name="error_not_authenticated">認証されていません</string>
+    <string name="error_upload_failed">音声のアップロードに失敗しました</string>
+    <string name="error_transcribe_failed">音声の書き起こしに失敗しました</string>
+    <string name="error_start_recording">録音の開始に失敗しました: %s</string>
+    <string name="error_stop_recording">録音の停止に失敗しました: %s</string>
+    <string name="error_processing_failed">処理に失敗しました</string>
+
+    <!-- Paywall Screen -->
+    <string name="close">閉じる</string>
+    <string name="unlock_pro">Scribe AI Proを解除</string>
+    <string name="unlimited_access">すべての機能に無制限アクセス</string>
+    <string name="feature_unlimited_notes">あらゆるソースから無制限のノート</string>
+    <string name="feature_ai_summaries">AI要約 &amp; クイズ</string>
+    <string name="feature_flashcards">フラッシュカード生成</string>
+    <string name="feature_ai_chat">ノートとAIチャット</string>
+    <string name="feature_mind_map">マインドマップ表示</string>
+    <string name="feature_podcast">音声ポッドキャスト生成</string>
+    <string name="plan_yearly">年額</string>
+    <string name="plan_monthly">月額</string>
+    <string name="per_month_format">%s/月</string>
+    <string name="save_percent_format">%d%%お得</string>
+    <string name="loading_plans">プランを読み込み中\u2026</string>
+    <string name="continue_button">続ける</string>
+    <string name="restore_purchases">購入を復元</string>
+
+    <!-- Retention Dialogs -->
+    <string name="are_you_sure">よろしいですか？</string>
+    <string name="lose_access">以下にアクセスできなくなります:</string>
+    <string name="stat_notes_created">作成したノート</string>
+    <string name="stat_quizzes_generated">生成したクイズ</string>
+    <string name="stat_flashcards_created">作成したフラッシュカード</string>
+    <string name="stat_audio_hours">時間の音声コンテンツ</string>
+    <string name="stay_signed_in">サインインを維持</string>
+    <string name="sign_out_anyway">サインアウトする</string>
+    <string name="delete_account">アカウントを削除しますか？</string>
+    <string name="delete_account_warning">この操作は取り消せません。\n以下が完全に失われます:</string>
+    <string name="keep_my_account">アカウントを維持</string>
+    <string name="delete_anyway">削除する</string>
+    <string name="before_you_go">ちょっと待ってください\u2026</string>
+    <string name="feedback_reason">改善のため、退会理由をお聞かせください</string>
+    <string name="delete_my_account">アカウントを削除</string>
+
+    <!-- Review Prompt Dialog -->
+    <string name="enjoying_scribe_ai">Scribe AIはいかがですか？</string>
+    <string name="review_subtitle">Scribe AIは学習のスピードアップと理解に役立っていますか？</string>
+    <string name="yes_love_it">はい、気に入っています！</string>
+    <string name="not_yet">まだです</string>
+
+    <!-- YouTube Input Screen -->
+    <string name="youtube_url">YouTube URL</string>
+    <string name="paste_youtube_url">YouTube動画のURLを貼り付け</string>
+    <string name="youtube_url_placeholder">https://youtube.com/watch?v=\u2026</string>
+    <string name="paste_from_clipboard">クリップボードから貼り付け</string>
+    <string name="create_note">ノートを作成</string>
+    <string name="invalid_youtube_url">有効なYouTube URLを入力してください</string>
+    <string name="creating_note">ノートを作成中\u2026</string>
+
+    <!-- PDF Upload Screen -->
+    <string name="upload_pdf">ドキュメントをアップロード</string>
+    <string name="tap_to_select">タップしてファイルを選択</string>
+    <string name="supported_formats">PDF、DOCX、PPT、TXTに対応</string>
+    <string name="file_selected">ファイルが選択されました</string>
+    <string name="uploading">アップロード中\u2026</string>
+
+    <!-- Scan Document Screen -->
+    <string name="scan_document">ドキュメントをスキャン</string>
+    <string name="grant_permission">権限を許可</string>
+    <string name="scan_another_page">もう1ページスキャン</string>
+    <string name="save_with_count">保存 (%d)</string>
+    <string name="dismiss">閉じる</string>
+    <string name="scanned_pages_format">%d ページスキャン済み</string>
+
+    <!-- Join Meeting Dialog -->
+    <string name="join_a_meeting">ミーティングに参加</string>
+    <string name="meeting_link">ミーティングリンク</string>
+    <string name="meeting_link_placeholder">https://zoom.us/j/\u2026</string>
+    <string name="meeting_title_optional">タイトル（任意）</string>
+    <string name="meeting_title_placeholder">例: チームスタンドアップ</string>
+    <string name="send_bot">ボットを送信</string>
+
+    <!-- Meetings Screen -->
+    <string name="meeting_bot">ミーティングボット</string>
+    <string name="no_meetings">ミーティングはまだありません</string>
+    <string name="no_meetings_hint">ミーティングに参加すると録音・書き起こしされます</string>
+
+    <!-- Theme Selection Dialog -->
+    <string name="select_theme">テーマを選択</string>
+    <string name="theme_system">システムデフォルト</string>
+    <string name="theme_light">ライト</string>
+    <string name="theme_dark">ダーク</string>
+
+    <!-- Debug Token Screen -->
+    <string name="debug_token">デバッグトークン</string>
+    <string name="copy_token">トークンをクリップボードにコピー</string>
+    <string name="token_copied">トークンをコピーしました！</string>
+
+    <!-- General AI Content -->
+    <string name="loading">読み込み中\u2026</string>
+    <string name="error_label">エラー</string>
+    <string name="generate">生成</string>
+
+    <!-- Language Picker -->
+    <string name="language">言語</string>
+    <string name="language_picker_title">言語を選択</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Espa\u00f1ol</string>
+    <string name="language_french">Fran\u00e7ais</string>
+    <string name="language_german">Deutsch</string>
+    <string name="language_japanese">\u65e5\u672c\u8a9e</string>
+    <string name="language_chinese">\u4e2d\u6587(\u7b80\u4f53)</string>
+    <string name="language_korean">\ud55c\uad6d\uc5b4</string>
+    <string name="language_portuguese">Portugu\u00eas</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+</resources>

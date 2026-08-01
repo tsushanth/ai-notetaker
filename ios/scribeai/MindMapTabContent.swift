@@ -192,7 +192,7 @@ struct MindMapTabContent: View {
         }
         .sheet(isPresented: $showPaywall) {
             NavigationView {
-                PaywallView(source: "mindmap_feature_gate") {
+                ScribeRemotePaywallView(triggerSource: "mindmap_feature_gate") {
                     showPaywall = false
                     Task {
                         await SubscriptionGateManager.shared.refreshAccessStatus()
@@ -205,6 +205,7 @@ struct MindMapTabContent: View {
                 node: node,
                 parentNode: selectedNodeParent,
                 noteId: note.id,
+                noteContent: note.content,
                 onDismiss: {
                     selectedNode = nil
                     selectedNodeParent = nil
@@ -216,6 +217,7 @@ struct MindMapTabContent: View {
                 topic: node.label,
                 topicDescription: node.content,
                 noteId: note.id,
+                noteContent: note.content,
                 viewModel: viewModel,
                 onDismiss: { selectedExploratoryNode = nil },
                 onNoteCreated: { newNote in
@@ -283,6 +285,7 @@ struct MindMapTabContent: View {
                 let aiContent = try await APIService.shared.generateMindMap(
                     token: token,
                     noteId: note.id,
+                    noteContent: note.content,
                     contentLength: note.content.count,
                     includeExploration: includeExploration
                 )
@@ -581,6 +584,7 @@ struct NodeDetailSheet: View {
     let node: MindMapNode
     let parentNode: MindMapNode?
     let noteId: String
+    let noteContent: String
     let onDismiss: () -> Void
 
     @State private var aiResponse: String = ""
@@ -724,6 +728,7 @@ struct NodeDetailSheet: View {
                 let response = try await APIService.shared.chatWithNote(
                     token: token,
                     noteId: noteId,
+                    noteContent: noteContent,
                     question: question,
                     conversationHistory: []
                 )
@@ -764,6 +769,7 @@ struct ExploratoryResourcesSheet: View {
     let topic: String
     let topicDescription: String
     let noteId: String
+    let noteContent: String
     let viewModel: NoteViewModel
     let onDismiss: () -> Void
     let onNoteCreated: (Note) -> Void
@@ -898,6 +904,7 @@ struct ExploratoryResourcesSheet: View {
                 let response = try await APIService.shared.chatWithNote(
                     token: token,
                     noteId: noteId,
+                    noteContent: noteContent,
                     question: question,
                     conversationHistory: []
                 )
@@ -983,6 +990,7 @@ struct ExploratoryResourcesSheet: View {
                 let contentResponse = try await APIService.shared.chatWithNote(
                     token: token,
                     noteId: noteId,
+                    noteContent: noteContent,
                     question: contentQuestion,
                     conversationHistory: []
                 )

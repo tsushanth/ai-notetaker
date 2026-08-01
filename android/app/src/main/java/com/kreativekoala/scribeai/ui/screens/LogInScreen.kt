@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -77,14 +78,14 @@ fun LoginScreen(
                 // IMPROVED: Better error messages
                 errorMessage = when {
                     error.contains("Invalid login credentials", ignoreCase = true) ->
-                        "Incorrect email or password. Please try again."
+                        context.getString(R.string.error_invalid_credentials)
                     error.contains("Email not confirmed", ignoreCase = true) ->
-                        "Please verify your email before signing in."
+                        context.getString(R.string.error_email_not_confirmed)
                     error.contains("User not found", ignoreCase = true) ->
-                        "No account found with this email."
+                        context.getString(R.string.error_user_not_found)
                     error.contains("network", ignoreCase = true) ||
                             error.contains("timeout", ignoreCase = true) ->
-                        "Network error. Please check your connection."
+                        context.getString(R.string.error_network)
                     else -> error
                 }
             }
@@ -127,14 +128,14 @@ fun LoginScreen(
 
                 // Title
                 Text(
-                    "Welcome Back",
+                    stringResource(R.string.welcome_back),
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
                 )
 
                 Text(
-                    "Sign in to continue",
+                    stringResource(R.string.sign_in_to_continue),
                     fontSize = 16.sp,
                     color = TextSecondary,
                     modifier = Modifier.padding(top = 8.dp)
@@ -182,8 +183,8 @@ fun LoginScreen(
                                 errorMessage = when {
                                     e.message?.contains("canceled", ignoreCase = true) == true -> null  // User cancelled
                                     e.message?.contains("no credentials", ignoreCase = true) == true ->
-                                        "No Google account found. Please add a Google account to your device."
-                                    else -> e.message ?: "Google Sign-In failed"
+                                        context.getString(R.string.error_no_google_account)
+                                    else -> e.message ?: context.getString(R.string.error_google_signin_failed)
                                 }
                             }
                         }
@@ -223,7 +224,7 @@ fun LoginScreen(
                         }
                         Spacer(Modifier.width(12.dp))
                         Text(
-                            "Continue with Google",
+                            stringResource(R.string.continue_with_google),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Medium,
                             color = Color.Black
@@ -243,7 +244,7 @@ fun LoginScreen(
                         color = DarkSurfaceVariant
                     )
                     Text(
-                        "  or  ",
+                        stringResource(R.string.or_divider),
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
@@ -262,8 +263,8 @@ fun LoginScreen(
                         email = it
                         errorMessage = null
                     },
-                    label = { Text("Email") },
-                    placeholder = { Text("your@email.com") },
+                    label = { Text(stringResource(R.string.email)) },
+                    placeholder = { Text(stringResource(R.string.email_placeholder)) },
                     leadingIcon = {
                         Icon(Icons.Default.Email, contentDescription = null)
                     },
@@ -300,8 +301,8 @@ fun LoginScreen(
                         password = it
                         errorMessage = null
                     },
-                    label = { Text("Password") },
-                    placeholder = { Text("Enter your password") },
+                    label = { Text(stringResource(R.string.password)) },
+                    placeholder = { Text(stringResource(R.string.enter_password)) },
                     leadingIcon = {
                         Icon(Icons.Default.Lock, contentDescription = null)
                     },
@@ -310,7 +311,7 @@ fun LoginScreen(
                             Icon(
                                 if (passwordVisible) Icons.Default.Visibility
                                 else Icons.Default.VisibilityOff,
-                                contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                                contentDescription = if (passwordVisible) stringResource(R.string.hide_password) else stringResource(R.string.show_password)
                             )
                         }
                     },
@@ -388,19 +389,19 @@ fun LoginScreen(
 
                         // Validation
                         if (email.isBlank()) {
-                            errorMessage = "Please enter your email"
+                            errorMessage = context.getString(R.string.error_email_required)
                             return@Button
                         }
                         if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                            errorMessage = "Please enter a valid email address"
+                            errorMessage = context.getString(R.string.error_invalid_email)
                             return@Button
                         }
                         if (password.isBlank()) {
-                            errorMessage = "Please enter your password"
+                            errorMessage = context.getString(R.string.error_password_required)
                             return@Button
                         }
                         if (password.length < 6) {
-                            errorMessage = "Password must be at least 6 characters"
+                            errorMessage = context.getString(R.string.error_password_too_short)
                             return@Button
                         }
 
@@ -426,7 +427,7 @@ fun LoginScreen(
                         )
                     } else {
                         Text(
-                            "Sign In",
+                            stringResource(R.string.sign_in),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -441,7 +442,7 @@ fun LoginScreen(
                     showForgotPasswordDialog = true
                 }) {
                     Text(
-                        "Forgot Password?",
+                        stringResource(R.string.forgot_password),
                         fontSize = 14.sp,
                         color = Purple80
                     )
@@ -455,13 +456,13 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Don't have an account? ",
+                        stringResource(R.string.no_account),
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
                     TextButton(onClick = onNavigateToSignUp) {
                         Text(
-                            "Sign Up",
+                            stringResource(R.string.sign_up),
                             fontSize = 14.sp,
                             color = Purple80,
                             fontWeight = FontWeight.SemiBold
@@ -489,7 +490,7 @@ fun LoginScreen(
             },
             title = {
                 Text(
-                    if (forgotPasswordSent) "Email Sent!" else "Reset Password",
+                    if (forgotPasswordSent) stringResource(R.string.email_sent) else stringResource(R.string.reset_password),
                     fontWeight = FontWeight.Bold
                 )
             },
@@ -497,7 +498,7 @@ fun LoginScreen(
                 Column {
                     if (forgotPasswordSent) {
                         Text(
-                            "We've sent a password reset link to:",
+                            stringResource(R.string.reset_email_sent),
                             color = TextSecondary
                         )
                         Spacer(Modifier.height(8.dp))
@@ -508,21 +509,21 @@ fun LoginScreen(
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "Please check your inbox and spam folder.",
+                            stringResource(R.string.check_inbox),
                             color = TextSecondary,
                             fontSize = 13.sp
                         )
                     } else {
                         Text(
-                            "Enter your email address and we'll send you a link to reset your password.",
+                            stringResource(R.string.reset_password_instruction),
                             color = TextSecondary
                         )
                         Spacer(Modifier.height(16.dp))
                         OutlinedTextField(
                             value = forgotPasswordEmail,
                             onValueChange = { forgotPasswordEmail = it },
-                            label = { Text("Email") },
-                            placeholder = { Text("your@email.com") },
+                            label = { Text(stringResource(R.string.email)) },
+                            placeholder = { Text(stringResource(R.string.email_placeholder)) },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             keyboardOptions = KeyboardOptions(
@@ -546,7 +547,7 @@ fun LoginScreen(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                     ) {
-                        Text("Done")
+                        Text(stringResource(R.string.done))
                     }
                 } else {
                     Button(
@@ -559,19 +560,19 @@ fun LoginScreen(
                                     forgotPasswordSent = true
                                 }
                             } else {
-                                Toast.makeText(context, "Please enter a valid email", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.error_enter_valid_email), Toast.LENGTH_SHORT).show()
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                     ) {
-                        Text("Send Reset Link")
+                        Text(stringResource(R.string.send_reset_link))
                     }
                 }
             },
             dismissButton = {
                 if (!forgotPasswordSent) {
                     TextButton(onClick = { showForgotPasswordDialog = false }) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             }

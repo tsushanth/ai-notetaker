@@ -50,8 +50,8 @@ router.get('/', async (req, res) => {
       });
     }
 
-    // Check OpenAI API key is configured
-    checks.openai.status = process.env.OPENAI_API_KEY ? 'configured' : 'not configured';
+    // Check Anthropic API key is configured
+    checks.openai.status = process.env.ANTHROPIC_API_KEY ? 'configured' : 'not configured';
 
     const status = {
       status: isHealthy ? 'healthy' : 'unhealthy',

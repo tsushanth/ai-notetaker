@@ -1,0 +1,2 @@
+• Stronger free-tier limit enforcement at notebook creation
+• Performance polish and bug fixes

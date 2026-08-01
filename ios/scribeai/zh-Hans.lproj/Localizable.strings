@@ -1,0 +1,454 @@
+/*
+  Localizable.strings (Simplified Chinese - zh-Hans)
+  scribeai
+
+  Generated for internationalization.
+*/
+
+// MARK: - HomeView / Navigation
+"SCRIBE AI" = "SCRIBE AI";
+"Add Content" = "添加内容";
+"Record Audio" = "录制音频";
+"Scan Document" = "扫描文档";
+"Upload PDF/Audio" = "上传PDF/音频";
+"YouTube Link" = "YouTube链接";
+"Join Meeting" = "加入会议";
+"Cancel" = "取消";
+
+// MARK: - LoginView
+"scribe ai" = "scribe ai";
+"Your AI-powered note-taking companion" = "您的AI智能笔记助手";
+"Email" = "邮箱";
+"Enter your email" = "输入您的邮箱";
+"Password" = "密码";
+"Enter your password" = "输入您的密码";
+"Sign In" = "登录";
+"OR" = "或";
+"Continue with Apple" = "使用Apple继续";
+"Continue with Google" = "使用Google继续";
+"Don't have an account?" = "还没有账户？";
+"Sign Up" = "注册";
+
+// MARK: - SignUpView
+"Create Account" = "创建账户";
+"Join ScribeAI to start taking smart notes" = "加入ScribeAI，开始智能笔记之旅";
+"Name" = "姓名";
+"Enter your name" = "输入您的姓名";
+"Create a password" = "创建密码";
+"Confirm Password" = "确认密码";
+"Confirm your password" = "再次输入密码";
+"Passwords don't match" = "密码不一致";
+"Password must:" = "密码要求：";
+"Be at least 6 characters" = "至少6个字符";
+
+// MARK: - RecordingView (AudioRecordingView)
+"Record lectures, meetings, or notes.\nWe'll transcribe and create study materials." = "录制讲座、会议或笔记。\n我们将为您转录并创建学习资料。";
+"Tap to start recording" = "点击开始录音";
+"Grant Microphone Permission" = "授予麦克风权限";
+"Recording..." = "录音中...";
+"Paused" = "已暂停";
+"Recording Complete" = "录音完成";
+"Duration: %@" = "时长：%@";
+"Title (optional)" = "标题（可选）";
+"Process Recording" = "处理录音";
+"Discard Recording" = "丢弃录音";
+"Discard Recording?" = "丢弃录音？";
+"Keep Recording" = "保留录音";
+"Discard" = "丢弃";
+"You have an active recording. Are you sure you want to leave? Your recording will be lost." = "您正在录音中。确定要离开吗？录音将会丢失。";
+"Delete Recording?" = "删除录音？";
+"Delete" = "删除";
+"Are you sure you want to delete this recording? This action cannot be undone." = "确定要删除此录音吗？此操作无法撤消。";
+"Microphone Access Required" = "需要麦克风访问权限";
+"Open Settings" = "打开设置";
+"Please enable microphone access in Settings to record audio." = "请在设置中启用麦克风访问权限以录制音频。";
+
+// MARK: - NoteListView
+"Search notes..." = "搜索笔记...";
+"Showing %@ of %@ notes" = "显示 %@/%@ 条笔记";
+"Delete Note" = "删除笔记";
+"Are you sure you want to delete '%@'? This action cannot be undone." = "确定要删除「%@」吗？此操作无法撤消。";
+"Edit Title" = "编辑标题";
+"Title" = "标题";
+"Save" = "保存";
+"Enter a new title for this note" = "为此笔记输入新标题";
+"'%@' deleted" = "「%@」已删除";
+"No notes yet" = "暂无笔记";
+"Tap the + button to create your first note" = "点击 + 按钮创建您的第一条笔记";
+"Loading..." = "加载中...";
+"Load More Notes" = "加载更多笔记";
+"Session expired. Please sign in again." = "会话已过期，请重新登录。";
+
+// MARK: - NoteCardContent
+"YouTube" = "YouTube";
+"Recording" = "录音";
+"PDF" = "PDF";
+"Scanned" = "扫描";
+"Upload" = "上传";
+"Note" = "笔记";
+"%@ words" = "%@ 字";
+"%@ characters" = "%@ 字符";
+"Today" = "今天";
+"Yesterday" = "昨天";
+"Recently" = "最近";
+
+// MARK: - NoteDetailView
+"Source: %@" = "来源：%@";
+"YouTube Video" = "YouTube视频";
+"Audio Recording" = "音频录音";
+"PDF Document" = "PDF文档";
+"Scanned Document" = "扫描文档";
+"Uploaded File" = "上传的文件";
+"%@ characters • %@ words" = "%@ 字符 • %@ 字";
+"Share" = "分享";
+"Are you sure you want to delete this note? This action cannot be undone." = "确定要删除此笔记吗？此操作无法撤消。";
+
+// MARK: - NoteDetailTab
+"Notes" = "笔记";
+"Chat" = "对话";
+"Quiz" = "测验";
+"Flashcards" = "闪卡";
+"Mind Map" = "思维导图";
+"Infographic" = "信息图";
+"Podcast" = "播客";
+
+// MARK: - ProfileView
+"User" = "用户";
+"PRO" = "PRO";
+"ACTIVE" = "已激活";
+"Premium" = "高级版";
+"Monthly Plan" = "月度计划";
+"Yearly Plan" = "年度计划";
+"Premium Plan" = "高级计划";
+"Manage Subscription" = "管理订阅";
+"Upgrade to Premium" = "升级到高级版";
+"Unlock all features" = "解锁所有功能";
+"View Plans" = "查看方案";
+"Appearance" = "外观";
+"Language" = "语言";
+"Help & Support" = "帮助与支持";
+"Get help with the app" = "获取应用帮助";
+"About" = "关于";
+"Version 1.0.0" = "版本 1.0.0";
+"Sign Out" = "退出登录";
+"Are you sure you want to sign out?" = "确定要退出登录吗？";
+"Delete Account" = "删除账户";
+"Permanently delete your account and data" = "永久删除您的账户和数据";
+"Deleting account..." = "正在删除账户...";
+"About Scribe AI" = "关于 Scribe AI";
+"Visit Website" = "访问网站";
+"Privacy Policy" = "隐私政策";
+"Terms of Service" = "服务条款";
+"OK" = "好的";
+"Scribe AI - Your AI-powered study assistant\n\nVersion 1.0.0\n\n© 2025 Kreative Koala. All rights reserved." = "Scribe AI - 您的AI学习助手\n\n版本 1.0.0\n\n© 2025 Kreative Koala. 保留所有权利。";
+"Are you sure you want to delete your account? This will permanently delete:\n\n• Your profile and settings\n• All your notes and recordings\n• All generated content (quizzes, flashcards, podcasts)\n\nThis action cannot be undone." = "确定要删除您的账户吗？以下数据将被永久删除：\n\n• 您的个人资料和设置\n• 所有笔记和录音\n• 所有生成的内容（测验、闪卡、播客）\n\n此操作无法撤消。";
+"Final Confirmation" = "最终确认";
+"Continue" = "继续";
+"Delete My Account" = "删除我的账户";
+"This is your last chance. Once deleted, your account and all data cannot be recovered.\n\nAre you absolutely sure?" = "这是您最后的机会。一旦删除，您的账户和所有数据将无法恢复。\n\n您确定吗？";
+"Error" = "错误";
+"An error occurred while deleting your account. Please try again or contact support." = "删除账户时发生错误。请重试或联系客服。";
+"How would you like to get help?" = "您希望如何获取帮助？";
+"Email Support" = "邮件支持";
+"Rate App" = "评价应用";
+"Email Copied" = "邮箱已复制";
+"Our support email (support@scribeai.online) has been copied to your clipboard. Please paste it into your email app." = "我们的支持邮箱（support@scribeai.online）已复制到剪贴板。请粘贴到您的邮件应用中。";
+
+// MARK: - Language Selection
+"Select Language" = "选择语言";
+"AI-generated content will be in this language" = "AI生成的内容将使用此语言";
+
+// MARK: - Theme Selection
+"Choose how the app looks" = "选择应用外观";
+"Done" = "完成";
+"System" = "跟随系统";
+"Light" = "浅色";
+"Dark" = "深色";
+
+// MARK: - UploadOptionsView
+"Choose what you'd like to upload" = "选择要上传的内容";
+"Upload PDF" = "上传PDF";
+"Extract text from PDF documents" = "从PDF文档中提取文字";
+"Upload Audio" = "上传音频";
+"Transcribe audio files" = "转录音频文件";
+"Take photos and extract text" = "拍照并提取文字";
+"Upload from Camera Roll" = "从相册上传";
+"Select photos with text to extract" = "选择包含文字的照片进行提取";
+"Analyzing document..." = "正在分析文档...";
+"No Text Found" = "未找到文字";
+"The selected photos don't appear to contain any readable text. Please select photos that contain documents, notes, or other text content." = "所选照片似乎不包含可读文字。请选择包含文档、笔记或其他文字内容的照片。";
+
+// MARK: - YouTubeInputView
+"YouTube Transcript" = "YouTube字幕提取";
+"Only videos with captions/subtitles are supported" = "仅支持带字幕的视频";
+"Open YouTube" = "打开YouTube";
+"Paste From Clipboard" = "从剪贴板粘贴";
+"Generate Notes" = "生成笔记";
+"Please enter a valid YouTube URL" = "请输入有效的YouTube链接";
+"Video ID: %@" = "视频ID：%@";
+"YouTube URL detected" = "已检测到YouTube链接";
+"About YouTube Transcripts" = "关于YouTube字幕提取";
+"Got it" = "知道了";
+"This feature extracts captions/subtitles from YouTube videos.\n\nRequirements:\n• Video must have captions enabled\n• Auto-generated or manual subtitles\n• Works with most public videos" = "此功能从YouTube视频中提取字幕。\n\n要求：\n• 视频必须启用字幕\n• 自动生成或手动添加的字幕\n• 适用于大多数公开视频";
+
+// MARK: - Processing Steps
+"Sending video URL" = "正在发送视频链接";
+"Fetching transcript" = "正在获取字幕";
+"Analyzing content" = "正在分析内容";
+"Summarizing key points" = "正在总结要点";
+"Finalizing your note" = "正在完成笔记";
+"Uploading audio" = "正在上传音频";
+"Transcribing audio" = "正在转录音频";
+"Identifying speakers" = "正在识别说话人";
+"Uploading document" = "正在上传文档";
+"Extracting text" = "正在提取文字";
+"Uploading scanned images" = "正在上传扫描图片";
+"Extracting text (OCR)" = "正在提取文字（OCR）";
+"Upload is complete. It's safe to leave now." = "上传已完成，现在可以安全离开。";
+
+// MARK: - Success View
+"Your note is ready!" = "您的笔记已准备好！";
+"We've processed your content and created study materials." = "我们已处理您的内容并创建了学习资料。";
+"View Note" = "查看笔记";
+"Go to Home" = "返回首页";
+
+// MARK: - Error View
+"Something went wrong" = "出了点问题";
+"Try Again" = "重试";
+"Go Back" = "返回";
+
+// MARK: - Notification Card
+"Get notified when your notes are ready" = "笔记准备好时获取通知";
+"Notes usually take a few minutes to generate. We'll let you know when they're ready." = "笔记通常需要几分钟生成。准备好后我们会通知您。";
+"Notify me" = "通知我";
+
+// MARK: - PaywallView
+"Unlock ScribeAI Premium" = "解锁ScribeAI高级版";
+"Get unlimited access to all AI-powered features" = "无限使用所有AI功能";
+"Unlimited Notebooks" = "无限笔记本";
+"Create as many notes as you need" = "创建任意数量的笔记";
+"AI Summaries" = "AI摘要";
+"Instant summaries of your content" = "即时内容摘要";
+"Audio Podcasts" = "音频播客";
+"Convert notes to podcasts" = "将笔记转换为播客";
+"Quizzes & Flashcards" = "测验和闪卡";
+"AI-generated study materials" = "AI生成的学习资料";
+"AI Chat Assistant" = "AI聊天助手";
+"Ask questions about your notes" = "对笔记进行提问";
+"Cloud Sync" = "云同步";
+"Access from all your devices" = "从所有设备访问";
+"BEST VALUE" = "最超值";
+"FOREVER" = "永久";
+"one-time" = "一次性";
+"One-time" = "一次性";
+"Select a Plan" = "选择方案";
+"Subscribe for %@/%@" = "以 %@/%@ 订阅";
+"Restore Purchases" = "恢复购买";
+"Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. You can manage and cancel your subscriptions in your App Store account settings." = "订阅会自动续期，除非在当前周期结束前至少24小时取消。您可以在App Store账户设置中管理和取消订阅。";
+"Processing..." = "处理中...";
+"Have a promo code?" = "有优惠码？";
+"Enter promo code" = "输入优惠码";
+"Apply" = "应用";
+"Code applied!" = "优惠码已应用！";
+"Referred by %@" = "由 %@ 推荐";
+"Hide" = "隐藏";
+"Invalid or expired promo code" = "无效或已过期的优惠码";
+"Subscribe on Web" = "在网页端订阅";
+"30% OFF" = "七折优惠";
+"Just %@/week" = "仅 %@/周";
+"Save %@%%" = "节省 %@%%";
+
+// MARK: - Onboarding - UserType
+"What describes you best?" = "哪个最符合您的身份？";
+"We use this to personalize your experience :)" = "我们将以此来个性化您的体验 :)";
+"Undergraduate Student" = "本科生";
+"High School Student" = "高中生";
+"Middle School Student" = "初中生";
+"Graduate Student" = "研究生";
+"Professional" = "职场人士";
+"Educator" = "教育工作者";
+"Other" = "其他";
+
+// MARK: - Onboarding - UseCase
+"What will you use\nScribeAI for?" = "您将使用\nScribeAI做什么？";
+"Select all that apply" = "选择所有适用项";
+"Lecture Notes" = "课堂笔记";
+"Study Materials" = "学习资料";
+"Meeting Notes" = "会议记录";
+"Research" = "研究";
+"Personal Learning" = "个人学习";
+
+// MARK: - Onboarding - Features
+"Upload Anything" = "上传任何内容";
+"PDFs  •  YouTube Videos  •  Audio" = "PDF  •  YouTube视频  •  音频";
+"Drop here" = "拖放到此处";
+"Uploaded!" = "已上传！";
+"Try it out!" = "试试看！";
+"Drag the file to the drop zone" = "将文件拖到放置区域";
+"We'll create beautiful\nnotes for you." = "我们将为您创建\n精美的笔记。";
+"Master your terms." = "掌握术语。";
+"Memorize key concepts with spaced repetition" = "通过间隔重复记忆关键概念";
+"Tap to flip" = "点击翻转";
+"Test your knowledge." = "测试您的知识。";
+"AI-generated quizzes to reinforce learning" = "AI生成的测验巩固学习";
+"Learn on the go." = "随时随地学习。";
+"Turn your materials into engaging audio summaries" = "将资料转换为引人入胜的音频摘要";
+"AI Generated Podcast" = "AI生成播客";
+"Tap play to hear a sample" = "点击播放收听示例";
+
+// MARK: - Onboarding - Skip / Navigation
+"Skip" = "跳过";
+"Maybe later" = "以后再说";
+
+// MARK: - Onboarding - Social Proof
+"100K+" = "10万+";
+"Students trust ScribeAI" = "名学生信赖ScribeAI";
+"25K+ App Ratings" = "25,000+条应用评分";
+"What students are saying" = "学生的评价";
+"Join 100K+ Students" = "加入10万+学生的行列";
+
+// MARK: - Onboarding - Comparison
+"ScribeAI Pro users\nlearn up to 6x more\nefficiently." = "ScribeAI Pro用户\n学习效率提升\n高达6倍。";
+"FREE" = "免费";
+"Unlimited Notes" = "无限笔记";
+"AI Podcasts" = "AI播客";
+"Priority Support" = "优先客服";
+"Early Access Features" = "抢先体验功能";
+"All features currently free during beta!" = "测试期间所有功能免费！";
+
+// MARK: - Onboarding - Trial
+"Try ScribeAI Pro" = "试用ScribeAI Pro";
+"Ace your exams with AI" = "用AI轻松应对考试";
+"Study smarter, not harder" = "聪明学习，事半功倍";
+"Make learning fun with AI" = "用AI让学习变有趣";
+"Never miss an action item" = "不遗漏任何行动事项";
+"Save hours on lesson prep" = "节省数小时的备课时间";
+"Transform how you learn" = "改变您的学习方式";
+"free for 7 days." = "免费使用7天。";
+"No charge today" = "今天无需付费";
+"How your free trial works:" = "免费试用的流程：";
+"Today - Free trial starts" = "今天 - 免费试用开始";
+"Enjoy full access free for 7 days" = "免费享受7天完整功能";
+"We'll send a reminder - cancel before this if you don't want to continue" = "我们会发送提醒 - 如不想继续请在此之前取消";
+"First charge only if you haven't canceled" = "仅在未取消的情况下首次扣费";
+"What you get:" = "您将获得：";
+"Unlimited access forever" = "永久无限访问";
+"No recurring charges" = "无重复收费";
+"All future updates included" = "包含所有未来更新";
+"Premium features unlocked" = "解锁高级功能";
+"One-time payment" = "一次性付款";
+"Pay once, use forever" = "一次付款，永久使用";
+"Start your free 7-day trial" = "开始7天免费试用";
+"Get Lifetime Access" = "获取永久访问权限";
+"Yearly" = "年付";
+"Monthly" = "月付";
+"Lifetime" = "终身";
+"One-time purchase - no subscription" = "一次性购买 - 无需订阅";
+"We'll remind you 2 days before your trial ends" = "试用结束前2天我们会提醒您";
+"Cancel anytime in App Store settings - no charge" = "随时在App Store设置中取消 - 无需付费";
+"Secure payment via App Store" = "通过App Store安全支付";
+
+// MARK: - Onboarding - Notifications
+"Never miss what matters" = "不错过重要事项";
+"Get notified about things like..." = "获取以下通知...";
+"Notes Ready" = "笔记已就绪";
+"Your Biology lecture notes are ready to review!" = "您的生物课笔记已准备好复习！";
+"Exam Prep" = "考试准备";
+"Chemistry exam in 3h - You know 85% of the content. Study the rest?" = "化学考试还有3小时 - 您已掌握85%的内容。要复习剩余部分吗？";
+"Quiz Generated" = "测验已生成";
+"New quiz ready for AP Biology Chapter 3" = "AP生物第3章的新测验已准备就绪";
+"Skip for now" = "暂时跳过";
+"Enable Notifications" = "开启通知";
+
+// MARK: - ReviewPromptView
+"Enjoying Scribe AI?" = "喜欢 Scribe AI 吗？";
+"Is Scribe AI helping you study faster and learn better?" = "Scribe AI 是否帮助您更快地学习、更好地掌握知识？";
+"Yes, I love it!" = "是的，我很喜欢！";
+"Not yet" = "还没有";
+
+// MARK: - SubscriptionGate
+"Trial Ended" = "试用已结束";
+"Your 7-day free trial has ended.\nSubscribe to unlock %@ and all other features." = "您的7天免费试用已结束。\n订阅以解锁%@及所有其他功能。";
+"Subscribe Now" = "立即订阅";
+"%@ day%@ left in trial" = "试用剩余 %@ 天%@";
+"Upgrade" = "升级";
+"Your 7-day free trial has ended. Subscribe to continue using all features." = "您的7天免费试用已结束。订阅以继续使用所有功能。";
+"Your free trial has already been used on this device. Subscribe to continue using all features." = "此设备上的免费试用已使用过。订阅以继续使用所有功能。";
+
+// MARK: - SubscriptionSettingsSection
+"Subscription" = "订阅";
+"Unlimited notes & AI features" = "无限笔记和AI功能";
+
+// MARK: - PostValueTrialPrompt
+"Loving the AI features?" = "喜欢AI功能吗？";
+"Start your free 7-day trial to keep using unlimited AI features" = "开始7天免费试用，继续享受无限AI功能";
+"Free access" = "免费使用";
+"Day 5" = "第5天";
+"Reminder" = "提醒";
+"Day 7" = "第7天";
+"First charge" = "首次扣费";
+"Start Free Trial" = "开始免费试用";
+
+// MARK: - FeaturePreviewGate
+"You've seen %@ of %@ cards" = "您已查看 %@/%@ 张卡片";
+"Subscribe to unlock all flashcards and study more effectively" = "订阅以解锁所有闪卡，更有效地学习";
+"Unlock All Cards" = "解锁所有卡片";
+"You've answered %@ of %@ questions" = "您已回答 %@/%@ 道题目";
+"Subscribe to complete the quiz and test your knowledge" = "订阅以完成测验并检验知识";
+"Unlock Full Quiz" = "解锁完整测验";
+"Subscribe to read the full summary" = "订阅以阅读完整摘要";
+"Unlock Full Summary" = "解锁完整摘要";
+"PREVIEW" = "预览";
+
+// MARK: - JoinMeetingView
+"Join a Meeting" = "加入会议";
+"Paste your meeting link and our bot will join to record and transcribe." = "粘贴您的会议链接，我们的机器人将加入进行录制和转录。";
+"Meeting Link" = "会议链接";
+"Meeting Title (optional)" = "会议标题（可选）";
+"Supported Platforms" = "支持的平台";
+"Please enter a valid Zoom, Google Meet, or Teams link" = "请输入有效的Zoom、Google Meet或Teams链接";
+"%@ meeting detected" = "检测到%@会议";
+"Send Bot to Meeting" = "发送机器人到会议";
+
+// MARK: - MeetingsView
+"Meeting Bot" = "会议机器人";
+"Loading meetings..." = "正在加载会议...";
+"No Meetings Yet" = "暂无会议";
+"Enter a meeting link to have our bot join, record, and transcribe automatically." = "输入会议链接，让我们的机器人自动加入、录制和转录。";
+"Delete Meeting" = "删除会议";
+"Are you sure you want to delete this meeting?" = "确定要删除此会议吗？";
+"Untitled Meeting" = "无标题会议";
+"Loading note..." = "正在加载笔记...";
+"Failed to load note" = "笔记加载失败";
+
+// MARK: - RetentionViews
+"Are you sure?" = "您确定吗？";
+"You'll lose access to:" = "您将失去以下访问权限：";
+"notes you've created" = "已创建的笔记";
+"quizzes generated" = "已生成的测验";
+"flashcards created" = "已创建的闪卡";
+"hours of audio content" = "小时的音频内容";
+"Stay Signed In" = "保持登录";
+"Sign Out Anyway" = "仍然退出";
+"Delete Account?" = "删除账户？";
+"This cannot be undone.\nYou'll permanently lose:" = "此操作无法撤消。\n您将永久失去：";
+"Keep My Account" = "保留我的账户";
+"Delete Anyway" = "仍然删除";
+"Before you go..." = "在您离开之前...";
+"Help us improve by telling us why you're leaving" = "告诉我们您离开的原因，帮助我们改进";
+"Not useful for my needs" = "不符合我的需求";
+"Too expensive" = "太贵了";
+"Found a better alternative" = "找到了更好的替代品";
+"Privacy concerns" = "隐私顾虑";
+"Technical issues" = "技术问题";
+
+// MARK: - Subscription Features (gated)
+"AI Chat" = "AI对话";
+"AI Quizzes" = "AI测验";
+"AI Flashcards" = "AI闪卡";
+"AI Mind Maps" = "AI思维导图";
+"AI Infographics" = "AI信息图";
+"AI Podcasts" = "AI播客";
+
+// MARK: - Edit Title Menu
+"Edit Title" = "编辑标题";

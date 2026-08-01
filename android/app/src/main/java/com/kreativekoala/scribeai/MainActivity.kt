@@ -1,14 +1,31 @@
 package com.kreativekoala.scribeai
 
+import android.app.Activity
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import com.kreativekoala.paywallkit.manager.PromoCodeManager
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import com.kreativekoala.scribeai.data.local.NoteCacheRepository
 import com.kreativekoala.scribeai.data.local.ScribeDatabase
 import com.kreativekoala.scribeai.navigation.AppNavigation
@@ -23,8 +40,12 @@ import com.kreativekoala.scribeai.utils.ThemeManager
 import com.kreativekoala.scribeai.utils.TutorialManager
 import com.kreativekoala.scribeai.viewmodel.AuthViewModel
 import com.kreativekoala.scribeai.viewmodel.AuthViewModelFactory
+import com.kreativekoala.paywallkit.models.PaywallFeature
+import com.kreativekoala.paywallkit.models.PaywallProduct
+import com.kreativekoala.paywallkit.models.PaywallTheme
+import com.kreativekoala.paywallkit.view.PaywallView
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     // Create AuthManager at class level so it's a single instance
     private lateinit var authManager: AuthManager
@@ -32,6 +53,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        PromoCodeManager.handleIntent(intent)
 
         // Initialize managers ONCE - these are the single instances
         authManager = AuthManager(applicationContext)
@@ -59,15 +81,24 @@ class MainActivity : ComponentActivity() {
         val localNoteRepository = NoteCacheRepository(database.noteCacheDao())
         val tutorialManager = TutorialManager(
             context = applicationContext,
-            localRepository = localNoteRepository
+            localRepository = localNoteRepository,
+            authManager = authManager
         )
 
-        // Initialize billing client with auth manager for server sync
+        // Track app open count (once per cold-start session)
+        subscriptionManager.incrementAppOpenCount()
+
+        // Initialize billing with auth manager for server sync
         subscriptionManager.setAuthManager(authManager)
         subscriptionManager.initialize {
-            subscriptionManager.checkExistingSubscriptions()
-            // Refresh access status from server when billing is ready
             subscriptionManager.refreshAccessStatus()
+        }
+
+        // Identify RC user when auth is available
+        lifecycleScope.launch {
+            authManager.userId.filterNotNull().first().let { userId ->
+                subscriptionManager.identify(userId)
+            }
         }
 
         setContent {
@@ -93,12 +124,118 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    // Observe subscription state to reactively dismiss paywall
+                    val subscriptionState by subscriptionManager.subscriptionState.collectAsState()
+                    val isSubscribed = subscriptionState is SubscriptionManager.SubscriptionState.Subscribed
+                    val isStateResolved = subscriptionState !is SubscriptionManager.SubscriptionState.Unknown &&
+                            subscriptionState !is SubscriptionManager.SubscriptionState.Loading
+                    val products by subscriptionManager.products.collectAsState()
+
+                    // Track whether the user has manually dismissed the paywall this session
+                    var paywallDismissed by remember { mutableStateOf(false) }
+
+                    // Don't surface the paywall until the state has been stable
+                    // (resolved AND non-subscribed) for ~1.5s. This eliminates a
+                    // flash-of-paywall when the billing-query lands as Free but
+                    // the server-side access check (refreshAccessStatus) is about
+                    // to flip the state to Subscribed a few hundred ms later.
+                    var paywallStable by remember { mutableStateOf(false) }
+                    val candidateShow = isStateResolved &&
+                            subscriptionManager.shouldShowHardPaywall() &&
+                            !isSubscribed &&
+                            !paywallDismissed
+                    LaunchedEffect(candidateShow, isSubscribed) {
+                        if (candidateShow) {
+                            kotlinx.coroutines.delay(1500)
+                            // Re-check on the same recomposition cycle — if the
+                            // server-flip already happened, the LaunchedEffect
+                            // would have been re-keyed and we wouldn't reach here.
+                            paywallStable = true
+                        } else {
+                            paywallStable = false
+                        }
+                    }
+                    val shouldShowPaywall = candidateShow && paywallStable
+
                     // FIXED: Pass the SAME authManager to AppNavigation
                     AppNavigation(
                         authManager = authManager,  // Same instance
                         authViewModel = authViewModel,
                         subscriptionManager = subscriptionManager
                     )
+
+                    // PaywallKit soft paywall overlay
+                    if (shouldShowPaywall) {
+                        val activity = this@MainActivity as Activity
+
+                        // Wait for products to load before showing paywall
+                        if (products.isEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xFF0A0A0F)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(color = Color(0xFF6C63FF))
+                            }
+                        } else {
+                            // Map ProductDetails to PaywallProduct
+                            val paywallProducts = products.map { details ->
+                                val productId = details.productId
+                                val offer = details.subscriptionOfferDetails?.firstOrNull()
+                                val phase = offer?.pricingPhases?.pricingPhaseList?.lastOrNull()
+                                PaywallProduct(
+                                    id = productId,
+                                    localizedPrice = phase?.formattedPrice ?: "",
+                                    price = (phase?.priceAmountMicros ?: 0L) / 1_000_000.0,
+                                    currencyCode = phase?.priceCurrencyCode ?: "USD",
+                                    trialDays = 3,
+                                    period = when {
+                                        productId.contains("yearly") || productId.contains("annual") -> PaywallProduct.Period.YEARLY
+                                        productId.contains("weekly") -> PaywallProduct.Period.WEEKLY
+                                        else -> PaywallProduct.Period.MONTHLY
+                                    }
+                                )
+                            }
+
+                            val features = listOf(
+                                PaywallFeature("\uD83D\uDCDD", "Unlimited Notes", "Create without limits"),
+                                PaywallFeature("\uD83C\uDFA4", "Transcription", "Voice to text"),
+                                PaywallFeature("\uD83E\uDD16", "AI Summaries", "Smart note summaries"),
+                                PaywallFeature("\uD83D\uDCC1", "Organization", "Folders and tags"),
+                                PaywallFeature("☁\uFE0F", "Cloud Sync", "Sync across devices")
+                            )
+
+                            PaywallView(
+                                appId = "scribeai",
+                                placement = if (com.kreativekoala.paywallkit.manager.PromoCodeManager.activeCode != null) "promo_code_onboarding" else "onboarding",
+                                appName = "ScribeAI",
+                                features = features,
+                                products = paywallProducts,
+                                theme = PaywallTheme(
+                                    accent = Color(0xFF6C63FF),
+                                    accent2 = Color(0xFF9C27B0)
+                                ),
+                                showWinback = true,
+                                isDismissible = true,
+                                onPurchase = { productId ->
+                                    subscriptionManager.launchSubscriptionFlow(
+                                        activity = activity,
+                                        productId = productId,
+                                        onSuccess = { paywallDismissed = true },
+                                        onError = { /* handled by billing client listener */ }
+                                    )
+                                },
+                                onRestore = {
+                                    subscriptionManager.restorePurchases(
+                                        onSuccess = { paywallDismissed = true },
+                                        onError = { /* silently ignore */ }
+                                    )
+                                },
+                                onDismiss = { paywallDismissed = true }
+                            )
+                        }
+                    }
                 }
             }
         }

@@ -400,6 +400,120 @@ class NoteRepository {
         }
     }
 
+    suspend fun generateMindMap(
+        token: String,
+        noteId: String,
+        includeExploration: Boolean = true,
+        language: String = "english"
+    ): Result<MindMapData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = MindMapGenerateRequest(
+                    noteId = noteId,
+                    options = MindMapOptions(language = language, includeExploration = includeExploration)
+                )
+                val response = apiService.generateMindMap("Bearer $token", request)
+                if (response.isSuccessful && response.body()?.data != null) {
+                    Result.success(response.body()!!.data!!)
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    val errorMessage = when (response.code()) {
+                        401 -> "Session expired. Please log in again."
+                        402, 403 -> "This feature requires a premium subscription."
+                        else -> "Failed to generate mind map. Please try again."
+                    }
+                    Log.e(TAG, "❌ generateMindMap failed: ${response.code()} - $errorBody")
+                    Result.failure(Exception(errorMessage))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ generateMindMap exception", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getMindMap(token: String, noteId: String): Result<MindMapData?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                // Fetch note with all AI content, then find mindmap content
+                val response = apiService.getNoteWithAIContent("Bearer $token", noteId)
+                if (response.isSuccessful && response.body() != null) {
+                    val aiContentList = response.body()!!.data?.aiContent ?: emptyList()
+                    val mindmapItem = aiContentList
+                        .filter { it.contentType == "mindmap" }
+                        .maxByOrNull { it.createdAt }
+
+                    if (mindmapItem != null) {
+                        val content = mindmapItem.content
+                        val nodes = content.mindMapNodes
+                        if (nodes != null) {
+                            Result.success(MindMapData(
+                                id = content.id,
+                                noteId = content.noteId ?: noteId,
+                                title = content.title ?: content.mindMapTitle, // server saves as "title"
+                                nodes = nodes,
+                                createdAt = mindmapItem.createdAt
+                            ))
+                        } else {
+                            Result.success(null)
+                        }
+                    } else {
+                        Result.success(null)
+                    }
+                } else {
+                    Result.success(null)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "getMindMap: could not load existing mindmap", e)
+                Result.success(null) // Not found is OK
+            }
+        }
+    }
+
+    suspend fun generateTTSForNote(
+        token: String,
+        noteId: String,
+        voice: String = "nova",
+        speed: Double = 1.0
+    ): Result<TTSData> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val request = TTSGenerateRequest(noteId = noteId, voice = voice, speed = speed)
+                val response = apiService.generateTTS("Bearer $token", request)
+                if (response.isSuccessful && response.body()?.data != null) {
+                    Result.success(response.body()!!.data!!)
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    val errorMessage = when (response.code()) {
+                        401 -> "Session expired. Please log in again."
+                        402, 403 -> "This feature requires a premium subscription."
+                        else -> "Failed to generate audio. Please try again."
+                    }
+                    Log.e(TAG, "❌ generateTTS failed: ${response.code()} - $errorBody")
+                    Result.failure(Exception(errorMessage))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "❌ generateTTS exception", e)
+                Result.failure(e)
+            }
+        }
+    }
+
+    suspend fun getTTSForNote(token: String, noteId: String): Result<TTSData?> {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.getTTSForNote("Bearer $token", noteId)
+                if (response.isSuccessful && response.body()?.data != null) {
+                    Result.success(response.body()!!.data)
+                } else {
+                    Result.success(null)
+                }
+            } catch (e: Exception) {
+                Result.success(null)
+            }
+        }
+    }
+
     suspend fun getNoteWithAIContent(token: String, noteId: String): Result<NoteDetailResponse> {
         return withContext(Dispatchers.IO) {
             try {

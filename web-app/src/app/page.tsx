@@ -1,42 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import Link from 'next/link';
-import { Loader2 } from 'lucide-react';
 import MarketingHeader from '@/components/marketing/MarketingHeader';
 import MarketingFooter from '@/components/marketing/MarketingFooter';
 
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuthStore();
-  const [showLanding, setShowLanding] = useState(false);
 
+  // Render the real landing page content immediately instead of gating it
+  // behind an auth check — the raw HTML AI crawlers (GPTBot, ClaudeBot, etc.)
+  // fetch never executes JS, so a loading-spinner-first render meant they saw
+  // "Loading..." instead of the actual marketing copy. Signed-in users still
+  // get redirected client-side once the auth check resolves; that's a brief
+  // flash of the landing page for them, which is the standard trade-off for
+  // keeping the initial HTML crawlable.
   useEffect(() => {
-    // Wait for hydration to complete
-    if (!isLoading) {
-      if (isAuthenticated) {
-        router.replace('/notes');
-      } else {
-        setShowLanding(true);
-      }
+    if (!isLoading && isAuthenticated) {
+      router.replace('/notes');
     }
   }, [isAuthenticated, isLoading, router]);
 
-  // Show loading while checking auth
-  if (isLoading || (isAuthenticated && !showLanding)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-purple)] mx-auto mb-4" />
-          <p className="text-[var(--text-secondary)]">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show landing page for unauthenticated users
   return (
     <div className="min-h-screen flex flex-col">
       <MarketingHeader />

@@ -1,0 +1,29 @@
+# Scribe AI
+
+> Scribe AI turns lectures, recordings, YouTube links, and uploaded PDFs into AI-generated study notes, flashcards, quizzes, and podcasts.
+
+## What it does
+
+- Capture: record lectures, paste a YouTube link, or upload a PDF/document.
+- Process: AI transcribes and organizes the content.
+- Study: review AI-generated smart notes and outlines, auto-generated flashcards for spaced repetition, AI-written quizzes, and AI-narrated podcasts of your notes.
+
+## Who it's for
+
+Students, professionals, learners, and researchers.
+
+## Key pages
+
+- Homepage: https://scribeai.online/
+- Login / Try the web app: https://scribeai.online/login
+- Sign up: https://scribeai.online/signup
+- Notes dashboard: https://scribeai.online/notes
+- Contact: https://scribeai.online/contact
+- Privacy policy: https://scribeai.online/privacy
+- Terms of service: https://scribeai.online/terms
+
+## Platforms
+
+Available as a web app, and as native iOS and Android apps:
+- iOS: https://apps.apple.com/us/app/scribe-ai-learn/id6755475602
+- Android: https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai

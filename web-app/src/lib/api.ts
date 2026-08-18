@@ -148,6 +148,34 @@ export const notesApi = {
       body: { url },
     });
   },
+
+  // Create a public share link for a note (existing backend endpoint,
+  // previously never called by any client)
+  createShareLink: async (token: string, noteId: string, options?: { expiresInDays?: number; allowComments?: boolean }) => {
+    const response = await apiRequest<{ success: boolean; data: { shareId: string; shareToken: string; shareUrl: string; expiresAt: string | null } }>(
+      `/api/notes/${noteId}/share`,
+      {
+        method: 'POST',
+        token,
+        body: options || {},
+      }
+    );
+    return response.data;
+  },
+};
+
+// Learning API (existing backend endpoints, previously never called by any client)
+export const learningApi = {
+  startSession: async (token: string, noteId: string) => {
+    const response = await apiRequest<{ success: boolean; data: { session: { id: string }; currentLesson: unknown; isGenerating: boolean } }>(
+      `/api/learn/${noteId}/start`,
+      {
+        method: 'POST',
+        token,
+      }
+    );
+    return response.data;
+  },
 };
 
 // AI Content API

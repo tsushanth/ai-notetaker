@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { useNotesStore } from '@/store/notesStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { notesApi, aiApi, ttsApi } from '@/lib/api';
+import { notesApi, aiApi, ttsApi, learningApi } from '@/lib/api';
 import {
   ArrowLeft,
   FileText,
@@ -241,16 +241,51 @@ export default function NoteDetailPage() {
     }
   };
 
-  const handleShare = () => {
-    if (currentNote) {
-      navigator.share?.({
+  const [isSharing, setIsSharing] = useState(false);
+  const [isStartingLearning, setIsStartingLearning] = useState(false);
+
+  const handleStartLearning = async () => {
+    if (!currentNote || !token || isStartingLearning) return;
+
+    setIsStartingLearning(true);
+    try {
+      const { session } = await learningApi.startSession(token, currentNote.id);
+      router.push(`/learn/${session.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start learning session';
+      if (message.includes('PREMIUM_REQUIRED') || message.toLowerCase().includes('premium')) {
+        alert('Turning notes into a learning session is a premium feature. Upgrade to try it.');
+      } else {
+        alert(message);
+      }
+    } finally {
+      setIsStartingLearning(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!currentNote || !token || isSharing) return;
+
+    setIsSharing(true);
+    try {
+      // Create (or reuse) a real shareable link via the backend so recipients
+      // can view the note without an account, and view_count/expires_at get populated.
+      const { shareUrl } = await notesApi.createShareLink(token, currentNote.id, { expiresInDays: 30 });
+
+      const shared = await navigator.share?.({
         title: currentNote.title,
-        text: currentNote.content.slice(0, 200) + '...',
-      }).catch(() => {
-        // Fallback: copy to clipboard
-        navigator.clipboard.writeText(currentNote.content);
-        alert('Content copied to clipboard');
-      });
+        text: `Check out my notes: ${currentNote.title}`,
+        url: shareUrl,
+      }).then(() => true).catch(() => false);
+
+      if (!shared) {
+        await navigator.clipboard.writeText(shareUrl);
+        alert('Share link copied to clipboard');
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create share link');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -765,11 +800,21 @@ export default function NoteDetailPage() {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={handleStartLearning}
+            disabled={isStartingLearning}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--accent-purple)] text-white text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+            title="Turn this into a learning session"
+          >
+            {isStartingLearning ? <Loader2 size={18} className="animate-spin" /> : <Layers size={18} />}
+            <span>Turn into a lesson</span>
+          </button>
+          <button
             onClick={handleShare}
-            className="p-2 rounded-lg hover:bg-[var(--card-background)] transition"
+            disabled={isSharing}
+            className="p-2 rounded-lg hover:bg-[var(--card-background)] transition disabled:opacity-50"
             title="Share"
           >
-            <Share2 size={20} />
+            {isSharing ? <Loader2 size={20} className="animate-spin" /> : <Share2 size={20} />}
           </button>
           <button
             onClick={handleDelete}

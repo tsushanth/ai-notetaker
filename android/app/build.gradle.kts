@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.kreativekoala.scribeai"
-    compileSdk = 35
+    compileSdk = 36
 
     signingConfigs {
         create("release") {
@@ -27,9 +27,9 @@ android {
     defaultConfig {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 26
-        targetSdk = 35
-        versionCode = 80
-        versionName = "58.20"
+        targetSdk = 36
+        versionCode = 81
+        versionName = "58.21"
 
         // 16KB page size support
         ndk {

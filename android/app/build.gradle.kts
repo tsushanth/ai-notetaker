@@ -28,8 +28,8 @@ android {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 26
         targetSdk = 36
-        versionCode = 81
-        versionName = "58.21"
+        versionCode = 82
+        versionName = "58.22"
 
         // 16KB page size support
         ndk {

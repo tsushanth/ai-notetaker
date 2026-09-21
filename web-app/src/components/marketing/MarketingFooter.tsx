@@ -14,14 +14,6 @@ export default function MarketingFooter() {
               <h4 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-3">Product</h4>
               <div className="flex flex-col gap-2">
                 <a
-                  href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-[var(--text-secondary)] hover:text-white transition"
-                >
-                  iOS App
-                </a>
-                <a
                   href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai"
                   target="_blank"
                   rel="noopener noreferrer"

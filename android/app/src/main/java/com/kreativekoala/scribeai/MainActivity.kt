@@ -42,8 +42,7 @@ import com.kreativekoala.scribeai.viewmodel.AuthViewModel
 import com.kreativekoala.scribeai.viewmodel.AuthViewModelFactory
 import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallProduct
-import com.kreativekoala.paywallkit.models.PaywallTheme
-import com.kreativekoala.paywallkit.view.PaywallView
+import com.kreativekoala.scribeai.ui.screens.TurboPaywallContent
 
 class MainActivity : AppCompatActivity() {
 
@@ -206,18 +205,15 @@ class MainActivity : AppCompatActivity() {
                                 PaywallFeature("☁\uFE0F", "Cloud Sync", "Sync across devices")
                             )
 
-                            PaywallView(
-                                appId = "scribeai",
-                                placement = if (com.kreativekoala.paywallkit.manager.PromoCodeManager.activeCode != null) "promo_code_onboarding" else "onboarding",
-                                appName = "ScribeAI",
-                                features = features,
+                            // Native Turbo-styled paywall (shared with PaywallScreen.kt).
+                            // NOTE: this drops PaywallKit's placement-based A/B templates and
+                            // showWinback ("Golden Ticket") for this specific placement —
+                            // accepted tradeoff for matching the Turbo look here too.
+                            TurboPaywallContent(
                                 products = paywallProducts,
-                                theme = PaywallTheme(
-                                    accent = Color(0xFF6C63FF),
-                                    accent2 = Color(0xFF9C27B0)
-                                ),
-                                showWinback = true,
-                                isDismissible = true,
+                                features = features,
+                                dismissable = true,
+                                onDismiss = { paywallDismissed = true },
                                 onPurchase = { productId ->
                                     subscriptionManager.launchSubscriptionFlow(
                                         activity = activity,
@@ -231,8 +227,7 @@ class MainActivity : AppCompatActivity() {
                                         onSuccess = { paywallDismissed = true },
                                         onError = { /* silently ignore */ }
                                     )
-                                },
-                                onDismiss = { paywallDismissed = true }
+                                }
                             )
                         }
                     }

@@ -83,7 +83,10 @@ fun AppNavigation(
     LaunchedEffect(authState) {
         if (authState is AuthState.Idle) {
             val currentRoute = navController.currentBackStackEntry?.destination?.route
-            if (currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route) {
+            // Also exclude Onboarding: authState defaults to Idle before any sign-in attempt,
+            // so without this a fresh install starting on Onboarding was redirected to Login
+            // before the user ever saw it — onboarding was unreachable on a cold start.
+            if (currentRoute != Screen.Login.route && currentRoute != Screen.SignUp.route && currentRoute != Screen.Onboarding.route) {
                 Log.d("AppNavigation", "Auth is Idle, navigating to Login from $currentRoute")
                 navController.navigate(Screen.Login.route) {
                     popUpTo(0) { inclusive = true }  // Clear entire back stack

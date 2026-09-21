@@ -7,11 +7,16 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthGuard>
-      <div className="min-h-screen bg-[var(--background)]">
-        <Header />
-        <main>{children}</main>
-      </div>
-    </AuthGuard>
+    // .dashboard-theme wraps AuthGuard itself, not just its children, so the
+    // vars are in scope for AuthGuard's own loading-state markup too (it
+    // renders that in place of {children} while auth resolves).
+    <div className="dashboard-theme">
+      <AuthGuard>
+        <div className="min-h-screen bg-[var(--background)]">
+          <Header />
+          <main>{children}</main>
+        </div>
+      </AuthGuard>
+    </div>
   );
 }

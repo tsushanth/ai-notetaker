@@ -456,7 +456,7 @@ function SettingsContent() {
                       <button
                         onClick={handleApplyPromoCode}
                         disabled={isApplyingPromo || !promoCode.trim()}
-                        className="px-4 py-2 bg-[var(--accent-purple)] text-white rounded-lg hover:bg-[var(--accent-purple-dark)] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
+                        className="px-4 py-2 bg-[var(--accent-purple)] text-[var(--on-accent)] rounded-lg hover:bg-[var(--accent-purple-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-2"
                       >
                         {isApplyingPromo ? (
                           <Loader2 size={16} className="animate-spin" />

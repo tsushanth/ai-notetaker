@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
+import { STUDY_FORMATS } from '@/lib/studyFormats';
 
 // Google Client ID - hardcoded for reliability
 const GOOGLE_CLIENT_ID = '655434901651-u6bjf9lr0no2e4ust6pok76s0aeusnv6.apps.googleusercontent.com';
@@ -54,24 +55,24 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <span className="bg-[var(--accent-purple)] px-3 py-1.5 rounded-lg text-white font-bold text-xl">
+    <div className="min-h-screen grid md:grid-cols-2">
+      {/* Form */}
+      <div className="flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-sm">
+          <Link href="/" className="inline-flex items-center gap-2 mb-10">
+            <span className="bg-[var(--accent-purple)] px-2.5 py-1.5 rounded-lg text-[#14110a] font-bold font-[family-name:var(--font-display)]">
               S
             </span>
-            <span className="font-bold text-2xl">Scribe AI</span>
+            <span className="font-semibold font-[family-name:var(--font-display)]">Scribe AI</span>
           </Link>
-          <p className="text-[var(--text-secondary)] mt-4">
-            Create your account
-          </p>
-        </div>
 
-        {/* Signup Card */}
-        <div className="card">
-          {/* Google Sign-In Button */}
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium mb-1.5">
+            Start studying free
+          </h1>
+          <p className="text-[var(--text-secondary)] text-sm mb-8">
+            No card required to try it.
+          </p>
+
           <button
             onClick={handleGoogleLogin}
             disabled={isLoading}
@@ -108,26 +109,39 @@ export default function SignupPage() {
             <p className="text-sm text-[var(--accent-red)] mt-4 text-center">{error}</p>
           )}
 
-          {/* Sign In Link */}
-          <p className="text-center text-sm text-[var(--text-secondary)] mt-6">
+          <p className="text-center text-sm text-[var(--text-secondary)] mt-8">
             Already have an account?{' '}
             <Link href="/login" className="text-[var(--accent-purple-light)] hover:underline">
               Sign in
             </Link>
           </p>
-        </div>
 
-        {/* Terms */}
-        <p className="text-center text-xs text-[var(--text-muted)] mt-6">
-          By signing up, you agree to our{' '}
-          <a href="https://scribeai.online/terms.html" className="text-[var(--accent-purple-light)] hover:underline">
-            Terms of Service
-          </a>{' '}
-          and{' '}
-          <a href="https://scribeai.online/privacy.html" className="text-[var(--accent-purple-light)] hover:underline">
-            Privacy Policy
-          </a>
+          <p className="text-center text-xs text-[var(--text-muted)] mt-10">
+            By signing up, you agree to our{' '}
+            <Link href="/terms" className="text-[var(--accent-purple-light)] hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-[var(--accent-purple-light)] hover:underline">
+              Privacy Policy
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      {/* Showcase — what signing up actually gets you */}
+      <div className="hidden md:flex flex-col justify-center bg-[var(--card-background)] border-l border-[var(--border)] px-16">
+        <p className="font-[family-name:var(--font-display)] text-2xl font-medium mb-8 max-w-xs">
+          Turn your first lecture into notes in a couple of minutes.
         </p>
+        <div className="space-y-6 max-w-xs">
+          {STUDY_FORMATS.map((f) => (
+            <div key={f.name}>
+              <h3 className="font-semibold text-sm">{f.name}</h3>
+              <p className="text-sm text-[var(--text-secondary)] mt-0.5">{f.body}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

@@ -135,24 +135,14 @@ export default function CreatorRegisterPage() {
               </p>
             </div>
 
-            <div className="flex gap-3">
-              <a
-                href="https://apps.apple.com/app/scribe-ai-study-assistant/id6744385829"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 btn-secondary text-center"
-              >
-                iOS App
-              </a>
-              <a
-                href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 btn-secondary text-center"
-              >
-                Android App
-              </a>
-            </div>
+            <a
+              href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block btn-secondary text-center"
+            >
+              Android App
+            </a>
 
             <p className="text-xs text-[var(--text-muted)] mt-6">
               Questions? Contact us at{' '}

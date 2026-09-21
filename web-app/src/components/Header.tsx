@@ -14,7 +14,7 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href={isAuthenticated ? '/notes' : '/'} className="flex items-center gap-2">
-          <span className="bg-[var(--accent-purple)] px-2.5 py-1 rounded-lg text-white font-bold">
+          <span className="bg-[var(--accent-purple)] px-2.5 py-1 rounded-lg text-[var(--on-accent)] font-bold">
             S
           </span>
           <span className="font-bold text-lg">Scribe AI</span>
@@ -27,7 +27,7 @@ export default function Header() {
               onClick={() => setShowMenu(!showMenu)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-[var(--card-background)] transition"
             >
-              <div className="w-8 h-8 rounded-full bg-[var(--accent-purple)] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-[var(--accent-purple)] text-[var(--on-accent)] flex items-center justify-center">
                 {user?.name?.charAt(0) || user?.email?.charAt(0) || <User size={16} />}
               </div>
               <span className="hidden sm:block text-sm text-[var(--text-secondary)]">

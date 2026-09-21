@@ -6,7 +6,7 @@ export default function MarketingFooter() {
       <div className="max-w-[900px] mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between gap-8">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-            <span className="bg-[var(--accent-purple)] px-2.5 py-1.5 rounded-lg">S</span>
+            <span className="bg-[var(--accent-purple)] text-[var(--on-accent)] px-2.5 py-1.5 rounded-lg">S</span>
             Scribe AI
           </Link>
           <div className="flex flex-col md:flex-row gap-8 md:gap-12">

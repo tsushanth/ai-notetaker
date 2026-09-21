@@ -36,15 +36,15 @@ function SuccessContent() {
         <h2 className="font-semibold text-gray-900 mb-4">What's next?</h2>
         <ul className="space-y-3 text-sm text-gray-700">
           <li className="flex items-start gap-3">
-            <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium">1</span>
+            <span className="w-5 h-5 bg-[var(--brand-yellow)]/20 text-[var(--brand-ink)] rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium">1</span>
             <span>Open the ScribeAI app on your iOS or Android device</span>
           </li>
           <li className="flex items-start gap-3">
-            <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium">2</span>
+            <span className="w-5 h-5 bg-[var(--brand-yellow)]/20 text-[var(--brand-ink)] rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium">2</span>
             <span>Sign in with the same account you used to subscribe</span>
           </li>
           <li className="flex items-start gap-3">
-            <span className="w-5 h-5 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium">3</span>
+            <span className="w-5 h-5 bg-[var(--brand-yellow)]/20 text-[var(--brand-ink)] rounded-full flex items-center justify-center flex-shrink-0 text-xs font-medium">3</span>
             <span>Your premium features will automatically unlock!</span>
           </li>
         </ul>
@@ -55,7 +55,7 @@ function SuccessContent() {
         <p className="text-sm text-gray-500">Don't have the app yet?</p>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
-            href="https://apps.apple.com/app/scribeai"
+            href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -81,7 +81,7 @@ function SuccessContent() {
 
       {/* Support Link */}
       <p className="text-xs text-gray-500">
-        Need help? <a href="mailto:support@scribeai.online" className="text-purple-600 hover:underline">Contact support</a>
+        Need help? <a href="mailto:support@scribeai.online" className="text-[var(--brand-ink)] hover:underline">Contact support</a>
       </p>
     </div>
   );

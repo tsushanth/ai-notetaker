@@ -15,6 +15,19 @@
   --accent-purple-light: #a855f7;
   --accent-red: #ef4444;
   --accent-green: #22c55e;
+  /* Text color for anything sitting on top of --accent-purple (buttons, badges,
+     selected pills). White reads correctly against this violet; the yellow
+     brand accent used in .site-marketing/.auth-theme/.dashboard-theme below
+     needs dark text instead, so those scopes override this to near-black. */
+  --on-accent: #ffffff;
+
+  /* Non-scoped brand tokens for the (checkout) pages, which are a light-mode
+     flow built with literal Tailwind gray/purple classes rather than the
+     dark theme vars above — kept light deliberately (a payment flow), just
+     retinted to the new brand accent instead of the old purple. */
+  --brand-yellow: #ffc93c;
+  --brand-yellow-hover: #f2b705;
+  --brand-ink: #151a2b;
 }
 
 @theme inline {
@@ -53,7 +66,7 @@ body {
 /* Button styles */
 .btn-primary {
   background: var(--accent-purple);
-  color: white;
+  color: var(--on-accent);
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 600;
@@ -121,6 +134,7 @@ body {
   --accent-purple: #ffc93c;
   --accent-purple-hover: #f2b705;
   --accent-purple-light: #ffd76b;
+  --on-accent: #14110a;
 }
 
 /* Same palette, applied separately to the login/signup shell so it can move
@@ -137,4 +151,25 @@ body {
   --accent-purple: #ffc93c;
   --accent-purple-hover: #f2b705;
   --accent-purple-light: #ffd76b;
+  --on-accent: #14110a;
+}
+
+/* Same palette again, applied to the whole (dashboard) route group (notes,
+   settings, creator pages, recording/upload/YouTube capture, and the shared
+   Header) — the actual logged-in product. The (marketing) subpages
+   (contact/privacy/terms/creators) and (checkout) flow are intentionally
+   left on their existing palettes; they weren't part of this pass. */
+.dashboard-theme {
+  --background: #0e1420;
+  --foreground: #f1efea;
+  --card-background: #161c2c;
+  --surface-variant: #1c2336;
+  --border: #262c40;
+  --text-primary: #f1efea;
+  --text-secondary: #a9afc4;
+  --text-muted: #8890a6;
+  --accent-purple: #ffc93c;
+  --accent-purple-hover: #f2b705;
+  --accent-purple-light: #ffd76b;
+  --on-accent: #14110a;
 }

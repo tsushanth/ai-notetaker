@@ -11,6 +11,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -33,6 +34,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.kreativekoala.scribeai.R
+import com.kreativekoala.scribeai.ui.components.TurboRecordButton
+import com.kreativekoala.scribeai.ui.components.TurboWaveform
+import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.SubscriptionManager
@@ -288,8 +292,15 @@ fun RecordingScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { },
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        stringResource(R.string.record_audio),
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = {
                         when (screenState) {
@@ -388,6 +399,11 @@ fun RecordingScreen(
     }
 }
 
+private fun clockText(millis: Long): String {
+    val total = millis / 1000
+    return "%02d:%02d:%02d".format(total / 3600, (total % 3600) / 60, total % 60)
+}
+
 @Composable
 private fun IdleContent(
     hasPermission: Boolean,
@@ -397,73 +413,57 @@ private fun IdleContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(horizontal = 24.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            Icons.Default.Mic,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = Purple80
-        )
-
-        Spacer(Modifier.height(24.dp))
-
+        Spacer(Modifier.weight(1f))
         Text(
-            stringResource(R.string.record_audio),
-            fontSize = 28.sp,
+            clockText(0),
+            fontSize = 56.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
-
-        Spacer(Modifier.height(8.dp))
-
-        Text(
-            stringResource(R.string.record_audio_subtitle),
-            fontSize = 16.sp,
-            color = TextSecondary,
-            textAlign = TextAlign.Center
-        )
-
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(24.dp))
+        TurboWaveform(active = false)
+        Spacer(Modifier.weight(1f))
 
         if (!hasPermission) {
-            Button(
-                onClick = onRequestPermission,
-                colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-            ) {
-                Icon(Icons.Default.Mic, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.grant_microphone_permission), fontSize = 16.sp)
+            Text(
+                stringResource(R.string.record_audio_subtitle),
+                fontSize = 15.sp,
+                color = TextSecondary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(20.dp))
+            Box(modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp)) {
+                Button(
+                    onClick = onRequestPermission,
+                    colors = ButtonDefaults.buttonColors(containerColor = Purple80, contentColor = Color.White),
+                    shape = CircleShape,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .turboLip(CircleShape, Purple40)
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.grant_microphone_permission), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                }
             }
         } else {
-            // Large record button
-            Button(
-                onClick = onStartRecording,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-                shape = CircleShape,
-                modifier = Modifier.size(100.dp)
-            ) {
-                Icon(
-                    Icons.Default.Mic,
-                    contentDescription = stringResource(R.string.start_recording),
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-
+            TurboRecordButton(
+                icon = Icons.Default.Mic,
+                contentDescription = stringResource(R.string.start_recording),
+                onClick = onStartRecording
+            )
             Spacer(Modifier.height(16.dp))
-
             Text(
                 stringResource(R.string.tap_to_start_recording),
                 fontSize = 14.sp,
                 color = TextSecondary
             )
         }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -476,69 +476,29 @@ private fun RecordingContent(
     onStop: () -> Unit,
     onDiscard: () -> Unit
 ) {
-    // Pulsing animation for recording indicator
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.2f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
-
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+            .padding(horizontal = 24.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Recording indicator
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .scale(if (isRecording) scale else 1f)
-                .clip(CircleShape)
-                .background(Color(0xFFE53935).copy(alpha = 0.2f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFE53935)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    if (isRecording) Icons.Default.Mic else Icons.Default.Pause,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = Color.White
-                )
-            }
-        }
-
-        Spacer(Modifier.height(32.dp))
-
-        // Duration
+        Spacer(Modifier.weight(1f))
         Text(
-            formatDuration(duration),
-            fontSize = 48.sp,
-            fontWeight = FontWeight.Light,
+            clockText(duration),
+            fontSize = 56.sp,
+            fontWeight = FontWeight.Bold,
             color = TextPrimary
         )
-
         Spacer(Modifier.height(8.dp))
-
         Text(
             if (isRecording) stringResource(R.string.recording_status) else stringResource(R.string.paused),
-            fontSize = 16.sp,
-            color = if (isRecording) Color(0xFFE53935) else TextSecondary
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Medium,
+            color = if (isRecording) AccentRed else TextSecondary
         )
-
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(24.dp))
+        TurboWaveform(active = isRecording)
+        Spacer(Modifier.weight(1f))
 
         // Control buttons
         Row(
@@ -546,54 +506,64 @@ private fun RecordingContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Discard button
-            OutlinedButton(
-                onClick = onDiscard,
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp),
-                contentPadding = PaddingValues(0.dp),
-                border = ButtonDefaults.outlinedButtonBorder.copy(
-                    brush = androidx.compose.ui.graphics.SolidColor(TextSecondary)
-                )
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = stringResource(R.string.discard),
-                    tint = TextSecondary
-                )
-            }
-
-            // Pause/Resume button
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                Button(
-                    onClick = { if (isRecording) onPause() else onResume() },
-                    colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-                    shape = CircleShape,
-                    modifier = Modifier.size(72.dp),
-                    contentPadding = PaddingValues(0.dp)
+            Box(modifier = Modifier.padding(bottom = 3.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .turboLip(CircleShape)
+                        .clip(CircleShape)
+                        .background(DarkSurfaceVariant)
+                        .clickable(onClick = onDiscard),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        if (isRecording) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isRecording) stringResource(R.string.pause) else stringResource(R.string.resume),
-                        modifier = Modifier.size(32.dp)
+                        Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.discard),
+                        tint = TextSecondary
                     )
                 }
             }
 
+            // Pause/Resume button
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                Box(modifier = Modifier.padding(bottom = 3.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .turboLip(CircleShape, Purple40)
+                            .clip(CircleShape)
+                            .background(Purple80)
+                            .clickable { if (isRecording) onPause() else onResume() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            if (isRecording) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isRecording) stringResource(R.string.pause) else stringResource(R.string.resume),
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+            }
+
             // Stop button
-            Button(
-                onClick = onStop,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935)),
-                shape = CircleShape,
-                modifier = Modifier.size(56.dp),
-                contentPadding = PaddingValues(0.dp)
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+                    .background(AccentRed)
+                    .clickable(onClick = onStop),
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.Stop,
                     contentDescription = stringResource(R.string.stop),
+                    tint = Color.White,
                     modifier = Modifier.size(28.dp)
                 )
             }
         }
+        Spacer(Modifier.height(16.dp))
     }
 }
 

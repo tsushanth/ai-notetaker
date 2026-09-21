@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -231,7 +232,7 @@ fun NoteDetailScreen(
                                         Text("Export as PDF", color = TextPrimary)
                                         if (subscriptionManager?.canExportNotes() != true) {
                                             Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = Color(0xFFFFA726), modifier = Modifier.size(16.dp))
+                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = AccentAmber, modifier = Modifier.size(16.dp))
                                         }
                                     }
                                 },
@@ -271,7 +272,7 @@ fun NoteDetailScreen(
                                         Text("Export as Word", color = TextPrimary)
                                         if (subscriptionManager?.canExportNotes() != true) {
                                             Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = Color(0xFFFFA726), modifier = Modifier.size(16.dp))
+                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = AccentAmber, modifier = Modifier.size(16.dp))
                                         }
                                     }
                                 },
@@ -358,7 +359,7 @@ fun NoteDetailScreen(
                                         Text("Save to Google Drive", color = TextPrimary)
                                         if (subscriptionManager?.canExportNotes() != true) {
                                             Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = Color(0xFFFFA726), modifier = Modifier.size(16.dp))
+                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = AccentAmber, modifier = Modifier.size(16.dp))
                                         }
                                     }
                                 },
@@ -583,7 +584,7 @@ private fun BottomTabItem(
     val interactionSource = remember { MutableInteractionSource() }
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(if (isSelected) Purple80.copy(alpha = 0.15f) else Color.Transparent)
             .clickable(
                 interactionSource = interactionSource,
@@ -1057,7 +1058,7 @@ private fun SummarySection(
             onClick = onToggle,
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(10.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -1111,7 +1112,7 @@ private fun SummarySection(
                     .fillMaxWidth()
                     .padding(top = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = CardBackground.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     when (summaryState) {
@@ -1190,7 +1191,7 @@ private fun NoSummaryContent(onGenerateSummary: () -> Unit) {
         Button(
             onClick = onGenerateSummary,
             colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
             Icon(
                 Icons.Default.AutoAwesome,
@@ -1234,7 +1235,7 @@ private fun ReadAloudSection(
             onClick = onToggle,
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(20.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.3f))
         ) {
             Row(
@@ -1286,7 +1287,7 @@ private fun ReadAloudSection(
                     .fillMaxWidth()
                     .padding(top = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = CardBackground.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     when (ttsState) {
@@ -1451,7 +1452,7 @@ private fun ReadAloudGenerateSection(
             onClick = onGenerateTTS,
             modifier = Modifier.fillMaxWidth().height(40.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
             Icon(Icons.Default.VolumeUp, contentDescription = null, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(6.dp))
@@ -1536,6 +1537,8 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                                     selectedContainerColor = Purple80,
                                     selectedLabelColor = DarkBackground
                                 )
+                            ,
+                            shape = CircleShape
                             )
                         }
                     }
@@ -1561,7 +1564,7 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = CardBackground),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(
@@ -1700,7 +1703,7 @@ fun ChatTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
         // Mode Toggle Header
         Surface(
             color = CardBackground,
-            shadowElevation = 2.dp
+            shadowElevation = 0.dp
         ) {
             Row(
                 modifier = Modifier
@@ -1957,7 +1960,7 @@ private fun VoiceModeInput(
 ) {
     Surface(
         color = CardBackground,
-        shadowElevation = 8.dp
+        shadowElevation = 0.dp
     ) {
         Box(
             modifier = Modifier
@@ -2120,7 +2123,7 @@ fun ChatInputArea(
 ) {
     Surface(
         color = CardBackground,
-        shadowElevation = 8.dp
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
@@ -2419,7 +2422,7 @@ fun InfographicTab(
                             .fillMaxWidth()
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(8.dp))
@@ -2506,7 +2509,7 @@ fun InfographicTab(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { showFullScreen = true },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(containerColor = DarkSurface)
                         ) {
                             AsyncImage(
@@ -2618,7 +2621,7 @@ private fun InfographicStyleCard(
     Card(
         modifier = modifier
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) Purple80.copy(alpha = 0.2f) else DarkSurfaceVariant
         ),
@@ -2660,7 +2663,7 @@ private fun InfographicFeatureRow(icon: androidx.compose.ui.graphics.vector.Imag
 private fun InfographicExtractedDataCard(data: InfographicExtractedData) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = CardBackground)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -2695,7 +2698,7 @@ private fun InfographicExtractedDataCard(data: InfographicExtractedData) {
                     stats.take(3).forEach { stat ->
                         Card(
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = RoundedCornerShape(20.dp),
                             colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant)
                         ) {
                             Column(
@@ -2726,7 +2729,7 @@ private fun InfographicExtractedDataCard(data: InfographicExtractedData) {
             data.keyTakeaway?.let { takeaway ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = AccentGreen.copy(alpha = 0.1f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp)) {
@@ -3016,6 +3019,8 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                     selectedContainerColor = Purple80,
                                     selectedLabelColor = DarkBackground
                                 )
+                            ,
+                            shape = CircleShape
                             )
                         }
                     }
@@ -3033,7 +3038,8 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Purple80.copy(alpha = 0.3f),
                                     selectedLabelColor = Purple80
-                                )
+                                ),
+                                shape = CircleShape
                             )
                         }
                     }
@@ -3075,7 +3081,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                     focusedContainerColor = CardBackground,
                                     unfocusedContainerColor = CardBackground
                                 ),
-                                shape = RoundedCornerShape(12.dp),
+                                shape = RoundedCornerShape(20.dp),
                                 minLines = 2,
                                 maxLines = 4
                             )
@@ -3084,7 +3090,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         OutlinedButton(
                             onClick = { showInstructions = true },
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(20.dp),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.3f))
                         ) {
                             Icon(
@@ -3130,7 +3136,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                             containerColor = Purple80,
                             disabledContainerColor = Purple80.copy(alpha = 0.3f)
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(8.dp))
@@ -3382,7 +3388,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                 // Regenerate button
                                 OutlinedButton(
                                     onClick = { aiViewModel.resetState("podcast") },
-                                    shape = RoundedCornerShape(12.dp),
+                                    shape = RoundedCornerShape(20.dp),
                                     border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.4f))
                                 ) {
                                     Icon(
@@ -3438,7 +3444,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         Button(
                             onClick = { aiViewModel.resetState("podcast") },
                             colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(20.dp)
                         ) {
                             Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
@@ -3718,7 +3724,7 @@ fun InteractiveQuizQuestion(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = CardBackground),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(20.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -3758,7 +3764,7 @@ fun InteractiveQuizQuestion(
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Text(
                     stringResource(R.string.check_answer),
@@ -3773,7 +3779,7 @@ fun InteractiveQuizQuestion(
                     .fillMaxWidth()
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -3820,7 +3826,7 @@ fun QuizOptionButton(
         enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         border = androidx.compose.foundation.BorderStroke(2.dp, borderColor)
     ) {
         Row(
@@ -3940,7 +3946,7 @@ fun QuizResultsView(
                 .padding(horizontal = 32.dp)
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
@@ -3964,7 +3970,7 @@ fun QuizResultsView(
                 .height(56.dp),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = Purple80),
             border = androidx.compose.foundation.BorderStroke(2.dp, Purple80),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
@@ -4061,6 +4067,8 @@ fun FlashcardsTab(
                                     selectedContainerColor = Purple80,
                                     selectedLabelColor = DarkBackground
                                 )
+                            ,
+                            shape = CircleShape
                             )
                         }
                     }
@@ -4101,7 +4109,7 @@ fun FlashcardsTab(
                             ),
                             minLines = 2,
                             maxLines = 4,
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(20.dp)
                         )
                     }
 
@@ -4122,7 +4130,7 @@ fun FlashcardsTab(
                             .fillMaxWidth(0.8f)
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Purple80),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
@@ -4252,7 +4260,7 @@ fun GenerateContentPrompt(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Purple80
                 ),
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(20.dp),
                 modifier = Modifier.height(48.dp)
             ) {
                 Icon(Icons.Default.AutoAwesome, contentDescription = null)
@@ -4314,7 +4322,7 @@ private fun DurationOptionCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) Purple80.copy(alpha = 0.15f) else CardBackground
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Purple80) else null
     ) {
         Column(
@@ -4353,7 +4361,7 @@ private fun VoiceOptionCard(
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) Purple80.copy(alpha = 0.15f) else CardBackground
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         border = if (isSelected) androidx.compose.foundation.BorderStroke(2.dp, Purple80) else null
     ) {
         Row(
@@ -4391,7 +4399,7 @@ fun FlashcardItem(number: Int, front: String, back: String) {
         colors = CardDefaults.cardColors(
             containerColor = if (flipped) Purple80.copy(alpha = 0.2f) else CardBackground
         ),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         onClick = { flipped = !flipped }
     ) {
         Box(
@@ -4622,7 +4630,7 @@ private fun MindMapGeneratePrompt(
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(20.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -4703,7 +4711,7 @@ private fun MindMapBranchCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         border = androidx.compose.foundation.BorderStroke(2.dp, branchColor.copy(alpha = 0.6f))
     ) {
         Column {
@@ -4770,7 +4778,7 @@ private fun ExploratoryNodeCard(node: com.kreativekoala.scribeai.data.models.Min
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Purple80.copy(alpha = 0.08f)),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(20.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Purple80.copy(alpha = 0.3f))
     ) {
         Row(

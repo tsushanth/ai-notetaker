@@ -15,7 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.SubscriptionManager
@@ -165,9 +166,10 @@ private fun OnboardingHeader(
                     .then(if (currentStep.index > 0) Modifier else Modifier.alpha(0f))
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
+                    Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                     contentDescription = "Back",
-                    tint = TextSecondary
+                    tint = TextPrimary,
+                    modifier = Modifier.size(32.dp)
                 )
             }
 
@@ -187,15 +189,15 @@ private fun OnboardingHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(Color.White.copy(alpha = 0.1f))
+                .height(6.dp)
+                .clip(CircleShape)
+                .background(TurboLip)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(currentStep.progress)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(CircleShape)
                     .background(Purple80)
             )
         }
@@ -220,7 +222,7 @@ private fun UserTypeScreen(manager: OnboardingManager) {
 
         Text(
             "Tell us about yourself",
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center
@@ -275,7 +277,7 @@ private fun UseCaseScreen(manager: OnboardingManager) {
 
         Text(
             "How will you use ScribeAI?",
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center
@@ -334,16 +336,16 @@ private fun FeatureScreen(
 
         // Icon
         Surface(
-            modifier = Modifier.size(120.dp),
-            shape = CircleShape,
-            color = Purple80.copy(alpha = 0.2f)
+            modifier = Modifier.size(150.dp),
+            shape = RoundedCornerShape(36.dp),
+            color = Purple20
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    modifier = Modifier.size(60.dp),
-                    tint = Purple80
+                    modifier = Modifier.size(72.dp),
+                    tint = Color(0xFF8D67CC)
                 )
             }
         }
@@ -352,7 +354,7 @@ private fun FeatureScreen(
 
         Text(
             title,
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center
@@ -400,7 +402,7 @@ private fun SocialProofScreen(onContinue: () -> Unit) {
 
         Text(
             "Join 50,000+ Students",
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center
@@ -448,12 +450,17 @@ private data class Review(val name: String, val text: String, val rating: Int)
 
 @Composable
 private fun ReviewCard(review: Review) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    val cardShape = RoundedCornerShape(20.dp)
+    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .turboLip(cardShape)
+                .clip(cardShape)
+                .background(CardBackground)
+                .border(BorderStroke(1.dp, TurboBorder), cardShape)
+                .padding(16.dp)
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Avatar
                 Surface(
@@ -503,6 +510,7 @@ private fun ReviewCard(review: Review) {
     }
 }
 
+
 // MARK: - Comparison Screen
 
 @Composable
@@ -518,7 +526,7 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
 
         Text(
             "Study Smarter, Not Harder",
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center
@@ -527,12 +535,17 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
         Spacer(Modifier.height(32.dp))
 
         // Comparison table
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = CardBackground),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
+        val tableShape = RoundedCornerShape(20.dp)
+        Box(modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .turboLip(tableShape)
+                    .clip(tableShape)
+                    .background(CardBackground)
+                    .border(BorderStroke(1.dp, TurboBorder), tableShape)
+                    .padding(16.dp)
+            ) {
                 // Header
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
@@ -552,7 +565,7 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
                         "ScribeAI",
                         modifier = Modifier.weight(0.5f),
                         fontWeight = FontWeight.SemiBold,
-                        color = Purple80,
+                        color = PurpleGrey80,
                         textAlign = TextAlign.Center
                     )
                 }
@@ -849,7 +862,7 @@ private fun TrialScreen(
                 .height(56.dp)
                 .padding(horizontal = 24.dp),
             colors = ButtonDefaults.buttonColors(containerColor = AccentGreen),
-            shape = RoundedCornerShape(16.dp),
+            shape = CircleShape,
             enabled = !isPurchasing && pricesLoaded
         ) {
             if (isPurchasing) {
@@ -1006,9 +1019,9 @@ private fun PlanPill(
     Card(
         onClick = onClick,
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = CardBackground),
-        shape = RoundedCornerShape(12.dp),
-        border = if (isSelected) BorderStroke(2.dp, Purple80) else null
+        colors = CardDefaults.cardColors(containerColor = if (isSelected) DarkSurfaceVariant else CardBackground),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) Purple80 else TurboBorder)
     ) {
         Column(
             modifier = Modifier
@@ -1163,16 +1176,16 @@ private fun NotificationsScreen(onComplete: () -> Unit) {
         Spacer(Modifier.weight(0.3f))
 
         Surface(
-            modifier = Modifier.size(120.dp),
-            shape = CircleShape,
-            color = Purple80.copy(alpha = 0.2f)
+            modifier = Modifier.size(150.dp),
+            shape = RoundedCornerShape(36.dp),
+            color = Purple20
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(
                     Icons.Default.Notifications,
                     contentDescription = null,
-                    modifier = Modifier.size(60.dp),
-                    tint = Purple80
+                    modifier = Modifier.size(72.dp),
+                    tint = Color(0xFF8D67CC)
                 )
             }
         }
@@ -1181,7 +1194,7 @@ private fun NotificationsScreen(onComplete: () -> Unit) {
 
         Text(
             "Stay on Track",
-            fontSize = 28.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center
@@ -1231,29 +1244,29 @@ private fun SelectableCard(
     onClick: () -> Unit,
     showCheckbox: Boolean = false
 ) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) Purple80.copy(alpha = 0.15f) else CardBackground
-        ),
-        shape = RoundedCornerShape(12.dp),
-        border = if (isSelected) BorderStroke(2.dp, Purple80) else null
-    ) {
-        Row(
+    val pillShape = RoundedCornerShape(50)
+    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp)) {
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .turboLip(pillShape)
+                .clip(pillShape)
+                .background(if (isSelected) DarkSurfaceVariant else CardBackground)
+                .border(BorderStroke(if (isSelected) 2.dp else 1.dp, if (isSelected) Purple80 else TurboBorder), pillShape)
+                .clickable(onClick = onClick)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 title,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 32.dp)
             )
 
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
             if (showCheckbox) {
                 if (isSelected) {
                     Surface(
@@ -1297,9 +1310,10 @@ private fun SelectableCard(
                     Box(
                         modifier = Modifier
                             .size(24.dp)
-                            .border(2.dp, DarkSurfaceVariant, CircleShape)
+                            .border(2.dp, TurboBorder, CircleShape)
                     )
                 }
+            }
             }
         }
     }
@@ -1311,22 +1325,18 @@ private fun OnboardingPrimaryButton(
     onClick: () -> Unit,
     enabled: Boolean = true
 ) {
-    Button(
-        onClick = onClick,
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Purple80,
-            disabledContainerColor = Purple80.copy(alpha = 0.5f)
-        ),
-        shape = RoundedCornerShape(16.dp),
-        enabled = enabled
+            .height(56.dp)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
         Text(
-            title,
+            "$title →",
             fontSize = 18.sp,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Bold,
+            color = if (enabled) TextPrimary else TextTertiary
         )
     }
 }

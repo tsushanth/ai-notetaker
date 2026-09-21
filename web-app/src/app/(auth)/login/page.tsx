@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
+import { STUDY_FORMATS } from '@/lib/studyFormats';
 
 const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
@@ -71,23 +72,24 @@ export default function LoginPage() {
   }, [login, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--background)] px-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2">
-            <span className="bg-[var(--accent-purple)] px-3 py-1.5 rounded-lg text-white font-bold text-xl">
+    <div className="min-h-screen grid md:grid-cols-2">
+      {/* Form */}
+      <div className="flex items-center justify-center px-4 py-16">
+        <div className="w-full max-w-sm">
+          <Link href="/" className="inline-flex items-center gap-2 mb-10">
+            <span className="bg-[var(--accent-purple)] px-2.5 py-1.5 rounded-lg text-[#14110a] font-bold font-[family-name:var(--font-display)]">
               S
             </span>
-            <span className="font-bold text-2xl">Scribe AI</span>
+            <span className="font-semibold font-[family-name:var(--font-display)]">Scribe AI</span>
           </Link>
-          <p className="text-[var(--text-secondary)] mt-4">
-            Sign in to your account
-          </p>
-        </div>
 
-        {/* Login Card */}
-        <div className="card">
+          <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium mb-1.5">
+            Sign in to keep studying
+          </h1>
+          <p className="text-[var(--text-secondary)] text-sm mb-8">
+            Your notes, flashcards, and quizzes are waiting.
+          </p>
+
           <div ref={googleButtonRef} className="flex justify-center" />
 
           {isLoading && (
@@ -99,19 +101,40 @@ export default function LoginPage() {
           {error && (
             <p className="text-sm text-[var(--accent-red)] mt-4 text-center">{error}</p>
           )}
-        </div>
 
-        {/* Terms */}
-        <p className="text-center text-xs text-[var(--text-muted)] mt-6">
-          By signing in, you agree to our{' '}
-          <a href="https://scribeai.online/terms.html" className="text-[var(--accent-purple-light)] hover:underline">
-            Terms of Service
-          </a>{' '}
-          and{' '}
-          <a href="https://scribeai.online/privacy.html" className="text-[var(--accent-purple-light)] hover:underline">
-            Privacy Policy
-          </a>
+          <p className="text-center text-sm text-[var(--text-secondary)] mt-8">
+            New here?{' '}
+            <Link href="/signup" className="text-[var(--accent-purple-light)] hover:underline">
+              Create an account
+            </Link>
+          </p>
+
+          <p className="text-center text-xs text-[var(--text-muted)] mt-10">
+            By signing in, you agree to our{' '}
+            <Link href="/terms" className="text-[var(--accent-purple-light)] hover:underline">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-[var(--accent-purple-light)] hover:underline">
+              Privacy Policy
+            </Link>
+          </p>
+        </div>
+      </div>
+
+      {/* Showcase — what signing in actually gets you */}
+      <div className="hidden md:flex flex-col justify-center bg-[var(--card-background)] border-l border-[var(--border)] px-16">
+        <p className="font-[family-name:var(--font-display)] text-2xl font-medium mb-8 max-w-xs">
+          Everything from the app, right in your browser.
         </p>
+        <div className="space-y-6 max-w-xs">
+          {STUDY_FORMATS.map((f) => (
+            <div key={f.name}>
+              <h3 className="font-semibold text-sm">{f.name}</h3>
+              <p className="text-sm text-[var(--text-secondary)] mt-0.5">{f.body}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

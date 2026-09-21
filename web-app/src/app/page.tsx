@@ -7,6 +7,7 @@ import Link from 'next/link';
 import MarketingHeader from '@/components/marketing/MarketingHeader';
 import MarketingFooter from '@/components/marketing/MarketingFooter';
 import { Mic, Youtube, FileText, ChevronDown } from 'lucide-react';
+import { STUDY_FORMATS } from '@/lib/studyFormats';
 
 const PIPELINE = [
   {
@@ -21,13 +22,6 @@ const PIPELINE = [
     title: 'Study',
     body: 'Review the notes, drill the flashcards, take the quiz, or just listen.',
   },
-];
-
-const FORMATS = [
-  { name: 'Smart notes', body: 'An organized outline and summary, not a wall of transcript.' },
-  { name: 'Flashcards', body: 'Generated from the material, ready for spaced repetition.' },
-  { name: 'Quizzes', body: 'AI-written questions to test what actually stuck.' },
-  { name: 'Podcasts', body: 'Your notes, narrated, for the walk between classes.' },
 ];
 
 const FAQ = [
@@ -181,7 +175,7 @@ export default function Home() {
               Four ways to study the same material.
             </h2>
             <div className="divide-y divide-[var(--border)] border-y border-[var(--border)]">
-              {FORMATS.map((f) => (
+              {STUDY_FORMATS.map((f) => (
                 <div key={f.name} className="py-5 flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-8">
                   <h3 className="font-semibold sm:w-40 flex-shrink-0">{f.name}</h3>
                   <p className="text-sm text-[var(--text-secondary)]">{f.body}</p>

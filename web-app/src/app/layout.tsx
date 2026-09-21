@@ -1,11 +1,16 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Inter, Space_Grotesk } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+});
+// Display face for the homepage only — the rest of the app stays on Inter alone.
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
 });
 
 export const metadata: Metadata = {
@@ -48,7 +53,7 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
       </head>
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}>
         {children}
       </body>
     </html>

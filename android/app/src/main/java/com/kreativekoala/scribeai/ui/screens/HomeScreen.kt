@@ -33,6 +33,8 @@ import com.kreativekoala.scribeai.data.models.UserStats
 import com.kreativekoala.scribeai.ui.components.DeleteAccountRetentionDialog
 import com.kreativekoala.scribeai.ui.components.SignOutRetentionDialog
 import com.kreativekoala.scribeai.ui.components.ThemeSelectionDialog
+import com.kreativekoala.scribeai.ui.components.TurboChip
+import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.viewmodel.NoteUiState
@@ -157,10 +159,23 @@ fun HomeScreen(
                 PaywallFeature("\uD83D\uDCC1", "Organization"),
                 PaywallFeature("☁\uFE0F", "Cloud Sync")
             ),
-            theme = PaywallTheme(accent = Color(0xFF6C63FF), accent2 = Color(0xFF9C27B0)),
+            theme = PaywallTheme(accent = Purple80, accent2 = Purple40, background = DarkBackground, cardBackground = DarkSurface),
             onDone = { showPaywallPreview = false }
         )
         return
+    }
+
+    // Same gate the FAB always used: signed in, and under the free notebook limit,
+    // otherwise the hard paywall. Every create entry point goes through this.
+    val requestCreate: (() -> Unit) -> Unit = { action ->
+        if (authToken != null) {
+            if (subscriptionManager.canCreateNotebook()) {
+                action()
+            } else {
+                paywallIsHardGate = true
+                showPaywall = true
+            }
+        }
     }
 
     Scaffold(
@@ -168,13 +183,21 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = null,
-                            modifier = Modifier.size(24.dp),
-                            tint = Purple80
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Purple40),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             stringResource(R.string.app_title),
                             fontSize = 20.sp,
@@ -301,22 +324,11 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = {
-                    if (authToken != null) {
-                        if (subscriptionManager.canCreateNotebook()) {
-                            showCreateSheet = true
-                        } else {
-                            // Hard gate — user has hit the free notebook limit.
-                            // Block dismissal so they must convert or background.
-                            paywallIsHardGate = true
-                            showPaywall = true
-                        }
-                    }
-                },
-                containerColor = Purple80,
+                onClick = { requestCreate { showCreateSheet = true } },
+                containerColor = Purple40,
                 contentColor = Color.White,
-                shape = CircleShape,
-                modifier = Modifier.size(64.dp)
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.size(60.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
@@ -332,25 +344,23 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Header with usage info
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        stringResource(R.string.home),
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
+            // Header
+            Text(
+                stringResource(R.string.home),
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)
+            )
 
-                }
-
-            }
+            // Quick create: the four things people do most, one tap from Home
+            QuickCreateRow(
+                onRecord = { requestCreate(onRecordAudio) },
+                onYouTube = { requestCreate(onYouTube) },
+                onDocument = { requestCreate(onUploadDocument) },
+                onScan = { requestCreate(onScanDocument) }
+            )
+            Spacer(Modifier.height(8.dp))
 
             // Notes List
             when (val state = uiState) {
@@ -771,6 +781,35 @@ fun HomeScreen(
     }
 }
 
+private fun sourceAccent(sourceType: String?): Color = when (sourceType) {
+    "recording" -> Purple80
+    "video" -> AccentRed
+    "pdf" -> AccentAmber
+    "scan" -> AccentGreen
+    else -> Purple80
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun QuickCreateRow(
+    onRecord: () -> Unit,
+    onYouTube: () -> Unit,
+    onDocument: () -> Unit,
+    onScan: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FlowRow(
+        modifier = modifier.padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        TurboChip(Icons.Default.Mic, stringResource(R.string.record_or_upload), Purple80, onRecord)
+        TurboChip(Icons.Default.VideoLibrary, stringResource(R.string.youtube_video), AccentRed, onYouTube)
+        TurboChip(Icons.Default.Description, stringResource(R.string.upload_document), Purple40, onDocument)
+        TurboChip(Icons.Default.CameraAlt, stringResource(R.string.scan_text), AccentGreen, onScan)
+    }
+}
+
 @Composable
 fun NoteCard(
     note: Note,
@@ -785,8 +824,11 @@ fun NoteCard(
 
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 3.dp)
+            .turboLip(RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = CardBackground
         )
@@ -801,8 +843,8 @@ fun NoteCard(
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Purple80.copy(alpha = 0.2f)),
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(sourceAccent(note.sourceType).copy(alpha = 0.16f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -814,7 +856,7 @@ fun NoteCard(
                         else -> Icons.Default.Note
                     },
                     contentDescription = null,
-                    tint = Purple80,
+                    tint = sourceAccent(note.sourceType),
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -989,8 +1031,9 @@ fun CreateOptionsBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = DarkSurface,
-        contentColor = TextPrimary
+        containerColor = DarkBackground,
+        contentColor = TextPrimary,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     ) {
         Column(
             modifier = Modifier
@@ -1048,54 +1091,47 @@ fun CreateOption(
     subtitle: String? = null,
     onClick: () -> Unit
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        color = DarkSurfaceVariant
-    ) {
+    val accent = when (icon) {
+        Icons.Default.Mic -> Purple80
+        Icons.Default.VideoLibrary -> AccentRed
+        Icons.Default.CameraAlt -> AccentGreen
+        Icons.Default.Description -> AccentAmber
+        else -> Purple40
+    }
+    val shape = RoundedCornerShape(20.dp)
+    Box(modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .turboLip(shape)
+                .clip(shape)
+                .background(DarkSurfaceVariant)
+                .clickable(onClick = onClick)
+                .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        when(icon) {
-                            Icons.Default.Mic -> Purple80.copy(alpha = 0.2f)
-                            Icons.Default.VideoLibrary -> AccentRed.copy(alpha = 0.2f)
-                            Icons.Default.CameraAlt -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                            Icons.Default.Videocam -> Color(0xFF2196F3).copy(alpha = 0.2f)
-                            else -> AccentBlue.copy(alpha = 0.2f)
-                        }
-                    ),
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(accent),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = when(icon) {
-                        Icons.Default.Mic -> Purple80
-                        Icons.Default.VideoLibrary -> AccentRed
-                        Icons.Default.CameraAlt -> Color(0xFF4CAF50)
-                        Icons.Default.Videocam -> Color(0xFF2196F3)
-                        else -> AccentBlue
-                    },
-                    modifier = Modifier.size(20.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
                 )
             }
 
-            Spacer(Modifier.width(12.dp))
+            Spacer(Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium,
+                    fontWeight = FontWeight.SemiBold,
                     color = TextPrimary
                 )
                 if (subtitle != null) {

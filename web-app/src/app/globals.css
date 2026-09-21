@@ -105,3 +105,36 @@ body {
 .input::placeholder {
   color: var(--text-muted);
 }
+
+/* Homepage-only palette. Scoped to .site-marketing so the dashboard, auth, and
+   checkout flows (which read the same --accent-purple/--border/etc. variable
+   names above) are unaffected — only src/app/page.tsx opts into this. */
+.site-marketing {
+  --background: #0e1420;
+  --foreground: #f1efea;
+  --card-background: #161c2c;
+  --surface-variant: #1c2336;
+  --border: #262c40;
+  --text-primary: #f1efea;
+  --text-secondary: #a9afc4;
+  --text-muted: #8890a6;
+  --accent-purple: #ffc93c;
+  --accent-purple-hover: #f2b705;
+  --accent-purple-light: #ffd76b;
+}
+
+/* Same palette, applied separately to the login/signup shell so it can move
+   independently of the homepage above without a shared-class coincidence. */
+.auth-theme {
+  --background: #0e1420;
+  --foreground: #f1efea;
+  --card-background: #161c2c;
+  --surface-variant: #1c2336;
+  --border: #262c40;
+  --text-primary: #f1efea;
+  --text-secondary: #a9afc4;
+  --text-muted: #8890a6;
+  --accent-purple: #ffc93c;
+  --accent-purple-hover: #f2b705;
+  --accent-purple-light: #ffd76b;
+}

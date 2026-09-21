@@ -114,11 +114,11 @@ function AuthContent() {
       {/* Terms */}
       <p className="text-center text-xs text-gray-500 mt-6">
         By signing in, you agree to our{' '}
-        <a href="https://scribeai.online/terms" className="text-purple-600 hover:underline">
+        <a href="https://scribeai.online/terms" className="text-[var(--brand-ink)] hover:underline">
           Terms of Service
         </a>{' '}
         and{' '}
-        <a href="https://scribeai.online/privacy" className="text-purple-600 hover:underline">
+        <a href="https://scribeai.online/privacy" className="text-[var(--brand-ink)] hover:underline">
           Privacy Policy
         </a>
       </p>

@@ -16,7 +16,7 @@ export default function CheckoutLayout({
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center justify-center">
           <a href="https://scribeai.online" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-purple-600">ScribeAI</span>
+            <span className="text-xl font-bold text-[var(--brand-ink)]">ScribeAI</span>
           </a>
         </div>
       </header>

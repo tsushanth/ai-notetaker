@@ -802,7 +802,7 @@ export default function NoteDetailPage() {
           <button
             onClick={handleStartLearning}
             disabled={isStartingLearning}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--accent-purple)] text-white text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--accent-purple)] text-[var(--on-accent)] text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
             title="Turn this into a learning session"
           >
             {isStartingLearning ? <Loader2 size={18} className="animate-spin" /> : <Layers size={18} />}
@@ -834,7 +834,7 @@ export default function NoteDetailPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition whitespace-nowrap ${
               activeTab === tab.id
-                ? 'bg-[var(--accent-purple)] text-white'
+                ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]'
                 : 'text-[var(--text-secondary)] hover:text-white'
             }`}
           >
@@ -873,7 +873,7 @@ export default function NoteDetailPage() {
                   <div
                     className={`max-w-[80%] rounded-lg px-4 py-2 ${
                       message.role === 'user'
-                        ? 'bg-[var(--accent-purple)] text-white'
+                        ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]'
                         : 'bg-[var(--surface-variant)]'
                     }`}
                   >
@@ -1005,7 +1005,7 @@ export default function NoteDetailPage() {
                               ? index === quizQuestions[currentQuestionIndex].correctAnswer
                                 ? 'border-[var(--accent-green)] bg-green-500/10'
                                 : 'border-[var(--accent-red)] bg-red-500/10'
-                              : 'border-[var(--accent-purple)] bg-purple-500/10'
+                              : 'border-[var(--accent-purple)] bg-[var(--accent-purple)]/10'
                             : showResult && index === quizQuestions[currentQuestionIndex].correctAnswer
                               ? 'border-[var(--accent-green)] bg-green-500/10'
                               : 'border-[var(--border)] hover:border-[var(--accent-purple)]'
@@ -1163,7 +1163,7 @@ export default function NoteDetailPage() {
                         onClick={() => setSelectedStyle(style.value)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                           selectedStyle === style.value
-                            ? 'bg-[var(--accent-purple)] text-white'
+                            ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]'
                             : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
                         }`}
                       >
@@ -1305,7 +1305,7 @@ export default function NoteDetailPage() {
             ) : (
               <div className="text-center py-8">
                 <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-[var(--accent-purple)] flex items-center justify-center">
-                  <Volume2 className="w-12 h-12" />
+                  <Volume2 className="w-12 h-12 text-[var(--on-accent)]" />
                 </div>
                 <h3 className="text-lg font-medium mb-2">AI Podcast Ready</h3>
                 <p className="text-sm text-[var(--text-muted)] mb-4">
@@ -1436,7 +1436,7 @@ export default function NoteDetailPage() {
                         }}
                         className={`px-2 py-1 rounded text-xs font-medium transition ${
                           ttsSpeed === speed
-                            ? 'bg-[var(--accent-purple)] text-white'
+                            ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]'
                             : 'bg-[var(--surface-variant)] text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
                         }`}
                       >

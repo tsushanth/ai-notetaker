@@ -44,7 +44,7 @@ export default function CreatorLayout({
                     href={item.href}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition ${
                       isActive
-                        ? 'bg-[var(--accent-purple)] text-white'
+                        ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]'
                         : 'text-[var(--text-secondary)] hover:bg-[var(--card-background)]'
                     }`}
                   >

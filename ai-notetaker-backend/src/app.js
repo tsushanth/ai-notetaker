@@ -23,6 +23,7 @@ const aiRoutes = require('./routes/ai');
 const userRoutes = require('./routes/user');
 const analyticsRoutes = require('./routes/analytics');
 const alertsRoutes = require('./routes/alerts');
+const { reportCrash } = require('./utils/failureReporter');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const onboardingRoutes = require('./routes/onboarding');
 const formattingRoutes = require('./routes/formatting');
@@ -330,6 +331,14 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 8080;
 
 // Start server
+// Process-level failures: log, report (awaited so the email goes out), then exit like Node's default.
+for (const evt of ['uncaughtException', 'unhandledRejection']) {
+    process.on(evt, (err) => {
+        console.error(evt, err);
+        reportCrash(evt, err).finally(() => process.exit(1));
+    });
+}
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);

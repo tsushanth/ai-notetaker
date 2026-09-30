@@ -28,8 +28,8 @@ android {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 26
         targetSdk = 36
-        versionCode = 83
-        versionName = "58.23"
+        versionCode = 84
+        versionName = "58.24"
 
         // 16KB page size support
         ndk {
@@ -170,7 +170,7 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     // Google Play Billing
-    implementation("com.android.billingclient:billing-ktx:7.1.1")
+    implementation("com.android.billingclient:billing-ktx:8.0.0")
 
     // Twilio Voice SDK — in-app VoIP phone calls
     implementation("com.twilio:voice-android:6.9.0")

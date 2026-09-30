@@ -152,7 +152,15 @@ class TranscriptionService {
       const duration = Math.round(transcription.duration || 0);
 
       if (!transcriptionText || transcriptionText.trim().length === 0) {
-        throw new AppError('Transcription returned empty text', 500);
+        // No recognisable speech (silence, noise, or audio in another language since the request
+        // is pinned to English). That is a property of the recording, not a server failure, so it
+        // is a 422: it must not page as a 5xx. Real provider/storage errors above still are 5xx.
+        logger.warn('Transcription returned no speech', {
+          recordingId,
+          fileSize: audioBuffer.length,
+          audioSeconds: duration
+        });
+        throw new AppError('No speech detected in the recording', 422);
       }
 
       logger.info('Transcription successful', { 

@@ -108,15 +108,12 @@ object ErrorReportingService {
      * @param additionalInfo Any additional context
      */
     fun reportError(flow: UserFlow, errorMessage: String, additionalInfo: String? = null) {
-        // Fire and forget - run in background
-        scope.launch {
-            try {
-                sendErrorReport(flow, errorMessage, additionalInfo)
-            } catch (e: Exception) {
-                // Don't throw - just log locally
-                Log.w(TAG, "Failed to send error report: ${e.message}")
-            }
-        }
+        // Unified reporter dedupes and emails; the legacy /api/alerts/error path would double-email.
+        com.kreativekoala.scribeai.FailureReporter.failure(
+            flow = flow.displayName,
+            message = errorMessage,
+            context = additionalInfo?.let { mapOf("info" to it) } ?: emptyMap(),
+        )
     }
 
     private suspend fun sendErrorReport(flow: UserFlow, errorMessage: String, additionalInfo: String?) {

@@ -1,4 +1,5 @@
 const { logger } = require('../utils/logger');
+const { reportBackendError } = require('../utils/failureReporter');
 
 /**
  * Custom error class for application errors
@@ -53,6 +54,9 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'TokenExpiredError') {
     error = new AppError('Token expired', 401);
   }
+
+  // Only real server failures page us; 4xx is user/validation noise
+  reportBackendError(req, err, error.statusCode);
 
   // Default error response
   res.status(error.statusCode).json({

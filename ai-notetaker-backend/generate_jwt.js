@@ -10,7 +10,6 @@ const keyFile = '/Users/sushanthtiruvaipati/Downloads/AuthKey_XKV8W64FX5.p8';   
 
 //web:917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com
 
-//web secret:REDACTED_SECRET
 // Read the private key
 const privateKey = fs.readFileSync(keyFile);
 

@@ -1,4 +1,5 @@
-const { anthropic, MODELS, PRICING } = require('../config/openai');
+const { anthropic, MODELS, PRICING, llmUsage } = require('../config/openai');
+const { labelMethods } = require('../utils/llmFeatures');
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
@@ -1087,6 +1088,7 @@ RESPOND WITH ONLY THE SVG. NO OTHER TEXT.`;
       timeout: 300000
     });
 
+    llmUsage.record({ model: 'claude-sonnet-4-6', usage: resp.data?.usage, feature: 'infographic' });
     let svg = (resp.data?.content?.[0]?.text || '').trim()
       .replace(/^```(?:svg|xml)?\s*\n?/i, '')
       .replace(/\n?```\s*$/i, '')
@@ -1343,4 +1345,8 @@ RESPOND WITH ONLY THE SVG. NO OTHER TEXT.`;
   }
 }
 
-module.exports = new AIService();
+module.exports = labelMethods(new AIService(), {
+  chatWithNote: 'chat', generateChatSuggestions: 'chat_suggestions', generateSummary: 'summary', generateQuiz: 'quiz',
+  generateFlashcards: 'flashcards', generateMindMap: 'mindmap', generateDiagram: 'diagram', generatePodcast: 'podcast',
+  generatePodcastScriptOnly: 'podcast', generatePodcastWithPlaceholder: 'podcast', generateInfographic: 'infographic', _generateInfographicDirect: 'infographic',
+}, (feature, fn) => llmUsage.withFeature(feature, fn));

@@ -1,4 +1,5 @@
-const { anthropic, MODELS } = require('../config/openai');
+const { anthropic, MODELS, llmUsage } = require('../config/openai');
+const { labelMethods } = require('../utils/llmFeatures');
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 
@@ -298,4 +299,4 @@ ${content}
   }
 }
 
-module.exports = new FormattingService();
+module.exports = labelMethods(new FormattingService(), { formatNoteContent: 'formatting' }, (feature, fn) => llmUsage.withFeature(feature, fn));

@@ -1,4 +1,5 @@
 const { supabaseAdmin } = require('../config/supabase');
+const { llmUsage } = require('../config/openai');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
@@ -270,6 +271,7 @@ class LearningService {
       timeout: 300000
     });
 
+    llmUsage.record({ model: 'claude-sonnet-4-6', usage: resp.data?.usage, feature: 'learning' });
     const output = resp.data?.content?.[0]?.text || '';
     const stopReason = resp.data?.stop_reason;
     if (!output) throw new Error('Empty response from Anthropic');

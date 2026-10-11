@@ -16,6 +16,11 @@ try {
   console.warn(`[llm-monitor] not attached: ${e.message}`);
 }
 
+// Fleet-wide spend accounting: tokens and dollars per feature, reported to the central Worker (see utils/llmUsage.js).
+const { createLlmUsage } = require('../utils/llmUsage');
+const llmUsage = createLlmUsage({ app: 'scribeai', log: (m) => console.warn(`[llm-usage] ${m}`) });
+llmUsage.instrument(anthropic);
+
 // Model configurations
 const MODELS = {
   CLAUDE_SONNET: 'claude-sonnet-4-6',
@@ -38,6 +43,7 @@ const PRICING = {
 
 module.exports = {
   anthropic,
+  llmUsage,
   MODELS,
   PRICING,
 };

@@ -1,4 +1,5 @@
-const { anthropic, MODELS } = require('../config/openai');
+const { anthropic, MODELS, llmUsage } = require('../config/openai');
+const { labelMethods } = require('../utils/llmFeatures');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
@@ -228,4 +229,4 @@ ${note.content}`;
   }
 }
 
-module.exports = new PodcastService();
+module.exports = labelMethods(new PodcastService(), { generatePodcastScript: 'podcast' }, (feature, fn) => llmUsage.withFeature(feature, fn));

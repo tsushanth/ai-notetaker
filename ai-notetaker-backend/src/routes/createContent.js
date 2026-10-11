@@ -1,4 +1,5 @@
 const express = require('express');
+const { llmUsage } = require('../config/openai');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
@@ -74,6 +75,7 @@ Create a complete, self-contained HTML page based on this request. Make it visua
       timeout: 120000
     });
 
+    llmUsage.record({ model: 'claude-sonnet-4-6', usage: response.data?.usage, feature: 'create_content' });
     const rawOutput = response.data?.content?.[0]?.text || '';
     if (!rawOutput) {
       throw new AppError('Content generation returned empty result', 500);

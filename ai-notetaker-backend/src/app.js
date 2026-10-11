@@ -350,8 +350,17 @@ app.listen(PORT, () => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');
+  // Send the last buffered LLM usage and health rows before the machine stops (capped so shutdown cannot hang).
+  try {
+    const { llmUsage } = require('./config/openai');
+    const monitor = require('./services/llmMonitor').getMonitor();
+    await Promise.race([
+      Promise.allSettled([llmUsage.flush(), monitor ? monitor.recorder.flush() : null]),
+      new Promise((r) => setTimeout(r, 2500)),
+    ]);
+  } catch (e) { /* best effort */ }
   process.exit(0);
 });
 

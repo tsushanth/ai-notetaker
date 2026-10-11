@@ -3,7 +3,8 @@ const path = require('path');
 const os = require('os');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
-const { anthropic, MODELS } = require('../config/openai');
+const { anthropic, MODELS, llmUsage } = require('../config/openai');
+const { labelMethods } = require('../utils/llmFeatures');
 const noteService = require('./noteService');
 const { supabaseAdmin } = require('../config/supabase');
 
@@ -427,4 +428,4 @@ class ScanService {
   }
 }
 
-module.exports = new ScanService();
+module.exports = labelMethods(new ScanService(), { enhanceOCRText: 'scan_ocr', extractMetadata: 'scan_metadata' }, (feature, fn) => llmUsage.withFeature(feature, fn));

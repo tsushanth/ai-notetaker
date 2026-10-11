@@ -1,4 +1,5 @@
 const express = require('express');
+const { llmUsage } = require('../config/openai');
 const router = express.Router();
 const { authenticate, optionalAuth } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
@@ -76,6 +77,7 @@ CRITICAL: Your ENTIRE response must be ONLY the HTML page, starting with <!DOCTY
     timeout: 120000
   });
 
+  llmUsage.record({ model: 'claude-sonnet-4-6', usage: anthropicResponse.data?.usage, feature: 'compete' });
   let rawHTML = anthropicResponse.data?.content?.[0]?.text || '';
   if (!rawHTML) throw new AppError('Failed to generate challenge', 500);
 

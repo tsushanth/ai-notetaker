@@ -9,6 +9,7 @@ import type { Level, Overview } from './admin/types';
 import ProductPanel from './admin/ProductPanel';
 import LlmPanel from './admin/LlmPanel';
 import ReporterPanel, { type Reporter } from './admin/ReporterPanel';
+import LlmSpendPanel from './admin/LlmSpendPanel';
 import { DOT, Dot, Section, ago } from './admin/ui';
 
 const API_BASE = 'https://ai-notetaker-backend.fly.dev';
@@ -113,6 +114,7 @@ export default function AdminDashboard({ token }: { token: string }) {
       )}
 
       {repErr && <p className="mt-6 text-sm text-[var(--accent-red)]" role="alert">{repErr}</p>}
+      {rep?.llm && <div className="mt-2"><LlmSpendPanel llm={rep.llm} /></div>}
       {rep && <ReporterPanel d={rep} />}
     </div>
   );

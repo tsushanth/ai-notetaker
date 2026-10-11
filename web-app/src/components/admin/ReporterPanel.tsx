@@ -1,9 +1,10 @@
 'use client';
 
 import { Section, ago } from './ui';
+import type { LlmSummary } from './LlmSpendPanel';
 
 type Row = Record<string, any>;
-export interface Reporter { health: Row[]; latest: Row[]; groups: Row[]; recent: Row[]; byKind: Row[]; usage: Row[] }
+export interface Reporter { health: Row[]; latest: Row[]; groups: Row[]; recent: Row[]; byKind: Row[]; usage: Row[]; llm?: LlmSummary | null }
 
 const th = 'py-1.5 pr-3 text-left text-xs font-normal text-[var(--text-muted)]';
 const td = 'py-1.5 pr-3 align-top border-t border-[var(--border)]';

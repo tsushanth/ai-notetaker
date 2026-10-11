@@ -43,6 +43,7 @@ const competeRoutes = require('./routes/compete');
 const competePageRoutes = require('./routes/competePage');
 const competeCreatePageRoutes = require('./routes/competeCreatePage');
 const phoneRoutes = require('./routes/phone');
+const adminRoutes = require('./routes/admin');
 const twilioWebhookRoutes = require('./routes/twilioWebhooks');
 const { createJobRoutes, initializeCronJobs } = require('./jobs/creatorPayoutJobs');
 
@@ -306,6 +307,7 @@ app.use('/api/learn', learningRoutes);
 app.use('/api/create', createContentRoutes);
 app.use('/api/compete', competeRoutes);
 app.use('/api/phone', phoneRoutes);
+app.use('/api/admin', adminRoutes);
 // Twilio webhooks need to be reachable without the /api prefix to match
 // the Voice/Status callback URLs configured in twilioService.js.
 app.use('/v1/webhooks/twilio', twilioWebhookRoutes);
@@ -344,6 +346,7 @@ app.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
   console.log(`Trust proxy enabled: ${app.get('trust proxy')}`);
+  require('./services/llmMonitor').startProbe({ log: (m) => console.warn(`[llm-monitor] ${m}`) });
 });
 
 // Graceful shutdown

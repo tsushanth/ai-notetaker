@@ -8,6 +8,14 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+// Record the outcome of every call (success rate, latency, errors) for the admin page's LLM health. Never stores content.
+try {
+  const { supabaseAdmin } = require('./supabase');
+  require('../services/llmMonitor').attach(anthropic, { supabaseAdmin, log: (m) => console.warn(`[llm-monitor] ${m}`) });
+} catch (e) {
+  console.warn(`[llm-monitor] not attached: ${e.message}`);
+}
+
 // Model configurations
 const MODELS = {
   CLAUDE_SONNET: 'claude-sonnet-4-6',

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { loginUrl } from '@/lib/session';
 import { useAuthStore } from '@/store/authStore';
 import { Loader2 } from 'lucide-react';
 
@@ -11,6 +12,7 @@ interface AuthGuardProps {
 
 export default function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, isLoading, setLoading } = useAuthStore();
   const [isClient, setIsClient] = useState(false);
 
@@ -25,9 +27,9 @@ export default function AuthGuard({ children }: AuthGuardProps) {
 
   useEffect(() => {
     if (isClient && !isLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push(loginUrl(pathname));
     }
-  }, [isClient, isLoading, isAuthenticated, router]);
+  }, [isClient, isLoading, isAuthenticated, router, pathname]);
 
   if (!isClient || isLoading) {
     return (

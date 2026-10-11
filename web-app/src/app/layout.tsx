@@ -3,6 +3,7 @@ import { Inter, Space_Grotesk } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import WebFailureReporter from '@/components/WebFailureReporter'
+import SessionExpiryWatcher from '@/components/SessionExpiryWatcher'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -56,6 +57,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}>
         <WebFailureReporter />
+        <SessionExpiryWatcher />
         {children}
       </body>
     </html>

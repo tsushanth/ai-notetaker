@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
+import { safeNext } from '@/lib/session';
 
 const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
@@ -17,11 +18,23 @@ export default function LoginPage() {
   const { login, isAuthenticated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expired, setExpired] = useState(false);
+  const [next, setNext] = useState<string | null>(null);
   const googleButtonRef = useRef<HTMLDivElement>(null);
+
+  // Read once on arrival: ?reason=expired shows the notice, ?next= says where to go after signing in (same-site paths only).
+  const nextRef = useRef<string | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setExpired(q.get('reason') === 'expired');
+    const n = safeNext(q.get('next'));
+    nextRef.current = n;
+    setNext(n);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/notes');
+      router.push(nextRef.current || '/notes');
     }
   }, [isAuthenticated, router]);
 
@@ -46,7 +59,7 @@ export default function LoginPage() {
           try {
             const result = await authApi.loginWithGoogle(response.credential);
             login(result.user as any, result.token);
-            router.push('/notes');
+            router.push(nextRef.current || '/notes');
           } catch (err) {
             setError(err instanceof Error ? err.message : 'Google login failed');
             setIsLoading(false);
@@ -82,6 +95,15 @@ export default function LoginPage() {
             </span>
             <span className="font-semibold font-[family-name:var(--font-display)]">Scribe AI</span>
           </Link>
+
+          {expired && (
+            <div role="status" className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--card-background)] px-4 py-3 text-sm">
+              <p className="font-medium">Your session expired</p>
+              <p className="text-[var(--text-secondary)] mt-0.5">
+                Sign in again{next ? ' and we will take you back to where you were.' : ' to pick up where you left off.'}
+              </p>
+            </div>
+          )}
 
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium mb-1.5">
             Sign in to keep studying

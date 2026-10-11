@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { loginUrl } from '@/lib/session';
 import { useAuthStore } from '@/store/authStore';
 import AdminDashboard from '@/components/AdminDashboard';
 
@@ -9,12 +10,11 @@ import AdminDashboard from '@/components/AdminDashboard';
 // This page only avoids rendering the shell until the store has hydrated.
 export default function AdminPage() {
   const { token, isLoading } = useAuthStore();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  useEffect(() => { if (mounted && !isLoading && !token) router.replace(loginUrl('/admin')); }, [mounted, isLoading, token, router]);
 
-  if (!mounted || isLoading) return null;
-  if (!token) {
-    return <p style={{ padding: 24 }}>Sign in first: <Link href="/login" style={{ textDecoration: 'underline' }}>Log in</Link></p>;
-  }
+  if (!mounted || isLoading || !token) return null;
   return <AdminDashboard token={token} />;
 }

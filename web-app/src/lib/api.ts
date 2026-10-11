@@ -28,6 +28,8 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
   });
 
   if (!response.ok) {
+    // An expired or invalid session is handled by the fetch watcher (it sends the user to login); don't show the raw token error.
+    if (response.status === 401 && token) throw new Error('Your session expired. Please sign in again.');
     const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
     // Backend returns errors as { success: false, error: "message" } or { message: "message" }
     const errorMessage = errorData.error || errorData.message || `API Error: ${response.status}`;

@@ -1,7 +1,7 @@
 // GET /api/admin/overview: authenticates the signed-in user, then proxies the reporter Worker.
 // Requires env: ADMIN_DASH_SECRET (same value as the Worker's DASH_SECRET). Optional: ADMIN_EMAILS.
 import { NextResponse } from 'next/server';
-import { isAdminToken } from '@/lib/adminAuth';
+import { adminAuthStatus } from '@/lib/adminAuth';
 
 const APP = 'scribeai';
 const WORKER = 'https://app-failure-reporter.t-sushanth.workers.dev';
@@ -9,7 +9,9 @@ const WORKER = 'https://app-failure-reporter.t-sushanth.workers.dev';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  if (!(await isAdminToken(request.headers.get('authorization')))) return new NextResponse('Not found', { status: 404 });
+  const auth = await adminAuthStatus(request.headers.get('authorization'));
+  if (auth === 'expired') return NextResponse.json({ error: 'session expired' }, { status: 401 }); // the page sends the user back to login
+  if (auth !== 'admin') return new NextResponse('Not found', { status: 404 });
 
   const secret = process.env.ADMIN_DASH_SECRET;
   if (!secret) return NextResponse.json({ error: 'ADMIN_DASH_SECRET not configured' }, { status: 500 });

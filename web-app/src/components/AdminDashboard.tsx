@@ -1,108 +1,119 @@
 'use client';
 
-// Internal health/issues/usage view. Data comes from this site's own /api/admin/overview
-// (which authenticates the user, then calls the central reporter Worker with a server-side secret).
-import { useCallback, useEffect, useState } from 'react';
+// Internal admin: is everything up (including the LLM provider), who is using ScribeAI, and what is going wrong.
+// Product and LLM numbers come from the backend (/api/admin/overview, admin accounts only). Crash reports and uptime probes come
+// from this site's own /api/admin/overview, which proxies the central reporter Worker with a server-side secret.
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { handleSessionExpired } from '@/lib/sessionExpiry';
+import type { Level, Overview } from './admin/types';
+import ProductPanel from './admin/ProductPanel';
+import LlmPanel from './admin/LlmPanel';
+import ReporterPanel, { type Reporter } from './admin/ReporterPanel';
+import { DOT, Dot, Section, ago } from './admin/ui';
 
-type Row = Record<string, any>;
-interface Overview { health: Row[]; latest: Row[]; groups: Row[]; recent: Row[]; byKind: Row[]; usage: Row[] }
+const API_BASE = 'https://ai-notetaker-backend.fly.dev';
+const RANGES = [{ label: '24 hours', hours: 24, days: 7 }, { label: '7 days', hours: 168, days: 7 }, { label: '30 days', hours: 720, days: 30 }];
+const RANK: Record<Level, number> = { off: 0, ok: 1, warn: 2, down: 3 };
+const NOT_ADMIN = 'This account is not on the admin list.';
 
-const ago = (t: number) => {
-  const s = (Date.now() - t) / 1000;
-  return s < 90 ? `${Math.round(s)}s ago` : s < 5400 ? `${Math.round(s / 60)}m ago` : s < 172800 ? `${Math.round(s / 3600)}h ago` : `${Math.round(s / 86400)}d ago`;
-};
-const box: React.CSSProperties = { border: '1px solid #8884', borderRadius: 8, padding: 10 };
-const th: React.CSSProperties = { textAlign: 'left', padding: '6px 8px', opacity: 0.6, fontWeight: 500 };
-const td: React.CSSProperties = { padding: '6px 8px', borderTop: '1px solid #8883', verticalAlign: 'top' };
-const h2: React.CSSProperties = { fontSize: 13, textTransform: 'uppercase', letterSpacing: '.05em', opacity: 0.6, margin: '24px 0 8px' };
-
-// token: for sites whose session is a bearer token held in the browser (sent as Authorization). Cookie-session sites omit it.
-export default function AdminDashboard({ token }: { token?: string | null } = {}) {
-  const [hours, setHours] = useState(24);
-  const [d, setD] = useState<Overview | null>(null);
-  const [err, setErr] = useState('');
+export default function AdminDashboard({ token }: { token: string }) {
+  const [range, setRange] = useState(RANGES[0]);
+  const [ov, setOv] = useState<Overview | null>(null);
+  const [ovErr, setOvErr] = useState('');
+  const [rep, setRep] = useState<Reporter | null>(null);
+  const [repErr, setRepErr] = useState('');
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+  const seq = useRef(0);
 
   const load = useCallback(async () => {
-    setErr('');
-    try {
-      const r = await fetch(`/api/admin/overview?hours=${hours}`, {
-        cache: 'no-store',
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      setD(await r.json());
-    } catch (e: any) {
-      setErr(e.message || 'failed to load');
-    }
-  }, [hours, token]);
+    const mine = ++seq.current;
+    setBusy(true);
+    const auth = { Authorization: `Bearer ${token}` };
+    const [a, b] = await Promise.allSettled([
+      fetch(`${API_BASE}/api/admin/overview?days=${range.days}&hours=${range.hours}`, { headers: auth, cache: 'no-store' }),
+      fetch(`/api/admin/overview?hours=${range.hours}`, { headers: auth, cache: 'no-store' }),
+    ]);
+    if (mine !== seq.current) return; // a newer refresh is already running
+
+    if (a.status === 'fulfilled') {
+      const r = a.value;
+      if (r.status === 401) return handleSessionExpired();
+      if (r.status === 404) { setOv(null); setOvErr(NOT_ADMIN); }
+      else if (!r.ok) setOvErr(`Product and LLM data could not be loaded (HTTP ${r.status}).`);
+      else { const j = await r.json().catch(() => null); if (j?.success) { setOv(j.data); setOvErr(''); } else setOvErr('Product and LLM data came back in an unexpected shape.'); }
+    } else setOvErr('Could not reach the backend.');
+
+    if (b.status === 'fulfilled') {
+      const r = b.value;
+      if (r.status === 401) return handleSessionExpired();
+      if (!r.ok) setRepErr(r.status === 404 ? NOT_ADMIN : `Error reports could not be loaded (HTTP ${r.status}).`);
+      else { setRep(await r.json().catch(() => null)); setRepErr(''); }
+    } else setRepErr('Could not load error reports.');
+
+    setLoadedAt(Date.now()); setBusy(false);
+  }, [token, range]);
 
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { // keep the status fresh while the tab is open and visible
+    const t = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60_000);
+    return () => clearInterval(t);
+  }, [load]);
 
-  const days = d ? Array.from(new Set(d.usage.map((u) => u.day))).sort().reverse().slice(0, 14) : [];
-  const metrics = d ? Array.from(new Set(d.usage.map((u) => u.metric))).sort() : [];
+  const checks = ov?.checks ?? [];
+  const worst: Level = checks.reduce<Level>((w, c) => (RANK[c.level] > RANK[w] ? c.level : w), 'off');
+  const headline = worst === 'down' ? 'A system has a problem' : worst === 'warn' ? 'Some systems are degraded' : worst === 'ok' ? 'All systems healthy' : 'No health data yet';
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: 16, fontSize: 14, lineHeight: 1.45 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 18, margin: 0 }}>Health, issues &amp; usage</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <select value={hours} onChange={(e) => setHours(Number(e.target.value))} style={{ padding: 6 }}>
-            <option value={1}>1 hour</option><option value={24}>24 hours</option><option value={168}>7 days</option><option value={720}>30 days</option>
+    <div className="mx-auto max-w-5xl px-4 py-6 text-[15px]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold text-[var(--text-muted)]">Internal</p>
+          <h1 className="text-xl font-medium">ScribeAI admin</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <select aria-label="Range" value={range.label} onChange={(e) => setRange(RANGES.find((r) => r.label === e.target.value) || RANGES[0])} className="rounded-lg border border-[var(--border)] bg-[var(--card-background)] px-2.5 py-1.5 text-sm">
+            {RANGES.map((r) => <option key={r.label}>{r.label}</option>)}
           </select>
-          <button onClick={load} style={{ padding: '6px 10px' }}>Refresh</button>
+          <button onClick={load} disabled={busy} className="btn-secondary !py-1.5 !px-3 text-sm">{busy ? 'Refreshing...' : 'Refresh'}</button>
         </div>
       </div>
-      {err && <p style={{ color: '#cf222e' }}>Could not load: {err}</p>}
-      {!d && !err && <p style={{ opacity: 0.6 }}>Loading...</p>}
-      {d && (<>
-        <h2 style={h2}>Health (probed every 5 min)</h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(220px,1fr))', gap: 8 }}>
-          {d.latest.length === 0 && <p style={{ opacity: 0.6 }}>No probes yet.</p>}
-          {d.latest.map((l) => {
-            const s = d.health.find((h) => h.target === l.target);
-            const up = s ? Math.round((100 * s.ok) / s.n) : 0;
-            const color = !l.ok ? '#cf222e' : up < 99 ? '#9a6700' : '#1a7f37';
-            return (
-              <div key={l.target} style={box}>
-                <span style={{ display: 'inline-block', width: 9, height: 9, borderRadius: '50%', background: color, marginRight: 6 }} />
-                <b>{l.target}</b>
-                <div style={{ opacity: 0.7 }}>{l.ok ? 'up' : `DOWN (${l.status || 'no response'})`} &middot; {l.latency_ms} ms &middot; {ago(l.ts)}</div>
-                <div style={{ opacity: 0.7 }}>{up}% uptime &middot; avg {s?.avg_ms ?? '-'} ms &middot; max {s?.max_ms ?? '-'} ms</div>
-              </div>
-            );
-          })}
-        </div>
+      {loadedAt && <p className="mt-1 text-xs text-[var(--text-muted)]">Updated {ago(loadedAt)}. Refreshes every minute while this tab is open.</p>}
 
-        <h2 style={h2}>Issues ({d.byKind.map((k) => `${k.n} ${k.kind}`).join(', ') || 'none'})</h2>
-        <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr><th style={th}>Kind</th><th style={th}>Where</th><th style={th}>Message</th><th style={th}>Count</th><th style={th}>Last</th><th style={th}>Versions</th></tr></thead>
-          <tbody>{d.groups.map((g) => (
-            <tr key={g.fingerprint}><td style={td}>{g.kind}</td><td style={td}>{g.flow}<div style={{ opacity: 0.6 }}>{g.platforms}</div></td>
-              <td style={{ ...td, maxWidth: 480, wordBreak: 'break-word' }}>{String(g.message).split('\n')[0].slice(0, 160)}</td>
-              <td style={td}>{g.n}</td><td style={td}>{ago(g.last_ts)}</td><td style={td}>{g.versions}</td></tr>
-          ))}</tbody>
-        </table></div>
+      {ovErr && <p className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--card-background)] p-3 text-sm text-[var(--accent-red)]" role="alert">{ovErr}</p>}
+      {!ov && !ovErr && <p className="mt-6 text-[var(--text-muted)]">Loading...</p>}
 
-        <h2 style={h2}>Recent events</h2>
-        <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead><tr><th style={th}>When</th><th style={th}>Kind</th><th style={th}>Where</th><th style={th}>Message</th></tr></thead>
-          <tbody>{d.recent.map((e) => (
-            <tr key={e.id}><td style={td}>{ago(e.ts)}</td><td style={td}>{e.kind}</td><td style={td}>{e.flow}<div style={{ opacity: 0.6 }}>{e.platform} {e.version}</div></td>
-              <td style={{ ...td, maxWidth: 520, wordBreak: 'break-word' }}><details><summary style={{ cursor: 'pointer' }}>{String(e.message).split('\n')[0].slice(0, 140)}</summary>
-                <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12 }}>{e.message}{e.stack ? `\n\n${e.stack}` : ''}</pre></details></td></tr>
-          ))}</tbody>
-        </table></div>
+      {ov && (
+        <>
+          <div className="card !p-4 mt-5">
+            <p className="flex items-center gap-2.5 text-[15px]"><span className={`h-3 w-3 rounded-full ${DOT[worst]}`} aria-hidden /><b>{headline}</b></p>
+            <ul className="mt-3 divide-y divide-[var(--border)]">
+              {checks.map((c) => (
+                <li key={c.name} className="flex items-center justify-between gap-4 py-2 text-sm">
+                  <span className="flex items-center gap-2.5"><Dot level={c.level} />{c.name}</span>
+                  <span className="text-right text-[var(--text-secondary)]">{c.detail}{c.ms !== undefined && c.level !== 'off' ? ` · ${c.ms} ms` : ''}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-        <h2 style={h2}>Usage</h2>
-        {metrics.length === 0 ? <p style={{ opacity: 0.6 }}>No usage reported yet.</p> : (
-          <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead><tr><th style={th}>Metric</th>{days.map((x) => <th key={x} style={th}>{x.slice(5)}</th>)}</tr></thead>
-            <tbody>{metrics.map((m) => (
-              <tr key={m}><td style={td}>{m}</td>{days.map((x) => <td key={x} style={td}>{d.usage.find((u) => u.metric === m && u.day === x)?.value ?? ''}</td>)}</tr>
-            ))}</tbody>
-          </table></div>
-        )}
-      </>)}
+          {ov.attention.length > 0 && (
+            <Section title="Needs attention">
+              <ul className="space-y-2">
+                {ov.attention.map((a) => (
+                  <li key={a.text} className="card !p-3 flex items-start gap-2.5 text-sm"><Dot level={a.level === 'down' ? 'down' : 'warn'} /><span>{a.text}</span></li>
+                ))}
+              </ul>
+            </Section>
+          )}
+
+          {ov.llm ? <LlmPanel llm={ov.llm} token={token} apiBase={API_BASE} onChanged={load} /> : <Section title="LLM health (Claude)"><p className="text-sm text-[var(--text-muted)]">Health data is unavailable. Check that the llm_calls table exists and the backend is running the monitor.</p></Section>}
+          {ov.stats ? <ProductPanel s={ov.stats} /> : <Section title="People and usage"><p className="text-sm text-[var(--text-muted)]">Product numbers could not be loaded.</p></Section>}
+        </>
+      )}
+
+      {repErr && <p className="mt-6 text-sm text-[var(--accent-red)]" role="alert">{repErr}</p>}
+      {rep && <ReporterPanel d={rep} />}
     </div>
   );
 }

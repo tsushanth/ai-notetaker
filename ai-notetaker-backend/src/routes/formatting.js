@@ -1,4 +1,5 @@
 const express = require('express');
+const { adminSecretMatches } = require('../middleware/adminSecret');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -62,10 +63,17 @@ router.get('/status', authenticate, asyncHandler(async (req, res) => {
  * Requires admin secret in header or authenticated user
  */
 router.post('/batch', asyncHandler(async (req, res) => {
-  const adminSecret = req.headers['x-admin-secret'];
-  const expectedSecret = process.env.ADMIN_SECRET || 'scribeai-admin-2025';
+  const expectedSecret = process.env.ADMIN_SECRET;
 
-  if (adminSecret !== expectedSecret) {
+  // No default secret: this repo is public, so a fallback value would be a password anyone could read.
+  if (!expectedSecret) {
+    return res.status(503).json({
+      success: false,
+      error: 'Batch formatting is disabled (ADMIN_SECRET is not configured)'
+    });
+  }
+
+  if (!adminSecretMatches(req.headers['x-admin-secret'], expectedSecret)) {
     return res.status(401).json({
       success: false,
       error: 'Unauthorized - admin secret required'

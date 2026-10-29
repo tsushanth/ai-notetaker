@@ -4,9 +4,11 @@ const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 const storageService = require('./storageService');
-const fs = require('fs').promises;
 const path = require('path');
-const os = require('os');
+const { transcribeAudio, TranscriptionError } = require('./deepgramClient');
+const { reportFailure } = require('../utils/failureReporter');
+
+const REPORTABLE_CODES = new Set(['NO_SPEECH', 'PROVIDER_ERROR', 'PROVIDER_TIMEOUT', 'DOWNLOAD_FAILED', 'EMPTY_FILE']);
 
 // MIME type mapping for different audio formats
 const MIME_TYPES = {
@@ -49,11 +51,80 @@ class TranscriptionService {
   }
 
   /**
-   * Transcribe an audio recording using OpenAI Whisper
+   * Human-readable audio length for error_message ("12s", "0.4s", "3m05s").
+   */
+  formatDuration(seconds) {
+    if (seconds == null) return 'unknown length';
+    if (seconds < 10) return `${Math.round(seconds * 10) / 10}s`;
+    const whole = Math.round(seconds);
+    if (whole < 120) return `${whole}s`;
+    return `${Math.floor(whole / 60)}m${String(whole % 60).padStart(2, '0')}s`;
+  }
+
+  /**
+   * Write the failure onto the recording row. A failed row must always end status 'failed' with an
+   * error_message, so a rejected update (supabase-js returns { error } rather than throwing) is
+   * retried once and then logged loudly.
+   */
+  async markFailed(recordingId, errorMessage, durationSec) {
+    const patch = { status: 'failed', error_message: errorMessage };
+    if (durationSec != null) patch.duration = Math.round(durationSec);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const { error } = await supabaseAdmin.from('recordings').update(patch).eq('id', recordingId);
+        if (!error) return true;
+        logger.error('Failed to mark recording failed', { recordingId, attempt, error: error.message });
+      } catch (updateErr) {
+        logger.error('Failed to mark recording failed', { recordingId, attempt, error: updateErr.message });
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Tell the owner a recording ended 'failed'. Fire-and-forget (reportFailure never throws or
+   * blocks; a sync throw is swallowed anyway). The message is fixed per code so the reporter
+   * dedupes by code, and the context carries only non-content facts as strings: no transcript,
+   * note text, email or user id.
+   */
+  reportRecordingFailed(code, outcome) {
+    const reported = REPORTABLE_CODES.has(code) ? code : 'UNKNOWN';
+    const str = (v) => (v == null ? 'unknown' : String(v));
+    try {
+      reportFailure('recording_failed', new Error(`Recording ${reported}`), {
+        code: reported,
+        source: 'upload',
+        audio_seconds: str(outcome.durationSec == null ? null : Math.round(outcome.durationSec)),
+        file_kb: str(outcome.fileSize == null ? null : Math.round(outcome.fileSize / 1024)),
+        detected_language: str(outcome.detectedLanguage),
+        provider_status: str(outcome.providerStatus),
+      });
+    } catch (e) {
+      logger.warn('Failure report threw', { error: e.message });
+    }
+  }
+
+  /**
+   * Structured, transcript-free outcome line. One per transcription attempt (success or failure).
+   */
+  logOutcome(fields) {
+    logger.info('transcription_outcome', fields);
+  }
+
+  /**
+   * Transcribe an audio recording with Deepgram (language auto-detected).
+   *
+   * Failure contract: every failure after the recording is loaded leaves the row at
+   * status 'failed' with error_message "<CODE>: <facts>" (codes: DOWNLOAD_FAILED, EMPTY_FILE,
+   * PROVIDER_ERROR, PROVIDER_TIMEOUT, NO_SPEECH, INTERNAL_ERROR). HTTP status and the
+   * user-facing messages are unchanged from before (422 'No speech detected in the recording',
+   * 500 otherwise).
    */
   async transcribeRecording(userId, recordingId) {
-    let tempFilePath = null;
-    
+    const outcome = { recordingId, fileSize: null, durationSec: null, detectedLanguage: null, languageConfidence: null, providerStatus: null, attempts: 0 };
+    let durationSec = null;
+    let loaded = false;
+
     try {
       // Get recording details - USE supabaseAdmin
       const { data: recording, error: fetchError } = await supabaseAdmin
@@ -67,6 +138,8 @@ class TranscriptionService {
         logger.error('Recording not found', { recordingId, userId, error: fetchError?.message });
         throw new AppError('Recording not found', 404);
       }
+      loaded = true;
+      outcome.fileSize = recording.file_size ?? null;
 
       if (recording.status === 'completed') {
         // Already transcribed, return existing data
@@ -99,68 +172,58 @@ class TranscriptionService {
       }
 
       // Download audio file from Supabase Storage
-      const audioBuffer = await storageService.downloadFile(recording.storage_path);
+      let audioBuffer;
+      try {
+        audioBuffer = await storageService.downloadFile(recording.storage_path);
+      } catch (dlErr) {
+        throw new TranscriptionError('DOWNLOAD_FAILED', dlErr.message || 'Failed to download file', dlErr.statusCode || 500, {
+          dbMessage: `DOWNLOAD_FAILED: ${dlErr.message || 'storage download failed'}, expected file ${this.formatSize(recording.file_size)}`
+        });
+      }
 
       if (!audioBuffer || audioBuffer.length === 0) {
-        throw new AppError('Failed to download audio file - empty buffer', 500);
+        throw new TranscriptionError('EMPTY_FILE', 'Failed to download audio file - empty buffer', 500, {
+          dbMessage: `EMPTY_FILE: stored audio is 0 bytes, expected file ${this.formatSize(recording.file_size)}`
+        });
       }
+      outcome.fileSize = audioBuffer.length;
 
       // Get the correct file extension and MIME type
       const extension = this.getFileExtension(recording);
       const mimeType = this.getMimeType(extension);
 
-      // Save to temporary file (Whisper API requires file)
-      tempFilePath = path.join(os.tmpdir(), `audio_${recordingId}.${extension}`);
-      await fs.writeFile(tempFilePath, audioBuffer);
+      logger.info('Calling Deepgram API', { recordingId, fileSize: audioBuffer.length, extension, mimeType });
 
-      logger.info('Calling Whisper API', { 
-        recordingId, 
-        fileSize: audioBuffer.length,
-        extension,
-        mimeType,
-        tempFilePath
-      });
-
-      // Transcribe with Deepgram
-      const fileBuffer = await fs.readFile(tempFilePath);
-
-      const dgResponse = await fetch('https://api.deepgram.com/v1/listen?model=nova-2&language=en&smart_format=true', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${process.env.DEEPGRAM_API_KEY}`,
-          'Content-Type': mimeType,
-        },
-        body: fileBuffer,
-      });
-
-      if (!dgResponse.ok) {
-        const errText = await dgResponse.text();
-        throw new Error(`Deepgram API error (${dgResponse.status}): ${errText}`);
+      // The downloaded buffer is sent as is: no temp file and no second read into memory.
+      let dg;
+      try {
+        dg = await transcribeAudio({ body: audioBuffer, mimeType });
+      } catch (dgErr) {
+        outcome.providerStatus = dgErr.providerStatus ?? null;
+        outcome.attempts = dgErr.attempts || 0;
+        throw dgErr;
       }
+      outcome.providerStatus = dg.providerStatus;
+      outcome.attempts = dg.attempts;
+      outcome.durationSec = dg.durationSec;
+      outcome.detectedLanguage = dg.detectedLanguage;
+      outcome.languageConfidence = dg.languageConfidence;
+      durationSec = dg.durationSec;
 
-      const dgResult = await dgResponse.json();
-      const transcription = {
-        text: dgResult.results?.channels?.[0]?.alternatives?.[0]?.transcript || '',
-        duration: dgResult.metadata?.duration || 0,
-      };
-
-      // Clean up temp file
-      await this.cleanupTempFile(tempFilePath);
-      tempFilePath = null;
-
-      const transcriptionText = transcription.text;
-      const duration = Math.round(transcription.duration || 0);
+      const transcriptionText = dg.text;
+      const duration = Math.round(dg.durationSec || 0);
 
       if (!transcriptionText || transcriptionText.trim().length === 0) {
-        // No recognisable speech (silence, noise, or audio in another language since the request
-        // is pinned to English). That is a property of the recording, not a server failure, so it
-        // is a 422: it must not page as a 5xx. Real provider/storage errors above still are 5xx.
-        logger.warn('Transcription returned no speech', {
-          recordingId,
-          fileSize: audioBuffer.length,
-          audioSeconds: duration
+        // No recognisable speech: silence/noise, or a language Deepgram could not transcribe. A
+        // property of the recording, not a server failure, so it stays a 422 (must not page as
+        // 5xx). The stored reason carries the facts that tell those cases apart.
+        const lang = dg.detectedLanguage
+          ? `${dg.detectedLanguage}${dg.languageConfidence != null ? ` (confidence ${dg.languageConfidence})` : ''}`
+          : 'unknown';
+        throw new TranscriptionError('NO_SPEECH', 'No speech detected in the recording', 422, {
+          dbMessage: `NO_SPEECH: audio ${this.formatDuration(dg.durationSec)}, detected language ${lang}, file ${this.formatSize(audioBuffer.length)}`,
+          providerStatus: dg.providerStatus
         });
-        throw new AppError('No speech detected in the recording', 422);
       }
 
       logger.info('Transcription successful', { 
@@ -185,22 +248,26 @@ class TranscriptionService {
       logger.info('Note created from transcription', { noteId: note.id, recordingId });
 
       // Update recording with transcription and link to note - USE supabaseAdmin
-      const { data: updatedRecording, error: updateError } = await supabaseAdmin
-        .from('recordings')
-        .update({
-          transcription: transcriptionText,
-          duration: duration,
-          status: 'completed',
-          note_id: note.id // Link to the created note
-        })
-        .eq('id', recordingId)
-        .select()
-        .single();
-
-      if (updateError) {
-        logger.error('Failed to update recording', { error: updateError, recordingId });
-        // Don't throw here - transcription succeeded, just log the error
+      const completedPatch = {
+        transcription: transcriptionText,
+        duration: duration,
+        status: 'completed',
+        note_id: note.id // Link to the created note
+      };
+      let updateError;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        ({ error: updateError } = await supabaseAdmin
+          .from('recordings')
+          .update(completedPatch)
+          .eq('id', recordingId)
+          .select()
+          .single());
+        if (!updateError) break;
+        logger.error('Failed to update recording', { error: updateError, recordingId, attempt });
       }
+      // Don't throw here - the note exists and transcription succeeded, so the client gets success.
+
+      this.logOutcome({ ...outcome, outcome: 'completed', textLength: transcriptionText.length, recordUpdated: !updateError });
 
       logger.info('Transcription completed successfully', { 
         userId, 
@@ -217,32 +284,21 @@ class TranscriptionService {
       };
 
     } catch (error) {
-      // Clean up temp file on error
-      if (tempFilePath) {
-        await this.cleanupTempFile(tempFilePath);
-      }
-
+      const code = error.code && typeof error.dbMessage === 'string' ? error.code : (error.statusCode === 404 ? 'NOT_FOUND' : 'INTERNAL_ERROR');
       logger.error('Transcription error', { 
         error: error.message, 
         stack: error.stack,
         userId, 
-        recordingId 
+        recordingId,
+        code
       });
-
-      // Update recording status to failed - FIXED: Use try-catch instead of .catch()
-      try {
-        await supabaseAdmin
-          .from('recordings')
-          .update({
-            status: 'failed',
-            error_message: error.message
-          })
-          .eq('id', recordingId);
-      } catch (updateErr) {
-        logger.error('Failed to update error status', { 
-          error: updateErr.message, 
-          recordingId 
-        });
+      if (loaded) {
+        this.logOutcome({ ...outcome, outcome: 'failed', errorCode: code, httpStatus: error.statusCode || 500 });
+        const dbMessage = typeof error.dbMessage === 'string'
+          ? error.dbMessage
+          : `INTERNAL_ERROR: ${String(error.message || 'unknown error').slice(0, 300)}`;
+        await this.markFailed(recordingId, dbMessage, durationSec);
+        this.reportRecordingFailed(code, outcome);
       }
 
       if (error instanceof AppError) {
@@ -253,15 +309,10 @@ class TranscriptionService {
     }
   }
 
-  /**
-   * Helper to clean up temporary files
-   */
-  async cleanupTempFile(filePath) {
-    try {
-      await fs.unlink(filePath);
-    } catch (err) {
-      logger.warn('Failed to clean up temp file', { filePath, error: err.message });
-    }
+  formatSize(bytes) {
+    const n = Number(bytes);
+    if (!Number.isFinite(n) || n < 0) return 'unknown size';
+    return n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`;
   }
 
   /**

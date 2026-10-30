@@ -246,6 +246,7 @@ class LearningService {
     // round-trip — eliminates the OAuth-token sync chain across servers.
     this._generateLessonDirect(payload).catch(err => {
       logger.error('Lesson generation failed', { sessionId, error: err.message });
+      require('../utils/failureReporter').reportFailure('learning_lesson_failed', new Error('Lesson generation failed (direct LLM call)'), { code: 'LLM_CALL_FAILED' });
       supabaseAdmin
         .from('learning_sessions')
         .update({ generation_status: 'failed' })

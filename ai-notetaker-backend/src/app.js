@@ -23,7 +23,7 @@ const aiRoutes = require('./routes/ai');
 const userRoutes = require('./routes/user');
 const analyticsRoutes = require('./routes/analytics');
 const alertsRoutes = require('./routes/alerts');
-const { reportCrash } = require('./utils/failureReporter');
+const { reportCrash, reportFailure, reportUnreportedServerError } = require('./utils/failureReporter');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const onboardingRoutes = require('./routes/onboarding');
 const formattingRoutes = require('./routes/formatting');
@@ -131,6 +131,7 @@ app.post('/api/meetings/webhook/recall',
     // Verify webhook signature
     if (RECALL_WEBHOOK_SECRET && !verifyRecallSignature(signature, rawBody)) {
       logger.warn('Invalid Recall webhook signature received');
+      reportFailure('webhook_recall', new Error('Recall webhook rejected: invalid signature'), { code: 'BAD_SIGNATURE' });
       return res.status(401).json({ error: 'Invalid webhook signature' });
     }
 
@@ -153,6 +154,7 @@ app.post('/api/meetings/webhook/recall',
       res.json({ received: true });
     } catch (error) {
       logger.error('Recall webhook processing error', { error: error.message });
+      reportFailure('webhook_recall', new Error('Recall webhook processing failed (acknowledged 200)'), { code: 'PROCESSING_FAILED' });
       res.json({ received: true }); // Still acknowledge to prevent retries
     }
   }
@@ -177,6 +179,7 @@ app.post('/api/subscriptions/webhook/stripe',
       }
     } catch (err) {
       logger.error('Stripe webhook signature verification failed', { error: err.message });
+      reportFailure('webhook_stripe', new Error('Stripe webhook rejected: signature verification failed'), { code: 'BAD_SIGNATURE' });
       return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
@@ -190,6 +193,7 @@ app.post('/api/subscriptions/webhook/stripe',
       res.json({ received: true });
     } catch (error) {
       logger.error('Stripe webhook processing error', { error: error.message });
+      reportFailure('webhook_stripe', new Error('Stripe webhook processing failed (acknowledged 200)'), { code: 'PROCESSING_FAILED', event_type: String(event.type || 'unknown') });
       res.json({ received: true }); // Still acknowledge to prevent retries
     }
   }
@@ -201,6 +205,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Request logging
 app.use(requestLogger);
+// Safety net: any 5xx sent without going through errorHandler (res.status(500).json in a catch) still pages.
+app.use((req, res, next) => { res.on('finish', () => reportUnreportedServerError(req, res)); next(); });
 
 // Rate limiting allowlist (for testing)
 // Add IPs to RATE_LIMIT_ALLOWLIST env var as comma-separated values
@@ -346,6 +352,7 @@ app.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
   console.log(`Trust proxy enabled: ${app.get('trust proxy')}`);
+  require('./services/recordingReconciler').startRecordingReconciler();
   require('./services/llmMonitor').startProbe({ log: (m) => console.warn(`[llm-monitor] ${m}`) });
 });
 

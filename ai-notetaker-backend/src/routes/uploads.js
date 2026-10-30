@@ -9,6 +9,7 @@ const videoService = require('../services/videoService');
 const scanService = require('../services/scanService');
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
+const { reportFailure } = require('../utils/failureReporter');
 const { v4: uuidv4 } = require('uuid');
 
 // Initialize Supabase client with service role for signed URLs
@@ -50,7 +51,10 @@ const upload = multer({
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new AppError('Invalid file type', 400));
+      cb(new AppError('Invalid file type', 400, true, {
+        message: 'Upload rejected: unsupported document type',
+        context: { reason: 'BAD_MIME', mimetype: String(file.mimetype || 'unknown').slice(0, 60) }
+      }));
     }
   }
 });
@@ -68,7 +72,10 @@ const scanUpload = multer({
     if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new AppError('Only PDF files are allowed for scanned documents', 400));
+      cb(new AppError('Only PDF files are allowed for scanned documents', 400, true, {
+        message: 'Upload rejected: scan was not a PDF',
+        context: { reason: 'BAD_MIME', mimetype: String(file.mimetype || 'unknown').slice(0, 60) }
+      }));
     }
   }
 });
@@ -97,12 +104,18 @@ router.post('/request-upload', asyncHandler(async (req, res) => {
 
   // Validate file size
   if (fileSize > MAX_FILE_SIZE_BYTES) {
-    throw new AppError(`File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB`, 400);
+    throw new AppError(`File too large. Maximum size is ${MAX_FILE_SIZE_MB}MB`, 400, true, {
+      message: 'Upload rejected: file too large',
+      context: { reason: 'FILE_TOO_LARGE', size_mb: String(Math.round(Number(fileSize) / 1048576)) }
+    });
   }
 
   // Validate mime type
   if (!ALLOWED_MIME_TYPES.includes(mimeType)) {
-    throw new AppError('Invalid file type. Allowed: PDF, DOCX, PPTX, TXT', 400);
+    throw new AppError('Invalid file type. Allowed: PDF, DOCX, PPTX, TXT', 400, true, {
+      message: 'Upload rejected: unsupported document type',
+      context: { reason: 'BAD_MIME', mimetype: String(mimeType).slice(0, 80) }
+    });
   }
 
   // Generate unique file path
@@ -173,7 +186,10 @@ router.post('/process', asyncHandler(async (req, res) => {
   // Get job status
   const job = jobStatus.get(jobId);
   if (!job) {
-    throw new AppError('Invalid or expired job ID', 404);
+    throw new AppError('Invalid or expired job ID', 404, true, {
+      message: 'Document upload job not found (expired or server restarted)',
+      context: { reason: 'JOB_LOST' }
+    });
   }
 
   // Verify ownership
@@ -324,6 +340,12 @@ async function processDocumentAsync(jobId) {
 
     job.status = 'failed';
     job.error = error.message || 'Processing failed';
+    // The client only sees this by polling /status; nothing else raises it, and the job map dies with the process.
+    reportFailure('document_processing_failed', new Error('Document processing failed (async job)'), {
+      step: String(job.steps.findIndex(s => s.status === 'in_progress')),
+      mime: String(job.mimeType || 'unknown').slice(0, 80),
+      size_kb: String(Math.round((job.fileSize || 0) / 1024))
+    });
 
     // Mark current step as failed
     const currentStep = job.steps.findIndex(s => s.status === 'in_progress');

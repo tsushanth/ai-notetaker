@@ -37,7 +37,10 @@ const upload = multer({
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new AppError('Invalid file type. Only audio/video files are allowed', 400));
+      cb(new AppError('Invalid file type. Only audio/video files are allowed', 400, true, {
+        message: 'Upload rejected: unsupported audio type',
+        context: { reason: 'BAD_MIME', mimetype: String(file.mimetype || 'unknown').slice(0, 60) }
+      }));
     }
   }
 });
@@ -52,7 +55,10 @@ router.use(authenticate);
  */
 router.post('/upload', upload.single('audio'), asyncHandler(async (req, res) => {
   if (!req.file) {
-    throw new AppError('No audio file provided', 400);
+    throw new AppError('No audio file provided', 400, true, {
+      message: 'Upload rejected: request had no audio file',
+      context: { reason: 'NO_FILE' }
+    });
   }
 
   const { note_id, title } = req.body;

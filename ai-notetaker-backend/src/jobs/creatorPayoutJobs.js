@@ -199,6 +199,7 @@ function initializeCronJobs() {
       await runMaturityProcessing();
     } catch (error) {
       logger.error('Cron: Maturity processing failed', { error: error.message });
+      require('../utils/failureReporter').reportFailure('cron_job_failed', new Error('Scheduled job failed: Maturity processing'), { job: 'Maturity processing' });
     }
   }, {
     timezone: 'UTC'
@@ -211,6 +212,7 @@ function initializeCronJobs() {
       await runMonthlyCapReset();
     } catch (error) {
       logger.error('Cron: Monthly cap reset failed', { error: error.message });
+      require('../utils/failureReporter').reportFailure('cron_job_failed', new Error('Scheduled job failed: Monthly cap reset'), { job: 'Monthly cap reset' });
     }
   }, {
     timezone: 'UTC'
@@ -223,6 +225,7 @@ function initializeCronJobs() {
       await runMonthlyPayouts();
     } catch (error) {
       logger.error('Cron: Monthly payout processing failed', { error: error.message });
+      require('../utils/failureReporter').reportFailure('cron_job_failed', new Error('Scheduled job failed: Monthly payout processing'), { job: 'Monthly payout processing' });
     }
   }, {
     timezone: 'UTC'
@@ -235,6 +238,7 @@ function initializeCronJobs() {
       await runActivityChecks();
     } catch (error) {
       logger.error('Cron: Activity checks failed', { error: error.message });
+      require('../utils/failureReporter').reportFailure('cron_job_failed', new Error('Scheduled job failed: Activity checks'), { job: 'Activity checks' });
     }
   }, {
     timezone: 'UTC'
@@ -247,6 +251,7 @@ function initializeCronJobs() {
       await runFraudAnomalyScan();
     } catch (error) {
       logger.error('Cron: Fraud anomaly scan failed', { error: error.message });
+      require('../utils/failureReporter').reportFailure('cron_job_failed', new Error('Scheduled job failed: Fraud anomaly scan'), { job: 'Fraud anomaly scan' });
     }
   }, {
     timezone: 'UTC'

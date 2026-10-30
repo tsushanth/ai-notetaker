@@ -82,7 +82,8 @@ private val TurboLightIconTile = Color(0xFFEEE8FA)
 // keys here would require ~25 translations for a paywall-only redesign, so plain English
 // constants are used instead (matches existing behavior: paywallkit's copy was also
 // hardcoded English inside the library).
-private const val TURBO_HEADLINE = "Choose your ScribeAI Unlimited plan"
+private const val TURBO_HEADLINE = "Choose your ScribeAI Pro plan"
+private const val TURBO_FREE_NOTE = "Voice transcription and AI summaries are free for everyone. Pro adds:"
 private const val TURBO_NO_COMMITMENT = "No commitment, cancel any time"
 private const val TURBO_SUBSCRIBE_CTA = "Subscribe Now"
 private const val TURBO_RESTORE = "Restore Purchases"
@@ -144,12 +145,10 @@ fun PaywallScreen(
     }
 
     val features = listOf(
-        PaywallFeature("📝", "Unlimited Notes", "Create without limits"),
-        PaywallFeature("🎤", "Transcription", "Voice to text in seconds"),
-        PaywallFeature("🤖", "AI Summaries", "Smart summaries & insights"),
-        PaywallFeature("🃏", "Flashcards", "Auto-generated study cards"),
-        PaywallFeature("💬", "AI Chat", "Ask questions about your notes"),
-        PaywallFeature("🎙️", "Podcast Mode", "Turn notes into audio")
+        PaywallFeature("\uD83D\uDCE4", "Export and Integrations", "PDF, Word and Google Drive"),
+        PaywallFeature("\uD83C\uDF99", "Podcast Mode", "Turn notes into audio"),
+        PaywallFeature("\uD83C\uDF93", "Learn, Create and Compete", "Study and creative tools"),
+        PaywallFeature("\uD83D\uDD17", "Sharing and Higher Limits", "Unlimited share links, higher daily limits")
     )
 
     val onPurchase: (String) -> Unit = { productId ->
@@ -282,15 +281,23 @@ fun TurboPaywallContent(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = TURBO_FREE_NOTE,
+                color = TurboLightTextSecondary,
+                fontSize = 15.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
 
             val featureIcons = mapOf(
-                "Unlimited Notes" to Icons.Filled.Description,
-                "Transcription" to Icons.Filled.Mic,
-                "AI Summaries" to Icons.Filled.AutoAwesome,
-                "Flashcards" to Icons.Filled.Style,
-                "AI Chat" to Icons.Filled.Chat,
-                "Podcast Mode" to Icons.Filled.Podcasts
+                "Export and Integrations" to Icons.Filled.Description,
+                "Podcast Mode" to Icons.Filled.Podcasts,
+                "Learn, Create and Compete" to Icons.Filled.Style,
+                "Sharing and Higher Limits" to Icons.Filled.AutoAwesome
             )
             val featuresToShow = features.take(4)
 

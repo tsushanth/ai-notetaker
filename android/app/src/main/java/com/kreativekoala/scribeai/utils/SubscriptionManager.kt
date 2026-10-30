@@ -30,9 +30,6 @@ class SubscriptionManager(private val context: Context) {
         const val MONTHLY_SUB_ID = "scribe_ai_monthly"
         const val YEARLY_SUB_ID = "scribe_ai_yearly"
 
-        const val FREE_NOTEBOOK_LIMIT = 3
-        const val FREE_OPEN_LIMIT = 3
-
         private const val PREFS_NAME = "scribe_ai_prefs"
         private const val KEY_LIFETIME_NOTEBOOKS = "lifetime_notebooks_created"
         private const val KEY_DEVICE_ID = "device_id"
@@ -383,20 +380,20 @@ class SubscriptionManager(private val context: Context) {
                 getPriceAmountMicros(MONTHLY_SUB_ID) > 0 &&
                 getPriceAmountMicros(YEARLY_SUB_ID) > 0
 
-    // ── Free tier ─────────────────────────────────────────────────────────────
+    // ── Usage counters ────────────────────────────────────────────────────────
+    // Note creation, voice transcription and AI summaries are free for everyone: nothing here gates
+    // the app any more (the old 3-notebook and 3-opens limits were removed in 58.25). Counters are kept
+    // only as stored stats; stale values in prefs have no effect.
 
     fun getLifetimeNotebooksCreated(): Int = prefs.getInt(KEY_LIFETIME_NOTEBOOKS, 0)
     fun incrementLifetimeNotebooks() {
         prefs.edit().putInt(KEY_LIFETIME_NOTEBOOKS, getLifetimeNotebooksCreated() + 1).apply()
     }
-    fun canCreateNotebook(): Boolean = isSubscribed() || getLifetimeNotebooksCreated() < FREE_NOTEBOOK_LIMIT
-    fun getRemainingFreeNotebooks(): Int = (FREE_NOTEBOOK_LIMIT - getLifetimeNotebooksCreated()).coerceAtLeast(0)
 
     fun getAppOpenCount(): Int = prefs.getInt(KEY_APP_OPEN_COUNT, 0)
     fun incrementAppOpenCount() {
         prefs.edit().putInt(KEY_APP_OPEN_COUNT, getAppOpenCount() + 1).apply()
     }
-    fun shouldShowHardPaywall(): Boolean = !isSubscribed() && getAppOpenCount() > FREE_OPEN_LIMIT
 
     // ── Feature gates ─────────────────────────────────────────────────────────
 

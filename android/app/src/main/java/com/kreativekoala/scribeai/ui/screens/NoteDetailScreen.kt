@@ -337,6 +337,11 @@ fun NoteDetailScreen(
                                                     val error = json.optString("error", "Failed to create share link")
                                                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                                                         Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                                                        // 403 = free plan's 3 share links a month used up: sharing beyond that is paid.
+                                                        if (response.code == 403) {
+                                                            AnalyticsService.trackPaywallViewed("share_link_limit")
+                                                            showPaywall = true
+                                                        }
                                                     }
                                                 }
                                             } catch (e: Exception) {
@@ -434,7 +439,11 @@ fun NoteDetailScreen(
             BottomTabBar(
                 selectedTab = selectedTab,
                 onTabSelected = { tab ->
-                    if (tab != 0 && subscriptionManager?.isSubscribed() == false) {
+                    // Notes (summary), Chat, Quiz, Flashcards and Mind Map are free (the server only applies
+                    // a daily abuse backstop). Learn, Create, Compete and Podcast stay paid: a dismissible
+                    // paywall shows when the user taps one of them.
+                    if (tab in PAID_TABS && subscriptionManager?.isSubscribed() == false) {
+                        AnalyticsService.trackPaywallViewed("tab_$tab")
                         showPaywall = true
                     } else {
                         selectedTab = tab
@@ -457,6 +466,9 @@ fun NoteDetailScreen(
 /**
  * Bottom tab bar component - shows 4 primary tabs + "More" which opens a sheet
  */
+// Tab indices that still need a subscription: 1 = Learn, 2 = Create, 3 = Compete, 7 = Podcast.
+private val PAID_TABS = setOf(1, 2, 3, 7)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BottomTabBar(

@@ -65,10 +65,6 @@ fun HomeScreen(
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
     var showPaywall by remember { mutableStateOf(false) }
-    // Distinguishes the soft upsell (user tapped "Upgrade to Pro") from the
-    // hard gate (user hit the free notebook limit). Hard-gate hides the close
-    // button + blocks back so the user must convert or background the app.
-    var paywallIsHardGate by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
@@ -97,14 +93,8 @@ fun HomeScreen(
 
     val coroutineScope = rememberCoroutineScope()
 
-    // Get lifetime notebook count and subscription status
-    var lifetimeNotebooks by remember { mutableStateOf(subscriptionManager.getLifetimeNotebooksCreated()) }
+    // Subscription status
     var isSubscribed by remember { mutableStateOf(false) }
-
-    // Refresh lifetime count when returning to this screen
-    LaunchedEffect(Unit) {
-        lifetimeNotebooks = subscriptionManager.getLifetimeNotebooksCreated()
-    }
 
     LaunchedEffect(subscriptionState) {
         isSubscribed = subscriptionState is SubscriptionManager.SubscriptionState.Subscribed
@@ -139,8 +129,6 @@ fun HomeScreen(
 
             val subState = subscriptionManager.subscriptionState.value
             Log.d("HomeScreen", "Subscription state: $subState")
-            Log.d("HomeScreen", "Lifetime notebooks: $lifetimeNotebooks")
-            Log.d("HomeScreen", "Can create: ${subscriptionManager.canCreateNotebook()}")
 
             Log.d("HomeScreen", "=== All checks passed ===")
         } catch (e: Exception) {
@@ -153,11 +141,10 @@ fun HomeScreen(
             appId = "scribeai",
             appName = "ScribeAI",
             features = listOf(
-                PaywallFeature("\uD83D\uDCDD", "Unlimited Notes"),
-                PaywallFeature("\uD83C\uDFA4", "Transcription"),
-                PaywallFeature("\uD83E\uDD16", "AI Summaries"),
-                PaywallFeature("\uD83D\uDCC1", "Organization"),
-                PaywallFeature("☁\uFE0F", "Cloud Sync")
+                PaywallFeature("\uD83D\uDCE4", "Export and Integrations"),
+                PaywallFeature("\uD83C\uDF99", "Podcast Mode"),
+                PaywallFeature("\uD83C\uDF93", "Learn, Create and Compete"),
+                PaywallFeature("\uD83D\uDD17", "Sharing and Higher Limits")
             ),
             theme = PaywallTheme(accent = Purple80, accent2 = Purple40, background = DarkBackground, cardBackground = DarkSurface),
             onDone = { showPaywallPreview = false }
@@ -165,16 +152,11 @@ fun HomeScreen(
         return
     }
 
-    // Same gate the FAB always used: signed in, and under the free notebook limit,
-    // otherwise the hard paywall. Every create entry point goes through this.
+    // Creating notes is free for everyone: just require a signed-in user.
+    // Every create entry point goes through this.
     val requestCreate: (() -> Unit) -> Unit = { action ->
         if (authToken != null) {
-            if (subscriptionManager.canCreateNotebook()) {
-                action()
-            } else {
-                paywallIsHardGate = true
-                showPaywall = true
-            }
+            action()
         }
     }
 
@@ -220,7 +202,6 @@ fun HomeScreen(
                                 text = { Text(stringResource(R.string.menu_upgrade_pro), color = Purple80, fontWeight = FontWeight.SemiBold) },
                                 onClick = {
                                     showMenu = false
-                                    paywallIsHardGate = false
                                     showPaywall = true
                                 },
                                 leadingIcon = {
@@ -233,7 +214,6 @@ fun HomeScreen(
                                 text = { Text(stringResource(R.string.menu_manage_subscription)) },
                                 onClick = {
                                     showMenu = false
-                                    paywallIsHardGate = false
                                     showPaywall = true
                                 },
                                 leadingIcon = {
@@ -600,16 +580,9 @@ fun HomeScreen(
     if (showPaywall) {
         PaywallScreen(
             subscriptionManager = subscriptionManager,
-            onDismiss = {
-                // Only honor dismiss for soft upsells. Hard-gate dismiss is a no-op
-                // (the BackHandler inside PaywallScreen swallows back too).
-                if (!paywallIsHardGate) showPaywall = false
-            },
-            onSubscribe = {
-                showPaywall = false
-                paywallIsHardGate = false
-            },
-            dismissable = !paywallIsHardGate
+            onDismiss = { showPaywall = false },
+            onSubscribe = { showPaywall = false },
+            dismissable = true
         )
     }
 

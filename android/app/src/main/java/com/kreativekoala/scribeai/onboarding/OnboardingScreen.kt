@@ -126,7 +126,8 @@ fun OnboardingScreen(
                         )
                         OnboardingStep.TRIAL -> TrialScreen(
                             subscriptionManager = subscriptionManager,
-                            onSuccess = { onboardingManager.nextStep() }
+                            onSuccess = { onboardingManager.nextStep() },
+                            onContinueFree = { onboardingManager.nextStep() }
                         )
                         OnboardingStep.NOTIFICATIONS -> NotificationsScreen(
                             onComplete = { onboardingManager.markOnboardingComplete() }
@@ -648,7 +649,8 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
 @Composable
 private fun TrialScreen(
     subscriptionManager: SubscriptionManager,
-    onSuccess: () -> Unit
+    onSuccess: () -> Unit,
+    onContinueFree: () -> Unit
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
@@ -902,7 +904,31 @@ private fun TrialScreen(
             )
         }
 
-        // Reassurance messaging (no skip - payment required)
+        // Voice transcription, AI summaries and note creation are free, so this offer is optional.
+        TextButton(
+            onClick = onContinueFree,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+        ) {
+            Text(
+                "Continue with the free plan",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = TextSecondary
+            )
+        }
+        Text(
+            "Voice transcription and AI summaries are free. Pro adds export, integrations, podcast audio and more.",
+            fontSize = 13.sp,
+            color = TextTertiary,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 32.dp)
+        )
+
+        // Reassurance messaging
         Column(
             modifier = Modifier
                 .fillMaxWidth()

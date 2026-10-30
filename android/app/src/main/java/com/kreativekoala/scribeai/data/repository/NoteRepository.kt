@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import com.kreativekoala.scribeai.utils.FreeTierErrors
 import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -206,7 +207,11 @@ class NoteRepository {
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("NoteRepository", "Transcription failed: ${response.code()} - $errorBody")
-                    Result.failure(Exception(errorBody ?: "Transcription failed"))
+                    if (response.code() == 429) {
+                        Result.failure(FreeTierErrors.DailyLimitException(FreeTierErrors.dailyLimitMessage(errorBody)))
+                    } else {
+                        Result.failure(Exception(errorBody ?: "Transcription failed"))
+                    }
                 }
             } catch (e: Exception) {
                 Log.e("NoteRepository", "Exception during transcription", e)
@@ -282,7 +287,7 @@ class NoteRepository {
                             }
                         }
                         402 -> "Subscription required. Upgrade to access this feature."
-                        429 -> "Usage limit reached. Please try again later or upgrade your plan."
+                        429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         500, 502, 503, 504 -> "Server error. Please try again later."
                         else -> "Failed to generate $contentType. Please try again."
                     }
@@ -325,6 +330,7 @@ class NoteRepository {
                                 else -> "Access denied. Please check your subscription status."
                             }
                         }
+                        429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to generate infographic. Please try again."
                     }
                     Log.e(TAG, "❌ generateInfographic failed: ${response.code()} - $errorBody")
@@ -342,7 +348,7 @@ class NoteRepository {
      */
     class SubscriptionException(message: String, val code: Int) : Exception(message) {
         val requiresUpgrade: Boolean
-            get() = code == 402 || code == 403 || code == 429
+            get() = code == 402 || code == 403
     }
 
     suspend fun startPodcastGeneration(
@@ -369,7 +375,7 @@ class NoteRepository {
                                 else -> "Upgrade to premium to access podcast generation."
                             }
                         }
-                        429 -> "Usage limit reached. Please upgrade your plan."
+                        429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to start podcast generation. Please try again."
                     }
                     Log.e(TAG, "❌ startPodcastGeneration failed: ${response.code()} - $errorBody")
@@ -420,6 +426,7 @@ class NoteRepository {
                     val errorMessage = when (response.code()) {
                         401 -> "Session expired. Please log in again."
                         402, 403 -> "This feature requires a premium subscription."
+                        429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to generate mind map. Please try again."
                     }
                     Log.e(TAG, "❌ generateMindMap failed: ${response.code()} - $errorBody")
@@ -487,6 +494,7 @@ class NoteRepository {
                     val errorMessage = when (response.code()) {
                         401 -> "Session expired. Please log in again."
                         402, 403 -> "This feature requires a premium subscription."
+                        429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to generate audio. Please try again."
                     }
                     Log.e(TAG, "❌ generateTTS failed: ${response.code()} - $errorBody")
@@ -554,7 +562,11 @@ class NoteRepository {
             } else {
                 val errorBody = response.errorBody()?.string()
                 Log.e("NoteRepository", "Chat failed: ${response.code()} - $errorBody")
-                Result.failure(Exception(errorBody ?: "Failed to chat with note"))
+                if (response.code() == 429) {
+                    Result.failure(FreeTierErrors.DailyLimitException(FreeTierErrors.dailyLimitMessage(errorBody)))
+                } else {
+                    Result.failure(Exception(errorBody ?: "Failed to chat with note"))
+                }
             }
         } catch (e: Exception) {
             Log.e("NoteRepository", "Error in chat", e)

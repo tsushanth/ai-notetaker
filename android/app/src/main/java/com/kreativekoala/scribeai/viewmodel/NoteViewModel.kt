@@ -9,6 +9,7 @@ import com.kreativekoala.scribeai.data.local.toNote
 import com.kreativekoala.scribeai.data.models.*
 import com.kreativekoala.scribeai.data.repository.NoteRepository
 import com.kreativekoala.scribeai.utils.ErrorReportingService
+import com.kreativekoala.scribeai.utils.FreeTierErrors
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import com.kreativekoala.scribeai.utils.TutorialContent
 import com.kreativekoala.scribeai.utils.UserIdHelper
@@ -55,10 +56,6 @@ class NoteViewModel(
     private val subscriptionManager: SubscriptionManager
 ) : ViewModel() {
 
-    companion object {
-        const val FREE_NOTE_LIMIT = 1 // User can create 1 free notebook (0-indexed)
-    }
-
     private val repository = NoteRepository()
 
     private val _uiState = MutableStateFlow<NoteUiState>(NoteUiState.Loading)
@@ -82,8 +79,6 @@ class NoteViewModel(
     private var hasMoreNotes = true
     private var totalNotes = 0
 
-    private val _shouldShowPaywall = MutableStateFlow(false)
-    val shouldShowPaywall: StateFlow<Boolean> = _shouldShowPaywall.asStateFlow()
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(60, TimeUnit.SECONDS)
@@ -321,41 +316,6 @@ class NoteViewModel(
     }
 
     /**
-     * Check if user can create a new note
-     * Returns true if allowed, false if paywall should be shown
-     */
-    suspend fun canCreateNote(userId: String): Boolean {
-        // Check if user is subscribed
-        if (subscriptionManager.isSubscribed()) {
-            return true
-        }
-
-        // Check note count for free users
-        val noteCount = localRepository.getNoteCount(userId)
-        Log.d(TAG, "📊 Free user has $noteCount notebooks (limit: ${FREE_NOTE_LIMIT + 1})")
-        return noteCount <= FREE_NOTE_LIMIT
-    }
-
-    /**
-     * Check and show paywall if needed before creating note
-     */
-    suspend fun checkPaywallBeforeCreate(userId: String): Boolean {
-        return if (canCreateNote(userId)) {
-            true
-        } else {
-            _shouldShowPaywall.value = true
-            false
-        }
-    }
-
-    /**
-     * Dismiss paywall
-     */
-    fun dismissPaywall() {
-        _shouldShowPaywall.value = false
-    }
-
-    /**
      * Get note count (for UI display)
      */
     suspend fun getNoteCount(userId: String): Int {
@@ -375,14 +335,6 @@ class NoteViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val userId = extractUserId(authToken)
-
-                // Check paywall
-                if (!checkPaywallBeforeCreate(userId)) {
-                    withContext(Dispatchers.Main) {
-                        onError("Please upgrade to create more notebooks")
-                    }
-                    return@launch
-                }
 
                 Log.d(TAG, "Uploading scanned document: ${pdfFile.name}")
                 _uploadState.value = UploadState.Loading
@@ -510,14 +462,6 @@ class NoteViewModel(
             try {
                 val userId = extractUserId(token)
 
-                // Check paywall
-                if (!checkPaywallBeforeCreate(userId)) {
-                    withContext(Dispatchers.Main) {
-                        onError("Please upgrade to create more notebooks")
-                    }
-                    return@launch
-                }
-
                 Log.d(TAG, "Processing video URL: $url")
 
                 val cleanToken = token.removePrefix("Bearer ").trim()
@@ -598,12 +542,6 @@ class NoteViewModel(
             try {
                 val userId = extractUserId(token)
 
-                // Check paywall
-                if (!checkPaywallBeforeCreate(userId)) {
-                    onError("Please upgrade to create more notebooks")
-                    return@launch
-                }
-
                 repository.uploadPDF(token, pdfFile, title).fold(
                     onSuccess = { note ->
                         // Add to cache
@@ -639,12 +577,6 @@ class NoteViewModel(
         viewModelScope.launch {
             try {
                 val userId = extractUserId(token)
-
-                // Check paywall
-                if (!checkPaywallBeforeCreate(userId)) {
-                    onError("Please upgrade to create more notebooks")
-                    return@launch
-                }
 
                 Log.d(TAG, "📤 Step 1: Uploading audio: ${audioFile.name}, size: ${audioFile.length()} bytes")
 
@@ -711,7 +643,12 @@ class NoteViewModel(
                                 onFailure = { error ->
                                     val errorMsg = error.message ?: "Transcription failed"
                                     Log.e(TAG, "❌ Transcription failed: $errorMsg", error)
-                                    onError("Upload successful but transcription failed: $errorMsg")
+                                    if (error is FreeTierErrors.DailyLimitException) {
+                                        // Daily free-tier backstop (HTTP 429): plain message, not a failure or a paywall.
+                                        onError(errorMsg)
+                                    } else {
+                                        onError("Upload successful but transcription failed: $errorMsg")
+                                    }
                                 }
                             )
                         } else {
@@ -748,12 +685,6 @@ class NoteViewModel(
         viewModelScope.launch {
             try {
                 val userId = extractUserId(token)
-
-                // Check paywall
-                if (!checkPaywallBeforeCreate(userId)) {
-                    onError("Please upgrade to create more notebooks")
-                    return@launch
-                }
 
                 repository.createNote(token, request).fold(
                     onSuccess = { note ->

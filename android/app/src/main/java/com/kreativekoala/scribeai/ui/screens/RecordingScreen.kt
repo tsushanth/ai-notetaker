@@ -39,6 +39,7 @@ import com.kreativekoala.scribeai.ui.components.TurboWaveform
 import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
+import com.kreativekoala.scribeai.utils.FreeTierErrors
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -244,10 +245,14 @@ fun RecordingScreen(
                 )
 
                 // Step 2: Start transcription
-                val result = startTranscription(recordingId, token)
+                val outcome = startTranscription(recordingId, token)
+                val result = outcome.data
 
                 if (result == null) {
-                    screenState = RecordingScreenState.Error(context.getString(R.string.error_transcribe_failed))
+                    // HTTP 429 = daily free-tier backstop: plain message from the server, not a generic failure.
+                    screenState = RecordingScreenState.Error(
+                        outcome.limitMessage ?: context.getString(R.string.error_transcribe_failed)
+                    )
                     return@launch
                 }
 
@@ -1020,7 +1025,9 @@ private suspend fun uploadAudio(file: File, token: String, title: String): Strin
     }
 }
 
-private suspend fun startTranscription(recordingId: String, token: String): JSONObject? {
+private class TranscriptionOutcome(val data: JSONObject?, val limitMessage: String? = null)
+
+private suspend fun startTranscription(recordingId: String, token: String): TranscriptionOutcome {
     return withContext(Dispatchers.IO) {
         try {
             val client = OkHttpClient.Builder()
@@ -1049,14 +1056,18 @@ private suspend fun startTranscription(recordingId: String, token: String): JSON
 
             if (response.isSuccessful && responseBody != null) {
                 val responseJson = JSONObject(responseBody)
-                responseJson.optJSONObject("data")
+                TranscriptionOutcome(responseJson.optJSONObject("data"))
             } else {
                 Log.e("RecordingScreen", "Transcription failed: ${response.code}")
-                null
+                if (response.code == 429) {
+                    TranscriptionOutcome(null, FreeTierErrors.dailyLimitMessage(responseBody))
+                } else {
+                    TranscriptionOutcome(null)
+                }
             }
         } catch (e: Exception) {
             Log.e("RecordingScreen", "Transcription error", e)
-            null
+            TranscriptionOutcome(null)
         }
     }
 }

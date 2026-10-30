@@ -123,39 +123,6 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
 
-                    // Observe subscription state to reactively dismiss paywall
-                    val subscriptionState by subscriptionManager.subscriptionState.collectAsState()
-                    val isSubscribed = subscriptionState is SubscriptionManager.SubscriptionState.Subscribed
-                    val isStateResolved = subscriptionState !is SubscriptionManager.SubscriptionState.Unknown &&
-                            subscriptionState !is SubscriptionManager.SubscriptionState.Loading
-                    val products by subscriptionManager.products.collectAsState()
-
-                    // Track whether the user has manually dismissed the paywall this session
-                    var paywallDismissed by remember { mutableStateOf(false) }
-
-                    // Don't surface the paywall until the state has been stable
-                    // (resolved AND non-subscribed) for ~1.5s. This eliminates a
-                    // flash-of-paywall when the billing-query lands as Free but
-                    // the server-side access check (refreshAccessStatus) is about
-                    // to flip the state to Subscribed a few hundred ms later.
-                    var paywallStable by remember { mutableStateOf(false) }
-                    val candidateShow = isStateResolved &&
-                            subscriptionManager.shouldShowHardPaywall() &&
-                            !isSubscribed &&
-                            !paywallDismissed
-                    LaunchedEffect(candidateShow, isSubscribed) {
-                        if (candidateShow) {
-                            kotlinx.coroutines.delay(1500)
-                            // Re-check on the same recomposition cycle — if the
-                            // server-flip already happened, the LaunchedEffect
-                            // would have been re-keyed and we wouldn't reach here.
-                            paywallStable = true
-                        } else {
-                            paywallStable = false
-                        }
-                    }
-                    val shouldShowPaywall = candidateShow && paywallStable
-
                     // FIXED: Pass the SAME authManager to AppNavigation
                     AppNavigation(
                         authManager = authManager,  // Same instance
@@ -163,74 +130,6 @@ class MainActivity : AppCompatActivity() {
                         subscriptionManager = subscriptionManager
                     )
 
-                    // PaywallKit soft paywall overlay
-                    if (shouldShowPaywall) {
-                        val activity = this@MainActivity as Activity
-
-                        // Wait for products to load before showing paywall
-                        if (products.isEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .background(Color(0xFF0A0A0F)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(color = Color(0xFF6C63FF))
-                            }
-                        } else {
-                            // Map ProductDetails to PaywallProduct
-                            val paywallProducts = products.map { details ->
-                                val productId = details.productId
-                                val offer = details.subscriptionOfferDetails?.firstOrNull()
-                                val phase = offer?.pricingPhases?.pricingPhaseList?.lastOrNull()
-                                PaywallProduct(
-                                    id = productId,
-                                    localizedPrice = phase?.formattedPrice ?: "",
-                                    price = (phase?.priceAmountMicros ?: 0L) / 1_000_000.0,
-                                    currencyCode = phase?.priceCurrencyCode ?: "USD",
-                                    trialDays = 3,
-                                    period = when {
-                                        productId.contains("yearly") || productId.contains("annual") -> PaywallProduct.Period.YEARLY
-                                        productId.contains("weekly") -> PaywallProduct.Period.WEEKLY
-                                        else -> PaywallProduct.Period.MONTHLY
-                                    }
-                                )
-                            }
-
-                            val features = listOf(
-                                PaywallFeature("\uD83D\uDCDD", "Unlimited Notes", "Create without limits"),
-                                PaywallFeature("\uD83C\uDFA4", "Transcription", "Voice to text"),
-                                PaywallFeature("\uD83E\uDD16", "AI Summaries", "Smart note summaries"),
-                                PaywallFeature("\uD83D\uDCC1", "Organization", "Folders and tags"),
-                                PaywallFeature("☁\uFE0F", "Cloud Sync", "Sync across devices")
-                            )
-
-                            // Native Turbo-styled paywall (shared with PaywallScreen.kt).
-                            // NOTE: this drops PaywallKit's placement-based A/B templates and
-                            // showWinback ("Golden Ticket") for this specific placement —
-                            // accepted tradeoff for matching the Turbo look here too.
-                            TurboPaywallContent(
-                                products = paywallProducts,
-                                features = features,
-                                dismissable = true,
-                                onDismiss = { paywallDismissed = true },
-                                onPurchase = { productId ->
-                                    subscriptionManager.launchSubscriptionFlow(
-                                        activity = activity,
-                                        productId = productId,
-                                        onSuccess = { paywallDismissed = true },
-                                        onError = { /* handled by billing client listener */ }
-                                    )
-                                },
-                                onRestore = {
-                                    subscriptionManager.restorePurchases(
-                                        onSuccess = { paywallDismissed = true },
-                                        onError = { /* silently ignore */ }
-                                    )
-                                }
-                            )
-                        }
-                    }
                 }
             }
         }

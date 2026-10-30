@@ -7,6 +7,7 @@ import { ArrowLeft, Globe, Check, Crown, Loader2, AlertCircle, CheckCircle, Cred
 import { useSettingsStore, SUPPORTED_LANGUAGES, type LanguageCode } from '@/store/settingsStore';
 import { useAuthStore } from '@/store/authStore';
 import { subscriptionApi, creatorsApi } from '@/lib/api';
+import { featureRows } from '@/lib/freeTier';
 
 interface SubscriptionAccess {
   hasAccess: boolean;
@@ -19,6 +20,7 @@ interface SubscriptionAccess {
   productId: string | null;
   expiresAt: string | null;
   platform?: string;
+  freeTier?: { legacyLimits?: boolean } | null;
   features: {
     canCreateNotes: boolean;
     canUseAI: boolean;
@@ -377,38 +379,16 @@ function SettingsContent() {
             <div className="mb-6">
               <h3 className="text-sm font-medium text-[var(--text-muted)] mb-3">Your Features</h3>
               <div className="grid grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                    subscription.features.canCreateNotes ? 'bg-green-500/20' : 'bg-gray-500/20'
-                  }`}>
-                    <Check size={12} className={subscription.features.canCreateNotes ? 'text-green-400' : 'text-gray-400'} />
+                {featureRows(subscription).map((row) => (
+                  <div key={row.key} className="flex items-center gap-2">
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                      row.included ? 'bg-green-500/20' : 'bg-gray-500/20'
+                    }`}>
+                      <Check size={12} className={row.included ? 'text-green-400' : 'text-gray-400'} />
+                    </div>
+                    <span className="text-sm">{row.label}</span>
                   </div>
-                  <span className="text-sm">Create Notes</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                    subscription.features.canUseAI ? 'bg-green-500/20' : 'bg-gray-500/20'
-                  }`}>
-                    <Check size={12} className={subscription.features.canUseAI ? 'text-green-400' : 'text-gray-400'} />
-                  </div>
-                  <span className="text-sm">AI Features</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                    subscription.features.canGeneratePodcasts ? 'bg-green-500/20' : 'bg-gray-500/20'
-                  }`}>
-                    <Check size={12} className={subscription.features.canGeneratePodcasts ? 'text-green-400' : 'text-gray-400'} />
-                  </div>
-                  <span className="text-sm">Podcasts</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                    subscription.features.unlimitedAccess ? 'bg-green-500/20' : 'bg-gray-500/20'
-                  }`}>
-                    <Check size={12} className={subscription.features.unlimitedAccess ? 'text-green-400' : 'text-gray-400'} />
-                  </div>
-                  <span className="text-sm">Unlimited</span>
-                </div>
+                ))}
               </div>
             </div>
 

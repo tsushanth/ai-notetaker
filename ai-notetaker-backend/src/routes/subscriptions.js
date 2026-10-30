@@ -183,6 +183,8 @@ router.get('/status', authenticate, asyncHandler(async (req, res) => {
 router.get('/access', authenticate, asyncHandler(async (req, res) => {
   const userId = req.userId;
   const { getSubscriptionStatus, FREE_TIER_LIMITS } = require('../middleware/subscription');
+  const { legacyLimitsEnabled, getFreeTierConfig } = require('../utils/freeTierPolicy');
+  const legacyLimits = legacyLimitsEnabled();
 
   // Get comprehensive subscription status
   const status = await getSubscriptionStatus(userId);
@@ -253,10 +255,19 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
         remaining: remaining
       },
 
+      // Free-tier policy in force (additive field; older clients ignore it)
+      freeTier: {
+        legacyLimits,
+        transcriptionsPerDay: getFreeTierConfig().transcriptionsPerDay,
+        aiGenerationsPerDay: getFreeTierConfig().aiGenerationsPerDay
+      },
+
       // Feature access
       features: {
-        canCreateNotes: status.hasAccess || remaining.notes > 0,
-        canUseAI: status.hasAccess || remaining.aiGenerations > 0,
+        // Free for everyone (STT, summaries and note-based AI generation); the old monthly caps apply only
+        // when FREE_TIER_LEGACY_LIMITS=true.
+        canCreateNotes: legacyLimits ? (status.hasAccess || remaining.notes > 0) : true,
+        canUseAI: legacyLimits ? (status.hasAccess || remaining.aiGenerations > 0) : true,
         canGeneratePodcasts: status.isSubscribed || status.isInTrial,
         canExportNotes: status.isSubscribed || status.isInTrial,
         canShareNotes: true,  // Free: 3/month, premium: unlimited (enforced server-side)

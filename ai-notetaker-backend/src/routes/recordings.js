@@ -5,6 +5,7 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const transcriptionService = require('../services/transcriptionService');
 const storageService = require('../services/storageService');
+const { transcriptionGuard } = require('../middleware/freeTierLimits');
 
 // Configure multer for memory storage
 const upload = multer({
@@ -70,11 +71,11 @@ router.post('/upload', upload.single('audio'), asyncHandler(async (req, res) => 
 }));
 
 /**
- * Transcribe audio recording
+ * Transcribe audio recording (free for everyone; per-user daily backstops in transcriptionGuard)
  * POST /api/recordings/transcribe
  * Body: { recording_id }
  */
-router.post('/transcribe', asyncHandler(async (req, res) => {
+router.post('/transcribe', transcriptionGuard(), asyncHandler(async (req, res) => {
   const { recording_id } = req.body;
 
   if (!recording_id) {

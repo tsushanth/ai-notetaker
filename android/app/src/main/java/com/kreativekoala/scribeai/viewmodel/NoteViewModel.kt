@@ -647,6 +647,13 @@ class NoteViewModel(
                                         // Daily free-tier backstop (HTTP 429): plain message, not a failure or a paywall.
                                         onError(errorMsg)
                                     } else {
+                                        // The file is on the server but nothing transcribed it: tell the owner (stable message, no content).
+                                        com.kreativekoala.scribeai.FailureReporter.failure(
+                                            flow = "Transcribe recording",
+                                            t = error,
+                                            message = "Transcription request failed after upload",
+                                            context = mapOf("exception" to error.javaClass.simpleName),
+                                        )
                                         onError("Upload successful but transcription failed: $errorMsg")
                                     }
                                 }

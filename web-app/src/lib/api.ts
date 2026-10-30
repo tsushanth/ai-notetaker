@@ -501,6 +501,7 @@ export const subscriptionApi = {
           limits: { notesPerMonth: number; aiGenerationsPerMonth: number; podcastsPerMonth: number };
           remaining: { notes: number; aiGenerations: number; podcasts: number };
         };
+        freeTier?: { legacyLimits: boolean; transcriptionsPerDay: number; aiGenerationsPerDay: number };
         features: {
           canCreateNotes: boolean;
           canUseAI: boolean;

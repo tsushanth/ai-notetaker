@@ -35,7 +35,7 @@ const FAQ = [
   },
   {
     q: 'Is there a free plan?',
-    a: 'Yes. You can start taking notes for free, then upgrade if you need more.',
+    a: 'Yes. Taking notes, recording and transcribing voice, and AI summaries are free. Premium adds quizzes, flashcards, AI chat, podcasts and export.',
   },
   {
     q: 'Who owns what I upload?',

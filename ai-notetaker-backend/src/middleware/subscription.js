@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
+const { legacyLimitsEnabled } = require('../utils/freeTierPolicy');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -71,7 +72,7 @@ const requireSubscription = async (req, res, next) => {
  * Middleware to check usage limits for free tier users
  * Allows limited access to AI features
  */
-const checkUsageLimits = (featureType) => {
+const legacyMonthlyUsageCheck = (featureType) => {
   return async (req, res, next) => {
     try {
       const userId = req.userId;
@@ -137,6 +138,24 @@ const checkUsageLimits = (featureType) => {
         retryable: true
       });
     }
+  };
+};
+
+/**
+ * AI generation gate (summary, quiz, flashcards, chat, mindmap, diagram).
+ *
+ * Default: free for everyone. Only the per-user daily abuse backstop applies (middleware/freeTierLimits.js).
+ * FREE_TIER_LEGACY_LIMITS=true restores the old monthly-limit check (legacyMonthlyUsageCheck, unchanged) in front of
+ * the daily backstop. The flag is read on every request.
+ * `dailyLimiter` is injectable for tests.
+ */
+const checkUsageLimits = (featureType, { dailyLimiter } = {}) => {
+  const legacy = legacyMonthlyUsageCheck(featureType);
+  let daily = dailyLimiter || null;
+  return (req, res, next) => {
+    if (!daily) daily = require('./freeTierLimits').aiDailyLimit();
+    if (!legacyLimitsEnabled()) return daily(req, res, next);
+    return legacy(req, res, (err) => (err ? next(err) : daily(req, res, next)));
   };
 };
 

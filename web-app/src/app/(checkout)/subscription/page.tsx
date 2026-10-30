@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { subscriptionApi } from '@/lib/api';
+import { FREE_FOR_EVERYONE, PREMIUM_PERKS } from '@/lib/freeTier';
 
 const plans = [
   {
@@ -157,16 +158,11 @@ function SubscriptionContent() {
 
       {/* Features */}
       <div className="bg-gray-50 rounded-xl p-4 mb-6">
-        <p className="font-medium text-gray-900 text-sm mb-3">All plans include:</p>
+        <p className="font-medium text-gray-900 text-sm mb-1">Always free</p>
+        <p className="text-xs text-gray-500 mb-3">{FREE_FOR_EVERYONE.join(', ')}.</p>
+        <p className="font-medium text-gray-900 text-sm mb-3">Premium adds:</p>
         <div className="grid grid-cols-1 gap-2">
-          {[
-            'Unlimited notebooks',
-            'AI summaries & formatting',
-            'Quizzes & flashcards',
-            'Audio podcasts from notes',
-            'AI chat assistant',
-            'Cloud sync across devices',
-          ].map((feature) => (
+          {PREMIUM_PERKS.map((feature) => (
             <div key={feature} className="flex items-center gap-2 text-sm text-gray-700">
               <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

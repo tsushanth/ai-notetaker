@@ -1,3 +1,4 @@
+const { verifyStripeWebhook } = require('../utils/stripeWebhook');
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
@@ -926,24 +927,20 @@ router.post('/stripe/sync', authenticate, asyncHandler(async (req, res) => {
 // Stripe Webhook - Handle subscription events
 // ============================================
 router.post('/webhook/stripe', express.raw({ type: 'application/json' }), asyncHandler(async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  let event;
-
-  try {
-    if (webhookSecret) {
-      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-    } else {
-      // For testing without webhook signature verification
-      event = JSON.parse(req.body.toString());
-      logger.warn('Stripe webhook signature verification skipped - no webhook secret configured');
+  const verified = verifyStripeWebhook({
+    stripe,
+    rawBody: req.body,
+    signature: req.headers['stripe-signature'],
+    secret: process.env.STRIPE_WEBHOOK_SECRET,
+  });
+  if (!verified.ok) {
+    logger.error('Stripe webhook rejected', { code: verified.code, error: verified.message });
+    if (verified.code !== 'MISSING_SIGNATURE') {
+      reportFailure('webhook_stripe', new Error(`Stripe webhook rejected: ${verified.code}`), { code: verified.code });
     }
-  } catch (err) {
-    logger.error('Stripe webhook signature verification failed', { error: err.message });
-    reportFailure('webhook_stripe', new Error('Stripe webhook rejected: signature verification failed'), { code: 'BAD_SIGNATURE' });
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    return res.status(verified.status).send(`Webhook Error: ${verified.message}`);
   }
+  const event = verified.event;
 
   logger.info('Stripe webhook received', { type: event.type, id: event.id });
 

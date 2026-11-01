@@ -22,7 +22,7 @@ function stub(rel, exports) {
 }
 stub('../src/utils/logger', { logger });
 stub('../src/config/supabase', { supabase: {}, supabaseAdmin: { from: (t) => db.from(t) } });
-stub('../src/utils/failureReporter', { reportFailure: (...a) => { reports.push(a); }, reportBackendError() {}, reportCrash() {} });
+stub('../src/utils/failureReporter', { reportFailure: (...a) => { reports.push(a); }, reportCounted: (...a) => { reports.push(['counted', ...a]); }, reportBackendError() {}, reportCrash() {} });
 stub('../src/config/openai', { MODELS: {} });
 stub('../src/services/noteService', { createNote: async (uid, n) => { notes.push({ uid, n }); return { id: 'note-1' }; } });
 stub('../src/services/storageService', { downloadFile: (p) => downloadImpl(p) });
@@ -267,12 +267,20 @@ test('failure reporter: unexpected errors report UNKNOWN; success, already-compl
 
   setup(); mockFetch(respond(503), respond(200, dgBody())); await service.transcribeRecording('u1', REC_ID);
   setup(baseRecording({ status: 'completed' })); await service.transcribeRecording('u1', REC_ID);
-  setup(null); await assert.rejects(service.transcribeRecording('u1', REC_ID));
   assert.equal(reports.length, 0);
+  // a transcribe call for a recording that does not exist is a broken journey: a counted (rate-limited) signal, not a failure of a row
+  setup(null); await assert.rejects(service.transcribeRecording('u1', REC_ID));
+  assert.equal(reports.length, 1); assert.equal(reports[0][0], 'counted'); assert.equal(reports[0][2], 'Transcribe requested for a recording that does not exist');
 });
 
 test('failure reporter throwing synchronously cannot break the request', async () => {
   setup(); mockFetch(respond(400));
   const fr = require('../src/utils/failureReporter'); const orig = fr.reportFailure; fr.reportFailure = () => { throw new Error('boom'); };
   try { await assert.rejects(service.transcribeRecording('u1', REC_ID), { statusCode: 500 }); } finally { fr.reportFailure = orig; }
+});
+
+test('row left in processing because the failed-update was rejected is reported, not silent', async () => {
+  setup(baseRecording(), { failUpdates: 99 }); mockFetch(respond(400));
+  await assert.rejects(service.transcribeRecording('u1', REC_ID));
+  assert.ok(reports.some((r) => r[2] && r[2].code === 'MARK_FAILED_UPDATE_FAILED'));
 });

@@ -6,9 +6,9 @@ const noteService = require('./noteService');
 const storageService = require('./storageService');
 const path = require('path');
 const { transcribeAudio, TranscriptionError } = require('./deepgramClient');
-const { reportFailure } = require('../utils/failureReporter');
+const { reportFailure, reportCounted } = require('../utils/failureReporter');
 
-const REPORTABLE_CODES = new Set(['NO_SPEECH', 'PROVIDER_ERROR', 'PROVIDER_TIMEOUT', 'DOWNLOAD_FAILED', 'EMPTY_FILE']);
+const REPORTABLE_CODES = new Set(['NO_SPEECH', 'PROVIDER_ERROR', 'PROVIDER_TIMEOUT', 'DOWNLOAD_FAILED', 'EMPTY_FILE', 'RECORD_UPDATE_FAILED', 'MARK_FAILED_UPDATE_FAILED']);
 
 // MIME type mapping for different audio formats
 const MIME_TYPES = {
@@ -136,6 +136,7 @@ class TranscriptionService {
 
       if (fetchError || !recording) {
         logger.error('Recording not found', { recordingId, userId, error: fetchError?.message });
+        reportCounted('recording_failed', 'Transcribe requested for a recording that does not exist', { code: 'RECORDING_NOT_FOUND', db_error: fetchError ? 'true' : 'false' });
         throw new AppError('Recording not found', 404);
       }
       loaded = true;
@@ -266,6 +267,10 @@ class TranscriptionService {
         logger.error('Failed to update recording', { error: updateError, recordingId, attempt });
       }
       // Don't throw here - the note exists and transcription succeeded, so the client gets success.
+      // But the row would stay 'processing' forever with nobody told: report it.
+      if (updateError) {
+        this.reportRecordingFailed('RECORD_UPDATE_FAILED', outcome);
+      }
 
       this.logOutcome({ ...outcome, outcome: 'completed', textLength: transcriptionText.length, recordUpdated: !updateError });
 
@@ -297,8 +302,10 @@ class TranscriptionService {
         const dbMessage = typeof error.dbMessage === 'string'
           ? error.dbMessage
           : `INTERNAL_ERROR: ${String(error.message || 'unknown error').slice(0, 300)}`;
-        await this.markFailed(recordingId, dbMessage, durationSec);
+        const marked = await this.markFailed(recordingId, dbMessage, durationSec);
         this.reportRecordingFailed(code, outcome);
+        // The row is now stuck in 'processing' (the reconciler will also catch it); say so explicitly.
+        if (!marked) this.reportRecordingFailed('MARK_FAILED_UPDATE_FAILED', outcome);
       }
 
       if (error instanceof AppError) {

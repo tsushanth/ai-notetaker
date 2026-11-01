@@ -5,6 +5,7 @@ const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { getSubscriptionStatus } = require('../middleware/subscription');
 const learningService = require('../services/learningService');
 const { logger } = require('../utils/logger');
+const { reportFailure } = require('../utils/failureReporter');
 
 // ============================================
 // Start or resume a learning session for a note (Premium)
@@ -60,6 +61,7 @@ router.post('/webhook/lesson-ready', asyncHandler(async (req, res) => {
   // Handle generation failure from worker
   if (error || !lessonData) {
     logger.error('Lesson generation failed', { sessionId, error });
+    reportFailure('learning_lesson_failed', new Error('Lesson generation failed (worker callback)'), { code: 'WORKER_REPORTED_FAILURE' });
     const { supabaseAdmin } = require('../config/supabase');
     await supabaseAdmin
       .from('learning_sessions')
@@ -84,6 +86,7 @@ router.post('/webhook/infographic-ready', asyncHandler(async (req, res) => {
 
   if (type === 'infographic_error' || !svg) {
     logger.error('Infographic generation failed', { noteId, error: genError });
+    reportFailure('learning_infographic_failed', new Error('Infographic generation failed (worker callback)'), { code: 'WORKER_REPORTED_FAILURE' });
     return res.json({ success: true, note: 'infographic failed' });
   }
 
@@ -101,6 +104,7 @@ router.post('/webhook/infographic-ready', asyncHandler(async (req, res) => {
 
   if (uploadError) {
     logger.error('Failed to upload infographic SVG', { error: uploadError.message });
+    reportFailure('learning_infographic_failed', new Error('Infographic SVG storage upload failed'), { code: 'STORAGE_UPLOAD_FAILED' });
     return res.json({ success: false, error: 'Upload failed' });
   }
 

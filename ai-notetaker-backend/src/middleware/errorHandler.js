@@ -1,12 +1,14 @@
 const { logger } = require('../utils/logger');
-const { reportBackendError } = require('../utils/failureReporter');
+const { reportBackendError, reportCounted } = require('../utils/failureReporter');
 
 /**
  * Custom error class for application errors
  */
 class AppError extends Error {
-  constructor(message, statusCode = 500, isOperational = true) {
+  constructor(message, statusCode = 500, isOperational = true, report = null) {
     super(message);
+    // Optional { message, context }: a 4xx that is really a failed user journey (rejected upload). Counted, not per request.
+    this.report = report;
     this.statusCode = statusCode;
     this.isOperational = isOperational;
     Error.captureStackTrace(this, this.constructor);
@@ -39,6 +41,10 @@ const errorHandler = (err, req, res, next) => {
   // Multer file upload error
   if (err.code === 'LIMIT_FILE_SIZE') {
     error = new AppError('File size too large', 400);
+    // The user saw a failed upload and nothing else did: tell the owner (counted, not per request).
+    reportCounted('upload_rejected', 'Upload rejected: file too large', { reason: 'FILE_TOO_LARGE', route: `${req.baseUrl || ''}${req.route?.path || ''}` });
+  } else if (err.name === 'MulterError') {
+    reportCounted('upload_rejected', 'Upload rejected: malformed multipart request', { reason: String(err.code || 'MULTER') });
   }
 
   // Duplicate key error
@@ -53,6 +59,10 @@ const errorHandler = (err, req, res, next) => {
 
   if (err.name === 'TokenExpiredError') {
     error = new AppError('Token expired', 401);
+  }
+
+  if (err.report && err.report.message) {
+    reportCounted('upload_rejected', err.report.message, err.report.context || {});
   }
 
   // Only real server failures page us; 4xx is user/validation noise

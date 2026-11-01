@@ -15,6 +15,8 @@ router.get('/', async (req, res) => {
   const checks = {
     supabaseAnon: { status: 'unknown', latencyMs: null },
     supabaseAdmin: { status: 'unknown', latencyMs: null },
+    recordingsTable: { status: 'unknown', latencyMs: null },
+    storage: { status: 'unknown', latencyMs: null },
     openai: { status: 'unknown' }
   };
 
@@ -49,6 +51,27 @@ router.get('/', async (req, res) => {
         error: adminError.message
       });
     }
+
+    // The upload path needs the recordings table and the audio bucket, not just `notes`.
+    const recStart = Date.now();
+    const { error: recError } = await supabaseAdmin.from('recordings').select('id', { head: true }).limit(1);
+    checks.recordingsTable.latencyMs = Date.now() - recStart;
+    checks.recordingsTable.status = recError ? 'unhealthy' : 'healthy';
+    if (recError) { checks.recordingsTable.error = recError.message; isHealthy = false; }
+
+    const stStart = Date.now();
+    const bucketName = process.env.SUPABASE_STORAGE_BUCKET || 'notetaker-files';
+    let stError = null;
+    try {
+      const r = await Promise.race([
+        supabaseAdmin.storage.getBucket(bucketName),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('storage check timed out')), 5000)),
+      ]);
+      stError = r.error;
+    } catch (e) { stError = e; }
+    checks.storage.latencyMs = Date.now() - stStart;
+    checks.storage.status = stError ? 'unhealthy' : 'healthy';
+    if (stError) { checks.storage.error = stError.message; isHealthy = false; }
 
     // Check Anthropic API key is configured
     checks.openai.status = process.env.ANTHROPIC_API_KEY ? 'configured' : 'not configured';

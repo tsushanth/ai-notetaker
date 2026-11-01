@@ -41,6 +41,8 @@ const sharedAiWindow = new SlidingWindow();
 const sharedSttWindow = new SlidingWindow();
 
 function limitResponse(res, { scope, message, code = 'DAILY_LIMIT_REACHED', status = 429, limit, used, retryAfterSec }) {
+  // Counted (first per scope per day emails, the rest only bump a counter): with a handful of users a limit hit is news.
+  try { require('../utils/failureReporter').reportCounted('free_tier_limit', `Free-tier limit reached: ${String(scope)}`, { scope: String(scope), limit: String(limit), code: String(code) }); } catch { /* never block the response */ }
   if (retryAfterSec) res.set('Retry-After', String(retryAfterSec));
   return res.status(status).json({
     success: false,

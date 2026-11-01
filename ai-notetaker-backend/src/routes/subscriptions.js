@@ -4,6 +4,15 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
+const { reportFailure } = require('../utils/failureReporter');
+
+// Stripe errors that are our/Stripe's fault (not a declined card or bad input): these page the owner.
+function reportStripeFailure(flow, error) {
+  const t = String(error && error.type || '');
+  const userCaused = t === 'StripeCardError' || t === 'StripeInvalidRequestError' || t === 'StripeIdempotencyError';
+  if (userCaused) return;
+  reportFailure(flow, new Error(`Stripe ${flow === 'stripe_checkout' ? 'checkout' : 'sync'} failed`), { stripe_error_type: t || 'unknown', status: String(error && error.statusCode || 'unknown') });
+}
 const crypto = require('crypto');
 const Stripe = require('stripe');
 const { trackSubscriptionMetric, getServerTrialStatus } = require('../middleware/subscription');
@@ -715,6 +724,7 @@ router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
       statusCode: error.statusCode,
       stack: error.stack
     });
+    reportStripeFailure('stripe_checkout', error);
     return res.status(400).json({
       success: false,
       error: error.message || 'Failed to create checkout session'
@@ -904,6 +914,7 @@ router.post('/stripe/sync', authenticate, asyncHandler(async (req, res) => {
     });
   } catch (error) {
     logger.error('Stripe sync error', { error: error.message, userId });
+    reportStripeFailure('stripe_sync', error);
     return res.status(400).json({
       success: false,
       error: error.message || 'Failed to sync subscription'
@@ -930,6 +941,7 @@ router.post('/webhook/stripe', express.raw({ type: 'application/json' }), asyncH
     }
   } catch (err) {
     logger.error('Stripe webhook signature verification failed', { error: err.message });
+    reportFailure('webhook_stripe', new Error('Stripe webhook rejected: signature verification failed'), { code: 'BAD_SIGNATURE' });
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -1282,6 +1294,7 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     logger.error('Apple webhook processing error', { error: error.message });
+    reportFailure('webhook_apple', new Error('Apple webhook processing failed (acknowledged 200)'), { code: 'PROCESSING_FAILED' });
     // Still return 200 to acknowledge receipt
     res.json({ success: true });
   }

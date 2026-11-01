@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
+const { adminSecretMatches: secretsMatch } = require('../middleware/adminSecret');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { getSubscriptionStatus } = require('../middleware/subscription');
 const learningService = require('../services/learningService');
@@ -57,6 +58,10 @@ router.post('/webhook/lesson-ready', asyncHandler(async (req, res) => {
   if (!sessionId || !secret) {
     throw new AppError('Missing required fields', 400);
   }
+  // Authenticate BEFORE acting on anything in the body: the failure branch below used to run for any caller who knew a session id.
+  if (!secretsMatch(secret, process.env.LEARNING_WORKER_SECRET)) {
+    throw new AppError('Invalid worker secret', 401);
+  }
 
   // Handle generation failure from worker
   if (error || !lessonData) {
@@ -80,7 +85,7 @@ router.post('/webhook/lesson-ready', asyncHandler(async (req, res) => {
 router.post('/webhook/infographic-ready', asyncHandler(async (req, res) => {
   const { type, noteId, userId, svg, extractedData, style, secret, error: genError } = req.body;
 
-  if (!secret || secret !== process.env.LEARNING_WORKER_SECRET) {
+  if (!secretsMatch(secret, process.env.LEARNING_WORKER_SECRET)) {
     throw new AppError('Invalid worker secret', 401);
   }
 

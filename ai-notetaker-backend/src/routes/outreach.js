@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
+const { verifySnsMessage, isSnsUrl } = require('../utils/snsVerify');
 const { logger } = require('../utils/logger');
 const { supabaseAdmin } = require('../config/supabase');
 const emailOutreachService = require('../services/sendgridOutreachService');
@@ -672,12 +673,24 @@ router.post('/send-test', authenticate, requireAdmin, asyncHandler(async (req, r
 router.post('/webhook/ses', asyncHandler(async (req, res) => {
   const message = req.body;
 
+  // SNS signs every delivery. Without this check anyone could POST a forged bounce/complaint (suppress recipients) and, worse,
+  // a SubscriptionConfirmation whose SubscribeURL we would fetch server-side (SSRF).
+  const verdict = await verifySnsMessage(message);
+  if (!verdict.ok) {
+    logger.warn('SES/SNS webhook rejected', { reason: verdict.reason });
+    return res.status(403).send('Forbidden');
+  }
+
   // Handle SNS subscription confirmation
   if (message.Type === 'SubscriptionConfirmation') {
-    logger.info('SNS subscription confirmation', { subscribeUrl: message.SubscribeURL });
+    if (!isSnsUrl(message.SubscribeURL)) {
+      logger.warn('SNS subscription confirmation ignored: SubscribeURL is not an SNS endpoint');
+      return res.status(200).send('OK');
+    }
+    logger.info('SNS subscription confirmation received');
     // Auto-confirm by visiting the URL
     try {
-      await require('axios').get(message.SubscribeURL);
+      await require('axios').get(message.SubscribeURL, { timeout: 5000, maxRedirects: 0 });
       logger.info('SNS subscription confirmed');
     } catch (error) {
       logger.error('Failed to confirm SNS subscription', { error: error.message });

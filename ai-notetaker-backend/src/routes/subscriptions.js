@@ -1,5 +1,6 @@
 const { verifyStripeWebhook } = require('../utils/stripeWebhook');
 const express = require('express');
+const { adminSecretMatches: secretsMatch } = require('../middleware/adminSecret');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -1887,10 +1888,17 @@ async function handleStripeWebhook(event, stripeClient) {
 // RevenueCat Webhook - Handle subscription events
 // ============================================
 router.post('/webhook/revenuecat', express.json(), asyncHandler(async (req, res) => {
+  // FAIL CLOSED. This used to only compare when a secret was configured, i.e. with the secret unset (it is not set
+  // on Fly) ANY caller could POST an event and set any user's subscription to active. RevenueCat sends the configured
+  // Authorization header value verbatim on every delivery.
   const authHeader = req.headers['authorization'];
   const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
 
-  if (webhookSecret && authHeader !== webhookSecret) {
+  if (!webhookSecret) {
+    logger.error('RevenueCat webhook refused: REVENUECAT_WEBHOOK_SECRET is not configured');
+    return res.status(503).json({ error: 'Webhook not configured' });
+  }
+  if (!secretsMatch(authHeader, webhookSecret)) {
     logger.warn('RevenueCat webhook: invalid authorization header');
     return res.status(401).json({ error: 'Unauthorized' });
   }

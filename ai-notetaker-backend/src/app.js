@@ -23,7 +23,7 @@ const aiRoutes = require('./routes/ai');
 const userRoutes = require('./routes/user');
 const analyticsRoutes = require('./routes/analytics');
 const alertsRoutes = require('./routes/alerts');
-const { reportCrash, reportFailure, reportUnreportedServerError } = require('./utils/failureReporter');
+const { reportCrash, reportFailure, reportCounted, reportUnreportedServerError } = require('./utils/failureReporter');
 const subscriptionsRoutes = require('./routes/subscriptions');
 const onboardingRoutes = require('./routes/onboarding');
 const formattingRoutes = require('./routes/formatting');
@@ -97,26 +97,21 @@ const { logger } = require('./utils/logger');
 const crypto = require('crypto');
 const meetingService = require('./services/meetingService');
 const { verifyStripeWebhook } = require('./utils/stripeWebhook');
+const { verifyRecallWebhook } = require('./utils/recallWebhook');
 
 // Recall.ai webhook - needs raw body for signature verification
 const RECALL_WEBHOOK_SECRET = process.env.RECALL_WEBHOOK_SECRET;
+// Optional: Recall's workspace verification secret (used for real-time endpoints and accounts created on/after
+// 2025-12-15). Tried in addition to RECALL_WEBHOOK_SECRET.
+const RECALL_VERIFICATION_SECRET = process.env.RECALL_VERIFICATION_SECRET;
 
-function verifyRecallSignature(signature, body) {
-  if (!RECALL_WEBHOOK_SECRET || !signature) {
-    logger.warn('Recall webhook signature verification skipped - missing secret or signature');
-    return true; // Allow through in development if not configured
-  }
-
+// LEGACY check (never matched Recall's real traffic: Recall signs with Svix headers, not x-recall-signature).
+// Kept only so phase 1 never rejects anything the old code accepted. Replaced by the Svix check in phase 2.
+function legacyRecallAccepts(signature, body) {
+  if (!RECALL_WEBHOOK_SECRET || !signature) return true;
   try {
-    const expectedSignature = crypto
-      .createHmac('sha256', RECALL_WEBHOOK_SECRET)
-      .update(body, 'utf8')
-      .digest('hex');
-
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
+    const expectedSignature = crypto.createHmac('sha256', RECALL_WEBHOOK_SECRET).update(body, 'utf8').digest('hex');
+    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
   } catch (error) {
     logger.error('Recall webhook signature verification error', { error: error.message });
     return false;
@@ -129,8 +124,22 @@ app.post('/api/meetings/webhook/recall',
     const rawBody = req.body.toString();
     const signature = req.headers['x-recall-signature'] || req.headers['x-webhook-signature'];
 
-    // Verify webhook signature
-    if (RECALL_WEBHOOK_SECRET && !verifyRecallSignature(signature, rawBody)) {
+    // PHASE 1 (log-only for the Svix check): verify with Recall's documented Svix scheme. A failure is logged
+    // (header NAMES only) and counted but the request is still accepted, because we have not yet seen a genuine
+    // signed delivery in our logs. Phase 2 (separate PR) rejects instead.
+    const svix = verifyRecallWebhook({
+      rawBody: req.body,
+      headers: req.headers,
+      secrets: [RECALL_WEBHOOK_SECRET, RECALL_VERIFICATION_SECRET],
+    });
+    if (svix.ok) {
+      logger.info('webhookAuth', { provider: 'recall', outcome: 'ok', scheme: svix.scheme });
+    } else {
+      logger.warn('webhookAuth', { provider: 'recall', outcome: 'unverified_accepted', reason: svix.reason, signatureHeaders: svix.headerNames.join(',') || 'none' });
+      reportCounted('webhook_recall', `Recall webhook not verified (phase 1, accepted): ${svix.reason}`, { reason: svix.reason, signatureHeaders: svix.headerNames.join(',') || 'none' });
+    }
+
+    if (!svix.ok && !legacyRecallAccepts(signature, rawBody)) {
       logger.warn('Invalid Recall webhook signature received');
       reportFailure('webhook_recall', new Error('Recall webhook rejected: invalid signature'), { code: 'BAD_SIGNATURE' });
       return res.status(401).json({ error: 'Invalid webhook signature' });

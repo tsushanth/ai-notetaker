@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const Stripe = require('stripe');
 const { trackSubscriptionMetric, getServerTrialStatus } = require('../middleware/subscription');
 const { getUserActiveRedemption } = require('../services/creatorService');
+const { getOrCreateCustomer, findOpenSession, createSession } = require('../utils/stripeCheckout');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -628,17 +629,17 @@ router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
     let customerId = existingSubscription?.stripe_customer_id;
     logger.info('Existing subscription check', { userId, hasExistingCustomerId: !!customerId });
 
-    // Create or get Stripe customer
-    if (!customerId) {
-      logger.info('Creating new Stripe customer', { userId, email: userEmail });
-      const customer = await stripe.customers.create({
-        email: userEmail,
-        name: userName || undefined,
-        metadata: { userId }
-      });
-      customerId = customer.id;
-      logger.info('Created Stripe customer', { userId, customerId });
-    }
+    // Reuse the user's Stripe customer (stored id, else found in Stripe) so abandoned checkouts do not pile up duplicates
+    const found = await getOrCreateCustomer({
+      stripe,
+      userId,
+      email: userEmail,
+      name: userName,
+      storedCustomerId: customerId,
+      log: (msg, meta) => logger.warn(msg, meta),
+    });
+    customerId = found.customerId;
+    logger.info('Stripe customer for checkout', { userId, customerId, source: found.source });
 
     // Determine price ID
     const selectedPriceId = priceId || (plan === 'yearly' ? STRIPE_PRICES.yearly : STRIPE_PRICES.monthly);
@@ -685,6 +686,8 @@ router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
         address: 'auto',
         name: 'auto',
       },
+      // Lets a repeat tap return the still-open session instead of minting another one.
+      metadata: { userId, priceId: selectedPriceId, discount: discountCouponId ? '1' : '0' },
     };
 
     // Apply promo discount coupon if user has one
@@ -699,10 +702,13 @@ router.post('/stripe/checkout', authenticate, asyncHandler(async (req, res) => {
       sessionConfig.allow_promotion_codes = true;
     }
 
-    // Create checkout session
-    const session = await stripe.checkout.sessions.create(sessionConfig);
+    // Return the user's still-open session for this plan if there is one, else create it
+    const openSession = await findOpenSession({
+      stripe, customerId, userId, priceId: selectedPriceId, discount: !!discountCouponId,
+    });
+    const session = openSession || await createSession({ stripe, sessionConfig, userId });
 
-    logger.info('Stripe checkout session created', {
+    logger.info(openSession ? 'Stripe checkout session reused' : 'Stripe checkout session created', {
       userId,
       sessionId: session.id,
       hasPromoCoupon: !!discountCouponId

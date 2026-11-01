@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 // Reporter enabled for this file (it is disabled when NODE_ENV=test); fetch is replaced so nothing leaves the machine.
 process.env.NODE_ENV = 'production';
+process.env.FAILURE_REPORTER_FORCE = '1'; // the reporter is also off under the node test runner; this file stubs fetch itself
 const sent = [];
 global.fetch = async (url, opts) => { sent.push(JSON.parse(opts.body)); return { ok: true }; };
 const fr = require('../src/utils/failureReporter');

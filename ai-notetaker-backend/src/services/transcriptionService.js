@@ -6,9 +6,13 @@ const noteService = require('./noteService');
 const storageService = require('./storageService');
 const path = require('path');
 const { transcribeAudio, TranscriptionError } = require('./deepgramClient');
+const { measureLevel } = require('../utils/audioLevel');
 const { reportFailure, reportCounted } = require('../utils/failureReporter');
 
 const REPORTABLE_CODES = new Set(['NO_SPEECH', 'PROVIDER_ERROR', 'PROVIDER_TIMEOUT', 'DOWNLOAD_FAILED', 'EMPTY_FILE', 'RECORD_UPDATE_FAILED', 'MARK_FAILED_UPDATE_FAILED']);
+
+// Shown instead of the generic message when the stored audio is digital silence: it tells the user what to check.
+const SILENT_MESSAGE = 'The recording is completely silent. Check that the microphone is allowed for this app, not muted and not in use by another app, then try again.';
 
 // MIME type mapping for different audio formats
 const MIME_TYPES = {
@@ -97,6 +101,7 @@ class TranscriptionService {
         audio_seconds: str(outcome.durationSec == null ? null : Math.round(outcome.durationSec)),
         file_kb: str(outcome.fileSize == null ? null : Math.round(outcome.fileSize / 1024)),
         detected_language: str(outcome.detectedLanguage),
+        audio_level: outcome.audioLevel || 'unknown',
         provider_status: str(outcome.providerStatus),
       });
     } catch (e) {
@@ -221,8 +226,13 @@ class TranscriptionService {
         const lang = dg.detectedLanguage
           ? `${dg.detectedLanguage}${dg.languageConfidence != null ? ` (confidence ${dg.languageConfidence})` : ''}`
           : 'unknown';
-        throw new TranscriptionError('NO_SPEECH', 'No speech detected in the recording', 422, {
-          dbMessage: `NO_SPEECH: audio ${this.formatDuration(dg.durationSec)}, detected language ${lang}, file ${this.formatSize(audioBuffer.length)}`,
+        // Was there any sound at all? A file of pure zeros means the device delivered silence (mic
+        // muted/blocked/in use), which no transcription change can fix and the user can. Best effort.
+        const level = await measureLevel(audioBuffer);
+        outcome.audioLevel = level ? (level.silent ? 'silent' : 'audible') : 'unknown';
+        const levelFacts = level ? `, level ${level.silent ? 'silent (all samples zero)' : 'audible'} (peak ${level.peakDb} dB, mean ${level.meanDb} dB)` : '';
+        throw new TranscriptionError('NO_SPEECH', level?.silent ? SILENT_MESSAGE : 'No speech detected in the recording', 422, {
+          dbMessage: `NO_SPEECH: audio ${this.formatDuration(dg.durationSec)}, detected language ${lang}, file ${this.formatSize(audioBuffer.length)}${levelFacts}`,
           providerStatus: dg.providerStatus
         });
       }

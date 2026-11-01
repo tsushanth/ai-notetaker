@@ -8,6 +8,11 @@
  *                         UPLOADED_STUCK_MIN: the file arrived but transcription never started. Report only, not mutated.
  *   - ZERO_COMPLETED_24H recordings were created in the last 24 h and none completed.
  *   - PIPELINE_DEADMAN   uploads exist in the last DEADMAN_DAYS days but zero recordings completed in that window.
+ *   The last two only count "pipeline-relevant" uploads: a recording that failed with NO_SPEECH is a property of the
+ *   audio (silence), not of the pipeline, and a row still inside its normal processing time is in flight. They also
+ *   need at least MIN_ATTEMPTS such uploads from at least MIN_USERS distinct users, so a low-traffic app (a few
+ *   uploads a month) does not page because one user recorded silence. Individual failures still page one by one
+ *   through recording_failed in transcriptionService, so a single real provider error is never hidden by this.
  * Messages are fixed per code; context carries counts only (no ids, titles, users). Per-code cooldown keeps one
  * email per COOLDOWN_H per process (the Worker dedupes per hour on top). Fire-and-forget; never throws.
  */
@@ -24,6 +29,8 @@ const CFG = {
   uploadedStuckMin: 60,
   uploadedLookbackH: 24,
   deadmanDays: 3,
+  minAttempts: 3,
+  minUsers: 2,
   cooldownH: 12,
   maxFailPerPass: 5,
 };
@@ -53,11 +60,24 @@ function emit(code, context, now) {
   return true;
 }
 
+// Failures that describe the recording, not the pipeline (silence/noise). Matches the current
+// "NO_SPEECH: audio ..." form and the older "No speech detected in the recording" text.
+function isUserCausedFailure(r) {
+  return r.status === 'failed' && /^(NO_SPEECH\b|No speech detected)/i.test(String(r.error_message || ''));
+}
+
 /**
- * Pure evaluation. rows: [{id,status,created_at,updated_at}] created within the lookback; completedInDeadmanWindow: number.
+ * Pure evaluation. rows: [{id,status,created_at,updated_at,user_id?,error_message?}] created within the lookback;
+ * completedInDeadmanWindow: number.
  */
 function evaluate(rows, completedInDeadmanWindow, now = Date.now()) {
   const t = (v) => new Date(v).getTime();
+  // Uploads that say something about pipeline health: not silence, not still in flight.
+  const relevant = (r) => !isUserCausedFailure(r)
+    && !(r.status === 'processing' && now - t(r.updated_at) <= CFG.processingStuckMin * MIN)
+    && !(r.status === 'uploaded' && now - t(r.updated_at) <= CFG.uploadedStuckMin * MIN);
+  const enough = (list) => list.length >= CFG.minAttempts
+    && new Set(list.map((r) => r.user_id ?? r.id)).size >= CFG.minUsers;
   const stuckProcessing = rows.filter((r) => r.status === 'processing' && now - t(r.updated_at) > CFG.processingStuckMin * MIN);
   const stuckUploaded = rows.filter((r) => r.status === 'uploaded'
     && now - t(r.created_at) < CFG.uploadedLookbackH * HOUR
@@ -66,13 +86,15 @@ function evaluate(rows, completedInDeadmanWindow, now = Date.now()) {
   const created24 = last24.length;
   const completed24 = last24.filter((r) => r.status === 'completed').length;
   const failed24 = last24.filter((r) => r.status === 'failed').length;
-  const inDeadman = rows.filter((r) => now - t(r.created_at) < CFG.deadmanDays * DAY).length;
+  const relevant24 = last24.filter(relevant);
+  const relevantDeadman = rows.filter((r) => now - t(r.created_at) < CFG.deadmanDays * DAY && relevant(r));
+  const inDeadman = relevantDeadman.length;
   return {
     stuckProcessing,
     stuckUploadedCount: stuckUploaded.length,
     created24, completed24, failed24,
-    zeroCompleted24h: created24 > 0 && completed24 === 0,
-    deadman: inDeadman > 0 && completedInDeadmanWindow === 0,
+    zeroCompleted24h: enough(relevant24) && completed24 === 0,
+    deadman: enough(relevantDeadman) && completedInDeadmanWindow === 0,
     uploadsInDeadmanWindow: inDeadman,
   };
 }
@@ -99,7 +121,7 @@ async function reconcileRecordings({ db, now = Date.now() } = {}) {
     const since = new Date(now - Math.max(CFG.deadmanDays * DAY, CFG.uploadedLookbackH * HOUR, DAY)).toISOString();
     const { data: rows, error } = await client
       .from('recordings')
-      .select('id, status, created_at, updated_at')
+      .select('id, user_id, status, error_message, created_at, updated_at')
       .gte('created_at', since)
       .order('created_at', { ascending: false })
       .limit(1000);

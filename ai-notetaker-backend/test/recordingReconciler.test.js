@@ -11,7 +11,9 @@ const rec = require('../src/services/recordingReconciler');
 const NOW = Date.UTC(2026, 9, 30, 12, 0, 0);
 const ago = (ms) => new Date(NOW - ms).toISOString();
 const MIN = 60000, H = 3600000, D = 24 * H;
-const row = (status, createdAgo, updatedAgo = createdAgo, id = `r${Math.random()}`) => ({ id, status, created_at: ago(createdAgo), updated_at: ago(updatedAgo) });
+let uid = 0;
+const row = (status, createdAgo, updatedAgo = createdAgo, id = `r${Math.random()}`, extra = {}) => ({ id, user_id: `u${uid++}`, status, created_at: ago(createdAgo), updated_at: ago(updatedAgo), ...extra });
+const noSpeech = (createdAgo, extra = {}) => row('failed', createdAgo, createdAgo, undefined, { error_message: 'NO_SPEECH: audio 8.2s, detected language en (confidence 0), file 99 KB', ...extra });
 
 test('evaluate: healthy pipeline raises nothing', () => {
   const ev = rec.evaluate([row('completed', 2 * H), row('completed', 5 * H), row('failed', 3 * H)], 2, NOW);
@@ -32,10 +34,38 @@ test('evaluate: uploaded stuck only inside the lookback and past the threshold',
 });
 
 test('evaluate: zero completed in 24h with uploads, and dead-man over 3 days', () => {
-  const ev = rec.evaluate([row('failed', 2 * H), row('failed', 30 * H)], 0, NOW);
+  const ev = rec.evaluate([row('failed', 2 * H), row('failed', 3 * H), row('failed', 4 * H), row('failed', 30 * H)], 0, NOW);
   assert.equal(ev.zeroCompleted24h, true);
   assert.equal(ev.deadman, true);
-  assert.equal(ev.failed24, 1);
+  assert.equal(ev.failed24, 3);
+  assert.equal(ev.uploadsInDeadmanWindow, 4);
+});
+
+test('evaluate: low traffic is not an outage (1-2 failed uploads, or one user repeating)', () => {
+  const one = rec.evaluate([row('failed', 2 * H, 2 * H, undefined, { error_message: 'PROVIDER_ERROR: Deepgram HTTP 401' })], 0, NOW);
+  assert.equal(one.zeroCompleted24h, false);
+  assert.equal(one.deadman, false);
+  const sameUser = ['a', 'b', 'c'].map((x, i) => row('failed', (i + 1) * H, undefined, x, { user_id: 'only-user' }));
+  const ev = rec.evaluate(sameUser, 0, NOW);
+  assert.equal(ev.zeroCompleted24h, false);
+  assert.equal(ev.deadman, false);
+});
+
+test('evaluate: NO_SPEECH failures (new and legacy text) are the audio, not the pipeline', () => {
+  const legacy = row('failed', 5 * H, 5 * H, undefined, { error_message: 'No speech detected in the recording' });
+  const ev = rec.evaluate([noSpeech(2 * H), noSpeech(3 * H), legacy, noSpeech(40 * H)], 0, NOW);
+  assert.equal(ev.zeroCompleted24h, false);
+  assert.equal(ev.deadman, false);
+  assert.equal(ev.uploadsInDeadmanWindow, 0);
+  // but they do not hide a real outage next to them
+  const mixed = rec.evaluate([noSpeech(1 * H), row('failed', 2 * H), row('failed', 3 * H), row('failed', 4 * H)], 0, NOW);
+  assert.equal(mixed.deadman, true);
+});
+
+test('evaluate: rows still in flight do not count as attempts', () => {
+  const ev = rec.evaluate([row('processing', 2 * MIN), row('processing', 3 * MIN), row('uploaded', 5 * MIN), row('failed', 1 * H)], 0, NOW);
+  assert.equal(ev.uploadsInDeadmanWindow, 1);
+  assert.equal(ev.deadman, false);
 });
 
 test('evaluate: no uploads at all is NOT an alarm (tiny traffic)', () => {
@@ -94,10 +124,16 @@ test('reconcile: stuck processing is marked failed with compare-and-set and repo
 
 test('reconcile: dead-man and zero-completed both fire when everything failed', async () => {
   rec._resetForTests(); reports.length = 0;
-  const db = fakeDb({ rows: [row('failed', 2 * H), row('failed', 40 * H)], completed: 0 });
+  const db = fakeDb({ rows: [row('failed', 2 * H), row('failed', 3 * H), row('failed', 4 * H), row('failed', 40 * H)], completed: 0 });
   await rec.reconcileRecordings({ db, now: NOW });
   const codes = reports.map((r) => r.ctx.code).sort();
   assert.deepEqual(codes, ['PIPELINE_DEADMAN', 'ZERO_COMPLETED_24H']);
+});
+
+test('reconcile: the 2026-11-01 false positive (one silent upload, nothing else in 3 days) sends nothing', async () => {
+  rec._resetForTests(); reports.length = 0;
+  await rec.reconcileRecordings({ db: fakeDb({ rows: [noSpeech(2 * H)], completed: 0 }), now: NOW });
+  assert.equal(reports.length, 0);
 });
 
 test('reconcile: a stuck uploaded row reports but is not modified', async () => {

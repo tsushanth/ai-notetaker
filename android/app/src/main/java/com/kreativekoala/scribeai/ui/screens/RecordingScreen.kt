@@ -40,6 +40,7 @@ import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.FreeTierErrors
+import com.kreativekoala.scribeai.utils.SilenceDetector
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -97,6 +98,9 @@ fun RecordingScreen(
     var audioFile by remember { mutableStateOf<File?>(null) }
     var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var recordingTitle by remember { mutableStateOf("") }
+    // True when the mic delivered only zeros (muted, blocked, in use elsewhere): warn before uploading.
+    val silenceDetector = remember { SilenceDetector() }
+    var silentWarning by remember { mutableStateOf(false) }
 
     // Permission handling
     var hasPermission by remember {
@@ -120,6 +124,7 @@ fun RecordingScreen(
             while (screenState == RecordingScreenState.Recording) {
                 delay(1000)
                 recordingDuration += 1000
+                sampleLevel(mediaRecorder, silenceDetector)
             }
         }
     }
@@ -162,6 +167,8 @@ fun RecordingScreen(
             }
 
             recordingDuration = 0L
+            silenceDetector.reset()
+            silentWarning = false
             screenState = RecordingScreenState.Recording
             Log.d("RecordingScreen", "Recording started: ${file.absolutePath}")
         } catch (e: Exception) {
@@ -194,6 +201,8 @@ fun RecordingScreen(
 
     fun stopRecording() {
         try {
+            sampleLevel(mediaRecorder, silenceDetector) // last interval, must happen before release()
+            silentWarning = silenceDetector.isSilent
             mediaRecorder?.apply {
                 stop()
                 release()
@@ -212,6 +221,7 @@ fun RecordingScreen(
         audioFile = null
         recordingDuration = 0L
         recordingTitle = ""
+        silentWarning = false
         screenState = RecordingScreenState.Idle
     }
 
@@ -363,6 +373,7 @@ fun RecordingScreen(
                 is RecordingScreenState.ReviewingRecording -> {
                     ReviewContent(
                         duration = recordingDuration,
+                        silentWarning = silentWarning,
                         title = recordingTitle,
                         onTitleChange = { recordingTitle = it },
                         onProcess = { processRecording() },
@@ -401,6 +412,16 @@ fun RecordingScreen(
                 }
             }
         }
+    }
+}
+
+/** Feeds the current loudest-sample reading to the detector; a recorder that cannot report just adds nothing. */
+private fun sampleLevel(recorder: MediaRecorder?, detector: SilenceDetector) {
+    val r = recorder ?: return
+    try {
+        detector.add(r.maxAmplitude)
+    } catch (e: Exception) {
+        Log.w("RecordingScreen", "maxAmplitude unavailable", e)
     }
 }
 
@@ -575,6 +596,7 @@ private fun RecordingContent(
 @Composable
 private fun ReviewContent(
     duration: Long,
+    silentWarning: Boolean,
     title: String,
     onTitleChange: (String) -> Unit,
     onProcess: () -> Unit,
@@ -611,6 +633,16 @@ private fun ReviewContent(
             fontSize = 16.sp,
             color = TextSecondary
         )
+
+        if (silentWarning) {
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(R.string.recording_silent_warning),
+                fontSize = 14.sp,
+                color = Color(0xFFFFB74D),
+                textAlign = TextAlign.Center
+            )
+        }
 
         Spacer(Modifier.height(32.dp))
 

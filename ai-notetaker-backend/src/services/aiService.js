@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
+const { extractJsonObject } = require('../utils/extractJson');
 
 /**
  * Maximum characters to send to AI (approximately 100K tokens = ~400K chars)
@@ -479,8 +480,17 @@ ${truncateContent(note.content)}`;
       let mindMapData;
 
       try {
-        mindMapData = JSON.parse(responseContent);
-      } catch {
+        mindMapData = extractJsonObject(responseContent);
+      } catch (parseError) {
+        // Log the cause and response shape only, never note or model content
+        logger.error('Mind map JSON parse failed', {
+          error: parseError.message,
+          stopReason: completion.stop_reason,
+          truncatedAtMaxTokens: completion.stop_reason === 'max_tokens',
+          responseLength: responseContent?.length,
+          userId,
+          noteId
+        });
         throw new AppError('Failed to parse mind map data', 500);
       }
 
@@ -504,7 +514,7 @@ ${truncateContent(note.content)}`;
       };
 
     } catch (error) {
-      logger.error('Error generating mind map', { error: error.message, userId, noteId });
+      logger.error('Error generating mind map', { error: error.message, userId, noteId, stack: error.stack });
       throw new AppError('Failed to generate mind map', 500);
     }
   }

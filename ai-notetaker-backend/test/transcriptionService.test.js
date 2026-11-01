@@ -14,6 +14,7 @@ const logger = Object.fromEntries(['info', 'warn', 'error', 'debug'].map((l) => 
 const reports = [];
 let db;
 let downloadImpl;
+let levelImpl;
 const notes = [];
 
 function stub(rel, exports) {
@@ -25,6 +26,7 @@ stub('../src/config/supabase', { supabase: {}, supabaseAdmin: { from: (t) => db.
 stub('../src/utils/failureReporter', { reportFailure: (...a) => { reports.push(a); }, reportCounted: (...a) => { reports.push(['counted', ...a]); }, reportBackendError() {}, reportCrash() {} });
 stub('../src/config/openai', { MODELS: {} });
 stub('../src/services/noteService', { createNote: async (uid, n) => { notes.push({ uid, n }); return { id: 'note-1' }; } });
+stub('../src/utils/audioLevel', { measureLevel: (b) => levelImpl(b) });
 stub('../src/services/storageService', { downloadFile: (p) => downloadImpl(p) });
 
 const service = require('../src/services/transcriptionService');
@@ -79,6 +81,7 @@ function setup(recording = baseRecording(), opts) {
   logs.length = 0; notes.length = 0; reports.length = 0;
   db = makeDb(recording, opts);
   downloadImpl = async () => Buffer.from('audio-bytes');
+  levelImpl = async () => null; // ffmpeg level probe unavailable unless a test says otherwise
 }
 const lastUpdate = () => db.updates[db.updates.length - 1];
 const outcomeLog = () => logs.find((x) => x.msg === 'transcription_outcome')?.meta;
@@ -126,6 +129,40 @@ test('empty transcript: 422 + same user message, row failed, duration kept, NO_S
   assert.deepEqual(lastUpdate(), { status: 'failed', error_message: 'NO_SPEECH: audio 12s, detected language ar (confidence 0.91), file 236 KB', duration: 12 });
   assert.equal(notes.length, 0);
   assert.equal(outcomeLog().outcome, 'failed'); assert.equal(outcomeLog().errorCode, 'NO_SPEECH');
+});
+
+test('empty transcript on digital silence: row says so with the numbers, user gets an actionable message, still 422', async () => {
+  setup();
+  levelImpl = async () => ({ peakDb: -91, meanDb: -91, silent: true });
+  mockFetch(respond(200, dgBody({ text: '', duration: 8.2, lang: 'en', conf: 0 })));
+  await assert.rejects(service.transcribeRecording('u1', REC_ID), (e) => {
+    assert.equal(e.statusCode, 422); assert.match(e.message, /completely silent/); assert.match(e.message, /microphone/); return true;
+  });
+  assert.match(lastUpdate().error_message, /^NO_SPEECH: audio 8\.2s, detected language en \(confidence 0\), file \d+ KB, level silent \(all samples zero\) \(peak -91 dB, mean -91 dB\)$/);
+  assert.equal(outcomeLog().audioLevel, 'silent');
+  assert.equal(reports[0][2].audio_level, 'silent'); assert.equal(reports[0][2].code, 'NO_SPEECH');
+});
+
+test('empty transcript with real sound: generic message kept, level recorded as audible', async () => {
+  setup();
+  levelImpl = async () => ({ peakDb: -12.2, meanDb: -36.4, silent: false });
+  mockFetch(respond(200, dgBody({ text: '', duration: 13.8, lang: 'en', conf: 0.4 })));
+  await assert.rejects(service.transcribeRecording('u1', REC_ID), (e) => {
+    assert.equal(e.statusCode, 422); assert.equal(e.message, 'No speech detected in the recording'); return true;
+  });
+  assert.match(lastUpdate().error_message, /, level audible \(peak -12\.2 dB, mean -36\.4 dB\)$/);
+  assert.equal(reports[0][2].audio_level, 'audible');
+});
+
+test('the level probe is only used when the transcript is empty, and its failure cannot change the outcome', async () => {
+  setup(); let calls = 0; levelImpl = async () => { calls++; return null; };
+  mockFetch(respond(200, dgBody()));
+  await service.transcribeRecording('u1', REC_ID);
+  assert.equal(calls, 0, 'not called for a transcribed recording');
+  setup(); levelImpl = async () => null;
+  mockFetch(respond(200, dgBody({ text: '' })));
+  await assert.rejects(service.transcribeRecording('u1', REC_ID), { statusCode: 422, message: 'No speech detected in the recording' });
+  assert.doesNotMatch(lastUpdate().error_message, /level/);
 });
 
 test('empty transcript with no detection info says unknown', async () => {
@@ -247,7 +284,7 @@ test('failure reporter: called once per failed recording with a stable message, 
     assert.equal(reports.length, 1, code);
     const [flow, err, ctx] = reports[0];
     assert.equal(flow, 'recording_failed'); assert.equal(err.message, `Recording ${code}`); assert.equal(ctx.code, code);
-    assert.deepEqual(Object.keys(ctx).sort(), ['audio_seconds', 'code', 'detected_language', 'file_kb', 'provider_status', 'source']);
+    assert.deepEqual(Object.keys(ctx).sort(), ['audio_level', 'audio_seconds', 'code', 'detected_language', 'file_kb', 'provider_status', 'source']);
     assert.ok(Object.values(ctx).every((v) => typeof v === 'string'));
     assert.equal(ctx.source, 'upload');
     const dump = JSON.stringify(reports) + err.stack;
@@ -255,7 +292,7 @@ test('failure reporter: called once per failed recording with a stable message, 
   }
   setup(); mockFetch(respond(200, dgBody({ text: '', duration: 12.2, lang: 'ar', conf: 0.9 })));
   await assert.rejects(service.transcribeRecording('u1', REC_ID));
-  assert.deepEqual(reports[0][2], { code: 'NO_SPEECH', source: 'upload', audio_seconds: '12', file_kb: '0', detected_language: 'ar', provider_status: '200' });
+  assert.deepEqual(reports[0][2], { code: 'NO_SPEECH', source: 'upload', audio_seconds: '12', file_kb: '0', detected_language: 'ar', audio_level: 'unknown', provider_status: '200' });
 });
 
 test('failure reporter: unexpected errors report UNKNOWN; success, already-completed and not-found never report', async () => {

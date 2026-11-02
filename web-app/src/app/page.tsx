@@ -8,11 +8,12 @@ import MarketingHeader from '@/components/marketing/MarketingHeader';
 import MarketingFooter from '@/components/marketing/MarketingFooter';
 import { Mic, Youtube, FileText, ChevronDown } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
+import { freePlanAnswer } from '@/lib/freeTier';
 
 const PIPELINE = [
   {
     title: 'Capture',
-    body: 'Record a lecture, paste a YouTube link, or upload a PDF or slide deck.',
+    body: 'Record a lecture, paste a YouTube link, or upload a PDF.',
   },
   {
     title: 'Process',
@@ -27,7 +28,7 @@ const PIPELINE = [
 const FAQ = [
   {
     q: 'What can I turn into notes?',
-    a: 'A recorded lecture or conversation, a YouTube link, or an uploaded PDF, slide deck, or document.',
+    a: 'A recorded lecture or conversation, a YouTube link, or an uploaded PDF.',
   },
   {
     q: 'Do I need the app to use it?',
@@ -35,7 +36,7 @@ const FAQ = [
   },
   {
     q: 'Is there a free plan?',
-    a: 'Yes. Taking notes, recording and transcribing voice, and AI summaries are free. Premium adds quizzes, flashcards, AI chat, podcasts and export.',
+    a: freePlanAnswer(),
   },
   {
     q: 'Who owns what I upload?',

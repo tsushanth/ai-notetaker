@@ -51,7 +51,7 @@ const FALLBACK_PLANS: Plan[] = [
   {
     id: 'price_1Sjv8UKFBTQTkmztT2AC3ae9',
     name: 'Yearly',
-    description: 'Save 50% - Billed yearly',
+    description: 'Billed yearly',
     amount: 2999,
     currency: 'usd',
     interval: 'year',

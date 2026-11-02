@@ -5,31 +5,9 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { subscriptionApi } from '@/lib/api';
 import { FREE_FOR_EVERYONE, PREMIUM_PERKS } from '@/lib/freeTier';
+import { CHECKOUT_PLANS, savingsHeadline, savingsPercent } from '@/lib/plans';
 
-const plans = [
-  {
-    id: 'yearly',
-    name: 'Annual',
-    price: '$48.99',
-    period: '/year',
-    perWeek: '$0.94/week',
-    perMonth: '$4.08/month',
-    appStorePrice: '$69.99',
-    badge: 'Best Value',
-    trial: '7-day free trial',
-  },
-  {
-    id: 'monthly',
-    name: 'Monthly',
-    price: '$6.99',
-    period: '/month',
-    perWeek: '$1.75/week',
-    perMonth: null,
-    appStorePrice: '$9.99',
-    badge: null,
-    trial: null,
-  },
-];
+const plans = CHECKOUT_PLANS;
 
 function SubscriptionContent() {
   const searchParams = useSearchParams();
@@ -103,7 +81,7 @@ function SubscriptionContent() {
           Unlock ScribeAI Premium
         </h1>
         <p className="text-gray-600 text-sm">
-          Save 30% compared to App Store prices
+          {savingsHeadline(plans)}
         </p>
       </div>
 
@@ -138,7 +116,7 @@ function SubscriptionContent() {
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
                   <span className="line-through">{plan.appStorePrice}</span>
-                  <span className="text-green-600 ml-1 font-medium">Save 30%</span>
+                  <span className="text-green-600 ml-1 font-medium">Save {savingsPercent(plan.price, plan.appStorePrice)}%</span>
                 </div>
               </div>
 

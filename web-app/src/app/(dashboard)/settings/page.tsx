@@ -8,6 +8,7 @@ import { useSettingsStore, SUPPORTED_LANGUAGES, type LanguageCode } from '@/stor
 import { useAuthStore } from '@/store/authStore';
 import { subscriptionApi, creatorsApi } from '@/lib/api';
 import { featureRows } from '@/lib/freeTier';
+import AccountDataSection from '@/components/AccountDataSection';
 
 interface SubscriptionAccess {
   hasAccess: boolean;
@@ -593,6 +594,8 @@ function SettingsContent() {
           </p>
         )}
       </div>
+
+      <AccountDataSection access={subscription} accessLoaded={!isLoadingSubscription} />
     </div>
   );
 }

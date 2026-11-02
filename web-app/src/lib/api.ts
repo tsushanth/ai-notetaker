@@ -224,6 +224,25 @@ export const notesApi = {
   },
 };
 
+// Account API: data export and account deletion (backend routes/user.js)
+export const userApi = {
+  /** DELETE /api/user/delete-account. Permanent. The reason (optional) is sent as { reason }; the backend currently ignores it. */
+  deleteAccount: async (token: string, reason?: string) => {
+    return apiRequest<{ success: boolean; message?: string }>('/api/user/delete-account', {
+      method: 'DELETE',
+      token,
+      body: reason ? { reason } : undefined,
+    });
+  },
+
+  /** GET /api/user/data-export: profile, notes, recording metadata and AI content as JSON. */
+  exportData: async (token: string): Promise<Record<string, unknown>> => {
+    const response = await apiRequest<{ success: boolean; data?: Record<string, unknown> }>('/api/user/data-export', { token });
+    if (!response.data) throw new Error('The data export came back empty. Please try again.');
+    return response.data;
+  },
+};
+
 // Learning API (existing backend endpoints, previously never called by any client)
 export const learningApi = {
   startSession: async (token: string, noteId: string) => {
@@ -792,4 +811,4 @@ export const ttsApi = {
   },
 };
 
-export default { authApi, notesApi, aiApi, creatorsApi, subscriptionApi, meetingsApi, ttsApi };
+export default { userApi, authApi, notesApi, aiApi, creatorsApi, subscriptionApi, meetingsApi, ttsApi };

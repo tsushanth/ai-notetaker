@@ -2,6 +2,38 @@
 // Hardcoded for reliability in production builds
 const API_BASE_URL = 'https://ai-notetaker-backend.fly.dev';
 
+/** An error from the backend, carrying the HTTP status and the machine-readable code when there is one. */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const DEFAULT_LIMIT_MESSAGE = "You have reached today's free limit, try again later";
+
+/**
+ * Message to show for a failed call. The backend answers HTTP 429 when a free daily backstop is hit (voice
+ * transcription or AI generation): that is not a paywall, so the server text is shown as is, with no upgrade nudge.
+ */
+export function limitAwareMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 429) return err.message.trim() || DEFAULT_LIMIT_MESSAGE;
+    return err.message || fallback;
+  }
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
+/** The backend validates `url` as a full URI; people paste "youtube.com/watch?v=..." without the scheme. */
+export function normalizeVideoUrl(input: string): string {
+  const url = input.trim();
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+}
+
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
   body?: unknown;
@@ -12,8 +44,10 @@ interface ApiOptions {
 async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promise<T> {
   const { method = 'GET', body, token, headers = {} } = options;
 
+  // Multipart uploads must not carry a JSON Content-Type: the browser sets it, with the boundary.
+  const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
   const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isForm ? {} : { 'Content-Type': 'application/json' }),
     ...headers,
   };
 
@@ -24,16 +58,16 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     method,
     headers: requestHeaders,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isForm ? (body as FormData) : JSON.stringify(body)) : undefined,
   });
 
   if (!response.ok) {
     // An expired or invalid session is handled by the fetch watcher (it sends the user to login); don't show the raw token error.
-    if (response.status === 401 && token) throw new Error('Your session expired. Please sign in again.');
+    if (response.status === 401 && token) throw new ApiError('Your session expired. Please sign in again.', 401);
     const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
     // Backend returns errors as { success: false, error: "message" } or { message: "message" }
     const errorMessage = errorData.error || errorData.message || `API Error: ${response.status}`;
-    throw new Error(errorMessage);
+    throw new ApiError(errorMessage, response.status, typeof errorData.code === 'string' ? errorData.code : undefined);
   }
 
   return response.json();
@@ -88,11 +122,13 @@ export const notesApi = {
   },
 
   create: async (token: string, data: { title: string; content: string; sourceType?: string }) => {
-    return apiRequest<{ note: unknown }>('/api/notes', {
+    // The backend reads snake_case `source_type` and answers { success, data: note }.
+    const response = await apiRequest<{ success: boolean; data: { id: string } }>('/api/notes', {
       method: 'POST',
       token,
-      body: data,
+      body: { title: data.title, content: data.content, ...(data.sourceType ? { source_type: data.sourceType } : {}) },
     });
+    return { note: response.data };
   },
 
   update: async (token: string, noteId: string, data: Partial<{ title: string; content: string }>) => {
@@ -110,45 +146,67 @@ export const notesApi = {
     });
   },
 
-  // Upload endpoints
-  uploadAudio: async (token: string, formData: FormData) => {
-    const response = await fetch(`${API_BASE_URL}/api/notes/upload/audio`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
+  // Ingestion endpoints. These are the routes the Android app uses (the web used to call paths under
+  // /api/notes that the backend never had; test/apiContract.test.ts now guards every path in this file).
 
-    if (!response.ok) {
-      throw new Error('Failed to upload audio');
-    }
-
-    return response.json();
-  },
-
-  uploadPdf: async (token: string, formData: FormData) => {
-    const response = await fetch(`${API_BASE_URL}/api/notes/upload/pdf`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to upload PDF');
-    }
-
-    return response.json();
-  },
-
-  processYoutube: async (token: string, url: string) => {
-    return apiRequest<{ note: unknown }>('/api/notes/youtube', {
+  /**
+   * Voice recording: POST /api/recordings/upload (multipart `audio`), then POST /api/recordings/transcribe
+   * { recording_id }, which creates the note. Transcription is slow, so callers get a stage callback.
+   * The transcribe step is where the free daily limit (HTTP 429) can be hit.
+   */
+  uploadAudio: async (
+    token: string,
+    audio: Blob,
+    opts: { title?: string; filename?: string; onStage?: (stage: 'uploading' | 'transcribing') => void } = {}
+  ): Promise<{ noteId: string }> => {
+    opts.onStage?.('uploading');
+    const form = new FormData();
+    form.append('audio', audio, opts.filename || `recording-${Date.now()}.webm`);
+    if (opts.title) form.append('title', opts.title);
+    const uploaded = await apiRequest<{ success: boolean; data?: { id?: string } }>('/api/recordings/upload', {
       method: 'POST',
       token,
-      body: { url },
+      body: form,
     });
+    const recordingId = uploaded.data?.id;
+    if (!recordingId) throw new Error('The upload finished but the server did not return a recording id. Please try again.');
+
+    opts.onStage?.('transcribing');
+    const transcribed = await apiRequest<{ success: boolean; data?: { note_id?: string } }>('/api/recordings/transcribe', {
+      method: 'POST',
+      token,
+      body: { recording_id: recordingId },
+    });
+    const noteId = transcribed.data?.note_id;
+    if (!noteId) throw new Error('Transcription finished but no note was created. Please try again.');
+    return { noteId };
+  },
+
+  /** PDF: POST /api/uploads/pdf (multipart `file`, optional `title`) -> { data: { note } }. */
+  uploadPdf: async (token: string, file: File, title?: string): Promise<{ noteId: string }> => {
+    const form = new FormData();
+    form.append('file', file);
+    if (title) form.append('title', title);
+    const response = await apiRequest<{ success: boolean; data?: { note?: { id?: string } } }>('/api/uploads/pdf', {
+      method: 'POST',
+      token,
+      body: form,
+    });
+    const noteId = response.data?.note?.id;
+    if (!noteId) throw new Error('The PDF was processed but no note was created. Please try again.');
+    return { noteId };
+  },
+
+  /** YouTube (or other video URL): POST /api/uploads/video-url { url, title? } -> { data: { note } }. */
+  processYoutube: async (token: string, url: string, title?: string): Promise<{ noteId: string }> => {
+    const response = await apiRequest<{ success: boolean; data?: { note?: { id?: string } } }>('/api/uploads/video-url', {
+      method: 'POST',
+      token,
+      body: { url: normalizeVideoUrl(url), ...(title ? { title } : {}) },
+    });
+    const noteId = response.data?.note?.id;
+    if (!noteId) throw new Error('The video was processed but no note was created. Please try again.');
+    return { noteId };
   },
 
   // Create a public share link for a note (existing backend endpoint,
@@ -571,7 +629,7 @@ export const subscriptionApi = {
 };
 
 // Meetings API
-import { Meeting, MeetingsPagination, BotRun } from '@/types';
+import type { Meeting, MeetingsPagination, BotRun } from '@/types';
 
 export const meetingsApi = {
   create: async (token: string, meetingUrl: string, title?: string) => {

@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { notesApi } from '@/lib/api';
+import { notesApi, limitAwareMessage } from '@/lib/api';
+import ProcessingSteps from '@/components/ProcessingSteps';
 import {
   ArrowLeft,
   Mic,
@@ -18,6 +19,21 @@ import {
 
 type RecordingState = 'idle' | 'recording' | 'paused' | 'stopped';
 
+// The backend accepts webm, mp4/m4a and ogg audio (50 MB max). Safari cannot record webm, so pick what the browser supports.
+const MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+
+function pickMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined' || typeof MediaRecorder.isTypeSupported !== 'function') return undefined;
+  return MIME_CANDIDATES.find((m) => MediaRecorder.isTypeSupported(m));
+}
+
+function extensionFor(mime: string): string {
+  if (mime.includes('mp4')) return 'm4a';
+  if (mime.includes('ogg')) return 'ogg';
+  return 'webm';
+}
+
 export default function RecordAudioPage() {
   const router = useRouter();
   const { token } = useAuthStore();
@@ -26,6 +42,7 @@ export default function RecordAudioPage() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [stage, setStage] = useState<'uploading' | 'transcribing'>('uploading');
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
 
@@ -60,9 +77,8 @@ export default function RecordAudioPage() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
-      });
+      const mimeType = pickMimeType();
+      const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
@@ -73,7 +89,8 @@ export default function RecordAudioPage() {
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
+        const type = (mediaRecorder.mimeType || 'audio/webm').split(';')[0];
+        const blob = new Blob(chunksRef.current, { type });
         setAudioBlob(blob);
         setAudioUrl(URL.createObjectURL(blob));
       };
@@ -127,20 +144,25 @@ export default function RecordAudioPage() {
   const handleUpload = async () => {
     if (!audioBlob || !token) return;
 
+    if (audioBlob.size > MAX_UPLOAD_BYTES) {
+      setError('This recording is larger than the 50 MB upload limit. Please record a shorter note.');
+      return;
+    }
+
     setIsUploading(true);
+    setStage('uploading');
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('audio', audioBlob, `recording-${Date.now()}.webm`);
-      if (title.trim()) {
-        formData.append('title', title.trim());
-      }
-
-      const response = await notesApi.uploadAudio(token, formData);
-      router.push(`/notes/${(response as { note: { id: string } }).note.id}`);
+      const type = audioBlob.type || 'audio/webm';
+      const { noteId } = await notesApi.uploadAudio(token, audioBlob, {
+        title: title.trim() || undefined,
+        filename: `recording-${Date.now()}.${extensionFor(type)}`,
+        onStage: setStage,
+      });
+      router.push(`/notes/${noteId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload recording');
+      setError(limitAwareMessage(err, 'Failed to upload recording'));
     } finally {
       setIsUploading(false);
     }
@@ -303,7 +325,7 @@ export default function RecordAudioPage() {
               {isUploading ? (
                 <>
                   <Loader2 size={20} className="animate-spin" />
-                  Transcribing...
+                  {stage === 'uploading' ? 'Uploading...' : 'Transcribing...'}
                 </>
               ) : (
                 <>
@@ -312,6 +334,14 @@ export default function RecordAudioPage() {
                 </>
               )}
             </button>
+
+            {isUploading && (
+              <ProcessingSteps
+                steps={['Uploading your recording', 'Transcribing the audio']}
+                current={stage === 'uploading' ? 0 : 1}
+                hint="Transcription can take a minute or two for longer recordings. Please keep this tab open."
+              />
+            )}
           </div>
         )}
       </div>

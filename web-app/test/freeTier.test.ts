@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { coreFeaturesAreFree, featureRows, PREMIUM_PERKS, FREE_FOR_EVERYONE } from '../src/lib/freeTier.ts';
+import { coreFeaturesAreFree, featureRows, PREMIUM_PERKS, FREE_FOR_EVERYONE, PODCASTS_GATED } from '../src/lib/freeTier.ts';
 
 const lockedFeatures = { canCreateNotes: false, canUseAI: false, canGeneratePodcasts: false, unlimitedAccess: false };
 
@@ -11,7 +11,8 @@ test('backend says legacy limits are off: notes, transcription and summaries are
 
 test('paid extras stay locked for a free user even when core features are free', () => {
   const rows = featureRows({ freeTier: { legacyLimits: false }, features: lockedFeatures });
-  assert.equal(rows.find((r) => r.key === 'podcasts')!.included, false);
+  // Podcasts stay locked only while the backend gates them (see PODCASTS_GATED); Premium extras are always locked.
+  assert.equal(rows.find((r) => r.key === 'podcasts')!.included, !PODCASTS_GATED);
   assert.equal(rows.find((r) => r.key === 'premium')!.included, false);
 });
 

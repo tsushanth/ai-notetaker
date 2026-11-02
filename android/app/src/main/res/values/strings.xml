@@ -19,7 +19,7 @@
     <string name="load_more_notes">Load More Notes</string>
     <string name="error_loading_notes">Error loading notes</string>
     <string name="retry">Retry</string>
-    <string name="account_deletion_requested">Account deletion requested. You will be signed out.</string>
+    <string name="account_deletion_requested">Your account has been deleted.</string>
     <string name="error_delete_account">Failed to delete account: %s</string>
 
     <!-- Language Dialog -->

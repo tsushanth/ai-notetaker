@@ -30,6 +30,7 @@ import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.models.DeletionReason
 import com.kreativekoala.scribeai.data.models.Note
 import com.kreativekoala.scribeai.data.models.UserStats
+import com.kreativekoala.scribeai.data.repository.AccountRepository
 import com.kreativekoala.scribeai.ui.components.DeleteAccountRetentionDialog
 import com.kreativekoala.scribeai.ui.components.SignOutRetentionDialog
 import com.kreativekoala.scribeai.ui.components.ThemeSelectionDialog
@@ -611,19 +612,25 @@ fun HomeScreen(
             onDelete = { reason ->
                 isDeletingAccount = true
                 coroutineScope.launch {
-                    try {
-                        // TODO: Call delete account API when backend supports it
-                        // For now, just sign out after collecting reason
-                        Log.d("HomeScreen", "Delete account reason: ${reason.name}")
-                        isDeletingAccount = false
-                        showDeleteAccountDialog = false
-                        Toast.makeText(context, context.getString(R.string.account_deletion_requested), Toast.LENGTH_LONG).show()
-                        onSignOut()
-                    } catch (e: Exception) {
-                        Log.e("HomeScreen", "Delete account failed", e)
-                        isDeletingAccount = false
-                        Toast.makeText(context, context.getString(R.string.error_delete_account, e.message ?: ""), Toast.LENGTH_SHORT).show()
+                    // Delete on the server first; only sign out once the server confirms the account is gone.
+                    val token = authManager.getFreshToken()
+                    val result: Result<Unit> = if (token == null) {
+                        Result.failure(Exception("Session expired. Please log in again."))
+                    } else {
+                        AccountRepository().deleteAccount(token, reason)
                     }
+                    isDeletingAccount = false
+                    result.fold(
+                        onSuccess = {
+                            showDeleteAccountDialog = false
+                            Toast.makeText(context, context.getString(R.string.account_deletion_requested), Toast.LENGTH_LONG).show()
+                            onSignOut()
+                        },
+                        onFailure = { e ->
+                            Log.e("HomeScreen", "Delete account failed", e)
+                            Toast.makeText(context, context.getString(R.string.error_delete_account, e.message ?: ""), Toast.LENGTH_LONG).show()
+                        }
+                    )
                 }
             }
         )

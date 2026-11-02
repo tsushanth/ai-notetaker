@@ -323,8 +323,9 @@ interface ApiService {
         @Body request: Map<String, String>
     ): Response<CreateContentResponse>
 
-    // Delete account endpoint
-    @DELETE("api/users/account")
+    // Delete account endpoint (backend: routes/user.js, DELETE /api/user/delete-account).
+    // Retrofit's @DELETE cannot carry a @Body, so the verb is declared with @HTTP(hasBody = true).
+    @HTTP(method = "DELETE", path = "api/user/delete-account", hasBody = true)
     suspend fun deleteAccount(
         @Header("Authorization") token: String,
         @Body request: DeleteAccountRequest

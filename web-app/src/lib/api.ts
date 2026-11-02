@@ -233,6 +233,18 @@ export const aiApi = {
     return { content: organized };
   },
 
+  /** POST /api/ai/summary. Free tier with a daily backstop: over the limit the server answers 429 with a plain message. */
+  generateSummary: async (token: string, noteId: string, language?: string): Promise<{ summary: string }> => {
+    const response = await apiRequest<{ success: boolean; data?: { summary?: string } }>('/api/ai/summary', {
+      method: 'POST',
+      token,
+      body: { note_id: noteId, options: { language } },
+    });
+    const summary = response.data?.summary?.trim();
+    if (!summary) throw new Error('The summary came back empty. Please try again.');
+    return { summary };
+  },
+
   generateQuiz: async (token: string, noteId: string, language?: string) => {
     const response = await apiRequest<{ success: boolean; data: unknown }>('/api/ai/quiz', {
       method: 'POST',
@@ -571,7 +583,7 @@ export const subscriptionApi = {
 };
 
 // Meetings API
-import { Meeting, MeetingsPagination, BotRun } from '@/types';
+import type { Meeting, MeetingsPagination, BotRun } from '@/types';
 
 export const meetingsApi = {
   create: async (token: string, meetingUrl: string, title?: string) => {

@@ -5,6 +5,7 @@ export interface Note {
   title: string;
   content: string;
   formatted_content?: string;
+  formatting_status?: string | null;
   source_type?: string;
   source_url?: string;
   youtube_url?: string;

@@ -8,6 +8,8 @@ import { useNotesStore } from '@/store/notesStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { notesApi, aiApi, ttsApi, learningApi } from '@/lib/api';
 import { downloadExport, exportFileName, PremiumRequiredError, type ExportFormat } from '@/lib/noteExport';
+import FormattedNote from '@/components/FormattedNote';
+import { displayContent, hasFormattedContent, shouldPollFormatting, countWords, type ViewMode } from '@/lib/noteView';
 import {
   ArrowLeft,
   FileText,
@@ -33,7 +35,9 @@ import {
   Pause,
   Square,
   Settings,
-  FileDown
+  FileDown,
+  Copy,
+  Check
 } from 'lucide-react';
 import SummarySection from '@/components/SummarySection';
 import { extractSummaryText } from '@/lib/summary';
@@ -68,6 +72,9 @@ export default function NoteDetailPage() {
   const [summary, setSummary] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  // Note text view state
+  const [viewMode, setViewMode] = useState<ViewMode>('formatted');
+  const [copied, setCopied] = useState(false);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -123,6 +130,9 @@ export default function NoteDetailPage() {
     // Reset summary state
     setSummary(null);
     setSummaryError(null);
+    // Reset note view state
+    setViewMode('formatted');
+    setCopied(false);
     // Reset quiz state
     setQuizQuestions([]);
     setCurrentQuestionIndex(0);
@@ -256,6 +266,43 @@ export default function NoteDetailPage() {
       setSummaryError(err instanceof Error && err.message ? err.message : 'Could not generate a summary. Please try again.');
     } finally {
       setIsGeneratingSummary(false);
+    }
+  };
+
+  // The backend formats long notes in the background. Re-fetch every 2 s (up to 15 times, like Android) until it is done.
+  const needsFormattingPoll = !!currentNote && currentNote.id === noteId && shouldPollFormatting(currentNote);
+  useEffect(() => {
+    if (!token || !needsFormattingPoll) return;
+    let cancelled = false;
+    let attempts = 0;
+    const timer = setInterval(async () => {
+      attempts += 1;
+      try {
+        const response = await notesApi.getById(token, noteId);
+        const fresh = response.note as Note;
+        if (!cancelled && hasFormattedContent(fresh)) {
+          setCurrentNote(fresh);
+          clearInterval(timer);
+        }
+      } catch {
+        // keep polling
+      }
+      if (attempts >= 15) clearInterval(timer);
+    }, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [token, noteId, needsFormattingPoll, setCurrentNote]);
+
+  const handleCopyNote = async () => {
+    if (!currentNote) return;
+    try {
+      await navigator.clipboard.writeText(displayContent(currentNote, viewMode));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      alert('Could not copy to the clipboard');
     }
   };
 
@@ -923,9 +970,41 @@ export default function NoteDetailPage() {
               error={summaryError}
               onGenerate={handleGenerateSummary}
             />
-            <div className="whitespace-pre-wrap text-[var(--text-primary)]">
-              {currentNote.formatted_content || currentNote.content}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-sm text-[var(--text-secondary)]">
+              <span>
+                {countWords(currentNote.content).toLocaleString()} words &middot; {currentNote.content.length.toLocaleString()} characters
+                {needsFormattingPoll && (
+                  <span className="inline-flex items-center gap-1 ml-3">
+                    <Loader2 size={14} className="animate-spin" /> Formatting...
+                  </span>
+                )}
+              </span>
+              <div className="flex items-center gap-2">
+                {hasFormattedContent(currentNote) && (
+                  <div className="flex rounded-md overflow-hidden border border-[var(--border)]" role="group" aria-label="Note view">
+                    {(['formatted', 'raw'] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => setViewMode(mode)}
+                        aria-pressed={viewMode === mode}
+                        className={`px-3 py-1 ${viewMode === mode ? 'bg-[var(--accent-purple)] text-[var(--on-accent)]' : 'hover:bg-[var(--surface-variant)]'}`}
+                      >
+                        {mode === 'formatted' ? 'Formatted' : 'Raw'}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <button onClick={handleCopyNote} className="flex items-center gap-1 px-3 py-1 rounded-md border border-[var(--border)] hover:bg-[var(--surface-variant)]">
+                  {copied ? <Check size={14} /> : <Copy size={14} />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+              </div>
             </div>
+            {viewMode === 'formatted' && hasFormattedContent(currentNote) ? (
+              <FormattedNote markdown={currentNote.formatted_content as string} />
+            ) : (
+              <div className="whitespace-pre-wrap text-[var(--text-primary)]">{currentNote.content}</div>
+            )}
           </div>
         )}
 

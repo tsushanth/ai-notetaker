@@ -33,6 +33,8 @@ import {
   Square,
   Settings
 } from 'lucide-react';
+import SummarySection from '@/components/SummarySection';
+import { extractSummaryText } from '@/lib/summary';
 import type { Note, ChatMessage, QuizQuestion, FlashcardContent, InfographicContent } from '@/types';
 
 type TabType = 'notes' | 'chat' | 'quiz' | 'flashcards' | 'infographic' | 'podcast' | 'tts';
@@ -59,6 +61,11 @@ export default function NoteDetailPage() {
   const [activeTab, setActiveTab] = useState<TabType>('notes');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Summary state
+  const [summary, setSummary] = useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -111,6 +118,9 @@ export default function NoteDetailPage() {
     console.log('[NoteDetail] Effect triggered, noteId:', noteId, 'lastFetch:', lastFetchTime, 'now:', now);
 
     // Always reset and re-fetch on mount or when noteId changes
+    // Reset summary state
+    setSummary(null);
+    setSummaryError(null);
     // Reset quiz state
     setQuizQuestions([]);
     setCurrentQuestionIndex(0);
@@ -164,6 +174,9 @@ export default function NoteDetailPage() {
         const content = aiContentResponse.content as any;
         console.log('[NoteDetail] AI content types received:', Object.keys(content || {}));
         if (content) {
+          // Saved AI summary
+          const savedSummary = extractSummaryText(content.summary);
+          if (savedSummary) setSummary(savedSummary);
           // Quiz data - handle various nested response formats
           if (content.quiz) {
             console.log('[NoteDetail] Has quiz content');
@@ -226,6 +239,21 @@ export default function NoteDetailPage() {
       setError(err instanceof Error ? err.message : 'Failed to fetch note');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    if (!token || isGeneratingSummary) return;
+    setIsGeneratingSummary(true);
+    setSummaryError(null);
+    try {
+      const result = await aiApi.generateSummary(token, noteId, language);
+      setSummary(result.summary);
+    } catch (err) {
+      // The server's message is shown as is: for the free daily limit (429) it already says when to try again.
+      setSummaryError(err instanceof Error && err.message ? err.message : 'Could not generate a summary. Please try again.');
+    } finally {
+      setIsGeneratingSummary(false);
     }
   };
 
@@ -849,6 +877,12 @@ export default function NoteDetailPage() {
         {/* Notes Tab */}
         {activeTab === 'notes' && (
           <div className="prose prose-invert max-w-none">
+            <SummarySection
+              summary={summary}
+              isGenerating={isGeneratingSummary}
+              error={summaryError}
+              onGenerate={handleGenerateSummary}
+            />
             <div className="whitespace-pre-wrap text-[var(--text-primary)]">
               {currentNote.formatted_content || currentNote.content}
             </div>

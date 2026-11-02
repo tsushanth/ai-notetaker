@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNotesStore } from '@/store/notesStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { notesApi, aiApi, ttsApi, learningApi } from '@/lib/api';
+import { downloadExport, exportFileName, PremiumRequiredError, type ExportFormat } from '@/lib/noteExport';
 import {
   ArrowLeft,
   FileText,
@@ -31,7 +32,8 @@ import {
   Play,
   Pause,
   Square,
-  Settings
+  Settings,
+  FileDown
 } from 'lucide-react';
 import SummarySection from '@/components/SummarySection';
 import { extractSummaryText } from '@/lib/summary';
@@ -270,6 +272,7 @@ export default function NoteDetailPage() {
   };
 
   const [isSharing, setIsSharing] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
   const [isStartingLearning, setIsStartingLearning] = useState(false);
 
   const handleStartLearning = async () => {
@@ -288,6 +291,31 @@ export default function NoteDetailPage() {
       }
     } finally {
       setIsStartingLearning(false);
+    }
+  };
+
+  const handleExport = async (format: ExportFormat) => {
+    if (!currentNote || !token || exportingFormat) return;
+    setExportingFormat(format);
+    try {
+      const blob = await downloadExport(token, currentNote.id, format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = exportFileName(currentNote.title, format);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      if (err instanceof PremiumRequiredError) {
+        // Existing upgrade path: the plans are in Settings.
+        if (confirm('Exporting to PDF or Word is a Premium feature. See the plans?')) router.push('/settings');
+      } else {
+        alert(err instanceof Error ? err.message : 'Could not export the note');
+      }
+    } finally {
+      setExportingFormat(null);
     }
   };
 
@@ -836,6 +864,18 @@ export default function NoteDetailPage() {
             {isStartingLearning ? <Loader2 size={18} className="animate-spin" /> : <Layers size={18} />}
             <span>Turn into a lesson</span>
           </button>
+          {(['pdf', 'docx'] as const).map((format) => (
+            <button
+              key={format}
+              onClick={() => handleExport(format)}
+              disabled={exportingFormat !== null}
+              className="flex items-center gap-1 px-2 py-2 rounded-lg hover:bg-[var(--card-background)] transition text-sm disabled:opacity-50"
+              title={format === 'pdf' ? 'Export as PDF (Premium)' : 'Export as Word (Premium)'}
+            >
+              {exportingFormat === format ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
+              <span>{format === 'pdf' ? 'PDF' : 'Word'}</span>
+            </button>
+          ))}
           <button
             onClick={handleShare}
             disabled={isSharing}

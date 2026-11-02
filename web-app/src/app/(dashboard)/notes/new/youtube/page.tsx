@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { notesApi } from '@/lib/api';
+import { notesApi, limitAwareMessage } from '@/lib/api';
+import ProcessingSteps from '@/components/ProcessingSteps';
 import {
   ArrowLeft,
   Youtube,
@@ -42,10 +43,10 @@ export default function YoutubeNotePage() {
     setError(null);
 
     try {
-      const response = await notesApi.processYoutube(token, url.trim());
-      router.push(`/notes/${(response as { note: { id: string } }).note.id}`);
+      const { noteId } = await notesApi.processYoutube(token, url.trim());
+      router.push(`/notes/${noteId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process YouTube video');
+      setError(limitAwareMessage(err, 'Failed to process YouTube video'));
     } finally {
       setIsProcessing(false);
     }
@@ -144,6 +145,14 @@ export default function YoutubeNotePage() {
             </>
           )}
         </button>
+
+        {isProcessing && (
+          <ProcessingSteps
+            steps={['Fetching the transcript and building your note']}
+            current={0}
+            hint="This can take up to a minute for long videos. Please keep this tab open."
+          />
+        )}
       </div>
 
       {/* How It Works */}

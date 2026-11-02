@@ -4,7 +4,8 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
-import { notesApi } from '@/lib/api';
+import { notesApi, limitAwareMessage } from '@/lib/api';
+import ProcessingSteps from '@/components/ProcessingSteps';
 import {
   ArrowLeft,
   FileText,
@@ -71,16 +72,10 @@ export default function UploadPdfPage() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('pdf', file);
-      if (title.trim()) {
-        formData.append('title', title.trim());
-      }
-
-      const response = await notesApi.uploadPdf(token, formData);
-      router.push(`/notes/${(response as { note: { id: string } }).note.id}`);
+      const { noteId } = await notesApi.uploadPdf(token, file, title.trim() || undefined);
+      router.push(`/notes/${noteId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload PDF');
+      setError(limitAwareMessage(err, 'Failed to upload PDF'));
     } finally {
       setIsUploading(false);
     }
@@ -213,6 +208,14 @@ export default function UploadPdfPage() {
                 </>
               )}
             </button>
+
+            {isUploading && (
+              <ProcessingSteps
+                steps={['Uploading and reading your PDF']}
+                current={0}
+                hint="Large PDFs can take up to a minute. Please keep this tab open."
+              />
+            )}
           </>
         )}
       </div>
@@ -220,8 +223,8 @@ export default function UploadPdfPage() {
       {/* Tips */}
       <div className="mt-6 p-4 bg-[var(--surface-variant)] rounded-lg">
         <p className="text-sm text-[var(--text-secondary)]">
-          <strong>Tips:</strong> For best results, use PDFs with selectable text.
-          Scanned documents will be processed using OCR.
+          <strong>Tips:</strong> This works with PDFs that have selectable text.
+          Scanned or image-only PDFs have no text to read, so they cannot be turned into a note here.
         </p>
       </div>
     </div>

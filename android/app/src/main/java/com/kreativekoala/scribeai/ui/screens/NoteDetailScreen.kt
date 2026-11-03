@@ -39,6 +39,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import kotlinx.coroutines.launch
+import com.kreativekoala.scribeai.utils.ShareLink
+import com.kreativekoala.scribeai.utils.ShareLinkResult
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -97,6 +99,52 @@ fun NoteDetailScreen(
     // Menu and dialog state
     var showMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // Creates (or reuses) the note's public share link. The network call runs off the main thread inside ShareLink.
+    // From the menu the link is copied; from the post-summary button it opens the system share sheet.
+    fun createShareLink(openShareSheet: Boolean) {
+        val token = authToken ?: return
+        Toast.makeText(context, "Creating share link...", Toast.LENGTH_SHORT).show()
+        scope.launch {
+            when (val result = ShareLink.create(com.kreativekoala.scribeai.BuildConfig.BASE_URL, token, note.id)) {
+                is ShareLinkResult.Success -> {
+                    AnalyticsService.trackEvent("share_link_created", mapOf("note_id" to note.id, "via" to if (openShareSheet) "summary_cta" else "menu"))
+                    if (openShareSheet) {
+                        val send = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, note.title)
+                            putExtra(Intent.EXTRA_TEXT, ShareLink.shareMessage(note.title, result.url))
+                        }
+                        context.startActivity(Intent.createChooser(send, context.getString(R.string.share_note)))
+                    } else {
+                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        clipboard.setPrimaryClip(ClipData.newPlainText("Share Link", result.url))
+                        Toast.makeText(context, "Share link copied!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                is ShareLinkResult.LimitReached -> {
+                    // 403 = the free plan's 3 share links a month are used up: sharing beyond that is paid.
+                    Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                    AnalyticsService.trackPaywallViewed("share_link_limit")
+                    showPaywall = true
+                }
+                is ShareLinkResult.Failure -> {
+                    AnalyticsService.trackEvent("share_link_failed", mapOf("note_id" to note.id, "reason" to result.message))
+                    Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // Learn, Create, Compete and Podcast stay paid: a dismissible paywall shows when a free user opens one of them.
+    fun selectTab(tab: Int, source: String? = null) {
+        if (tab in PAID_TABS && subscriptionManager?.isSubscribed() == false) {
+            AnalyticsService.trackPaywallViewed(source ?: "tab_$tab")
+            showPaywall = true
+        } else {
+            selectedTab = tab
+        }
+    }
 
     // Track note view and reset AI states when note changes
     LaunchedEffect(note.id) {
@@ -306,51 +354,12 @@ fun NoteDetailScreen(
                                 }
                             )
                             HorizontalDivider(color = DarkSurfaceVariant)
-                            // Free: Create Share Link
+                            // Free: Create Share Link (copies the link; the free plan allows 3 a month)
                             DropdownMenuItem(
                                 text = { Text("Create Share Link", color = TextPrimary) },
                                 onClick = {
                                     showMenu = false
-                                    scope.launch {
-                                        authToken?.let { token ->
-                                            Toast.makeText(context, "Creating share link...", Toast.LENGTH_SHORT).show()
-                                            try {
-                                                val api = com.kreativekoala.scribeai.data.api.RetrofitClient.apiService
-                                                val response = okhttp3.OkHttpClient().newCall(
-                                                    okhttp3.Request.Builder()
-                                                        .url("${com.kreativekoala.scribeai.BuildConfig.BASE_URL.trimEnd('/')}/api/notes/${note.id}/share")
-                                                        .addHeader("Authorization", "Bearer $token")
-                                                        .post("{}".toRequestBody("application/json".toMediaType()))
-                                                        .build()
-                                                ).execute()
-                                                val body = response.body?.string()
-                                                val json = org.json.JSONObject(body ?: "{}")
-                                                if (json.optBoolean("success")) {
-                                                    val shareUrl = json.optJSONObject("data")?.optString("shareUrl") ?: ""
-                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                    clipboard.setPrimaryClip(ClipData.newPlainText("Share Link", shareUrl))
-                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                        Toast.makeText(context, "Share link copied!", Toast.LENGTH_SHORT).show()
-                                                    }
-                                                    AnalyticsService.trackEvent("share_link_created", mapOf("note_id" to note.id))
-                                                } else {
-                                                    val error = json.optString("error", "Failed to create share link")
-                                                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
-                                                        // 403 = free plan's 3 share links a month used up: sharing beyond that is paid.
-                                                        if (response.code == 403) {
-                                                            AnalyticsService.trackPaywallViewed("share_link_limit")
-                                                            showPaywall = true
-                                                        }
-                                                    }
-                                                }
-                                            } catch (e: Exception) {
-                                                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                                    Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
-                                                }
-                                            }
-                                        }
-                                    }
+                                    createShareLink(openShareSheet = false)
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Link, contentDescription = null, tint = TextSecondary)
@@ -422,7 +431,11 @@ fun NoteDetailScreen(
             ) {
                 // Tab Content
                 when (selectedTab) {
-                    0 -> NotesTab(note, aiViewModel, authToken, preferredLanguage)
+                    0 -> NotesTab(
+                        note, aiViewModel, authToken, preferredLanguage,
+                        onShareNote = { createShareLink(openShareSheet = true) },
+                        onChallengeFriends = { selectTab(3, source = "summary_cta_challenge") }
+                    )
                     1 -> LearnTab(note, authToken, authManager)
                     2 -> CreateTab(note, authToken)
                     3 -> CompeteTab(note, authToken)
@@ -438,17 +451,9 @@ fun NoteDetailScreen(
             HorizontalDivider(color = DarkSurfaceVariant, thickness = 1.dp)
             BottomTabBar(
                 selectedTab = selectedTab,
-                onTabSelected = { tab ->
-                    // Notes (summary), Chat, Quiz, Flashcards and Mind Map are free (the server only applies
-                    // a daily abuse backstop). Learn, Create, Compete and Podcast stay paid: a dismissible
-                    // paywall shows when the user taps one of them.
-                    if (tab in PAID_TABS && subscriptionManager?.isSubscribed() == false) {
-                        AnalyticsService.trackPaywallViewed("tab_$tab")
-                        showPaywall = true
-                    } else {
-                        selectedTab = tab
-                    }
-                }
+                // Notes (summary), Chat, Quiz, Flashcards and Mind Map are free (the server only applies
+                // a daily abuse backstop); see selectTab for the paid ones.
+                onTabSelected = { tab -> selectTab(tab) }
             )
         }
     }
@@ -675,7 +680,9 @@ fun NotesTab(
     note: Note,
     aiViewModel: AIViewModel,
     authToken: String?,
-    preferredLanguage: String
+    preferredLanguage: String,
+    onShareNote: () -> Unit = {},
+    onChallengeFriends: () -> Unit = {}
 ) {
     // State for current note (may be updated when formatting completes)
     var currentNote by remember { mutableStateOf(note) }
@@ -950,7 +957,16 @@ fun NotesTab(
                     if (authToken != null) {
                         aiViewModel.generateSummary(authToken, note.id, "medium", preferredLanguage)
                     }
-                }
+                },
+                onShareNote = {
+                    AnalyticsService.trackEvent("share_cta_clicked", mapOf("note_id" to note.id))
+                    onShareNote()
+                },
+                onChallengeFriends = {
+                    AnalyticsService.trackEvent("challenge_cta_clicked", mapOf("note_id" to note.id))
+                    onChallengeFriends()
+                },
+                onCtaShown = { AnalyticsService.trackEvent("summary_cta_shown", mapOf("note_id" to note.id)) }
             )
             Spacer(Modifier.height(8.dp))
         }
@@ -1059,7 +1075,10 @@ private fun SummarySection(
     showSummary: Boolean,
     onToggle: () -> Unit,
     summaryState: AIContentState,
-    onGenerateSummary: () -> Unit
+    onGenerateSummary: () -> Unit,
+    onShareNote: () -> Unit,
+    onChallengeFriends: () -> Unit,
+    onCtaShown: () -> Unit
 ) {
     val hasSummary = summaryState is AIContentState.Success<*> &&
                      ((summaryState as AIContentState.Success<*>).content as? AIContentData)?.summary != null
@@ -1172,6 +1191,24 @@ private fun SummarySection(
                                             tint = TextSecondary,
                                             modifier = Modifier.size(16.dp)
                                         )
+                                    }
+                                }
+                                // Post-summary next steps: share the note, or turn it into a challenge (a paid tab: free users get the usual dismissible paywall).
+                                LaunchedEffect(Unit) { onCtaShown() }
+                                Spacer(Modifier.height(12.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(onClick = onShareNote, modifier = Modifier.weight(1f)) {
+                                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Share this note", fontSize = 13.sp, maxLines = 1)
+                                    }
+                                    OutlinedButton(onClick = onChallengeFriends, modifier = Modifier.weight(1f)) {
+                                        Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(Modifier.width(6.dp))
+                                        Text("Challenge friends", fontSize = 13.sp, maxLines = 1)
                                     }
                                 }
                             } else {

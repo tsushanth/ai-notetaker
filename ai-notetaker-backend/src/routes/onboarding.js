@@ -13,7 +13,7 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
   const userId = req.userId;
   const { user_type, use_cases } = req.body;
 
-  logger.info('Saving onboarding preferences', { userId, user_type, use_cases });
+  logger.info('Saving onboarding preferences', { userId });
 
   // Update user profile with onboarding data
   const { error } = await supabaseAdmin
@@ -29,17 +29,21 @@ router.post('/', authenticate, asyncHandler(async (req, res) => {
     });
 
   if (error) {
-    logger.error('Error saving onboarding preferences', { error: error.message, userId });
-    // Try to create the table if it doesn't exist
-    if (error.code === '42P01') {
-      logger.warn('user_profiles table may not exist, preferences not saved');
+    // PostgREST reports a table missing from the schema as PGRST205 (42P01 is the raw Postgres code).
+    const tableMissing = error.code === 'PGRST205' || error.code === '42P01' || /schema cache/i.test(error.message || '');
+    if (tableMissing) {
+      // Deployment gap, not a per-user fault: warn without the user's answers and keep onboarding unblocked.
+      logger.warn('user_profiles table is missing; onboarding preferences not saved', { userId, code: error.code });
+    } else {
+      logger.error('Error saving onboarding preferences', { error: error.message, code: error.code, userId });
     }
-    // Don't fail the request - just log the error
+    // Don't fail the request (onboarding must not block on this), but say that nothing was stored.
   }
 
   res.json({
     success: true,
-    message: 'Onboarding preferences saved'
+    saved: !error,
+    message: error ? 'Onboarding completed; preferences could not be saved' : 'Onboarding preferences saved'
   });
 }));
 

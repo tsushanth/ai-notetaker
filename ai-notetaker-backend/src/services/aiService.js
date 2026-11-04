@@ -4,7 +4,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
-const { extractJsonObject } = require('../utils/extractJson');
+const { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, requestStructured, enoughOf } = require('../utils/aiOutput');
 
 /**
  * Maximum characters to send to AI (approximately 100K tokens = ~400K chars)
@@ -47,6 +47,9 @@ function getLanguageInstruction(language) {
   }
   return `\n\nIMPORTANT: Respond entirely in ${language}. All output must be in ${language}.`;
 }
+
+/** Shown to the user when the model reply could not be read even after a retry. */
+const structuredFailure = (what) => new AppError(`We couldn't generate ${what} from this note just now. Please try again.`, 502);
 
 class AIService {
 
@@ -282,28 +285,22 @@ Format your response as a JSON array with this structure:
 Content:
 ${truncateContent(note.content)}`;
 
-      const completion = await anthropic.messages.create({
-        model: MODELS.GPT4_MINI,
-        system: `You are an expert educator who creates engaging, educational quiz questions. Always respond with valid JSON only. Do not include any text outside the JSON object.${getLanguageInstruction(language)}`,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.8,
-        max_tokens: 2000
+      // About 250 tokens per question including the explanation; floor keeps small quizzes safe.
+      const quizMaxTokens = Math.min(Math.max(num_questions * 250, 2000), 8000);
+      const { value: parsedQuestions, usage, partial } = await requestStructured({
+        maxTokens: quizMaxTokens,
+        isComplete: enoughOf(num_questions),
+        request: ({ strictNote, maxTokens }) => anthropic.messages.create({
+          model: MODELS.GPT4_MINI,
+          system: `You are an expert educator who creates engaging, educational quiz questions. Always respond with valid JSON only: a single JSON array, no markdown fences and no text outside the JSON.${getLanguageInstruction(language)}`,
+          messages: [{ role: 'user', content: prompt + strictNote }],
+          temperature: 0.8,
+          max_tokens: maxTokens
+        }),
+        parse: parseQuiz,
+        onFailure: (info) => logger.warn('Quiz reply could not be parsed', { ...info, requested: num_questions, userId, noteId })
       });
-
-      const responseContent = completion.content[0].text;
-      let questions;
-      
-      try {
-        const parsed = JSON.parse(responseContent);
-        questions = parsed.questions || parsed;
-      } catch {
-        throw new AppError('Failed to parse quiz questions', 500);
-      }
+      const questions = parsedQuestions.slice(0, num_questions);
 
       // Save AI content
       const aiContent = await this.saveAIContent(noteId, 'quiz', {
@@ -314,7 +311,7 @@ ${truncateContent(note.content)}`;
       });
 
       // Log usage
-      await this.logUsage(userId, 'quiz', completion.usage);
+      await this.logUsage(userId, 'quiz', usage);
 
       logger.info('Quiz generated', { userId, noteId, num_questions });
 
@@ -322,11 +319,16 @@ ${truncateContent(note.content)}`;
         id: aiContent.id,
         questions,
         difficulty,
-        note_id: noteId
+        note_id: noteId,
+        requested: num_questions,
+        returned: questions.length,
+        partial: partial || questions.length < num_questions
       };
 
     } catch (error) {
       logger.error('Error generating quiz', { error: error.message, userId, noteId });
+      if (error instanceof StructuredOutputError) throw structuredFailure('a quiz');
+      if (error instanceof AppError) throw error;
       throw new AppError('Failed to generate quiz', 500);
     }
   }
@@ -363,28 +365,20 @@ ${truncateContent(note.content)}`;
       // Scale max_tokens based on card count (approximately 100 tokens per card)
       const maxTokens = Math.min(Math.max(cardCount * 100, 1500), 4000);
 
-      const completion = await anthropic.messages.create({
-        model: MODELS.GPT4_MINI,
-        system: `You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only. Do not include any text outside the JSON object. You MUST create exactly ${cardCount} flashcards - no more, no less.${getLanguageInstruction(language)}`,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: maxTokens
+      const { value: parsedCards, usage, partial } = await requestStructured({
+        maxTokens,
+        isComplete: enoughOf(cardCount),
+        request: ({ strictNote, maxTokens: budget }) => anthropic.messages.create({
+          model: MODELS.GPT4_MINI,
+          system: `You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only: a single JSON array, no markdown fences and no text outside the JSON. You MUST create exactly ${cardCount} flashcards - no more, no less.${getLanguageInstruction(language)}`,
+          messages: [{ role: 'user', content: prompt + strictNote }],
+          temperature: 0.7,
+          max_tokens: budget
+        }),
+        parse: parseFlashcards,
+        onFailure: (info) => logger.warn('Flashcard reply could not be parsed', { ...info, requested: cardCount, userId, noteId })
       });
-
-      const responseContent = completion.content[0].text;
-      let flashcards;
-      
-      try {
-        const parsed = JSON.parse(responseContent);
-        flashcards = parsed.flashcards || parsed.cards || parsed;
-      } catch {
-        throw new AppError('Failed to parse flashcards', 500);
-      }
+      const flashcards = parsedCards.slice(0, cardCount);
 
       // Save AI content
       const aiContent = await this.saveAIContent(noteId, 'flashcards', {
@@ -394,18 +388,23 @@ ${truncateContent(note.content)}`;
       });
 
       // Log usage
-      await this.logUsage(userId, 'flashcards', completion.usage);
+      await this.logUsage(userId, 'flashcards', usage);
 
       logger.info('Flashcards generated', { userId, noteId, num_cards: cardCount });
 
       return {
         id: aiContent.id,
         flashcards,
-        note_id: noteId
+        note_id: noteId,
+        requested: cardCount,
+        returned: flashcards.length,
+        partial: partial || flashcards.length < cardCount
       };
 
     } catch (error) {
       logger.error('Error generating flashcards', { error: error.message, userId, noteId });
+      if (error instanceof StructuredOutputError) throw structuredFailure('flashcards');
+      if (error instanceof AppError) throw error;
       throw new AppError('Failed to generate flashcards', 500);
     }
   }
@@ -463,36 +462,19 @@ Return ONLY valid JSON in this exact structure:
 Content to analyze:
 ${truncateContent(note.content)}`;
 
-      const completion = await anthropic.messages.create({
-        model: MODELS.GPT4_MINI,
-        system: `You are an expert educator who creates clear, visually organized mind maps for studying. Create hierarchical structures that help visual learners understand and remember content. Always respond with valid JSON only. Do not include any text outside the JSON object.${getLanguageInstruction(language)}`,
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 3000
-      });
-
-      const responseContent = completion.content[0].text;
-      let mindMapData;
-
-      try {
-        mindMapData = extractJsonObject(responseContent);
-      } catch (parseError) {
+      const { value: mindMapData, usage } = await requestStructured({
+        maxTokens: 3000,
+        request: ({ strictNote, maxTokens }) => anthropic.messages.create({
+          model: MODELS.GPT4_MINI,
+          system: `You are an expert educator who creates clear, visually organized mind maps for studying. Create hierarchical structures that help visual learners understand and remember content. Always respond with valid JSON only: a single JSON object, no markdown fences and no text outside the JSON.${getLanguageInstruction(language)}`,
+          messages: [{ role: 'user', content: prompt + strictNote }],
+          temperature: 0.7,
+          max_tokens: maxTokens
+        }),
+        parse: parseMindMap,
         // Log the cause and response shape only, never note or model content
-        logger.error('Mind map JSON parse failed', {
-          error: parseError.message,
-          stopReason: completion.stop_reason,
-          truncatedAtMaxTokens: completion.stop_reason === 'max_tokens',
-          responseLength: responseContent?.length,
-          userId,
-          noteId
-        });
-        throw new AppError('Failed to parse mind map data', 500);
-      }
+        onFailure: (info) => logger.error('Mind map JSON parse failed', { ...info, userId, noteId })
+      });
 
       // Save AI content
       const aiContent = await this.saveAIContent(noteId, 'mindmap', {
@@ -502,7 +484,7 @@ ${truncateContent(note.content)}`;
       });
 
       // Log usage
-      await this.logUsage(userId, 'mindmap', completion.usage);
+      await this.logUsage(userId, 'mindmap', usage);
 
       logger.info('Mind map generated', { userId, noteId, nodeCount: mindMapData.nodes?.length });
 
@@ -515,6 +497,8 @@ ${truncateContent(note.content)}`;
 
     } catch (error) {
       logger.error('Error generating mind map', { error: error.message, userId, noteId, stack: error.stack });
+      if (error instanceof StructuredOutputError) throw structuredFailure('a mind map');
+      if (error instanceof AppError) throw error;
       throw new AppError('Failed to generate mind map', 500);
     }
   }

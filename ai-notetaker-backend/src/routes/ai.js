@@ -86,10 +86,10 @@ router.post('/summary', checkUsageLimits('summary'), validate('generateAIContent
 router.post('/quiz', checkUsageLimits('quiz'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
-  const quiz = await aiService.generateQuiz(req.userId, note_id, options);
-
-  // Record usage for free tier tracking
+  // Count the attempt before generating: a reply the model fails to produce still cost model calls, so it must use up the cap.
   await recordUsage(req.userId, 'quiz', { note_id });
+
+  const quiz = await aiService.generateQuiz(req.userId, note_id, options);
 
   res.json({
     success: true,
@@ -107,10 +107,10 @@ router.post('/quiz', checkUsageLimits('quiz'), validate('generateAIContent'), as
 router.post('/flashcards', checkUsageLimits('flashcards'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
-  const flashcards = await aiService.generateFlashcards(req.userId, note_id, options);
-
-  // Record usage for free tier tracking
+  // Count the attempt before generating: a reply the model fails to produce still cost model calls, so it must use up the cap.
   await recordUsage(req.userId, 'flashcards', { note_id });
+
+  const flashcards = await aiService.generateFlashcards(req.userId, note_id, options);
 
   res.json({
     success: true,
@@ -413,10 +413,10 @@ router.get('/podcast/:id/audio', requireSubscription, asyncHandler(async (req, r
 router.post('/mindmap', checkUsageLimits('mindmap'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
-  const mindmap = await aiService.generateMindMap(req.userId, note_id, options);
-
-  // Record usage
+  // Count the attempt before generating: a reply the model fails to produce still cost model calls, so it must use up the cap.
   await recordUsage(req.userId, 'mindmap', { note_id });
+
+  const mindmap = await aiService.generateMindMap(req.userId, note_id, options);
 
   res.json({
     success: true,

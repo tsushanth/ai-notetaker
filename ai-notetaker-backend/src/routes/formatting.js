@@ -6,12 +6,13 @@ const { asyncHandler } = require('../middleware/errorHandler');
 const formattingService = require('../services/formattingService');
 const noteService = require('../services/noteService');
 const { logger } = require('../utils/logger');
+const { featureDailyCap } = require('../middleware/freeTierLimits');
 
 /**
  * Format a specific note
  * POST /api/formatting/notes/:noteId
  */
-router.post('/notes/:noteId', authenticate, asyncHandler(async (req, res) => {
+router.post('/notes/:noteId', authenticate, featureDailyCap('formatting'), asyncHandler(async (req, res) => {
   const { noteId } = req.params;
   const userId = req.userId;
 
@@ -96,7 +97,7 @@ router.post('/batch', asyncHandler(async (req, res) => {
  * Re-format a note (force refresh)
  * PUT /api/formatting/notes/:noteId
  */
-router.put('/notes/:noteId', authenticate, asyncHandler(async (req, res) => {
+router.put('/notes/:noteId', authenticate, featureDailyCap('formatting'), asyncHandler(async (req, res) => {
   const { noteId } = req.params;
   const userId = req.userId;
 

@@ -331,11 +331,7 @@ export default function NoteDetailPage() {
       router.push(`/learn/${session.id}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start learning session';
-      if (message.includes('PREMIUM_REQUIRED') || message.toLowerCase().includes('premium')) {
-        alert('Turning notes into a learning session is a premium feature. Upgrade to try it.');
-      } else {
-        alert(message);
-      }
+      alert(message);
     } finally {
       setIsStartingLearning(false);
     }

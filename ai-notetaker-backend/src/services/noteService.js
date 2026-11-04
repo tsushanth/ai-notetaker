@@ -41,7 +41,15 @@ class NoteService {
 
       // Trigger async formatting unless skipped
       if (!skipFormatting && noteData.content && noteData.content.length >= 200) {
-        this.triggerFormatting(data.id).catch(err => {
+        // Over the daily formatting cap or the global LLM budget: skip (the note is saved unformatted, never lost).
+        const { admitAutoFormatting } = require('../middleware/freeTierLimits');
+        admitAutoFormatting(userId).then(allowed => {
+          if (!allowed) {
+            logger.info('Background formatting skipped (daily cap or LLM budget)', { userId, noteId: data.id });
+            return null;
+          }
+          return this.triggerFormatting(data.id);
+        }).catch(err => {
           logger.error('Background formatting failed', { noteId: data.id, error: err.message });
         });
       }

@@ -28,53 +28,72 @@ test('backend: summary, quiz, flashcards and chat are free (daily backstop only,
   }
 });
 
-test('backend: export, AI tutor and unlimited share links are the Premium gates the copy relies on', () => {
-  assert.match(backend('routes/exports.js'), /requireExportAccess[\s\S]*PREMIUM_REQUIRED/);
-  assert.match(backend('routes/learning.js'), /!status\.isSubscribed && !status\.isInTrial[\s\S]*PREMIUM_REQUIRED/);
-  assert.match(backend('routes/sharing.js'), /FREE_SHARES_PER_MONTH = 3/);
+test('backend: export, Learn, Create, Compete, integrations and share links are free (gated only while FREE_EXCEPT_COSTLY is switched off)', () => {
+  const sub = backend('middleware/subscription.js');
+  assert.match(sub, /async function hasStandardAccess[\s\S]*?if \(freeExceptCostly\(env\)\) return true;/);
+  for (const file of ['routes/exports.js', 'routes/learning.js', 'routes/createContent.js', 'routes/compete.js', 'routes/integrations.js', 'routes/sharing.js']) {
+    const src = backend(file);
+    assert.match(src, /hasStandardAccess/, `${file} must use the flag-aware helper`);
+    assert.doesNotMatch(src, /status\.isSubscribed/, `${file} must not check the subscription inline`);
+  }
 });
 
-test('PODCASTS_GATED matches the backend: the podcast and infographic gate is currently switched off', () => {
-  const src = backend('middleware/subscription.js');
-  const m = src.match(/const requireSubscriptionForPodcast = async \(req, res, next\) => \{([\s\S]*?)\n  try \{/);
-  assert.ok(m, 'requireSubscriptionForPodcast not found');
-  const gateOff = /^\s*(\/\/[^\n]*\n\s*)*return next\(\);/.test(m[1]);
-  assert.equal(PODCASTS_GATED, !gateOff, 'update PODCASTS_GATED in lib/freeTier.ts to match requireSubscriptionForPodcast');
+test('PODCASTS_GATED matches the backend: podcasts, infographics and the meeting bot are behind requireProFeature', () => {
+  const ai = backend('routes/ai.js');
+  const meetings = backend('routes/meetings.js');
+  const gated = [
+    routeLine('routes/ai.js', 'post', '/podcast').includes("requireProFeature('podcast')"),
+    routeLine('routes/ai.js', 'post', '/podcast/script').includes("requireProFeature('podcast')"),
+    routeLine('routes/ai.js', 'post', '/infographic').includes("requireProFeature('infographic')"),
+    /router\.post\(\s*'\/',\s*[^]*?requireProFeature\('meeting_bot'\)/.test(meetings)
+  ];
+  assert.ok(ai.includes('requireProFeature') && meetings.includes('requireProFeature'));
+  assert.equal(PODCASTS_GATED, gated.every(Boolean), 'update PODCASTS_GATED in lib/freeTier.ts to match the backend Pro gates');
+  assert.ok(gated.every((g) => g === gated[0]), 'the three Pro features are gated together');
 });
 
-test('PREMIUM_PERKS lists only what is gated: no quizzes, flashcards, chat or summaries', () => {
+test('the Pro-only set in the backend is exactly podcasts, infographics and the meeting bot', () => {
+  const policy = backend('utils/freeTierPolicy.js');
+  const m = policy.match(/const PRO_FEATURES = \{([^}]*)\}/);
+  assert.ok(m, 'PRO_FEATURES not found');
+  assert.deepEqual([...m[1].matchAll(/(\w+):/g)].map((x) => x[1]).sort(), ['infographic', 'meeting_bot', 'podcast']);
+});
+
+test('PREMIUM_PERKS lists only Pro features: podcasts, infographics, meeting bot, higher limits', () => {
   const text = PREMIUM_PERKS.join(' | ').toLowerCase();
-  assert.ok(!/quiz|flashcard|chat|summar|transcri/.test(text), text);
-  assert.ok(/export/.test(text) && /tutor/.test(text) && /share/.test(text), text);
-});
-
-test('podcasts appear in the Premium list exactly when the backend gates them', () => {
-  assert.equal(PREMIUM_PERKS.some((p) => /podcast/i.test(p)), PODCASTS_GATED);
+  for (const word of ['podcast', 'infographic', 'meeting bot', 'higher daily limits']) assert.ok(text.includes(word), word);
+  assert.ok(!/quiz|flashcard|chat|summar|transcri|export|tutor|learn|share|integration/.test(text), text);
 });
 
 test('the free list names what really is free', () => {
   const text = FREE_FOR_EVERYONE.join(' | ').toLowerCase();
-  for (const word of ['transcription', 'summaries', 'quizzes', 'flashcards', 'chat']) assert.ok(text.includes(word), word);
+  for (const word of ['transcription', 'summaries', 'quizzes', 'flashcards', 'chat', 'mind maps', 'export', 'learn, create and compete', 'integrations', 'share links']) assert.ok(text.includes(word), word);
+  assert.ok(!/podcast|infographic|meeting bot/.test(text), text);
 });
 
-test('the homepage FAQ answer comes from the same lists and never sells a free feature as Premium', () => {
+test('the homepage FAQ answer comes from the same lists and never sells a free feature as Pro', () => {
   const answer = freePlanAnswer();
-  const [free, premium] = answer.split('Premium adds');
-  assert.ok(premium, 'answer should have a Premium part');
-  for (const word of ['quizzes', 'flashcards', 'chat', 'summaries']) {
+  const [free, pro] = answer.split('Pro adds');
+  assert.ok(pro, 'answer should have a Pro part');
+  for (const word of ['quizzes', 'flashcards', 'chat', 'summaries', 'mind maps', 'export', 'learn', 'integrations', 'share links']) {
     assert.ok(free.toLowerCase().includes(word), `${word} should be in the free part`);
-    assert.ok(!premium.toLowerCase().includes(word), `${word} must not be in the Premium part`);
+    assert.ok(!pro.toLowerCase().includes(word), `${word} must not be in the Pro part`);
   }
-  assert.match(premium, /export/i);
-  assert.equal(/podcast/i.test(premium), PODCASTS_GATED);
+  for (const word of ['podcasts', 'infographics', 'meeting bot', 'higher daily limits']) assert.ok(pro.toLowerCase().includes(word), word);
   assert.ok(web('app/page.tsx').includes('freePlanAnswer()'), 'the homepage must use freePlanAnswer()');
 });
 
-test('Settings "Your Features" does not lock podcasts while the backend lets everyone generate them', () => {
-  const access = { freeTier: { legacyLimits: false }, features: { canCreateNotes: true, canUseAI: true, canGeneratePodcasts: false, unlimitedAccess: false } };
-  const podcasts = featureRows(access).find((r) => r.key === 'podcasts')!;
-  assert.equal(podcasts.included, !PODCASTS_GATED);
-  assert.equal(podcasts.free, !PODCASTS_GATED);
+test('Settings "Your Features" locks podcasts, infographics and the meeting bot for free users and opens them for Pro', () => {
+  const freeUser = { freeTier: { legacyLimits: false }, features: { canCreateNotes: true, canUseAI: true, canGeneratePodcasts: false, canGenerateInfographics: false, canUseMeetingBot: false, unlimitedAccess: false } };
+  const pro = { ...freeUser, features: { ...freeUser.features, canGeneratePodcasts: true, canGenerateInfographics: true, canUseMeetingBot: true } };
+  for (const key of ['podcasts', 'infographics', 'meetingBot']) {
+    assert.equal(featureRows(freeUser).find((r) => r.key === key)!.included, !PODCASTS_GATED, `${key} (free user)`);
+    assert.equal(featureRows(pro).find((r) => r.key === key)!.included, true, `${key} (Pro)`);
+  }
+  for (const key of ['export', 'learn']) assert.equal(featureRows(freeUser).find((r) => r.key === key)!.included, true, key);
+  // An older backend that does not send the new flags: the podcast flag decides for all three (same gate).
+  const old = { freeTier: { legacyLimits: false }, features: { canCreateNotes: true, canUseAI: true, canGeneratePodcasts: true, unlimitedAccess: false } };
+  for (const key of ['infographics', 'meetingBot']) assert.equal(featureRows(old).find((r) => r.key === key)!.included, true, key);
 });
 
 test('the homepage only promises what the web upload page accepts (PDF)', () => {

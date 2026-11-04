@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
-const { legacyLimitsEnabled } = require('../utils/freeTierPolicy');
+const { legacyLimitsEnabled, freeExceptCostly, PRO_FEATURES } = require('../utils/freeTierPolicy');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -16,8 +16,73 @@ const FREE_TIER_LIMITS = {
 };
 
 /**
+ * Pro access for the three costly features (meeting bot, podcasts, infographics): the REAL subscription state,
+ * never affected by any flag. Pro = active subscription, trial, creator premium, or a cancelled / grace-period
+ * subscription that is still inside its paid period (isProStatus). The same rule drives the Pro daily caps. `status` avoids a second lookup.
+ */
+function isProStatus(s) {
+  return !!(s && (s.isSubscribed || s.isInTrial || s.isCreator || s.isPaidThroughPeriod));
+}
+
+async function hasPaidAccess(userId, { status } = {}) {
+  return isProStatus(status || await getSubscriptionStatus(userId));
+}
+
+/**
+ * Access to everything that is NOT one of the three Pro features (export, Learn, Create, Compete, integrations, share links...).
+ * FREE_EXCEPT_COSTLY (default ON, read on every call): true for everyone, no subscription lookup.
+ * FREE_EXCEPT_COSTLY=false: the old rule, subscriber or trial user (creator premium does not count, as in the inline
+ * checks this replaced). getSubscriptionStatus is untouched and keeps reporting the real state either way.
+ */
+async function hasStandardAccess(userId, { status, env = process.env } = {}) {
+  if (freeExceptCostly(env)) return true;
+  const s = status || await getSubscriptionStatus(userId);
+  return !!(s.isSubscribed || s.isInTrial);
+}
+
+/**
+ * Gate for one of the Pro features (a key of PRO_FEATURES). Free users get the existing paywall response (403
+ * SUBSCRIPTION_REQUIRED, details.upgradeRequired true); Pro users continue (to their per-user daily cap).
+ * FREE_EXCEPT_COSTLY=false: no gate at all, which is how these three routes behaved before (the old gate was a no-op). The new daily
+ * caps and the spend breaker still apply on those routes.
+ */
+const requireProFeature = (feature) => {
+  const label = PRO_FEATURES[feature];
+  if (!label) throw new Error(`unknown Pro feature: ${feature}`);
+  return async (req, res, next) => {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
+      if (!freeExceptCostly()) return next();
+
+      const status = await getSubscriptionStatus(userId);
+      if (await hasPaidAccess(userId, { status })) {
+        req.subscription = status;
+        return next();
+      }
+      logger.info('Pro feature blocked - not subscribed', { userId, feature, reason: status.reason });
+      return res.status(403).json({
+        success: false,
+        error: `${label} requires a premium subscription`,
+        code: 'SUBSCRIPTION_REQUIRED',
+        details: { feature, upgradeRequired: true, reason: status.reason, trialExpired: status.trialExpired }
+      });
+    } catch (error) {
+      logger.error('Pro feature check failed', { error: error.message, userId: req.userId, feature });
+      // Fail closed: never hand a costly feature out because the subscription lookup failed.
+      return res.status(503).json({
+        success: false,
+        error: 'Unable to verify subscription status. Please try again.',
+        code: 'SUBSCRIPTION_CHECK_FAILED',
+        retryable: true
+      });
+    }
+  };
+};
+
+/**
  * Middleware to check if user has an active subscription or is in trial
- * Blocks access to premium features if not subscribed
+ * Blocks access to premium features if not subscribed (never blocks while FREE_EXCEPT_COSTLY is on)
  */
 const requireSubscription = async (req, res, next) => {
   try {
@@ -29,6 +94,8 @@ const requireSubscription = async (req, res, next) => {
         error: 'Authentication required'
       });
     }
+
+    if (freeExceptCostly()) return next();
 
     // Check subscription status
     const subscriptionStatus = await getSubscriptionStatus(userId);
@@ -149,13 +216,19 @@ const legacyMonthlyUsageCheck = (featureType) => {
  * the daily backstop. The flag is read on every request.
  * `dailyLimiter` is injectable for tests.
  */
-const checkUsageLimits = (featureType, { dailyLimiter } = {}) => {
+const checkUsageLimits = (featureType, { dailyLimiter, breaker } = {}) => {
   const legacy = legacyMonthlyUsageCheck(featureType);
   let daily = dailyLimiter || null;
+  let budget = breaker || null;
   return (req, res, next) => {
     if (!daily) daily = require('./freeTierLimits').aiDailyLimit();
-    if (!legacyLimitsEnabled()) return daily(req, res, next);
-    return legacy(req, res, (err) => (err ? next(err) : daily(req, res, next)));
+    if (!budget) budget = require('./freeTierLimits').llmSpendBreaker();
+    // Global LLM budget first (so a tripped breaker does not use up the user's own allowance), then the per-user checks.
+    return budget(req, res, (bErr) => {
+      if (bErr) return next(bErr);
+      if (!legacyLimitsEnabled()) return daily(req, res, next);
+      return legacy(req, res, (err) => (err ? next(err) : daily(req, res, next)));
+    });
   };
 };
 
@@ -187,6 +260,10 @@ const recordUsage = async (userId, featureType, metadata = {}) => {
  * Get user's subscription status with server-side trial tracking
  * Also checks for creator premium access with abuse prevention
  */
+// Store webhooks map "auto-renew turned off" to 'cancelled' and "payment problem, store retrying" to 'grace_period'. The user
+// has paid through the end of the current period in both cases, so they stay Pro until current_period_end passes.
+const PAID_THROUGH_PERIOD_STATUSES = ['cancelled', 'grace_period'];
+
 async function getSubscriptionStatus(userId) {
   // Check for active subscription first
   const { data: subscription, error: subError } = await supabase
@@ -195,11 +272,18 @@ async function getSubscriptionStatus(userId) {
     .eq('user_id', userId)
     .single();
 
+  // Real, additive field: true only for a cancelled / grace-period subscription whose paid period has not ended yet.
+  // isSubscribed keeps its old meaning (status 'active'), so every pre-existing check behaves as before.
+  let isPaidThroughPeriod = false;
+
   if (subscription && !subError) {
     const now = new Date();
     const expirationDate = subscription.current_period_end
       ? new Date(subscription.current_period_end)
       : null;
+
+    isPaidThroughPeriod = PAID_THROUGH_PERIOD_STATUSES.includes(subscription.status) &&
+      !!expirationDate && expirationDate > now;
 
     const isActive = subscription.status === 'active' &&
       (!expirationDate || expirationDate > now);
@@ -208,6 +292,7 @@ async function getSubscriptionStatus(userId) {
       return {
         hasAccess: true,
         isSubscribed: true,
+        isPaidThroughPeriod: false,
         isInTrial: subscription.is_trial,
         reason: 'active_subscription',
         productId: subscription.product_id,
@@ -223,6 +308,7 @@ async function getSubscriptionStatus(userId) {
     return {
       hasAccess: true,
       isSubscribed: false,
+      isPaidThroughPeriod,
       isInTrial: false,
       isCreator: true,
       reason: creatorAccess.reason,
@@ -238,6 +324,7 @@ async function getSubscriptionStatus(userId) {
     return {
       hasAccess: true,
       isSubscribed: false,
+      isPaidThroughPeriod,
       isInTrial: true,
       reason: 'trial_active',
       trialDaysRemaining: trialStatus.daysRemaining,
@@ -249,6 +336,7 @@ async function getSubscriptionStatus(userId) {
   return {
     hasAccess: false,
     isSubscribed: false,
+    isPaidThroughPeriod,
     isInTrial: false,
     trialExpired: trialStatus.trialExpired,
     reason: trialStatus.trialExpired ? 'trial_expired' : 'no_subscription',
@@ -509,70 +597,18 @@ function getFeatureLimit(featureType) {
   }
 }
 
-/**
- * Middleware to block podcasts for free tier entirely
- */
-const requireSubscriptionForPodcast = async (req, res, next) => {
-  // Subscription gate temporarily disabled — allow all users to generate podcasts
-  return next();
-
-  try {
-    const userId = req.userId;
-
-    logger.info('Podcast subscription check starting', { userId });
-
-    const subscriptionStatus = await getSubscriptionStatus(userId);
-
-    logger.info('Podcast subscription check result', {
-      userId,
-      isSubscribed: subscriptionStatus.isSubscribed,
-      isInTrial: subscriptionStatus.isInTrial,
-      isCreator: subscriptionStatus.isCreator,
-      hasAccess: subscriptionStatus.hasAccess,
-      reason: subscriptionStatus.reason
-    });
-
-    // Only subscribers and trial users can generate podcasts
-    // Also allow creators with premium access
-    if (subscriptionStatus.isSubscribed || subscriptionStatus.isInTrial || subscriptionStatus.isCreator) {
-      req.subscription = subscriptionStatus;
-      return next();
-    }
-
-    logger.info('Podcast access denied', {
-      userId,
-      reason: subscriptionStatus.reason,
-      trialExpired: subscriptionStatus.trialExpired
-    });
-
-    return res.status(403).json({
-      success: false,
-      error: 'Podcast generation requires a premium subscription',
-      code: 'SUBSCRIPTION_REQUIRED',
-      details: {
-        feature: 'podcast',
-        upgradeRequired: true,
-        reason: subscriptionStatus.reason,
-        trialExpired: subscriptionStatus.trialExpired
-      }
-    });
-  } catch (error) {
-    logger.error('Podcast subscription check failed', { error: error.message, userId: req.userId });
-    // SECURITY FIX: Fail closed - deny access on errors
-    return res.status(503).json({
-      success: false,
-      error: 'Unable to verify subscription status. Please try again.',
-      code: 'SUBSCRIPTION_CHECK_FAILED',
-      retryable: true
-    });
-  }
-};
+/** Back-compat name for the podcast gate. */
+const requireSubscriptionForPodcast = requireProFeature('podcast');
 
 module.exports = {
   requireSubscription,
   checkUsageLimits,
   recordUsage,
   requireSubscriptionForPodcast,
+  hasPaidAccess,
+  isProStatus,
+  hasStandardAccess,
+  requireProFeature,
   getSubscriptionStatus,
   getCreatorPremiumAccess,
   getServerTrialStatus,

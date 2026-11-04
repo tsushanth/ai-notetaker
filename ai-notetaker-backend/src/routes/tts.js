@@ -8,6 +8,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const ttsService = require('../services/ttsService');
+const { featureDailyCap } = require('../middleware/freeTierLimits');
 
 // Async handler wrapper
 const asyncHandler = (fn) => (req, res, next) => {
@@ -22,7 +23,7 @@ const asyncHandler = (fn) => (req, res, next) => {
  * POST /api/tts/synthesize
  * Synthesize text to speech (returns audio directly, not saved)
  */
-router.post('/synthesize', authenticate, asyncHandler(async (req, res) => {
+router.post('/synthesize', authenticate, featureDailyCap('tts'), asyncHandler(async (req, res) => {
   const {
     text,
     voice = 'nova',
@@ -69,7 +70,7 @@ router.post('/synthesize', authenticate, asyncHandler(async (req, res) => {
  * POST /api/tts/generate
  * Generate TTS for a note and save to storage
  */
-router.post('/generate', authenticate, asyncHandler(async (req, res) => {
+router.post('/generate', authenticate, featureDailyCap('tts'), asyncHandler(async (req, res) => {
   const {
     note_id,
     voice = 'nova',

@@ -3,12 +3,13 @@ const { llmUsage } = require('../config/openai');
 const router = express.Router();
 const { authenticate, optionalAuth } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const { getSubscriptionStatus } = require('../middleware/subscription');
+const { hasStandardAccess } = require('../middleware/subscription');
 const { supabaseAdmin } = require('../config/supabase');
 const noteService = require('../services/noteService');
 const { logger } = require('../utils/logger');
 const axios = require('axios');
 const crypto = require('crypto');
+const { admitFeature } = require('../middleware/freeTierLimits');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -16,8 +17,7 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 // Create a challenge from a note (Premium)
 // ============================================
 router.post('/:noteId/create', authenticate, asyncHandler(async (req, res) => {
-  const status = await getSubscriptionStatus(req.userId);
-  if (!status.isSubscribed && !status.isInTrial) {
+  if (!(await hasStandardAccess(req.userId))) {
     return res.status(403).json({ success: false, error: 'Premium subscription required', code: 'PREMIUM_REQUIRED' });
   }
 
@@ -26,6 +26,9 @@ router.post('/:noteId/create', authenticate, asyncHandler(async (req, res) => {
 
   const note = await noteService.getNoteById(req.userId, noteId);
   if (!note) throw new AppError('Note not found', 404);
+
+  // Daily cap (counts only requests that will actually call the model)
+  if (!(await admitFeature('compete', req, res))) return;
 
   const content = note.formatted_content || note.content || '';
 

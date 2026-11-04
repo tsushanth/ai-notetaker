@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const { getSubscriptionStatus } = require('../middleware/subscription');
+const { hasStandardAccess } = require('../middleware/subscription');
 const integrationService = require('../services/integrationService');
 const { logger } = require('../utils/logger');
 const { OAuth2Client } = require('google-auth-library');
@@ -11,8 +11,7 @@ const { OAuth2Client } = require('google-auth-library');
  * Require premium for integration actions
  */
 const requirePremiumForIntegration = async (req, res, next) => {
-  const status = await getSubscriptionStatus(req.userId);
-  if (status.isSubscribed || status.isInTrial) return next();
+  if (await hasStandardAccess(req.userId)) return next();
   return res.status(403).json({
     success: false,
     error: 'Premium subscription required for integrations',

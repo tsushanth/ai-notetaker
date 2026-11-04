@@ -138,7 +138,7 @@ function SubscriptionContent() {
       <div className="bg-gray-50 rounded-xl p-4 mb-6">
         <p className="font-medium text-gray-900 text-sm mb-1">Always free</p>
         <p className="text-xs text-gray-500 mb-3">{FREE_FOR_EVERYONE.join(', ')}.</p>
-        <p className="font-medium text-gray-900 text-sm mb-3">Premium adds:</p>
+        <p className="font-medium text-gray-900 text-sm mb-3">Pro adds:</p>
         <div className="grid grid-cols-1 gap-2">
           {PREMIUM_PERKS.map((feature) => (
             <div key={feature} className="flex items-center gap-2 text-sm text-gray-700">

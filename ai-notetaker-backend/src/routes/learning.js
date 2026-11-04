@@ -3,19 +3,22 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { adminSecretMatches: secretsMatch } = require('../middleware/adminSecret');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const { getSubscriptionStatus } = require('../middleware/subscription');
+const { hasStandardAccess } = require('../middleware/subscription');
 const learningService = require('../services/learningService');
 const { logger } = require('../utils/logger');
 const { reportFailure } = require('../utils/failureReporter');
+const { admitFeature } = require('../middleware/freeTierLimits');
 
 // ============================================
 // Start or resume a learning session for a note (Premium)
 // ============================================
 router.post('/:noteId/start', authenticate, asyncHandler(async (req, res) => {
-  const status = await getSubscriptionStatus(req.userId);
-  if (!status.isSubscribed && !status.isInTrial) {
+  if (!(await hasStandardAccess(req.userId))) {
     return res.status(403).json({ success: false, error: 'Premium subscription required', code: 'PREMIUM_REQUIRED' });
   }
+  // Daily Learn cap is charged here, when a session is started or resumed. /lesson/:id/submit is deliberately not capped:
+  // rejecting it would throw away the learner's answer.
+  if (!(await admitFeature('learning', req, res))) return;
   const result = await learningService.startSession(req.userId, req.params.noteId);
   res.json({ success: true, data: result });
 }));

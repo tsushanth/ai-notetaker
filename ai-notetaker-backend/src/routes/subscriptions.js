@@ -195,11 +195,16 @@ router.get('/status', authenticate, asyncHandler(async (req, res) => {
 router.get('/access', authenticate, asyncHandler(async (req, res) => {
   const userId = req.userId;
   const { getSubscriptionStatus, FREE_TIER_LIMITS } = require('../middleware/subscription');
-  const { legacyLimitsEnabled, getFreeTierConfig } = require('../utils/freeTierPolicy');
+  const { legacyLimitsEnabled, getFreeTierConfig, freeExceptCostly, PRO_FEATURES } = require('../utils/freeTierPolicy');
   const legacyLimits = legacyLimitsEnabled();
+  // Real subscription state stays in hasAccess/isSubscribed/isInTrial above; only the feature flags below follow FREE_EXCEPT_COSTLY.
+  const freeExceptCostlyOn = freeExceptCostly();
 
   // Get comprehensive subscription status
   const status = await getSubscriptionStatus(userId);
+  const paid = status.isSubscribed || status.isInTrial;
+  // Pro = what the meeting bot / podcast / infographic gates accept (creator premium counts); with the flag off, today's paid-only rule
+  const pro = freeExceptCostlyOn ? (paid || !!status.isCreator) : paid;
 
   // Get usage for current month
   const now = new Date();
@@ -270,6 +275,8 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
       // Free-tier policy in force (additive field; older clients ignore it)
       freeTier: {
         legacyLimits,
+        freeExceptCostly: freeExceptCostlyOn,
+        proFeatures: freeExceptCostlyOn ? Object.keys(PRO_FEATURES) : [],
         transcriptionsPerDay: getFreeTierConfig().transcriptionsPerDay,
         aiGenerationsPerDay: getFreeTierConfig().aiGenerationsPerDay
       },
@@ -280,11 +287,15 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
         // when FREE_TIER_LEGACY_LIMITS=true.
         canCreateNotes: legacyLimits ? (status.hasAccess || remaining.notes > 0) : true,
         canUseAI: legacyLimits ? (status.hasAccess || remaining.aiGenerations > 0) : true,
-        canGeneratePodcasts: status.isSubscribed || status.isInTrial,
-        canExportNotes: status.isSubscribed || status.isInTrial,
-        canShareNotes: true,  // Free: 3/month, premium: unlimited (enforced server-side)
-        canUseIntegrations: status.isSubscribed || status.isInTrial,
-        unlimitedAccess: status.isSubscribed || status.isInTrial
+        // Pro features (meeting bot, podcasts, infographics): Pro users only while FREE_EXCEPT_COSTLY is on.
+        canGeneratePodcasts: pro,
+        canGenerateInfographics: pro,
+        canUseMeetingBot: pro,
+        // Everything else is free while FREE_EXCEPT_COSTLY is on.
+        canExportNotes: freeExceptCostlyOn || paid,
+        canShareNotes: true,  // FREE_EXCEPT_COSTLY=false: free 3/month, premium unlimited; always a daily cap (enforced server-side)
+        canUseIntegrations: freeExceptCostlyOn || paid,
+        unlimitedAccess: paid
       }
     }
   });

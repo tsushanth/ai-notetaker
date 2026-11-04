@@ -8,9 +8,10 @@ const {
   requireSubscription,
   checkUsageLimits,
   recordUsage,
-  requireSubscriptionForPodcast
+  requireProFeature
 } = require('../middleware/subscription');
 const aiService = require('../services/aiService');
+const { featureDailyCap } = require('../middleware/freeTierLimits');
 
 // All routes require authentication
 router.use(authenticate);
@@ -42,7 +43,7 @@ router.post('/chat', checkUsageLimits('chat'), validate('chatWithNote'), asyncHa
  *
  * PROTECTED: Requires subscription or trial
  */
-router.get('/suggestions/:note_id', requireSubscription, asyncHandler(async (req, res) => {
+router.get('/suggestions/:note_id', requireSubscription, featureDailyCap('suggestions'), asyncHandler(async (req, res) => {
   const { note_id } = req.params;
   const { language = 'english' } = req.query;
 
@@ -127,7 +128,7 @@ router.post('/flashcards', checkUsageLimits('flashcards'), validate('generateAIC
  *
  * PROTECTED: Same paywall as /podcast (subscription or trial).
  */
-router.post('/podcast/script', requireSubscriptionForPodcast, validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/podcast/script', requireProFeature('podcast'), featureDailyCap('podcast'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
   logger.info('Starting script-only podcast generation', {
@@ -170,7 +171,7 @@ router.post('/podcast/script', requireSubscriptionForPodcast, validate('generate
  *
  * PROTECTED: Requires active subscription or trial (NO free tier access)
  */
-router.post('/podcast', requireSubscriptionForPodcast, validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/podcast', requireProFeature('podcast'), featureDailyCap('podcast'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
   logger.info('Starting async podcast generation', {
@@ -451,7 +452,7 @@ router.post('/diagram', checkUsageLimits('diagram'), validate('generateAIContent
  *
  * PROTECTED: Requires active subscription (premium feature due to DALL-E cost)
  */
-router.post('/infographic', requireSubscriptionForPodcast, validate('generateAIContent'), asyncHandler(async (req, res) => {
+router.post('/infographic', requireProFeature('infographic'), featureDailyCap('infographic'), validate('generateAIContent'), asyncHandler(async (req, res) => {
   const { note_id, options } = req.validatedBody;
 
   logger.info('Starting infographic generation', {

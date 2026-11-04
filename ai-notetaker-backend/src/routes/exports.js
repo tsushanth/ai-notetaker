@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const { getSubscriptionStatus } = require('../middleware/subscription');
+const { hasStandardAccess } = require('../middleware/subscription');
 const exportService = require('../services/exportService');
 const { logger } = require('../utils/logger');
 
@@ -12,9 +12,7 @@ const { logger } = require('../utils/logger');
 const requireExportAccess = async (req, res, next) => {
   try {
     const userId = req.userId;
-    const status = await getSubscriptionStatus(userId);
-
-    if (status.isSubscribed || status.isInTrial) {
+    if (await hasStandardAccess(userId)) {
       return next();
     }
 

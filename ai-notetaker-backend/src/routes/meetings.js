@@ -9,7 +9,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
-const { requireSubscriptionForPodcast } = require('../middleware/subscription');
+const { requireProFeature } = require('../middleware/subscription');
+const { meetingBotGuard } = require('../middleware/freeTierLimits');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const meetingService = require('../services/meetingService');
 const recallService = require('../services/recallService');
@@ -24,7 +25,10 @@ router.use(authenticate);
  */
 router.post(
   '/',
-  requireSubscriptionForPodcast,
+  // Pro only (FREE_EXCEPT_COSTLY): starting a bot is the costly part. Listing, status, cancel and delete are open to
+  // everyone (they cost nothing, and a lapsed subscriber must still be able to cancel a bot that is running).
+  requireProFeature('meeting_bot'),
+  meetingBotGuard(),
   asyncHandler(async (req, res) => {
     const { meetingUrl, title, scheduledStart } = req.body;
 
@@ -51,7 +55,6 @@ router.post(
  */
 router.get(
   '/',
-  requireSubscriptionForPodcast,
   asyncHandler(async (req, res) => {
     const { page = 1, limit = 20, status } = req.query;
 
@@ -75,7 +78,6 @@ router.get(
  */
 router.get(
   '/:id',
-  requireSubscriptionForPodcast,
   asyncHandler(async (req, res) => {
     const meeting = await meetingService.getMeetingStatus(req.userId, req.params.id);
 
@@ -92,7 +94,6 @@ router.get(
  */
 router.post(
   '/:id/cancel',
-  requireSubscriptionForPodcast,
   asyncHandler(async (req, res) => {
     await meetingService.cancelMeeting(req.userId, req.params.id);
 
@@ -109,7 +110,6 @@ router.post(
  */
 router.delete(
   '/:id',
-  requireSubscriptionForPodcast,
   asyncHandler(async (req, res) => {
     await meetingService.deleteMeeting(req.userId, req.params.id);
 

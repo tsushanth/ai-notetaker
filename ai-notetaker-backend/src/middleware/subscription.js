@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
-const { legacyLimitsEnabled } = require('../utils/freeTierPolicy');
+const { legacyLimitsEnabled, freeExceptCostly, PRO_FEATURES } = require('../utils/freeTierPolicy');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -16,8 +16,69 @@ const FREE_TIER_LIMITS = {
 };
 
 /**
+ * Pro access for the three costly features (meeting bot, podcasts, infographics): the REAL subscription state,
+ * never affected by any flag. Pro = active subscription, trial, or creator premium (the same people the daily-cap
+ * multiplier and the old podcast gate treated as paid). `status` avoids a second lookup.
+ */
+async function hasPaidAccess(userId, { status } = {}) {
+  const s = status || await getSubscriptionStatus(userId);
+  return !!(s.isSubscribed || s.isInTrial || s.isCreator);
+}
+
+/**
+ * Access to everything that is NOT one of the three Pro features (export, Learn, Create, Compete, integrations, share links...).
+ * FREE_EXCEPT_COSTLY (default ON, read on every call): true for everyone, no subscription lookup.
+ * FREE_EXCEPT_COSTLY=false: the old rule, subscriber or trial user (creator premium does not count, exactly as the inline
+ * checks this replaced). getSubscriptionStatus is untouched and keeps reporting the real state either way.
+ */
+async function hasStandardAccess(userId, { status, env = process.env } = {}) {
+  if (freeExceptCostly(env)) return true;
+  const s = status || await getSubscriptionStatus(userId);
+  return !!(s.isSubscribed || s.isInTrial);
+}
+
+/**
+ * Gate for one of the Pro features (a key of PRO_FEATURES). Free users get the existing paywall response (403
+ * SUBSCRIPTION_REQUIRED, details.upgradeRequired true); Pro users continue (to their per-user daily cap).
+ * FREE_EXCEPT_COSTLY=false: no gate at all, exactly today's behaviour (the old gate was a no-op).
+ */
+const requireProFeature = (feature) => {
+  const label = PRO_FEATURES[feature];
+  if (!label) throw new Error(`unknown Pro feature: ${feature}`);
+  return async (req, res, next) => {
+    try {
+      const userId = req.userId;
+      if (!userId) return res.status(401).json({ success: false, error: 'Authentication required' });
+      if (!freeExceptCostly()) return next();
+
+      const status = await getSubscriptionStatus(userId);
+      if (await hasPaidAccess(userId, { status })) {
+        req.subscription = status;
+        return next();
+      }
+      logger.info('Pro feature blocked - not subscribed', { userId, feature, reason: status.reason });
+      return res.status(403).json({
+        success: false,
+        error: `${label} requires a premium subscription`,
+        code: 'SUBSCRIPTION_REQUIRED',
+        details: { feature, upgradeRequired: true, reason: status.reason, trialExpired: status.trialExpired }
+      });
+    } catch (error) {
+      logger.error('Pro feature check failed', { error: error.message, userId: req.userId, feature });
+      // Fail closed: never hand a costly feature out because the subscription lookup failed.
+      return res.status(503).json({
+        success: false,
+        error: 'Unable to verify subscription status. Please try again.',
+        code: 'SUBSCRIPTION_CHECK_FAILED',
+        retryable: true
+      });
+    }
+  };
+};
+
+/**
  * Middleware to check if user has an active subscription or is in trial
- * Blocks access to premium features if not subscribed
+ * Blocks access to premium features if not subscribed (never blocks while FREE_EXCEPT_COSTLY is on)
  */
 const requireSubscription = async (req, res, next) => {
   try {
@@ -29,6 +90,8 @@ const requireSubscription = async (req, res, next) => {
         error: 'Authentication required'
       });
     }
+
+    if (freeExceptCostly()) return next();
 
     // Check subscription status
     const subscriptionStatus = await getSubscriptionStatus(userId);
@@ -149,13 +212,19 @@ const legacyMonthlyUsageCheck = (featureType) => {
  * the daily backstop. The flag is read on every request.
  * `dailyLimiter` is injectable for tests.
  */
-const checkUsageLimits = (featureType, { dailyLimiter } = {}) => {
+const checkUsageLimits = (featureType, { dailyLimiter, breaker } = {}) => {
   const legacy = legacyMonthlyUsageCheck(featureType);
   let daily = dailyLimiter || null;
+  let budget = breaker || null;
   return (req, res, next) => {
     if (!daily) daily = require('./freeTierLimits').aiDailyLimit();
-    if (!legacyLimitsEnabled()) return daily(req, res, next);
-    return legacy(req, res, (err) => (err ? next(err) : daily(req, res, next)));
+    if (!budget) budget = require('./freeTierLimits').llmSpendBreaker();
+    // Global LLM budget first (so a tripped breaker does not use up the user's own allowance), then the per-user checks.
+    return budget(req, res, (bErr) => {
+      if (bErr) return next(bErr);
+      if (!legacyLimitsEnabled()) return daily(req, res, next);
+      return legacy(req, res, (err) => (err ? next(err) : daily(req, res, next)));
+    });
   };
 };
 
@@ -509,70 +578,17 @@ function getFeatureLimit(featureType) {
   }
 }
 
-/**
- * Middleware to block podcasts for free tier entirely
- */
-const requireSubscriptionForPodcast = async (req, res, next) => {
-  // Subscription gate temporarily disabled — allow all users to generate podcasts
-  return next();
-
-  try {
-    const userId = req.userId;
-
-    logger.info('Podcast subscription check starting', { userId });
-
-    const subscriptionStatus = await getSubscriptionStatus(userId);
-
-    logger.info('Podcast subscription check result', {
-      userId,
-      isSubscribed: subscriptionStatus.isSubscribed,
-      isInTrial: subscriptionStatus.isInTrial,
-      isCreator: subscriptionStatus.isCreator,
-      hasAccess: subscriptionStatus.hasAccess,
-      reason: subscriptionStatus.reason
-    });
-
-    // Only subscribers and trial users can generate podcasts
-    // Also allow creators with premium access
-    if (subscriptionStatus.isSubscribed || subscriptionStatus.isInTrial || subscriptionStatus.isCreator) {
-      req.subscription = subscriptionStatus;
-      return next();
-    }
-
-    logger.info('Podcast access denied', {
-      userId,
-      reason: subscriptionStatus.reason,
-      trialExpired: subscriptionStatus.trialExpired
-    });
-
-    return res.status(403).json({
-      success: false,
-      error: 'Podcast generation requires a premium subscription',
-      code: 'SUBSCRIPTION_REQUIRED',
-      details: {
-        feature: 'podcast',
-        upgradeRequired: true,
-        reason: subscriptionStatus.reason,
-        trialExpired: subscriptionStatus.trialExpired
-      }
-    });
-  } catch (error) {
-    logger.error('Podcast subscription check failed', { error: error.message, userId: req.userId });
-    // SECURITY FIX: Fail closed - deny access on errors
-    return res.status(503).json({
-      success: false,
-      error: 'Unable to verify subscription status. Please try again.',
-      code: 'SUBSCRIPTION_CHECK_FAILED',
-      retryable: true
-    });
-  }
-};
+/** Back-compat name for the podcast gate. */
+const requireSubscriptionForPodcast = requireProFeature('podcast');
 
 module.exports = {
   requireSubscription,
   checkUsageLimits,
   recordUsage,
   requireSubscriptionForPodcast,
+  hasPaidAccess,
+  hasStandardAccess,
+  requireProFeature,
   getSubscriptionStatus,
   getCreatorPremiumAccess,
   getServerTrialStatus,

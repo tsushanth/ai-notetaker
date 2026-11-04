@@ -10,6 +10,7 @@ const scanService = require('../services/scanService');
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
 const { reportFailure } = require('../utils/failureReporter');
+const { featureDailyCap, admitFeature } = require('../middleware/freeTierLimits');
 const { v4: uuidv4 } = require('uuid');
 
 // Initialize Supabase client with service role for signed URLs
@@ -205,6 +206,9 @@ router.post('/process', asyncHandler(async (req, res) => {
     });
   }
 
+  // Daily upload cap: counted here (not at request-upload) and only for a job that is really about to start.
+  if (!(await admitFeature('upload', req, res))) return;
+
   // Update job status
   job.status = 'processing';
   job.title = title;
@@ -393,7 +397,7 @@ function getSourceType(mimeType) {
  * POST /api/uploads/pdf
  * Multipart form data with 'file' field
  */
-router.post('/pdf', upload.single('file'), asyncHandler(async (req, res) => {
+router.post('/pdf', featureDailyCap('upload'), upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new AppError('No PDF file provided', 400);
   }
@@ -427,7 +431,7 @@ router.post('/pdf', upload.single('file'), asyncHandler(async (req, res) => {
  * POST /api/uploads/video-url
  * Body: { url, title }
  */
-router.post('/video-url', validate('processVideoUrl'), asyncHandler(async (req, res) => {
+router.post('/video-url', featureDailyCap('upload'), validate('processVideoUrl'), asyncHandler(async (req, res) => {
   const { url, title } = req.validatedBody;
 
   // Import the new transcript service
@@ -446,7 +450,7 @@ router.post('/video-url', validate('processVideoUrl'), asyncHandler(async (req, 
  * POST /api/uploads/slideshow
  * Multipart form data with 'file' field
  */
-router.post('/slideshow', upload.single('file'), asyncHandler(async (req, res) => {
+router.post('/slideshow', featureDailyCap('upload'), upload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new AppError('No slideshow file provided', 400);
   }
@@ -479,7 +483,7 @@ router.post('/slideshow', upload.single('file'), asyncHandler(async (req, res) =
  * Upload and process scanned document
  * POST /api/uploads/scan
  */
-router.post('/scan', scanUpload.single('file'), asyncHandler(async (req, res) => {
+router.post('/scan', featureDailyCap('upload'), scanUpload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new AppError('No PDF file provided', 400);
   }
@@ -542,7 +546,7 @@ router.delete('/scan/:noteId', asyncHandler(async (req, res) => {
  * Upload multiple scanned pages as batch
  * POST /api/uploads/scan/batch
  */
-router.post('/scan/batch', scanUpload.single('file'), asyncHandler(async (req, res) => {
+router.post('/scan/batch', featureDailyCap('upload'), scanUpload.single('file'), asyncHandler(async (req, res) => {
   if (!req.file) {
     throw new AppError('No PDF file provided', 400);
   }

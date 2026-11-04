@@ -145,7 +145,7 @@ test('storage failure aborts BEFORE rows and the auth user are touched; a retry 
   const admin = fakeAdmin({ objects: [...objectsFor(U), ...objectsFor(V)], storageFailsOn: 'audio' });
   const r = await deleteAccount(admin, U, quiet);
   assert.equal(r.ok, false);
-  assert.deepEqual(r.failedSteps, ['storage:audio', 'storage:audio']);
+  assert.deepEqual(r.failedSteps, ['storage:audio']);
   assert.deepEqual(admin.order, [], 'no row delete and no auth delete happened');
   assert.equal(admin.authUsers.has(U), true);
   assert.equal(admin.db.notes.filter((x) => x.user_id === U).length, 2);

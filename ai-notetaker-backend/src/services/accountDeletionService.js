@@ -101,7 +101,7 @@ async function deleteAccount(admin, userId, log = console) {
       await removeStoragePrefix(admin.storage, bucket, prefixOf(userId));
     } catch (error) {
       if (/bucket not found/i.test(error.message || '')) continue;
-      failedSteps.push(`storage:${bucket}`);
+      if (!failedSteps.includes(`storage:${bucket}`)) failedSteps.push(`storage:${bucket}`);
       log.error?.(`storage cleanup failed for bucket ${bucket}: ${error.message}`);
     }
   }

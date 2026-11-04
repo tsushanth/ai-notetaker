@@ -49,9 +49,9 @@ const featureWindow = (name) => {
 };
 // Global spend lookups are cached for a minute so the breaker costs one query per minute per machine, not one per request.
 const BUDGET_CACHE_MS = 60 * 1000;
-const sharedBudgetCache = { at: 0, usd: 0, has: false };
+const sharedBudgetCache = { at: 0, usd: 0, has: false, inflight: null };
 const LLM_CALLS_PAGE = 1000;
-const LLM_CALLS_MAX_PAGES = 20; // 20k calls in 24h is already far beyond any budget; reaching it counts as over budget
+const LLM_CALLS_MAX_PAGES = 20; // reading more than this many rows returns Infinity, which the breaker treats as unknown
 
 function limitResponse(res, { scope, message, code = 'DAILY_LIMIT_REACHED', status = 429, limit, used, retryAfterSec }) {
   // Counted (first per scope per day emails, the rest only bump a counter): with a handful of users a limit hit is news.
@@ -73,9 +73,8 @@ function defaultDeps() {
   return {
     now: () => Date.now(),
     async isPaid(userId) {
-      const { getSubscriptionStatus } = require('./subscription');
-      const s = await getSubscriptionStatus(userId);
-      return !!(s.isSubscribed || s.isInTrial || s.isCreator);
+      const { getSubscriptionStatus, isProStatus } = require('./subscription');
+      return isProStatus(await getSubscriptionStatus(userId));
     },
     async countAiUsage(userId, since) {
       const { count, error } = await supabaseAdmin
@@ -278,25 +277,38 @@ function capBlock(scope, message, limit, used, retryAfterSec) {
  * Global LLM spend breaker. Returns null when the call may go ahead, else a block descriptor.
  * Spend is an estimate over the last 24 hours (see defaultDeps.llmSpendUsd). Above the alert level the owner is emailed
  * (once a day); above the soft level only paying users continue; above the hard level nobody does.
- * A failed lookup never blocks (fail open, logged): the per-user caps still apply.
+ *
+ * The lookup is shared and cached for a minute: concurrent callers wait for one in-flight query (single flight), and a lookup
+ * that fails, or that finds too many rows to read, is remembered as "unknown" for the same minute instead of being retried on
+ * every request. Unknown means fail open (never block on a broken backstop) plus an alert; the per-user caps still apply.
  */
 async function evaluateLlmBudget(userId, { deps, env = process.env, cache = sharedBudgetCache } = {}) {
   const d = deps || defaultDeps();
   const cfg = getFreeTierConfig(env);
   const now = d.now();
   if (!cache.has || now - cache.at >= BUDGET_CACHE_MS) {
-    const usd = await safe('llm-spend', userId, () => d.llmSpendUsd(sinceIso(now)), null);
-    if (usd === null) return null;
-    cache.at = now; cache.usd = usd; cache.has = true;
+    if (!cache.inflight) {
+      cache.inflight = (async () => {
+        let usd = await safe('llm-spend', userId, () => d.llmSpendUsd(sinceIso(now)), null);
+        if (usd !== null && !Number.isFinite(usd)) {
+          // Too many calls to total up. Not a verdict either way: alert, and treat as unknown.
+          try { require('../utils/failureReporter').reportCounted('llm_budget', 'LLM spend could not be totalled (too many calls in the last 24h)', {}); } catch { /* never block */ }
+          usd = null;
+        }
+        cache.at = now; cache.usd = usd; cache.has = true;
+      })().finally(() => { cache.inflight = null; });
+    }
+    await cache.inflight;
   }
   const usd = cache.usd;
+  if (usd === null || usd === undefined) return null;
   if (usd >= cfg.llmBudgetAlertUsd) {
-    try { require('../utils/failureReporter').reportCounted('llm_budget', 'LLM spend over the daily alert level (last 24h)', { usd: usd.toFixed ? usd.toFixed(2) : String(usd), alert: String(cfg.llmBudgetAlertUsd), soft: String(cfg.llmBudgetSoftUsd), hard: String(cfg.llmBudgetHardUsd) }); } catch { /* never block */ }
+    try { require('../utils/failureReporter').reportCounted('llm_budget', 'LLM spend over the daily alert level (last 24h)', { usd: usd.toFixed(2), alert: String(cfg.llmBudgetAlertUsd), soft: String(cfg.llmBudgetSoftUsd), hard: String(cfg.llmBudgetHardUsd) }); } catch { /* never block */ }
   }
   let blocked = usd >= cfg.llmBudgetHardUsd;
   if (!blocked && usd >= cfg.llmBudgetSoftUsd) blocked = !(await safe('tier', userId, () => d.isPaid(userId), false));
   if (!blocked) return null;
-  logger.warn('Global LLM daily budget reached', { userId, usd: Number(usd).toFixed ? Number(usd).toFixed(2) : usd });
+  logger.warn('Global LLM daily budget reached', { userId, usd: usd.toFixed(2) });
   return { code: 'GLOBAL_DAILY_BUDGET_REACHED', scope: 'global_llm_budget', limit: null, used: null, retryAfterSec: 3600,
     message: 'ScribeAI has reached its daily limit for AI features. Your notes and recordings are safe; please try again later today or tomorrow.' };
 }
@@ -435,5 +447,5 @@ module.exports = {
   SlidingWindow, aiDailyLimit, transcriptionGuard, defaultDeps,
   featureDailyCap, admitFeature, admitAutoFormatting, meetingBotGuard, llmSpendBreaker,
   evaluateFeatureCap, evaluateLlmBudget, sendBlock, capBlock,
-  _resetBudgetCacheForTests() { sharedBudgetCache.has = false; sharedBudgetCache.at = 0; sharedBudgetCache.usd = 0; }
+  _resetBudgetCacheForTests() { sharedBudgetCache.has = false; sharedBudgetCache.at = 0; sharedBudgetCache.usd = 0; sharedBudgetCache.inflight = null; }
 };

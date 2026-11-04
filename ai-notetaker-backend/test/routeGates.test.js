@@ -112,8 +112,62 @@ for (const g of PRO_GATED) {
   });
 }
 
+// Subscription statuses written by the store / RevenueCat webhooks -------------------------------------------------------
+const withStatus = (id, status, periodEndOffsetMs, extra = {}) => {
+  h.db.subscriptions = [{ user_id: id, status, current_period_end: periodEndOffsetMs === null ? null : h.nowIso(periodEndOffsetMs), product_id: 'pro', platform: 'android', is_trial: false, ...extra }];
+};
+const DAY = 86400000;
+const STATUS_CASES = [
+  ['active, period in the future', 'active', DAY, true],
+  ['active, no period end recorded', 'active', null, true],
+  ['active, period already ended', 'active', -DAY, false],
+  ['cancelled (auto-renew off), paid through a future period end', 'cancelled', DAY, true],
+  ['cancelled, period ended', 'cancelled', -DAY, false],
+  ['cancelled, no period end recorded', 'cancelled', null, false],
+  ['grace_period (billing issue), period end in the future', 'grace_period', DAY, true],
+  ['grace_period, period ended', 'grace_period', -DAY, false],
+  ['expired', 'expired', DAY, false],
+  ['paused', 'paused', DAY, false],
+  ['none', 'none', DAY, false]
+];
+for (const [label, status, offset, pro] of STATUS_CASES) {
+  test(`Pro status: ${label} -> ${pro ? 'Pro' : 'not Pro'} (hasPaidAccess and the podcast route agree)`, async () => {
+    const u = fresh();
+    withStatus(u, status, offset);
+    assert.equal(await subscription.hasPaidAccess(u), pro);
+    const r = await call('POST', '/api/ai/podcast/script', u, { note_id: 'n1' });
+    assert.equal(r.status, pro ? 200 : 403);
+  });
+}
+
+test('Pro status: a cancelled-but-paid user keeps the Pro daily cap and sees Pro flags in /access; isSubscribed keeps its old meaning', async () => {
+  const u = fresh();
+  withStatus(u, 'cancelled', DAY);
+  const st = await subscription.getSubscriptionStatus(u);
+  assert.equal(st.isSubscribed, false, 'old field unchanged');
+  assert.equal(st.isPaidThroughPeriod, true);
+  assert.equal(st.hasAccess, false, 'hasAccess is unchanged too, so the old FREE_EXCEPT_COSTLY=false checks behave as before');
+  h.db.usage_tracking = h.usage(u, 'podcast', 9);
+  assert.equal((await call('POST', '/api/ai/podcast/script', u, { note_id: 'n1' })).status, 200, 'Pro cap is 10');
+  const subs = require('../src/routes/subscriptions');
+  const s2 = await h.listen(h.makeApp({ '/api/subscriptions': subs }));
+  try {
+    const r = await h.call(s2, 'GET', '/api/subscriptions/access', { user: u });
+    assert.equal(r.body.data.features.canGeneratePodcasts, true);
+    assert.equal(r.body.data.features.canUseMeetingBot, true);
+  } finally { s2.close(); }
+});
+
 test('meeting bot: only starting a bot is Pro; list, status, cancel and delete stay open (a lapsed subscriber can still cancel a running bot)', async () => {
   assert.equal((await call('GET', '/api/meetings', fresh())).status, 200);
+});
+
+test('Learn submit is never rejected by the daily cap, so a learner never loses an answer', async () => {
+  const u = fresh();
+  h.db.usage_tracking = h.usage(u, 'learning', 500);
+  assert.equal((await call('POST', '/api/learn/lesson/l1/submit', u, { answers: [] })).status, 200);
+  assert.equal((await call('POST', '/api/learn/n1/start', u, {})).status, 429, 'starting more sessions is what is capped');
+  assert.equal(h.calls['learn.submit'].length, 1);
 });
 
 test('the Pro gate fails closed: a subscription lookup error is a 503, never a free costly call', async () => {
@@ -205,14 +259,13 @@ test('share links: a daily cap of 20 new links applies in both modes (429, same 
 // `pro: true` -> only Pro users can reach the route while the flag is on; the cap numbers are free (flag off) / Pro (explicit number).
 // Everything else: the free cap, and 5x for paid users.
 const CAPS = [
-  { name: 'AI summary', method: 'POST', path: '/api/ai/summary', body: { note_id: 'n1' }, type: 'summary', limit: 20, scope: 'ai_generations' },
-  { name: 'AI chat', method: 'POST', path: '/api/ai/chat', body: { note_id: 'n1', question: 'q' }, type: 'chat', limit: 20, scope: 'ai_generations' },
+  { name: 'AI summary', method: 'POST', path: '/api/ai/summary', body: { note_id: 'n1' }, type: 'summary', limit: 60, scope: 'ai_generations' },
+  { name: 'AI chat', method: 'POST', path: '/api/ai/chat', body: { note_id: 'n1', question: 'q' }, type: 'chat', limit: 60, scope: 'ai_generations' },
   { name: 'podcast script', method: 'POST', path: '/api/ai/podcast/script', body: { note_id: 'n1' }, type: 'podcast', limit: 3, proLimit: 10, scope: 'podcast', pro: true },
   { name: 'podcast (audio)', method: 'POST', path: '/api/ai/podcast', body: { note_id: 'n1' }, type: 'podcast', limit: 3, proLimit: 10, scope: 'podcast', pro: true, blockedOnly: true },
   { name: 'infographic', method: 'POST', path: '/api/ai/infographic', body: { note_id: 'n1' }, type: 'infographic', limit: 5, proLimit: 15, scope: 'infographic', pro: true },
-  { name: 'chat suggestions', paywalledWhenOff: true, paywalledWhenOff: true, method: 'GET', path: '/api/ai/suggestions/n1', type: 'suggestions', limit: 60, scope: 'suggestions' },
+  { name: 'chat suggestions', paywalledWhenOff: true, method: 'GET', path: '/api/ai/suggestions/n1', type: 'suggestions', limit: 60, scope: 'suggestions' },
   { name: 'Learn start', paywalledWhenOff: true, method: 'POST', path: '/api/learn/n1/start', body: {}, type: 'learning', limit: 5, scope: 'learning' },
-  { name: 'Learn submit (triggers next lesson)', paywalledWhenOff: true, paywalledWhenOff: true, method: 'POST', path: '/api/learn/lesson/l1/submit', body: {}, type: 'learning', limit: 5, scope: 'learning' },
   { name: 'Create', paywalledWhenOff: true, method: 'POST', path: '/api/create/n1', body: { prompt: 'a poem' }, type: 'create', limit: 5, scope: 'create', okStatus: [200, 500] },
   { name: 'Compete', paywalledWhenOff: true, method: 'POST', path: '/api/compete/n1/create', body: {}, type: 'compete', limit: 5, scope: 'compete', okStatus: [200, 500] },
   { name: 'note formatting (POST)', method: 'POST', path: '/api/formatting/notes/n1', body: {}, type: 'formatting', limit: 20, scope: 'formatting' },

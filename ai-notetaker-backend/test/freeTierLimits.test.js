@@ -22,18 +22,18 @@ const deps = (o = {}) => ({
 const ENV = {};
 
 test('AI: a free user under the daily limit passes', async () => {
-  const { nexted } = await run(aiDailyLimit({ deps: deps({ countAiUsage: async () => 19 }), window: new SlidingWindow(), env: ENV }), { userId: 'u1' });
+  const { nexted } = await run(aiDailyLimit({ deps: deps({ countAiUsage: async () => 59 }), window: new SlidingWindow(), env: ENV }), { userId: 'u1' });
   assert.equal(nexted, true);
 });
 
 test('AI: at the daily limit the user gets 429 DAILY_LIMIT_REACHED, not 403', async () => {
-  const { res, nexted } = await run(aiDailyLimit({ deps: deps({ countAiUsage: async () => 20 }), window: new SlidingWindow(), env: ENV }), { userId: 'u1' });
+  const { res, nexted } = await run(aiDailyLimit({ deps: deps({ countAiUsage: async () => 60 }), window: new SlidingWindow(), env: ENV }), { userId: 'u1' });
   assert.equal(nexted, false);
   assert.equal(res.code, 429);
   assert.equal(res.body.code, 'DAILY_LIMIT_REACHED');
-  assert.equal(res.body.details.limit, 20);
+  assert.equal(res.body.details.limit, 60);
   assert.equal(res.body.details.upgradeRequired, false);
-  assert.match(res.body.error, /20 AI generations/);
+  assert.match(res.body.error, /60 AI generations/);
   assert.ok(res.headers['Retry-After']);
 });
 
@@ -43,9 +43,9 @@ test('AI: the daily limit is env-configurable', async () => {
 });
 
 test('AI: paid users get 5x the limit', async () => {
-  const mw = aiDailyLimit({ deps: deps({ isPaid: async () => true, countAiUsage: async () => 99 }), window: new SlidingWindow(), env: ENV });
+  const mw = aiDailyLimit({ deps: deps({ isPaid: async () => true, countAiUsage: async () => 299 }), window: new SlidingWindow(), env: ENV });
   assert.equal((await run(mw, { userId: 'u1' })).nexted, true);
-  const mw2 = aiDailyLimit({ deps: deps({ isPaid: async () => true, countAiUsage: async () => 100 }), window: new SlidingWindow(), env: ENV });
+  const mw2 = aiDailyLimit({ deps: deps({ isPaid: async () => true, countAiUsage: async () => 300 }), window: new SlidingWindow(), env: ENV });
   assert.equal((await run(mw2, { userId: 'u1' })).res.code, 429);
 });
 
@@ -82,17 +82,17 @@ test('STT: an already-completed recording is never limited (no provider cost)', 
   assert.equal((await run(transcriptionGuard({ deps: d, window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } })).nexted, true);
 });
 
-test('STT: 10 transcriptions in 24h -> 429 with a clear message', async () => {
-  const d = deps({ recentRecordings: async () => new Array(10).fill({ duration: 60, status: 'completed' }) });
+test('STT: 30 transcriptions in 24h -> 429 with a clear message', async () => {
+  const d = deps({ recentRecordings: async () => new Array(30).fill({ duration: 60, status: 'completed' }) });
   const { res, nexted } = await run(transcriptionGuard({ deps: d, window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } });
   assert.equal(nexted, false);
   assert.equal(res.code, 429);
   assert.equal(res.body.details.scope, 'transcriptions');
-  assert.match(res.body.error, /10 voice transcriptions/);
+  assert.match(res.body.error, /30 voice transcriptions/);
 });
 
-test('STT: 90 minutes of audio in 24h -> 429 audio_minutes', async () => {
-  const d = deps({ recentRecordings: async () => [{ duration: 90 * 60, status: 'completed' }] });
+test('STT: 240 minutes of audio in 24h -> 429 audio_minutes', async () => {
+  const d = deps({ recentRecordings: async () => [{ duration: 240 * 60, status: 'completed' }] });
   const { res } = await run(transcriptionGuard({ deps: d, window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } });
   assert.equal(res.code, 429);
   assert.equal(res.body.details.scope, 'audio_minutes');
@@ -157,18 +157,18 @@ test('checkUsageLimits: FREE_TIER_LEGACY_LIMITS=true routes through the old mont
 });
 
 // ---- defaults of the free plan ----------------------------------------------------------------------------------------
-test('STT: the 11th transcription of the day is refused, the 10th is allowed (default 10/day)', async () => {
+test('STT: the 31st transcription of the day is refused, the 30th is allowed (default 30/day, unchanged)', async () => {
   const mk = (n) => deps({ recentRecordings: async () => new Array(n).fill({ duration: 30, status: 'completed' }) });
-  assert.equal((await run(transcriptionGuard({ deps: mk(9), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } })).nexted, true);
-  assert.equal((await run(transcriptionGuard({ deps: mk(10), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } })).res.code, 429);
+  assert.equal((await run(transcriptionGuard({ deps: mk(29), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } })).nexted, true);
+  assert.equal((await run(transcriptionGuard({ deps: mk(30), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } })).res.code, 429);
 });
 
-test('STT: 89 minutes of audio today is fine, 90 is not (default 90 min/day)', async () => {
+test('STT: 239 minutes of audio today is fine, 240 is not (default 240 min/day, unchanged)', async () => {
   const mk = (min) => deps({ recentRecordings: async () => [{ duration: min * 60, status: 'completed' }] });
-  assert.equal((await run(transcriptionGuard({ deps: mk(89), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } })).nexted, true);
-  const { res } = await run(transcriptionGuard({ deps: mk(90), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } });
+  assert.equal((await run(transcriptionGuard({ deps: mk(239), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } })).nexted, true);
+  const { res } = await run(transcriptionGuard({ deps: mk(240), window: new SlidingWindow(), env: ENV }), { userId: 'u1', body: { recording_id: 'r1' } });
   assert.equal(res.code, 429);
-  assert.match(res.body.error, /90 minutes/);
+  assert.match(res.body.error, /240 minutes/);
 });
 
 // ---- per-feature caps -------------------------------------------------------------------------------------------------
@@ -262,7 +262,7 @@ test('meeting guard: the in-process window stops a burst before the table shows 
 });
 
 // ---- global breaker -----------------------------------------------------------------------------------------------------
-const brk = (usd, o = {}) => llmSpendBreaker({ deps: deps({ llmSpendUsd: async () => usd, ...o }), env: ENV, cache: { at: 0, usd: 0, has: false } });
+const brk = (usd, o = {}) => llmSpendBreaker({ deps: deps({ llmSpendUsd: async () => usd, ...o }), env: ENV, cache: { at: 0, usd: 0, has: false, inflight: null } });
 
 test('breaker: under $25 passes; $25 blocks non-paying users only; $75 blocks everyone', async () => {
   assert.equal((await run(brk(24.99), { userId: 'u1' })).nexted, true);
@@ -285,8 +285,34 @@ test('breaker: the spend lookup is cached for a minute (one query, not one per r
   assert.equal(calls, 2);
 });
 
-test('breaker: the cap on infinite spend (too many rows to read) counts as over budget', async () => {
-  assert.equal((await run(brk(Number.POSITIVE_INFINITY, { isPaid: async () => true }), { userId: 'u1' })).res.code, 429);
+test('breaker: too many rows to total up (Infinity) is "unknown": fail open for everyone, not a block', async () => {
+  assert.equal((await run(brk(Number.POSITIVE_INFINITY), { userId: 'u1' })).nexted, true);
+  assert.equal((await run(brk(Number.POSITIVE_INFINITY, { isPaid: async () => true }), { userId: 'u1' })).nexted, true);
+});
+
+test('breaker: a failing lookup is remembered as unknown for a minute (no re-query per request), then retried', async () => {
+  let calls = 0, t = 1_000_000_000_000;
+  const d = deps({ now: () => t, llmSpendUsd: async () => { calls++; throw new Error('db down'); } });
+  const cache = { at: 0, usd: 0, has: false, inflight: null };
+  const mw = llmSpendBreaker({ deps: d, env: ENV, cache });
+  for (let i = 0; i < 5; i++) assert.equal((await run(mw, { userId: 'u' + i })).nexted, true, 'fails open');
+  assert.equal(calls, 1);
+  t += 61_000;
+  assert.equal((await run(mw, { userId: 'u1' })).nexted, true);
+  assert.equal(calls, 2, 'retried after the minute');
+});
+
+test('breaker: concurrent callers share one in-flight lookup (single flight)', async () => {
+  let calls = 0, release;
+  const gate = new Promise((r) => { release = r; });
+  const d = deps({ llmSpendUsd: async () => { calls++; await gate; return 30; } });
+  const mw = llmSpendBreaker({ deps: d, env: ENV, cache: { at: 0, usd: 0, has: false, inflight: null } });
+  const pending = Array.from({ length: 10 }, (_, i) => run(mw, { userId: 'u' + i }));
+  await new Promise((r) => setImmediate(r));
+  release();
+  const results = await Promise.all(pending);
+  assert.equal(calls, 1);
+  assert.ok(results.every((r) => r.res.code === 429), 'all ten see the same verdict ($30 is over the soft level)');
 });
 
 test('breaker: tripped breaker answers before any per-user count or usage write', async () => {

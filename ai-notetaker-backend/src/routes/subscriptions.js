@@ -204,7 +204,7 @@ router.get('/access', authenticate, asyncHandler(async (req, res) => {
   const status = await getSubscriptionStatus(userId);
   const paid = status.isSubscribed || status.isInTrial;
   // Pro = what the meeting bot / podcast / infographic gates accept (creator premium counts); with the flag off, today's paid-only rule
-  const pro = freeExceptCostlyOn ? (paid || !!status.isCreator) : paid;
+  const pro = freeExceptCostlyOn ? (paid || !!status.isCreator || !!status.isPaidThroughPeriod) : paid;
 
   // Get usage for current month
   const now = new Date();

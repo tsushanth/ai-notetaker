@@ -595,6 +595,8 @@ export const subscriptionApi = {
           canCreateNotes: boolean;
           canUseAI: boolean;
           canGeneratePodcasts: boolean;
+          canGenerateInfographics?: boolean;
+          canUseMeetingBot?: boolean;
           unlimitedAccess: boolean;
         };
       };

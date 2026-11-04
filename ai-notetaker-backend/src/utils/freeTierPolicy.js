@@ -9,9 +9,9 @@
  * FREE_EXCEPT_COSTLY (default ON, read per request): ScribeAI is free for everyone EXCEPT three costly features that need
  * Pro (a subscription, trial or creator premium): the Recall meeting bot, podcasts and infographics. Every other feature
  * (export, Learn, Create, Compete, integrations, share links, note formatting, chat suggestions ...) is free.
- * FREE_EXCEPT_COSTLY=false restores today's behaviour exactly: those other features need Pro again and the three costly ones
- * are open to everyone (today's no-op gate).
- * The per-user daily caps and the global spend breaker below apply in BOTH modes: they are what keeps "free" affordable.
+ * FREE_EXCEPT_COSTLY=false reopens the three costly routes to everyone (the old no-op gate) and brings back the old subscriber /
+ * trial checks on the freed features. It does NOT switch off the new per-user daily caps or the global spend breaker below:
+ * those apply in BOTH modes, they are what keeps "free" affordable.
  */
 
 // usage_tracking.feature_type values that count as one AI generation (same list the old monthly cap used).
@@ -39,9 +39,9 @@ const FEATURE_CAPS = {
 
 // Per-user limits are per rolling 24 hours. Every value is env-overridable (see getFreeTierConfig).
 const DEFAULTS = {
-  transcriptionsPerDay: 10,
-  aiGenerationsPerDay: 20,
-  audioMinutesPerDay: 90,    // total transcribed audio per rolling 24h (the real Deepgram cost cap)
+  transcriptionsPerDay: 30,  // unchanged from before this work
+  aiGenerationsPerDay: 60,   // unchanged from before this work
+  audioMinutesPerDay: 240,   // total transcribed audio per rolling 24h (the real Deepgram cost cap)
   maxAudioMinutes: 60,       // longest single recording a free user may transcribe
   paidMultiplier: 5,         // subscribers / trial / creators get this many times the free limits
   // Pro features: the free numbers apply only when FREE_EXCEPT_COSTLY=false (then everyone may use them); Pro users get the *Pro numbers.

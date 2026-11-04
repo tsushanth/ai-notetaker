@@ -1,22 +1,23 @@
-// What is free vs paid on the web. Pure functions, no React, so they can be tested with `node --test`.
+// What is free vs Pro on the web. Pure functions, no React, so they can be tested with `node --test`.
 //
-// Free for everyone: creating notes, recording and transcribing voice, AI summaries, quizzes, flashcards and AI chat
-// (only per-user daily abuse backstops apply). Premium adds the rest (see PREMIUM_PERKS).
+// Free for everyone: notes, voice recording and transcription, AI summaries, chat, quizzes, flashcards, mind maps, export,
+// Learn / Create / Compete, integrations and share links (per-user daily limits apply).
+// Pro: podcasts, infographics, the meeting bot, and higher daily limits.
 // The copy here is checked against the backend gates by test/planCopy.test.ts. The backend reports `freeTier.legacyLimits`; when it is true (the
 // FREE_TIER_LEGACY_LIMITS switch) or absent (an older backend) the old per-user flags from the server decide.
 
 /**
- * Whether the backend currently gates podcasts and infographics behind Premium. Today it does not:
- * requireSubscriptionForPodcast in the backend returns next() immediately ("temporarily disabled"), so every user
- * can generate them. test/planCopy.test.ts fails if this constant and the backend disagree, so re-enabling that
- * gate forces the copy to change with it.
+ * Whether the backend gates podcasts, infographics and the meeting bot behind Pro (requireProFeature in the backend).
+ * test/planCopy.test.ts fails if this constant and the backend disagree, so changing that gate forces the copy to change with it.
  */
-export const PODCASTS_GATED = false;
+export const PODCASTS_GATED = true;
 
 export interface AccessFeatures {
   canCreateNotes: boolean;
   canUseAI: boolean;
   canGeneratePodcasts: boolean;
+  canGenerateInfographics?: boolean; // absent on an older backend: fall back to the podcast flag (same Pro gate)
+  canUseMeetingBot?: boolean;
   unlimitedAccess: boolean;
 }
 
@@ -27,7 +28,7 @@ export interface AccessInfo {
 }
 
 export interface FeatureRow {
-  key: 'notes' | 'transcription' | 'summaries' | 'podcasts' | 'premium';
+  key: 'notes' | 'transcription' | 'summaries' | 'export' | 'learn' | 'podcasts' | 'infographics' | 'meetingBot';
   label: string;
   included: boolean;
   free: boolean; // true = part of the free plan
@@ -38,42 +39,51 @@ export function coreFeaturesAreFree(access: Pick<AccessInfo, 'freeTier'> | null 
   return !!access && !!access.freeTier && access.freeTier.legacyLimits === false;
 }
 
-/** The rows shown under "Your Features" in Settings. */
+/** The rows shown under "Your Features" in Settings. Free rows first, then the three Pro features. */
 export function featureRows(access: AccessInfo): FeatureRow[] {
   const free = coreFeaturesAreFree(access);
   const notes = free || access.features.canCreateNotes;
   const ai = free || access.features.canUseAI;
+  const pod = access.features.canGeneratePodcasts;
   return [
     { key: 'notes', label: 'Create Notes', included: notes, free: true },
     { key: 'transcription', label: 'Voice Transcription', included: ai, free: true },
-    { key: 'summaries', label: 'AI Summaries', included: ai, free: true },
-    { key: 'podcasts', label: 'Podcasts', included: PODCASTS_GATED ? access.features.canGeneratePodcasts : true, free: !PODCASTS_GATED },
-    { key: 'premium', label: 'Premium Extras', included: access.features.unlimitedAccess, free: false },
+    { key: 'summaries', label: 'AI Summaries, Chat and Quizzes', included: ai, free: true },
+    { key: 'export', label: 'Export and Share Links', included: true, free: true },
+    { key: 'learn', label: 'Learn, Create and Compete', included: true, free: true },
+    { key: 'podcasts', label: 'Podcasts (Pro)', included: PODCASTS_GATED ? pod : true, free: !PODCASTS_GATED },
+    { key: 'infographics', label: 'Infographics (Pro)', included: PODCASTS_GATED ? (access.features.canGenerateInfographics ?? pod) : true, free: !PODCASTS_GATED },
+    { key: 'meetingBot', label: 'Meeting Bot (Pro)', included: PODCASTS_GATED ? (access.features.canUseMeetingBot ?? pod) : true, free: !PODCASTS_GATED },
   ];
 }
 
-/** Copy for the upgrade screen: only what Premium adds on top of the free plan. */
+/** Copy for the upgrade screen: what is free for everyone. */
 export const FREE_FOR_EVERYONE = [
   'Voice recording and transcription',
   'AI summaries',
-  'Quizzes and flashcards',
   'AI chat',
+  'Quizzes and flashcards',
+  'Mind maps',
+  'Export to PDF and Word',
+  'Learn, Create and Compete',
+  'Integrations',
+  'Share links',
   'Creating notes',
 ];
 
-// Backend gates: exports (routes/exports.js), AI tutor (routes/learning.js), share links beyond 3 a month
-// (routes/sharing.js). Podcasts join this list only if PODCASTS_GATED becomes true.
+// Backend gates: podcasts, infographics and the meeting bot (requireProFeature in routes/ai.js and routes/meetings.js), plus higher
+// per-user daily limits for Pro. Everything else is free.
 export const PREMIUM_PERKS = [
-  'Export to PDF and Word',
-  'AI tutor and learning sessions',
-  'Unlimited share links (the free plan allows 3 a month)',
-  ...(PODCASTS_GATED ? ['Audio podcasts from notes'] : []),
+  'Audio podcasts from your notes',
+  'Infographics',
+  'Meeting bot that joins and records your calls',
+  'Higher daily limits',
 ];
 
 /** Homepage FAQ answer for "Is there a free plan?", built from the lists above so it cannot drift from them. */
 export function freePlanAnswer(): string {
-  const free = 'Taking notes, recording and transcribing voice, AI summaries, quizzes, flashcards and AI chat are free.';
-  const premium = ['export to PDF and Word', 'the AI tutor and learning sessions', 'unlimited share links', ...(PODCASTS_GATED ? ['podcasts'] : [])];
+  const free = 'Taking notes, recording and transcribing voice, AI summaries, chat, quizzes, flashcards, mind maps, export, Learn, Create and Compete, integrations and share links are free.';
+  const premium = ['podcasts', 'infographics', 'the meeting bot', 'higher daily limits'];
   const last = premium.pop();
-  return `Yes. ${free} Premium adds ${premium.length ? `${premium.join(', ')} and ${last}` : last}.`;
+  return `Yes. ${free} Pro adds ${premium.join(', ')} and ${last}.`;
 }

@@ -26,6 +26,8 @@ interface SubscriptionAccess {
     canCreateNotes: boolean;
     canUseAI: boolean;
     canGeneratePodcasts: boolean;
+    canGenerateInfographics?: boolean;
+    canUseMeetingBot?: boolean;
     unlimitedAccess: boolean;
   };
 }
@@ -478,7 +480,7 @@ function SettingsContent() {
               <div>
                 {plans.length > 0 ? (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-medium text-[var(--text-muted)]">Upgrade to Premium</h3>
+                    <h3 className="text-sm font-medium text-[var(--text-muted)]">Upgrade to Pro</h3>
                     {plans.map((plan) => (
                       <button
                         key={plan.id}

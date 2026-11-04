@@ -17,18 +17,21 @@ const FREE_TIER_LIMITS = {
 
 /**
  * Pro access for the three costly features (meeting bot, podcasts, infographics): the REAL subscription state,
- * never affected by any flag. Pro = active subscription, trial, or creator premium (the same people the daily-cap
- * multiplier and the old podcast gate treated as paid). `status` avoids a second lookup.
+ * never affected by any flag. Pro = active subscription, trial, creator premium, or a cancelled / grace-period
+ * subscription that is still inside its paid period (isProStatus). The same rule drives the Pro daily caps. `status` avoids a second lookup.
  */
+function isProStatus(s) {
+  return !!(s && (s.isSubscribed || s.isInTrial || s.isCreator || s.isPaidThroughPeriod));
+}
+
 async function hasPaidAccess(userId, { status } = {}) {
-  const s = status || await getSubscriptionStatus(userId);
-  return !!(s.isSubscribed || s.isInTrial || s.isCreator);
+  return isProStatus(status || await getSubscriptionStatus(userId));
 }
 
 /**
  * Access to everything that is NOT one of the three Pro features (export, Learn, Create, Compete, integrations, share links...).
  * FREE_EXCEPT_COSTLY (default ON, read on every call): true for everyone, no subscription lookup.
- * FREE_EXCEPT_COSTLY=false: the old rule, subscriber or trial user (creator premium does not count, exactly as the inline
+ * FREE_EXCEPT_COSTLY=false: the old rule, subscriber or trial user (creator premium does not count, as in the inline
  * checks this replaced). getSubscriptionStatus is untouched and keeps reporting the real state either way.
  */
 async function hasStandardAccess(userId, { status, env = process.env } = {}) {
@@ -40,7 +43,8 @@ async function hasStandardAccess(userId, { status, env = process.env } = {}) {
 /**
  * Gate for one of the Pro features (a key of PRO_FEATURES). Free users get the existing paywall response (403
  * SUBSCRIPTION_REQUIRED, details.upgradeRequired true); Pro users continue (to their per-user daily cap).
- * FREE_EXCEPT_COSTLY=false: no gate at all, exactly today's behaviour (the old gate was a no-op).
+ * FREE_EXCEPT_COSTLY=false: no gate at all, which is how these three routes behaved before (the old gate was a no-op). The new daily
+ * caps and the spend breaker still apply on those routes.
  */
 const requireProFeature = (feature) => {
   const label = PRO_FEATURES[feature];
@@ -256,6 +260,10 @@ const recordUsage = async (userId, featureType, metadata = {}) => {
  * Get user's subscription status with server-side trial tracking
  * Also checks for creator premium access with abuse prevention
  */
+// Store webhooks map "auto-renew turned off" to 'cancelled' and "payment problem, store retrying" to 'grace_period'. The user
+// has paid through the end of the current period in both cases, so they stay Pro until current_period_end passes.
+const PAID_THROUGH_PERIOD_STATUSES = ['cancelled', 'grace_period'];
+
 async function getSubscriptionStatus(userId) {
   // Check for active subscription first
   const { data: subscription, error: subError } = await supabase
@@ -264,11 +272,18 @@ async function getSubscriptionStatus(userId) {
     .eq('user_id', userId)
     .single();
 
+  // Real, additive field: true only for a cancelled / grace-period subscription whose paid period has not ended yet.
+  // isSubscribed keeps its old meaning (status 'active'), so every pre-existing check behaves as before.
+  let isPaidThroughPeriod = false;
+
   if (subscription && !subError) {
     const now = new Date();
     const expirationDate = subscription.current_period_end
       ? new Date(subscription.current_period_end)
       : null;
+
+    isPaidThroughPeriod = PAID_THROUGH_PERIOD_STATUSES.includes(subscription.status) &&
+      !!expirationDate && expirationDate > now;
 
     const isActive = subscription.status === 'active' &&
       (!expirationDate || expirationDate > now);
@@ -277,6 +292,7 @@ async function getSubscriptionStatus(userId) {
       return {
         hasAccess: true,
         isSubscribed: true,
+        isPaidThroughPeriod: false,
         isInTrial: subscription.is_trial,
         reason: 'active_subscription',
         productId: subscription.product_id,
@@ -292,6 +308,7 @@ async function getSubscriptionStatus(userId) {
     return {
       hasAccess: true,
       isSubscribed: false,
+      isPaidThroughPeriod,
       isInTrial: false,
       isCreator: true,
       reason: creatorAccess.reason,
@@ -307,6 +324,7 @@ async function getSubscriptionStatus(userId) {
     return {
       hasAccess: true,
       isSubscribed: false,
+      isPaidThroughPeriod,
       isInTrial: true,
       reason: 'trial_active',
       trialDaysRemaining: trialStatus.daysRemaining,
@@ -318,6 +336,7 @@ async function getSubscriptionStatus(userId) {
   return {
     hasAccess: false,
     isSubscribed: false,
+    isPaidThroughPeriod,
     isInTrial: false,
     trialExpired: trialStatus.trialExpired,
     reason: trialStatus.trialExpired ? 'trial_expired' : 'no_subscription',
@@ -587,6 +606,7 @@ module.exports = {
   recordUsage,
   requireSubscriptionForPodcast,
   hasPaidAccess,
+  isProStatus,
   hasStandardAccess,
   requireProFeature,
   getSubscriptionStatus,

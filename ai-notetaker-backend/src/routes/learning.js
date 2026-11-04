@@ -16,6 +16,8 @@ router.post('/:noteId/start', authenticate, asyncHandler(async (req, res) => {
   if (!(await hasStandardAccess(req.userId))) {
     return res.status(403).json({ success: false, error: 'Premium subscription required', code: 'PREMIUM_REQUIRED' });
   }
+  // Daily Learn cap is charged here, when a session is started or resumed. /lesson/:id/submit is deliberately not capped:
+  // rejecting it would throw away the learner's answer.
   if (!(await admitFeature('learning', req, res))) return;
   const result = await learningService.startSession(req.userId, req.params.noteId);
   res.json({ success: true, data: result });
@@ -41,8 +43,6 @@ router.get('/sessions', authenticate, asyncHandler(async (req, res) => {
 // Submit response to a lesson
 // ============================================
 router.post('/lesson/:lessonId/submit', authenticate, asyncHandler(async (req, res) => {
-  // Submitting triggers generation of the next lesson (a model call), so it shares the daily Learn cap with /start.
-  if (!(await admitFeature('learning', req, res))) return;
   const result = await learningService.submitLessonResponse(
     req.userId,
     req.params.lessonId,

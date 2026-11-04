@@ -11,9 +11,9 @@ test('backend says legacy limits are off: notes, transcription and summaries are
 
 test('paid extras stay locked for a free user even when core features are free', () => {
   const rows = featureRows({ freeTier: { legacyLimits: false }, features: lockedFeatures });
-  // Podcasts stay locked only while the backend gates them (see PODCASTS_GATED); Premium extras are always locked.
-  assert.equal(rows.find((r) => r.key === 'podcasts')!.included, !PODCASTS_GATED);
-  assert.equal(rows.find((r) => r.key === 'premium')!.included, false);
+  // The three Pro features stay locked while the backend gates them (see PODCASTS_GATED); the freed features are always open.
+  for (const key of ['podcasts', 'infographics', 'meetingBot']) assert.equal(rows.find((r) => r.key === key)!.included, !PODCASTS_GATED, key);
+  for (const key of ['export', 'learn']) assert.equal(rows.find((r) => r.key === key)!.included, true, key);
 });
 
 test('legacy limits on, or an older backend with no freeTier field: the server flags decide', () => {
@@ -32,8 +32,8 @@ test('coreFeaturesAreFree is false for missing or legacy info', () => {
   assert.equal(coreFeaturesAreFree({ freeTier: { legacyLimits: false } }), true);
 });
 
-test('upgrade copy lists only what is still paid and never the free features', () => {
+test('upgrade copy lists only what is still Pro and never the free features', () => {
   const paid = PREMIUM_PERKS.join(' | ').toLowerCase();
-  assert.ok(!/transcri|summar|unlimited notebooks/.test(paid));
+  assert.ok(!/transcri|summar|unlimited notebooks|export|tutor|share/.test(paid));
   assert.ok(/transcription/i.test(FREE_FOR_EVERYONE.join(' ')) && /summaries/i.test(FREE_FOR_EVERYONE.join(' ')));
 });

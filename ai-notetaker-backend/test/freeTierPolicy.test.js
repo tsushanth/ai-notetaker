@@ -10,9 +10,9 @@ test('legacy monthly limits are OFF unless FREE_TIER_LEGACY_LIMITS is exactly "t
 
 test('defaults are the documented backstops', () => {
   assert.deepEqual(getFreeTierConfig({}), DEFAULTS);
-  assert.equal(DEFAULTS.transcriptionsPerDay, 10);
-  assert.equal(DEFAULTS.aiGenerationsPerDay, 20);
-  assert.equal(DEFAULTS.audioMinutesPerDay, 90);
+  assert.equal(DEFAULTS.transcriptionsPerDay, 30);
+  assert.equal(DEFAULTS.aiGenerationsPerDay, 60);
+  assert.equal(DEFAULTS.audioMinutesPerDay, 240);
   assert.equal(DEFAULTS.maxAudioMinutes, 60);
 });
 

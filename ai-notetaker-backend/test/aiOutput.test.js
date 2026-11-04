@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { extractJsonValue } = require('../src/utils/extractJson');
-const { parseQuiz, parseFlashcards, parseMindMap, requestStructured, StructuredOutputError, STRICT_RETRY_NOTE } = require('../src/utils/aiOutput');
+const { parseQuiz, parseFlashcards, parseMindMap, requestStructured, enoughOf, StructuredOutputError, STRICT_RETRY_NOTE } = require('../src/utils/aiOutput');
 
 const quiz = [
   { question: 'What is 2+2?', options: ['A) 3', 'B) 4', 'C) 5', 'D) 6'], correct_answer: 'B', explanation: 'Sum.' },
@@ -120,4 +120,85 @@ test('requestStructured: two bad replies throw StructuredOutputError after exact
 
 test('requestStructured: API errors from the model call are not swallowed', async () => {
   await assert.rejects(requestStructured({ maxTokens: 1, parse: parseQuiz, request: async () => { throw new Error('overloaded'); } }), /overloaded/);
+});
+
+test('parseQuiz: answer text that merely starts with a letter is NOT read as that letter', () => {
+  const q = { question: 'Which is an animal?', options: ['A) A rock', 'B) A cat is an animal', 'C) A table', 'D) A lamp'], correct_answer: 'A cat is an animal' };
+  assert.equal(parseQuiz(json([q]))[0].correct_answer, 'B');
+  const plain = { question: 'Pick', options: ['A cat is an animal', 'Another thing', 'Third', 'Fourth'], correct_answer: 'A cat is an animal' };
+  assert.equal(parseQuiz(json([plain]))[0].correct_answer, 'A');
+  const second = { question: 'Pick', options: ['Dog', 'A cat is an animal', 'Third'], correct_answer: 'a cat is an animal' };
+  assert.equal(parseQuiz(json([second]))[0].correct_answer, 'B');
+  // text that matches no option and is not a letter form is unresolvable: the question is dropped
+  assert.throws(() => parseQuiz(json([{ question: 'Pick', options: ['Dog', 'Cat'], correct_answer: 'A bird' }])), StructuredOutputError);
+  // letter forms still work, including the full option as written
+  for (const [ans, want] of [['A', 'A'], ['b', 'B'], ['C.', 'C'], ['(d)', 'D'], ['B) y', 'B'], ['C: z', 'C']]) {
+    assert.equal(parseQuiz(json([{ question: 'q', options: ['A) x', 'B) y', 'C) z', 'D) w'], correct_answer: ans }]))[0].correct_answer, want, ans);
+  }
+});
+
+test('parseQuiz: object-valued options never become [object Object]', () => {
+  const objOpts = { question: 'q1', options: [{ foo: 1 }, { bar: 2 }], correct_answer: 'A' };
+  const textOpts = { question: 'q2', options: [{ text: 'red' }, { label: 'blue' }, { value: 'green' }], correct_answer: 'blue' };
+  const out = parseQuiz(json([objOpts, textOpts]));
+  assert.equal(out.length, 1);
+  assert.deepEqual(out[0].options, ['red', 'blue', 'green']);
+  assert.equal(out[0].correct_answer, 'B');
+  assert.ok(!JSON.stringify(out).includes('[object Object]'));
+  assert.throws(() => parseQuiz(json([objOpts, { question: { x: 1 }, options: ['a', 'b'], correct_answer: 'A' }, { question: 'q', options: ['a', 'b'], correct_answer: { x: 1 } }])), StructuredOutputError);
+});
+
+test('parseFlashcards: object-valued sides are dropped, not stringified', () => {
+  const out = parseFlashcards(json([{ front: { a: 1 }, back: 'x' }, { front: 'ok', back: 'fine' }, { front: 'f', back: ['x'] }]));
+  assert.deepEqual(out, [{ front: 'ok', back: 'fine' }]);
+});
+
+test('parseMindMap: orphan parentId and self-parent are re-parented to the root; duplicates and cycles handled', () => {
+  const map = { title: 'T', nodes: [
+    { id: '1', label: 'Root', parentId: null },
+    { id: '1.1', label: 'ok child', parentId: '1' },
+    { id: '1.2', label: 'orphan', parentId: 'missing' },
+    { id: '1.3', label: 'self', parentId: '1.3' },
+    { id: '1.1', label: 'duplicate id', parentId: '1' },
+    { id: 'a', label: 'cycle a', parentId: 'b' },
+    { id: 'b', label: 'cycle b', parentId: 'a' }
+  ] };
+  const out = parseMindMap(json(map));
+  const parent = Object.fromEntries(out.nodes.map((n) => [n.id, n.parentId]));
+  assert.equal(parent['1'], null);
+  assert.equal(parent['1.1'], '1');
+  assert.equal(parent['1.2'], '1');
+  assert.equal(parent['1.3'], '1');
+  assert.equal(out.nodes.filter((n) => n.id === '1.1').length, 1);
+  const ids = new Set(out.nodes.map((n) => n.id));
+  for (const n of out.nodes) {
+    assert.ok(n.parentId === null || ids.has(n.parentId), `${n.id} parent exists`);
+    assert.notEqual(n.parentId, n.id);
+    const seen = new Set(); let cur = n; // every chain ends at a node without a parent
+    while (cur && cur.parentId !== null) { assert.ok(!seen.has(cur.id), `cycle at ${n.id}`); seen.add(cur.id); cur = out.nodes.find((x) => x.id === cur.parentId); }
+  }
+});
+
+test('parseMindMap: no explicit root -> the first node becomes the root; a root with a dangling parent is fixed', () => {
+  const out = parseMindMap(json({ nodes: [{ id: 'x', label: 'first', parentId: 'ghost' }, { id: 'y', label: 'second', parentId: 'x' }] }));
+  assert.equal(out.nodes[0].parentId, null);
+  assert.equal(out.nodes[1].parentId, 'x');
+});
+
+test('requestStructured: valid but short reply uses its one retry; best partial is returned only after the retry', async () => {
+  const mk = (n) => reply(JSON.stringify(Array.from({ length: n }, (_, i) => ({ front: `f${i}`, back: 'b' }))));
+  let calls = 0;
+  const r = await requestStructured({ maxTokens: 100, parse: parseFlashcards, isComplete: enoughOf(10), request: async () => { calls++; return calls === 1 ? mk(2) : mk(5); } });
+  assert.equal(calls, 2);
+  assert.equal(r.partial, true);
+  assert.equal(r.value.length, 5);
+  calls = 0;
+  const ok = await requestStructured({ maxTokens: 100, parse: parseFlashcards, isComplete: enoughOf(10), request: async () => { calls++; return mk(10); } });
+  assert.equal(calls, 1);
+  assert.equal(ok.partial, false);
+  // first reply short but valid, retry unparseable: keep the first
+  const seq = [mk(3), reply('garbage')];
+  const kept = await requestStructured({ maxTokens: 100, parse: parseFlashcards, isComplete: enoughOf(10), request: async () => seq.shift() });
+  assert.equal(kept.value.length, 3);
+  assert.equal(kept.partial, true);
 });

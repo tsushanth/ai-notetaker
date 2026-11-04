@@ -4,7 +4,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
-const { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, requestStructured } = require('../utils/aiOutput');
+const { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, requestStructured, enoughOf } = require('../utils/aiOutput');
 
 /**
  * Maximum characters to send to AI (approximately 100K tokens = ~400K chars)
@@ -287,8 +287,9 @@ ${truncateContent(note.content)}`;
 
       // About 250 tokens per question including the explanation; floor keeps small quizzes safe.
       const quizMaxTokens = Math.min(Math.max(num_questions * 250, 2000), 8000);
-      const { value: questions, usage } = await requestStructured({
+      const { value: parsedQuestions, usage, partial } = await requestStructured({
         maxTokens: quizMaxTokens,
+        isComplete: enoughOf(num_questions),
         request: ({ strictNote, maxTokens }) => anthropic.messages.create({
           model: MODELS.GPT4_MINI,
           system: `You are an expert educator who creates engaging, educational quiz questions. Always respond with valid JSON only: a single JSON array, no markdown fences and no text outside the JSON.${getLanguageInstruction(language)}`,
@@ -297,8 +298,9 @@ ${truncateContent(note.content)}`;
           max_tokens: maxTokens
         }),
         parse: parseQuiz,
-        onFailure: (info) => logger.warn('Quiz reply could not be parsed', { ...info, userId, noteId })
+        onFailure: (info) => logger.warn('Quiz reply could not be parsed', { ...info, requested: num_questions, userId, noteId })
       });
+      const questions = parsedQuestions.slice(0, num_questions);
 
       // Save AI content
       const aiContent = await this.saveAIContent(noteId, 'quiz', {
@@ -317,7 +319,10 @@ ${truncateContent(note.content)}`;
         id: aiContent.id,
         questions,
         difficulty,
-        note_id: noteId
+        note_id: noteId,
+        requested: num_questions,
+        returned: questions.length,
+        partial: partial || questions.length < num_questions
       };
 
     } catch (error) {
@@ -360,8 +365,9 @@ ${truncateContent(note.content)}`;
       // Scale max_tokens based on card count (approximately 100 tokens per card)
       const maxTokens = Math.min(Math.max(cardCount * 100, 1500), 4000);
 
-      const { value: flashcards, usage } = await requestStructured({
+      const { value: parsedCards, usage, partial } = await requestStructured({
         maxTokens,
+        isComplete: enoughOf(cardCount),
         request: ({ strictNote, maxTokens: budget }) => anthropic.messages.create({
           model: MODELS.GPT4_MINI,
           system: `You are an expert educator who creates effective flashcards for studying. Always respond with valid JSON only: a single JSON array, no markdown fences and no text outside the JSON. You MUST create exactly ${cardCount} flashcards - no more, no less.${getLanguageInstruction(language)}`,
@@ -370,8 +376,9 @@ ${truncateContent(note.content)}`;
           max_tokens: budget
         }),
         parse: parseFlashcards,
-        onFailure: (info) => logger.warn('Flashcard reply could not be parsed', { ...info, userId, noteId })
+        onFailure: (info) => logger.warn('Flashcard reply could not be parsed', { ...info, requested: cardCount, userId, noteId })
       });
+      const flashcards = parsedCards.slice(0, cardCount);
 
       // Save AI content
       const aiContent = await this.saveAIContent(noteId, 'flashcards', {
@@ -388,7 +395,10 @@ ${truncateContent(note.content)}`;
       return {
         id: aiContent.id,
         flashcards,
-        note_id: noteId
+        note_id: noteId,
+        requested: cardCount,
+        returned: flashcards.length,
+        partial: partial || flashcards.length < cardCount
       };
 
     } catch (error) {

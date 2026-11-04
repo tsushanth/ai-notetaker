@@ -52,14 +52,15 @@ test('quiz: markdown-fenced reply (the production failure) now succeeds on the f
 test('quiz: prose then a JSON array succeeds', async () => {
   reset();
   modelReplies.push(text('Here is your quiz!\n\n' + JSON.stringify(quiz) + '\n\nGood luck.'));
-  const out = await aiService.generateQuiz('u1', 'n1', {});
+  const out = await aiService.generateQuiz('u1', 'n1', { num_questions: 1 });
   assert.equal(out.questions.length, 1);
+  assert.equal(out.partial, false);
 });
 
 test('quiz: refusal prose first, valid JSON on the stricter retry', async () => {
   reset();
   modelReplies.push(text('I would be happy to help, but first let me explain the topic.'), text(JSON.stringify(quiz)));
-  const out = await aiService.generateQuiz('u1', 'n1', {});
+  const out = await aiService.generateQuiz('u1', 'n1', { num_questions: 1 });
   assert.equal(out.questions.length, 1);
   assert.equal(modelCalls.length, 2);
   assert.match(modelCalls[1].messages[0].content, /ONLY the raw JSON/);
@@ -112,4 +113,57 @@ test('mind map: fenced reply succeeds; invalid shape twice gives 502', async () 
   reset();
   modelReplies.push(text('{"title":"T","nodes":[]}'), text('{"title":"T"}'));
   await assert.rejects(aiService.generateMindMap('u1', 'n1', {}), (e) => e.statusCode === 502);
+});
+
+const mkQ = (i, ans = 'A') => ({ question: `Q${i}?`, options: ['A) w', 'B) x', 'C) y', 'D) z'], correct_answer: ans, explanation: 'e' });
+const mkCards = (n) => Array.from({ length: n }, (_, i) => ({ front: `f${i}`, back: `b${i}` }));
+
+test('quiz: short reply (below ~70%) is retried once; a full retry is not partial', async () => {
+  reset();
+  modelReplies.push(text(JSON.stringify([mkQ(1), mkQ(2)])), text(JSON.stringify([1, 2, 3, 4, 5].map((i) => mkQ(i)))));
+  const out = await aiService.generateQuiz('u1', 'n1', { num_questions: 5 });
+  assert.equal(modelCalls.length, 2);
+  assert.deepEqual([out.requested, out.returned, out.partial], [5, 5, false]);
+});
+
+test('quiz: still short after the retry returns what is valid, flagged partial with counts; never more than 2 model calls', async () => {
+  reset();
+  modelReplies.push(text(JSON.stringify([mkQ(1), mkQ(2)])), text(JSON.stringify([mkQ(1), mkQ(2), mkQ(3)])), text('never used'));
+  const out = await aiService.generateQuiz('u1', 'n1', { num_questions: 10 });
+  assert.equal(modelCalls.length, 2);
+  assert.deepEqual([out.requested, out.returned, out.partial], [10, 3, true]);
+  assert.equal(out.questions.length, 3);
+});
+
+test('quiz: 4 of 5 is within tolerance (no retry) but still reported as partial; extra questions are trimmed', async () => {
+  reset();
+  modelReplies.push(text(JSON.stringify([1, 2, 3, 4].map((i) => mkQ(i)))));
+  let out = await aiService.generateQuiz('u1', 'n1', { num_questions: 5 });
+  assert.equal(modelCalls.length, 1);
+  assert.deepEqual([out.returned, out.partial], [4, true]);
+  reset();
+  modelReplies.push(text(JSON.stringify([1, 2, 3, 4, 5, 6, 7].map((i) => mkQ(i)))));
+  out = await aiService.generateQuiz('u1', 'n1', { num_questions: 5 });
+  assert.deepEqual([out.returned, out.partial], [5, false]);
+});
+
+test('quiz: questions dropped by validation count against the total (object options, unresolvable answers)', async () => {
+  reset();
+  const bad = [{ question: 'o', options: [{ a: 1 }, { b: 2 }], correct_answer: 'A' }, { question: 'z', options: ['A) x', 'B) y'], correct_answer: 'Z' }];
+  modelReplies.push(text(JSON.stringify([mkQ(1), ...bad])), text(JSON.stringify([1, 2, 3, 4, 5].map((i) => mkQ(i)))));
+  const out = await aiService.generateQuiz('u1', 'n1', { num_questions: 5 });
+  assert.equal(modelCalls.length, 2);
+  assert.equal(out.returned, 5);
+});
+
+test('flashcards: short reply retried; still short -> partial with counts', async () => {
+  reset();
+  modelReplies.push(text(JSON.stringify(mkCards(3))), text(JSON.stringify(mkCards(4))));
+  const out = await aiService.generateFlashcards('u1', 'n1', { num_cards: 10 });
+  assert.equal(modelCalls.length, 2);
+  assert.deepEqual([out.requested, out.returned, out.partial], [10, 4, true]);
+  reset();
+  modelReplies.push(text(JSON.stringify(mkCards(10))));
+  const full = await aiService.generateFlashcards('u1', 'n1', { num_cards: 10 });
+  assert.deepEqual([full.returned, full.partial], [10, false]);
 });

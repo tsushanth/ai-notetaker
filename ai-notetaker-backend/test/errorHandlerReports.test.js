@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 process.env.NODE_ENV = 'production';
 process.env.FAILURE_REPORTER_FORCE = '1'; // the reporter is also off under the node test runner; this file stubs fetch itself
+process.env.FAILURE_REPORTER_KEY = 'test-report-key'; // the key comes from the environment only
 const sent = [];
 global.fetch = async (url, opts) => { sent.push(JSON.parse(opts.body)); return { ok: true }; };
 const { errorHandler, AppError } = require('../src/middleware/errorHandler');

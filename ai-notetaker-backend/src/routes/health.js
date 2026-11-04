@@ -3,6 +3,47 @@ const router = express.Router();
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { getEnvSummary, requiredEnvVars, optionalEnvVars } = require('../config/envValidation');
+const { reportCounted } = require('../utils/failureReporter');
+
+// Address that cannot exist; the lookup RPC is called with it only to see whether the admin client may execute it.
+const ADMIN_ROLE_PROBE_EMAIL = 'health-probe@invalid.invalid';
+
+/**
+ * Is the shared admin client still acting as the service role? It stops being so when a user session gets attached to it
+ * (supabase-js does that on signInWithPassword and similar): later calls then run as "authenticated" and fail with
+ * "permission denied" (this broke Google sign-in). Only those two signals mark it unhealthy; a timeout or any other
+ * error is reported as "unknown" so a network blip never flips /health.
+ */
+async function checkAdminRole(client = supabaseAdmin) {
+  const start = Date.now();
+  const out = { status: 'healthy', latencyMs: null };
+  try {
+    const { data } = await client.auth.getSession();
+    if (data && data.session) {
+      out.status = 'unhealthy';
+      out.error = 'admin client has a user session attached';
+    } else {
+      const r = await Promise.race([
+        client.rpc('get_user_id_by_email', { user_email: ADMIN_ROLE_PROBE_EMAIL }),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('admin role probe timed out')), 5000)),
+      ]);
+      if (r && r.error) {
+        if (/permission denied/i.test(r.error.message || '') || r.error.code === '42501') {
+          out.status = 'unhealthy';
+          out.error = 'admin client lacks service-role privileges: ' + r.error.message;
+        } else {
+          out.status = 'unknown';
+          out.error = r.error.message;
+        }
+      }
+    }
+  } catch (e) {
+    out.status = 'unknown';
+    out.error = e.message;
+  }
+  out.latencyMs = Date.now() - start;
+  return out;
+}
 
 /**
  * Health check endpoint
@@ -17,7 +58,8 @@ router.get('/', async (req, res) => {
     supabaseAdmin: { status: 'unknown', latencyMs: null },
     recordingsTable: { status: 'unknown', latencyMs: null },
     storage: { status: 'unknown', latencyMs: null },
-    openai: { status: 'unknown' }
+    openai: { status: 'unknown' },
+    adminRole: { status: 'unknown', latencyMs: null }
   };
 
   let isHealthy = true;
@@ -72,6 +114,15 @@ router.get('/', async (req, res) => {
     checks.storage.latencyMs = Date.now() - stStart;
     checks.storage.status = stError ? 'unhealthy' : 'healthy';
     if (stError) { checks.storage.error = stError.message; isHealthy = false; }
+
+    // Is the admin client still the service role? (see checkAdminRole)
+    checks.adminRole = await checkAdminRole();
+    if (checks.adminRole.status === 'unhealthy') {
+      isHealthy = false;
+      logger.error('Health check failed: admin client is not acting as the service role', { error: checks.adminRole.error });
+      // One page per 10 minutes per process, on top of the Worker's down alert for a failing /health.
+      reportCounted('health adminRole', 'Admin client is not acting as the service role', {}, 10 * 60 * 1000);
+    }
 
     // Check Anthropic API key is configured
     checks.openai.status = process.env.ANTHROPIC_API_KEY ? 'configured' : 'not configured';
@@ -197,3 +248,4 @@ router.get('/env', (req, res) => {
 });
 
 module.exports = router;
+module.exports.checkAdminRole = checkAdminRole;

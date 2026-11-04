@@ -5,6 +5,7 @@ const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { hasStandardAccess } = require('../middleware/subscription');
 const { sendBlock, capBlock } = require('../middleware/freeTierLimits');
 const { getFreeTierConfig, DAY_MS } = require('../utils/freeTierPolicy');
+const { rejectLocalOnlyNote } = require('../middleware/localOnlyNote');
 const shareService = require('../services/shareService');
 const { logger } = require('../utils/logger');
 
@@ -52,7 +53,7 @@ async function checkShareLimit(userId) {
 // ============================================
 // Create a share link for a note
 // ============================================
-router.post('/:noteId/share', authenticate, asyncHandler(async (req, res) => {
+router.post('/:noteId/share', authenticate, rejectLocalOnlyNote('noteId'), asyncHandler(async (req, res) => {
   const userId = req.userId;
   const noteId = req.params.noteId;
   const { expiresInDays, allowComments } = req.body;

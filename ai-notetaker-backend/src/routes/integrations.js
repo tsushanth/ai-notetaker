@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { hasStandardAccess } = require('../middleware/subscription');
+const { rejectLocalOnlyNote } = require('../middleware/localOnlyNote');
 const integrationService = require('../services/integrationService');
 const { logger } = require('../utils/logger');
 const { OAuth2Client } = require('google-auth-library');
@@ -76,7 +77,7 @@ router.get('/google-drive/callback', asyncHandler(async (req, res) => {
 }));
 
 // Export to Google Drive
-router.post('/google-drive/export/:noteId', authenticate, requirePremiumForIntegration, asyncHandler(async (req, res) => {
+router.post('/google-drive/export/:noteId', authenticate, rejectLocalOnlyNote('noteId'), requirePremiumForIntegration, asyncHandler(async (req, res) => {
   const result = await integrationService.exportToGoogleDrive(req.userId, req.params.noteId);
   res.json({ success: true, data: result });
 }));
@@ -128,7 +129,7 @@ router.get('/notion/callback', asyncHandler(async (req, res) => {
 }));
 
 // Export to Notion
-router.post('/notion/export/:noteId', authenticate, requirePremiumForIntegration, asyncHandler(async (req, res) => {
+router.post('/notion/export/:noteId', authenticate, rejectLocalOnlyNote('noteId'), requirePremiumForIntegration, asyncHandler(async (req, res) => {
   const { parentPageId } = req.body;
   const result = await integrationService.exportToNotion(req.userId, req.params.noteId, parentPageId);
   res.json({ success: true, data: result });
@@ -182,7 +183,7 @@ router.get('/slack/callback', asyncHandler(async (req, res) => {
 }));
 
 // Share to Slack
-router.post('/slack/share/:noteId', authenticate, requirePremiumForIntegration, asyncHandler(async (req, res) => {
+router.post('/slack/share/:noteId', authenticate, rejectLocalOnlyNote('noteId'), requirePremiumForIntegration, asyncHandler(async (req, res) => {
   const result = await integrationService.shareToSlack(req.userId, req.params.noteId);
   res.json({ success: true, data: result });
 }));

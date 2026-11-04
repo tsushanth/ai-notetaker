@@ -40,7 +40,7 @@ router.delete('/delete-account', async (req, res) => {
             return res.status(500).json({
                 success: false,
                 code: 'ACCOUNT_DELETION_INCOMPLETE',
-                error: 'We could not finish deleting your account. Nothing further was lost; please try again, or contact support if it keeps failing.'
+                error: 'We could not finish deleting your account. Some of your data may already have been removed, and you are still signed in. Trying again is safe and will continue where this stopped; contact support if it keeps failing.'
             });
         }
 
@@ -94,11 +94,16 @@ router.get('/data-export', async (req, res) => {
             .select('id, title, duration, format, status, created_at')
             .eq('user_id', userId);
         
-        // Get AI content
-        const { data: aiContent } = await supabaseAdmin
-            .from('ai_content')
-            .select('*')
-            .eq('user_id', userId);
+        // AI content has no user column: it belongs to the user through their notes.
+        const noteIds = (notes || []).map(n => n.id);
+        const aiContent = [];
+        for (let i = 0; i < noteIds.length; i += 100) {
+            const { data: rows } = await supabaseAdmin
+                .from('ai_content')
+                .select('*')
+                .in('note_id', noteIds.slice(i, i + 100));
+            if (rows) aiContent.push(...rows);
+        }
         
         const exportData = {
             exportDate: new Date().toISOString(),

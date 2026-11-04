@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">ホーム</string>
     <string name="menu">メニュー</string>
     <string name="menu_language">言語</string>
-    <string name="menu_upgrade_pro">Proにアップグレード</string>
     <string name="menu_manage_subscription">サブスクリプションを管理</string>
     <string name="menu_appearance">外観</string>
     <string name="menu_sign_out">サインアウト</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">閉じる</string>
-    <string name="unlock_pro">Scribe AI Proを解除</string>
-    <string name="unlimited_access">すべての機能に無制限アクセス</string>
-    <string name="feature_unlimited_notes">あらゆるソースから無制限のノート</string>
-    <string name="feature_ai_summaries">AI要約 &amp; クイズ</string>
-    <string name="feature_flashcards">フラッシュカード生成</string>
-    <string name="feature_ai_chat">ノートとAIチャット</string>
-    <string name="feature_mind_map">マインドマップ表示</string>
-    <string name="feature_podcast">音声ポッドキャスト生成</string>
     <string name="plan_yearly">年額</string>
     <string name="plan_monthly">月額</string>
     <string name="per_month_format">%s/月</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI は誰でも無料で使えます。Pro は、運用コストが特に高い 3 つの機能のためのプランです。</string>
+    <string name="pro_needed_podcast">ポッドキャストは ScribeAI Pro の機能です。</string>
+    <string name="pro_needed_infographic">インフォグラフィックは ScribeAI Pro の機能です。</string>
+    <string name="pro_needed_meeting">ミーティングボットは ScribeAI Pro の機能です。</string>
+    <string name="pro_feature_podcast">ポッドキャスト</string>
+    <string name="pro_feature_podcast_desc">ノートを音声に変換</string>
+    <string name="pro_feature_infographic">インフォグラフィック</string>
+    <string name="pro_feature_infographic_desc">ノートをビジュアルな要約に変換</string>
+    <string name="pro_feature_meeting">ミーティングボット</string>
+    <string name="pro_feature_meeting_desc">オンライン会議に参加してノートを作成します</string>
+    <string name="pro_cancel_anytime">自動更新されます。Google Play でいつでも解約できます。</string>
+    <string name="pro_go_pro">Pro にする</string>
+    <string name="pro_terms">利用規約</string>
+    <string name="pro_trial_format">%d 日間の無料トライアル</string>
+    <string name="pro_plans_unavailable">Google Play からプランを読み込めませんでした。後でもう一度お試しください。</string>
+    <string name="pro_nothing_to_restore">有効な定期購入が見つかりません</string>
 </resources>

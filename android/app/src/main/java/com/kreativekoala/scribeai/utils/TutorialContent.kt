@@ -122,21 +122,18 @@ Generate flashcards automatically for effective studying using spaced repetition
 
 ## 💎 Free vs Pro
 
-### Free Plan (1 Notebook)
-- Create 1 notebook
-- All AI features included
-- Record audio
-- Scan documents
-- Upload files
+### Free for everyone
+- Create as many notebooks as you like
+- Record audio, scan documents, upload files
+- Transcription, summaries, chat, quizzes, flashcards and mind maps
+- Export, sharing, Learn, Create and Compete
 
-### Pro Plan (Unlimited)
-- **Unlimited notebooks**
-- All AI features
-- Priority processing
-- Faster response times
-- Support future development
+### Pro
+- Podcasts
+- Infographics
+- The meeting bot
 
-**Upgrade anytime** by tapping the upgrade button in the menu!
+Pro is optional and only needed for those three features.
 
 ---
 
@@ -226,7 +223,7 @@ Welcome aboard, and happy learning! 🚀📚
 
 Create notes by recording audio, uploading YouTube videos, scanning documents, or uploading files (PDF, DOCX, PPTX). Once created, use powerful AI features: generate summaries in three lengths, convert notes to podcasts, take AI-generated quizzes, chat with your notes to ask questions, and create flashcards for memorization.
 
-The free plan includes 1 notebook with all features. Upgrade to Pro for unlimited notebooks. Start by tapping the + button to create your first note!"""
+ScribeAI is free to use. Podcasts, infographics and the meeting bot are part of the optional Pro plan. Start by tapping the + button to create your first note!"""
 
     // Pre-generated MEDIUM summary
     const val TUTORIAL_SUMMARY_MEDIUM = """Scribe AI is your AI-powered study companion that transforms any content into structured, interactive learning materials.
@@ -243,7 +240,7 @@ Once you've created a note, explore five powerful AI features through the tabs:
 - Flashcards: Create flip cards for effective memorization
 
 **Plans:**
-Free users get 1 notebook with all AI features. Pro users get unlimited notebooks, priority processing, and faster response times.
+ScribeAI is free to use. Podcasts, infographics and the meeting bot are part of the optional Pro plan.
 
 **Best Practices:**
 For best results, use quiet environments for recording, ensure good lighting for scans, and provide clear, structured content. Your data is private, encrypted, and never shared.
@@ -278,9 +275,9 @@ After creating a note, access five powerful AI features through the tabbed inter
 - Flashcards Tab: Generate digital flashcards automatically with questions on the front and answers on the back. Tap to flip cards and use spaced repetition for effective memorization. Perfect for learning terminology, definitions, and key facts.
 
 **Subscription Plans:**
-The Free plan includes 1 notebook with complete access to all AI features—summaries, podcasts, quizzes, chat, and flashcards. This lets you fully experience Scribe AI's capabilities.
+ScribeAI is free: transcription, summaries, quizzes, chat, flashcards, export and more have no notebook limit.
 
-The Pro plan unlocks unlimited notebooks, priority processing for faster AI generation, improved response times, and helps support ongoing development and new features.
+The optional Pro plan adds podcasts, infographics and the meeting bot, which are the features that cost the most to run.
 
 **Best Practices by User Type:**
 
@@ -325,9 +322,7 @@ The Chat tab lets you ask questions about your notes. Need clarification on a co
 
 The Flashcards tab generates digital flashcards automatically. Each card has a question on the front and the answer on the back. Tap to flip and use spaced repetition for effective memorization.
 
-Let's talk about pricing. The free plan includes one notebook with all features. That's right - you get everything: summaries, podcasts, quizzes, chat, and flashcards. This lets you fully experience what Scribe AI can do.
-
-The Pro plan unlocks unlimited notebooks, priority processing, and faster response times. If you're serious about studying efficiently, Pro is definitely worth it.
+Let's talk about pricing. ScribeAI is free: summaries, quizzes, chat, flashcards and export have no notebook limit. Podcasts, infographics and the meeting bot are part of the optional Pro plan.
 
 Here are some best practices. For students: record every lecture, generate summaries for review, use quizzes before exams, create flashcards for memorization, and chat with your notes to clarify concepts.
 
@@ -349,10 +344,10 @@ Welcome aboard, and happy learning! Scribe AI is here to make your study session
     // Note: correctAnswer is String (option index as string), not Int
     val TUTORIAL_QUIZ_QUESTIONS = listOf(
         QuizQuestion(
-            question = "How many notebooks can you create with the free plan?",
-            options = listOf("Unlimited", "3 notebooks", "1 notebook", "5 notebooks"),
-            correctAnswer = "2",  // String index
-            explanation = "The free plan includes 1 notebook with access to all AI features."
+            question = "How many notebooks can you create in ScribeAI?",
+            options = listOf("As many as you like", "3 notebooks", "1 notebook", "5 notebooks"),
+            correctAnswer = "0",  // String index
+            explanation = "ScribeAI is free and has no notebook limit."
         ),
         QuizQuestion(
             question = "Which AI feature converts your notes into audio format?",
@@ -413,15 +408,15 @@ Welcome aboard, and happy learning! Scribe AI is here to make your study session
             explanation = "Audio transcription and note generation typically takes 30-60 seconds to complete."
         ),
         QuizQuestion(
-            question = "What is a key benefit of the Pro plan?",
+            question = "Which features are part of the optional Pro plan?",
             options = listOf(
-                "Access to AI features",
-                "Ability to create notes",
-                "Unlimited notebooks",
-                "App download"
+                "Summaries and quizzes",
+                "Chat and flashcards",
+                "Podcasts, infographics and the meeting bot",
+                "Creating notes"
             ),
             correctAnswer = "2",  // String index
-            explanation = "The main benefit of Pro is unlimited notebooks. Free users are limited to 1 notebook, while Pro users can create as many as they want."
+            explanation = "Everything else is free. Pro covers podcasts, infographics and the meeting bot."
         )
     )
 
@@ -452,8 +447,8 @@ Welcome aboard, and happy learning! Scribe AI is here to make your study session
             back = "Optical Character Recognition - technology that extracts text from scanned images and physical documents."
         ),
         Flashcard(
-            front = "How many notebooks does the free plan include?",
-            back = "1 notebook with access to all AI features (summaries, podcast, quiz, chat, flashcards)."
+            front = "How many notebooks can you create?",
+            back = "As many as you like. ScribeAI is free, with no notebook limit."
         ),
         Flashcard(
             front = "What can you do in the Chat tab?",
@@ -464,8 +459,8 @@ Welcome aboard, and happy learning! Scribe AI is here to make your study session
             back = "PDF, DOCX (Word), PPTX (PowerPoint), TXT (text files), and more."
         ),
         Flashcard(
-            front = "What makes the Pro plan different from Free?",
-            back = "Pro unlocks unlimited notebooks, priority processing, faster response times, and supports ongoing development."
+            front = "What does the optional Pro plan add?",
+            back = "Podcasts, infographics and the meeting bot. Everything else is free."
         ),
         Flashcard(
             front = "How long does audio transcription take?",

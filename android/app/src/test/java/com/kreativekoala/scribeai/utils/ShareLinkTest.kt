@@ -25,12 +25,20 @@ class ShareLinkTest {
     }
 
     @Test
-    fun http403IsTheFreePlanLimitAndKeepsTheServerMessage() {
-        val body = """{"success":false,"error":"Free plan allows 3 share links per month. Upgrade for unlimited sharing."}"""
+    fun http429IsTheDailyLimitAndShowsTheServerMessage() {
+        val body = """{"success":false,"error":"You have reached today's limit of share links. Please try again tomorrow."}"""
         assertEquals(
-            ShareLinkResult.LimitReached("Free plan allows 3 share links per month. Upgrade for unlimited sharing."),
-            ShareLink.parseResponse(403, body)
+            ShareLinkResult.LimitReached("You have reached today's limit of share links. Please try again tomorrow."),
+            ShareLink.parseResponse(429, body)
         )
+        assertEquals(ShareLinkResult.LimitReached(FreeTierErrors.DEFAULT_LIMIT_MESSAGE), ShareLink.parseResponse(429, "<html>"))
+    }
+
+    @Test
+    fun http403NeverShowsAnUpgradeMessage() {
+        // Sharing is free; an older server may still answer 403 with an upsell, which is replaced by a plain failure.
+        val body = """{"success":false,"error":"Free plan allows 3 share links per month. Upgrade for unlimited sharing."}"""
+        assertEquals(ShareLinkResult.Failure(ShareLink.DEFAULT_ERROR), ShareLink.parseResponse(403, body))
     }
 
     @Test
@@ -44,8 +52,7 @@ class ShareLinkTest {
         listOf(null, "", "not json", "[]", "{}", """{"error":""}""", """{"error":{"a":1}}""").forEach {
             assertEquals(ShareLinkResult.Failure(ShareLink.DEFAULT_ERROR), ShareLink.parseResponse(500, it))
         }
-        // A 403 with no usable body is still the limit case, with the default text.
-        assertEquals(ShareLinkResult.LimitReached(ShareLink.DEFAULT_ERROR), ShareLink.parseResponse(403, "<html>"))
+        assertEquals(ShareLinkResult.Failure(ShareLink.DEFAULT_ERROR), ShareLink.parseResponse(403, "<html>"))
     }
 
     @Test

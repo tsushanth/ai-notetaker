@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">หน้าหลัก</string>
     <string name="menu">เมนู</string>
     <string name="menu_language">ภาษา</string>
-    <string name="menu_upgrade_pro">อัปเกรดเป็น Pro</string>
     <string name="menu_manage_subscription">จัดการการสมัครสมาชิก</string>
     <string name="menu_appearance">ธีม</string>
     <string name="menu_sign_out">ออกจากระบบ</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">ปิด</string>
-    <string name="unlock_pro">ปลดล็อก Scribe AI Pro</string>
-    <string name="unlimited_access">เข้าถึงฟีเจอร์ทั้งหมดแบบไม่จำกัด</string>
-    <string name="feature_unlimited_notes">บันทึกไม่จำกัดจากทุกแหล่ง</string>
-    <string name="feature_ai_summaries">สรุปและแบบทดสอบโดย AI</string>
-    <string name="feature_flashcards">สร้างแฟลชการ์ด</string>
-    <string name="feature_ai_chat">แชท AI กับบันทึกของคุณ</string>
-    <string name="feature_mind_map">แผนผังความคิด</string>
-    <string name="feature_podcast">สร้างพอดแคสต์เสียง</string>
     <string name="plan_yearly">รายปี</string>
     <string name="plan_monthly">รายเดือน</string>
     <string name="per_month_format">%s/เดือน</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI ใช้ฟรีสำหรับทุกคน Pro ครอบคลุมสามฟีเจอร์ที่มีต้นทุนการให้บริการสูงที่สุด</string>
+    <string name="pro_needed_podcast">พอดแคสต์เป็นส่วนหนึ่งของ ScribeAI Pro</string>
+    <string name="pro_needed_infographic">อินโฟกราฟิกเป็นส่วนหนึ่งของ ScribeAI Pro</string>
+    <string name="pro_needed_meeting">บอทประชุมเป็นส่วนหนึ่งของ ScribeAI Pro</string>
+    <string name="pro_feature_podcast">พอดแคสต์</string>
+    <string name="pro_feature_podcast_desc">เปลี่ยนโน้ตของคุณเป็นเสียง</string>
+    <string name="pro_feature_infographic">อินโฟกราฟิก</string>
+    <string name="pro_feature_infographic_desc">เปลี่ยนโน้ตของคุณเป็นสรุปแบบภาพ</string>
+    <string name="pro_feature_meeting">บอทประชุม</string>
+    <string name="pro_feature_meeting_desc">เข้าร่วมการประชุมออนไลน์ของคุณและเขียนโน้ตให้</string>
+    <string name="pro_cancel_anytime">ต่ออายุอัตโนมัติ ยกเลิกได้ทุกเมื่อใน Google Play</string>
+    <string name="pro_go_pro">สมัคร Pro</string>
+    <string name="pro_terms">ข้อกำหนดในการให้บริการ</string>
+    <string name="pro_trial_format">ทดลองใช้ฟรี %d วัน</string>
+    <string name="pro_plans_unavailable">ไม่สามารถโหลดแพ็กเกจจาก Google Play ได้ โปรดลองอีกครั้งในภายหลัง</string>
+    <string name="pro_nothing_to_restore">ไม่พบการสมัครสมาชิกที่ใช้งานอยู่</string>
 </resources>

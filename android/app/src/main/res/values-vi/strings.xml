@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -217,14 +217,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">Đóng</string>
-    <string name="unlock_pro">Mở khóa Scribe AI Pro</string>
-    <string name="unlimited_access">Truy cập không giới hạn mọi tính năng</string>
-    <string name="feature_unlimited_notes">Ghi chú không giới hạn từ mọi nguồn</string>
-    <string name="feature_ai_summaries">Tóm tắt &amp; trắc nghiệm bằng AI</string>
-    <string name="feature_flashcards">Tạo thẻ ghi nhớ</string>
-    <string name="feature_ai_chat">Trò chuyện AI với ghi chú</string>
-    <string name="feature_mind_map">Bản đồ tư duy</string>
-    <string name="feature_podcast">Tạo podcast âm thanh</string>
     <string name="plan_yearly">Hàng năm</string>
     <string name="plan_monthly">Hàng tháng</string>
     <string name="per_month_format">%s/tháng</string>
@@ -322,4 +314,24 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI miễn phí cho mọi người. Pro bao gồm ba tính năng tốn chi phí vận hành nhất.</string>
+    <string name="pro_needed_podcast">Podcast là một phần của ScribeAI Pro.</string>
+    <string name="pro_needed_infographic">Infographic là một phần của ScribeAI Pro.</string>
+    <string name="pro_needed_meeting">Bot cuộc họp là một phần của ScribeAI Pro.</string>
+    <string name="pro_feature_podcast">Podcast</string>
+    <string name="pro_feature_podcast_desc">Biến ghi chú của bạn thành âm thanh</string>
+    <string name="pro_feature_infographic">Infographic</string>
+    <string name="pro_feature_infographic_desc">Biến ghi chú của bạn thành bản tóm tắt trực quan</string>
+    <string name="pro_feature_meeting">Bot cuộc họp</string>
+    <string name="pro_feature_meeting_desc">Tham gia các cuộc họp trực tuyến của bạn và viết ghi chú</string>
+    <string name="pro_cancel_anytime">Tự động gia hạn. Hủy bất cứ lúc nào trong Google Play.</string>
+    <string name="pro_go_pro">Nâng cấp Pro</string>
+    <string name="pro_terms">Điều khoản dịch vụ</string>
+    <string name="pro_trial_format">Dùng thử miễn phí %d ngày</string>
+    <string name="pro_plans_unavailable">Không thể tải các gói từ Google Play. Vui lòng thử lại sau.</string>
+    <string name="pro_nothing_to_restore">Không tìm thấy gói đăng ký đang hoạt động</string>
+    <string name="menu_manage_subscription">Quản lý gói đăng ký</string>
 </resources>

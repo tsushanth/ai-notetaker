@@ -18,7 +18,6 @@ enum class ExportFormat(val extension: String, val mimeType: String) {
 sealed class ExportResult {
     data class Success(val fileUri: Uri, val mimeType: String) : ExportResult()
     data class Error(val message: String) : ExportResult()
-    data object PremiumRequired : ExportResult()
 }
 
 object ExportManager {
@@ -79,9 +78,9 @@ object ExportManager {
 
                     ExportResult.Success(uri, format.mimeType)
                 }
-                403 -> {
-                    Log.w(TAG, "Export blocked - premium required")
-                    ExportResult.PremiumRequired
+                429 -> {
+                    // Daily limit: plain message, not an error or a paywall.
+                    ExportResult.Error(FreeTierErrors.dailyLimitMessage(response.errorBody()?.string()))
                 }
                 else -> {
                     val errorBody = response.errorBody()?.string()

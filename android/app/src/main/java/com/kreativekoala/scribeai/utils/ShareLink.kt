@@ -12,7 +12,7 @@ import java.io.IOException
 sealed class ShareLinkResult {
     data class Success(val url: String) : ShareLinkResult()
 
-    /** HTTP 403: the free plan's monthly share-link allowance is used up. [message] is the server's text. */
+    /** HTTP 429: the daily limit on share links is reached (not a paywall). [message] is the friendly text to show. */
     data class LimitReached(val message: String) : ShareLinkResult()
 
     data class Failure(val message: String) : ShareLinkResult()
@@ -54,7 +54,12 @@ object ShareLink {
             return ShareLinkResult.Failure(DEFAULT_ERROR)
         }
         val message = (text("error") ?: text("message"))?.takeIf { it.length <= 300 } ?: DEFAULT_ERROR
-        return if (httpCode == 403) ShareLinkResult.LimitReached(message) else ShareLinkResult.Failure(message)
+        return when (httpCode) {
+            429 -> ShareLinkResult.LimitReached(FreeTierErrors.dailyLimitMessage(body))
+            // Sharing is free now: an older server may still answer 403 with an upgrade message, which must not be shown.
+            403 -> ShareLinkResult.Failure(DEFAULT_ERROR)
+            else -> ShareLinkResult.Failure(message)
+        }
     }
 
     suspend fun create(

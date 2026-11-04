@@ -7,12 +7,9 @@ const { createClient } = require('@supabase/supabase-js');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
 
-// Initialize Supabase admin client
-const supabaseAdmin = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY,
-    { auth: { persistSession: false, autoRefreshToken: false } }
-);
+// The one shared admin client (service role). It is also the client /health inspects, so a regression that makes it act
+// as a user is visible there.
+const { supabaseAdmin } = require('../config/supabase');
 
 // Password sign-in must NOT run on the shared admin client: supabase-js keeps the signed-in user's
 // session on the client and sends that JWT for every later request, so the admin client would start

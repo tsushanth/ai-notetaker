@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
 const { hasStandardAccess } = require('../middleware/subscription');
+const { rejectLocalOnlyNote } = require('../middleware/localOnlyNote');
 const exportService = require('../services/exportService');
 const { logger } = require('../utils/logger');
 
@@ -31,7 +32,7 @@ const requireExportAccess = async (req, res, next) => {
 // ============================================
 // Export note as PDF
 // ============================================
-router.get('/:id/export/pdf', authenticate, requireExportAccess, asyncHandler(async (req, res) => {
+router.get('/:id/export/pdf', authenticate, rejectLocalOnlyNote('id'), requireExportAccess, asyncHandler(async (req, res) => {
   const userId = req.userId;
   const noteId = req.params.id;
 
@@ -48,7 +49,7 @@ router.get('/:id/export/pdf', authenticate, requireExportAccess, asyncHandler(as
 // ============================================
 // Export note as DOCX
 // ============================================
-router.get('/:id/export/docx', authenticate, requireExportAccess, asyncHandler(async (req, res) => {
+router.get('/:id/export/docx', authenticate, rejectLocalOnlyNote('id'), requireExportAccess, asyncHandler(async (req, res) => {
   const userId = req.userId;
   const noteId = req.params.id;
 

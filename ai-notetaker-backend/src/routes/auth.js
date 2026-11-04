@@ -10,8 +10,22 @@ const { authenticate } = require('../middleware/auth');
 // Initialize Supabase admin client
 const supabaseAdmin = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
+    process.env.SUPABASE_SERVICE_KEY,
+    { auth: { persistSession: false, autoRefreshToken: false } }
 );
+
+// Password sign-in must NOT run on the shared admin client: supabase-js keeps the signed-in user's
+// session on the client and sends that JWT for every later request, so the admin client would start
+// acting as that user (role "authenticated") and later calls such as the Google-login lookup RPC
+// fail with "permission denied". Use a throwaway anon client per sign-in instead.
+function passwordSignIn(email, password) {
+    const client = createClient(
+        process.env.SUPABASE_URL,
+        process.env.SUPABASE_ANON_KEY,
+        { auth: { persistSession: false, autoRefreshToken: false } }
+    );
+    return client.auth.signInWithPassword({ email, password });
+}
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -66,10 +80,7 @@ router.post('/register', async (req, res) => {
         }
 
         // Create a session for the user
-        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.signInWithPassword({
-            email,
-            password
-        });
+        const { data: sessionData, error: sessionError } = await passwordSignIn(email, password);
 
         if (sessionError) {
             console.error('Session creation error:', sessionError);
@@ -127,10 +138,7 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        const { data, error } = await supabaseAdmin.auth.signInWithPassword({
-            email,
-            password
-        });
+        const { data, error } = await passwordSignIn(email, password);
 
         if (error) {
             console.error('Login error:', error);

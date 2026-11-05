@@ -139,7 +139,11 @@ router.post(
       const callSid = await TwilioService.sendVerificationCall(phoneNumber, code);
       console.log(`[Phone] Verification call initiated: ${callSid} to ${phoneNumber}`);
     } catch (err) {
-      console.error('[Phone] Failed to initiate verification call:', err.message);
+      console.error(
+        '[Phone] Failed to initiate verification call:',
+        err.message,
+        `twilio_code=${err.code ?? 'none'} http_status=${err.status ?? 'none'}`
+      );
       throw new AppError('Failed to send verification code', 500);
     }
 

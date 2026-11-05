@@ -215,6 +215,7 @@
     <string name="error_upload_failed">Failed to upload audio</string>
     <string name="error_transcribe_failed">Failed to transcribe audio</string>
     <string name="error_start_recording">Failed to start recording: %s</string>
+    <string name="recording_silent_warning">We did not pick up any sound. Check that the microphone is allowed for this app, not muted and not in use by another app. You can still transcribe it, or discard it and record again.</string>
     <string name="error_stop_recording">Failed to stop recording: %s</string>
     <string name="error_processing_failed">Processing failed</string>
 

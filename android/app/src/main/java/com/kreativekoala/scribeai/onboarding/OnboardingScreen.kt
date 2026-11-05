@@ -383,13 +383,15 @@ private fun FeatureScreen(
 }
 
 // MARK: - Social Proof Screen
+// Kept as the SOCIAL_PROOF step so the onboarding flow is unchanged. It makes only
+// claims the app can back up: no user counts, ratings, or testimonials.
 
 @Composable
 private fun SocialProofScreen(onContinue: () -> Unit) {
-    val reviews = listOf(
-        Review("Sarah M.", "This app transformed my study routine! The AI summaries save me hours.", 5),
-        Review("James K.", "Finally an app that actually understands my lecture notes.", 5),
-        Review("Emily R.", "The flashcards feature is incredible. Passed my exams with flying colors!", 5)
+    val highlights = listOf(
+        Highlight("AI summaries", "Turn lectures, videos, and documents into clear, organized notes."),
+        Highlight("Flashcards and quizzes", "Generate study material from your own notes to review and practice."),
+        Highlight("Study on the go", "Listen to your notes as audio podcasts whenever it suits you.")
     )
 
     Column(
@@ -402,37 +404,17 @@ private fun SocialProofScreen(onContinue: () -> Unit) {
         Spacer(Modifier.height(32.dp))
 
         Text(
-            "Join 50,000+ Students",
+            "Built for Students",
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(8.dp))
-
-        // Star rating
-        Row(horizontalArrangement = Arrangement.Center) {
-            repeat(5) {
-                Icon(
-                    Icons.Default.Star,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                    tint = Color(0xFFFFD700)
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "4.9 on App Store",
-                fontSize = 16.sp,
-                color = TextSecondary
-            )
-        }
-
         Spacer(Modifier.height(32.dp))
 
-        reviews.forEach { review ->
-            ReviewCard(review)
+        highlights.forEach { highlight ->
+            HighlightCard(highlight)
             Spacer(Modifier.height(16.dp))
         }
 
@@ -447,10 +429,10 @@ private fun SocialProofScreen(onContinue: () -> Unit) {
     }
 }
 
-private data class Review(val name: String, val text: String, val rating: Int)
+private data class Highlight(val title: String, val text: String)
 
 @Composable
-private fun ReviewCard(review: Review) {
+private fun HighlightCard(highlight: Highlight) {
     val cardShape = RoundedCornerShape(20.dp)
     Box(modifier = Modifier.fillMaxWidth().padding(bottom = 3.dp)) {
         Column(
@@ -462,47 +444,16 @@ private fun ReviewCard(review: Review) {
                 .border(BorderStroke(1.dp, TurboBorder), cardShape)
                 .padding(16.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar
-                Surface(
-                    modifier = Modifier.size(40.dp),
-                    shape = CircleShape,
-                    color = Purple80.copy(alpha = 0.3f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            review.name.first().toString(),
-                            fontWeight = FontWeight.Bold,
-                            color = Purple80
-                        )
-                    }
-                }
+            Text(
+                highlight.title,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
+            )
 
-                Spacer(Modifier.width(12.dp))
-
-                Column {
-                    Text(
-                        review.name,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                    Row {
-                        repeat(review.rating) {
-                            Icon(
-                                Icons.Default.Star,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = Color(0xFFFFD700)
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(8.dp))
 
             Text(
-                review.text,
+                highlight.text,
                 fontSize = 14.sp,
                 color = TextSecondary,
                 lineHeight = 20.sp

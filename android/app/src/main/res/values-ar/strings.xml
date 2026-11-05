@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">الرئيسية</string>
     <string name="menu">القائمة</string>
     <string name="menu_language">اللغة</string>
-    <string name="menu_upgrade_pro">الترقية إلى Pro</string>
     <string name="menu_manage_subscription">إدارة الاشتراك</string>
     <string name="menu_appearance">المظهر</string>
     <string name="menu_sign_out">تسجيل الخروج</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">إغلاق</string>
-    <string name="unlock_pro">افتح Scribe AI Pro</string>
-    <string name="unlimited_access">احصل على وصول غير محدود لجميع الميزات</string>
-    <string name="feature_unlimited_notes">ملاحظات غير محدودة من أي مصدر</string>
-    <string name="feature_ai_summaries">ملخصات واختبارات مدعومة بالذكاء الاصطناعي</string>
-    <string name="feature_flashcards">إنشاء بطاقات تعليمية</string>
-    <string name="feature_ai_chat">محادثة ذكاء اصطناعي مع ملاحظاتك</string>
-    <string name="feature_mind_map">تصور خريطة ذهنية</string>
-    <string name="feature_podcast">إنشاء بودكاست صوتي</string>
     <string name="plan_yearly">سنوي</string>
     <string name="plan_monthly">شهري</string>
     <string name="per_month_format">%s/شهر</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI مجاني للجميع. تغطي باقة Pro الميزات الثلاث الأعلى تكلفة في التشغيل.</string>
+    <string name="pro_needed_podcast">البودكاست جزء من ScribeAI Pro.</string>
+    <string name="pro_needed_infographic">الإنفوجرافيك جزء من ScribeAI Pro.</string>
+    <string name="pro_needed_meeting">روبوت الاجتماعات جزء من ScribeAI Pro.</string>
+    <string name="pro_feature_podcast">البودكاست</string>
+    <string name="pro_feature_podcast_desc">حوّل ملاحظاتك إلى صوت</string>
+    <string name="pro_feature_infographic">الإنفوجرافيك</string>
+    <string name="pro_feature_infographic_desc">حوّل ملاحظاتك إلى ملخص مرئي</string>
+    <string name="pro_feature_meeting">روبوت الاجتماعات</string>
+    <string name="pro_feature_meeting_desc">ينضم إلى اجتماعاتك عبر الإنترنت ويكتب الملاحظات</string>
+    <string name="pro_cancel_anytime">يتجدد تلقائياً. يمكنك الإلغاء في أي وقت من Google Play.</string>
+    <string name="pro_go_pro">اشترك في Pro</string>
+    <string name="pro_terms">شروط الخدمة</string>
+    <string name="pro_trial_format">تجربة مجانية لمدة %d يوم</string>
+    <string name="pro_plans_unavailable">تعذّر تحميل الباقات من Google Play. يرجى المحاولة لاحقاً.</string>
+    <string name="pro_nothing_to_restore">لم يتم العثور على اشتراك نشط</string>
 </resources>

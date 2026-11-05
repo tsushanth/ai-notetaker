@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">Laman Utama</string>
     <string name="menu">Menu</string>
     <string name="menu_language">Bahasa</string>
-    <string name="menu_upgrade_pro">Naik taraf ke Pro</string>
     <string name="menu_manage_subscription">Urus Langganan</string>
     <string name="menu_appearance">Penampilan</string>
     <string name="menu_sign_out">Log Keluar</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">Tutup</string>
-    <string name="unlock_pro">Buka Kunci Scribe AI Pro</string>
-    <string name="unlimited_access">Dapatkan akses tanpa had ke semua ciri</string>
-    <string name="feature_unlimited_notes">Nota tanpa had dari mana-mana sumber</string>
-    <string name="feature_ai_summaries">Ringkasan &amp; kuiz dikuasakan AI</string>
-    <string name="feature_flashcards">Penjanaan kad imbasan</string>
-    <string name="feature_ai_chat">Sembang AI dengan nota anda</string>
-    <string name="feature_mind_map">Visualisasi peta minda</string>
-    <string name="feature_podcast">Penjanaan podcast audio</string>
     <string name="plan_yearly">Tahunan</string>
     <string name="plan_monthly">Bulanan</string>
     <string name="per_month_format">%s/bln</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI percuma untuk semua orang. Pro merangkumi tiga ciri yang paling mahal untuk dikendalikan.</string>
+    <string name="pro_needed_podcast">Podcast ialah sebahagian daripada ScribeAI Pro.</string>
+    <string name="pro_needed_infographic">Infografik ialah sebahagian daripada ScribeAI Pro.</string>
+    <string name="pro_needed_meeting">Bot mesyuarat ialah sebahagian daripada ScribeAI Pro.</string>
+    <string name="pro_feature_podcast">Podcast</string>
+    <string name="pro_feature_podcast_desc">Tukarkan nota anda kepada audio</string>
+    <string name="pro_feature_infographic">Infografik</string>
+    <string name="pro_feature_infographic_desc">Tukarkan nota anda kepada ringkasan visual</string>
+    <string name="pro_feature_meeting">Bot mesyuarat</string>
+    <string name="pro_feature_meeting_desc">Menyertai mesyuarat dalam talian anda dan menulis nota</string>
+    <string name="pro_cancel_anytime">Diperbaharui secara automatik. Batalkan pada bila-bila masa di Google Play.</string>
+    <string name="pro_go_pro">Dapatkan Pro</string>
+    <string name="pro_terms">Syarat Perkhidmatan</string>
+    <string name="pro_trial_format">Percubaan percuma %d hari</string>
+    <string name="pro_plans_unavailable">Pelan tidak dapat dimuatkan daripada Google Play. Sila cuba lagi nanti.</string>
+    <string name="pro_nothing_to_restore">Tiada langganan aktif ditemui</string>
 </resources>

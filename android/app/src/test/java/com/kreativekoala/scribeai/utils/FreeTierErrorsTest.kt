@@ -39,6 +39,17 @@ class FreeTierErrorsTest {
         val m = FreeTierErrors.DEFAULT_LIMIT_MESSAGE
         assertFalse(m.contains("upgrade", ignoreCase = true))
         assertTrue(m.all { it.code < 128 })
-        assertEquals("You have reached today's free limit, try again later", m)
+        assertEquals("You've reached today's daily limit. Please come back tomorrow.", m)
+    }
+
+    @Test
+    fun ignoresServerTextThatPushesAnUpgrade() {
+        listOf(
+            """{"error":"Daily limit reached. Upgrade to Pro for more."}""",
+            """{"message":"Subscribe to continue"}""",
+            """{"error":"This needs a premium plan"}"""
+        ).forEach {
+            assertEquals(FreeTierErrors.DEFAULT_LIMIT_MESSAGE, FreeTierErrors.dailyLimitMessage(it))
+        }
     }
 }

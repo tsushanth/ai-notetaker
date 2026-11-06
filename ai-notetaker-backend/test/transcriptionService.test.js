@@ -321,3 +321,20 @@ test('row left in processing because the failed-update was rejected is reported,
   await assert.rejects(service.transcribeRecording('u1', REC_ID));
   assert.ok(reports.some((r) => r[2] && r[2].code === 'MARK_FAILED_UPDATE_FAILED'));
 });
+
+test('STT_PROVIDER=readaloud: a recording with a known duration over 55 minutes still goes to Deepgram only', async () => {
+  const saved = { p: process.env.STT_PROVIDER, u: process.env.READALOUD_STT_URL, t: process.env.READALOUD_STT_TOKEN };
+  process.env.STT_PROVIDER = 'readaloud'; process.env.READALOUD_STT_URL = 'https://stt.example.test'; process.env.READALOUD_STT_TOKEN = 'tok';
+  try {
+    setup(baseRecording({ duration: 3600 }));
+    mockFetch(respond(200, dgBody()));
+    const out = await service.transcribeRecording('u1', REC_ID);
+    assert.equal(out.status, 'completed');
+    assert.equal(fetchCalls.length, 1);
+    assert.match(fetchCalls[0].url, /^https:\/\/api\.deepgram\.com\/v1\/listen\?/);
+  } finally {
+    for (const [k, v] of [['STT_PROVIDER', saved.p], ['READALOUD_STT_URL', saved.u], ['READALOUD_STT_TOKEN', saved.t]]) {
+      if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    }
+  }
+});

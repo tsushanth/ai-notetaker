@@ -106,10 +106,10 @@ export default function LoginPage() {
           )}
 
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium mb-1.5">
-            Sign in to keep studying
+            Sign in or start free
           </h1>
           <p className="text-[var(--text-secondary)] text-sm mb-8">
-            Your notes, flashcards, and quizzes are waiting.
+            Continue with Google. New here? Your free account is created the first time you sign in.
           </p>
 
           <div ref={googleButtonRef} className="flex justify-center" />

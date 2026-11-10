@@ -43,6 +43,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.recording.Failure
 import com.kreativekoala.scribeai.recording.FailureKind
+import com.kreativekoala.scribeai.recording.offersTryAgain
 import com.kreativekoala.scribeai.recording.Interruption
 import com.kreativekoala.scribeai.recording.Notice
 import com.kreativekoala.scribeai.recording.PendingRecording
@@ -313,7 +314,7 @@ fun RecordingScreen(
 
                 is RecordingScreenState.Error -> {
                     val id = state.recordingId
-                    val canRetry = id != null && (state.failure?.kind?.retryable == true || state.failure?.kind == FailureKind.DAILY_LIMIT)
+                    val canRetry = id != null && (state.failure?.kind?.offersTryAgain() == true)
                     ErrorContent(
                         message = failureText(state.failure, state.serverText),
                         primaryLabel = stringResource(if (canRetry) R.string.try_again_button else R.string.rec_record_again),

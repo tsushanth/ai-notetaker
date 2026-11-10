@@ -24,6 +24,18 @@ object BatteryPolicy {
 
     enum class Decision { OK, WARN, STOP }
 
+    // BatteryManager.BATTERY_PLUGGED_* bits (AC 1, USB 2, wireless 4, dock 8) and BATTERY_STATUS_* values, as numbers so
+    // this can be unit-tested without the Android framework.
+    private const val STATUS_CHARGING = 2
+    private const val STATUS_FULL = 5
+
+    /**
+     * Whether the phone is on a charger. The plugged bits are the reliable signal: a phone plugged in at 100% (or held
+     * back by the charge limit) reports status NOT_CHARGING or FULL, not CHARGING.
+     */
+    fun isCharging(plugged: Int, status: Int): Boolean =
+        plugged > 0 || status == STATUS_CHARGING || status == STATUS_FULL
+
     fun decide(percent: Int, charging: Boolean): Decision = when {
         charging || percent < 0 -> Decision.OK
         percent <= STOP_AT_PERCENT -> Decision.STOP

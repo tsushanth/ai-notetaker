@@ -20,6 +20,14 @@ enum class FailureKind(val retryable: Boolean) {
     UNKNOWN(false)
 }
 
+/**
+ * Whether the screen offers "Try again" for this failure. [FailureKind.retryable] is about the flow retrying by itself
+ * (it stays false for UNKNOWN so an unexplained answer is not looped on). A person tapping Try again is different: for
+ * UNKNOWN the audio is still on the phone or on the server, so one more attempt costs nothing and may work. The others
+ * that are not retryable (silent, no speech, language, too short, too large) fail the same way with the same audio.
+ */
+fun FailureKind.offersTryAgain(): Boolean = retryable || this == FailureKind.DAILY_LIMIT || this == FailureKind.UNKNOWN
+
 /** A failure with the server's code (for analytics) and, for unknown 4xx answers, the server's own sentence. */
 data class Failure(val kind: FailureKind, val code: String? = null, val serverText: String? = null)
 

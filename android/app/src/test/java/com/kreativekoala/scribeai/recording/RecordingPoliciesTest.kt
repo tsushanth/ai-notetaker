@@ -27,6 +27,18 @@ class RecordingPoliciesTest {
     }
 
     @Test
+    fun chargingUsesThePluggedBitNotOnlyTheStatus() {
+        assertTrue(BatteryPolicy.isCharging(plugged = 2, status = 4)) // USB, status NOT_CHARGING (plugged in at 100%)
+        assertTrue(BatteryPolicy.isCharging(plugged = 1, status = 5)) // AC, full
+        assertTrue(BatteryPolicy.isCharging(plugged = 4, status = 3)) // wireless, status DISCHARGING
+        assertTrue(BatteryPolicy.isCharging(plugged = 0, status = 2)) // CHARGING with no plugged extra
+        assertTrue(BatteryPolicy.isCharging(plugged = 0, status = 5)) // FULL
+        assertFalse(BatteryPolicy.isCharging(plugged = 0, status = 3)) // on battery
+        assertFalse(BatteryPolicy.isCharging(plugged = 0, status = 4)) // NOT_CHARGING, unplugged
+        assertFalse(BatteryPolicy.isCharging(plugged = 0, status = -1))
+    }
+
+    @Test
     fun inputRoutes() {
         assertEquals(InputRoute.BUILT_IN, InputRoute.fromDeviceType(15))
         assertEquals(InputRoute.WIRED, InputRoute.fromDeviceType(3))

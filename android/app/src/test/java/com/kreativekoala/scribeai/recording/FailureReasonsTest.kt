@@ -86,6 +86,13 @@ class FailureReasonsTest {
     }
 
     @Test
+    fun tryAgainIsOfferedForUnknownAndLimitButNotForFailuresThatWouldRepeat() {
+        val offered = FailureKind.entries.filter { it.offersTryAgain() }.toSet()
+        assertEquals(setOf(FailureKind.SERVICE, FailureKind.NETWORK, FailureKind.AUTH, FailureKind.DAILY_LIMIT, FailureKind.UNKNOWN), offered)
+        assertFalse(FailureKind.UNKNOWN.retryable) // the flow itself still does not loop on it
+    }
+
+    @Test
     fun onlyServiceNetworkAndAuthFailuresAreRetryable() {
         val retryable = FailureKind.entries.filter { it.retryable }.toSet()
         assertEquals(setOf(FailureKind.SERVICE, FailureKind.NETWORK, FailureKind.AUTH), retryable)

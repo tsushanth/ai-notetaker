@@ -477,8 +477,7 @@ class RecordingService : Service() {
 
     private fun isCharging(): Boolean {
         val i = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return false
-        val status = i.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-        return status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
+        return BatteryPolicy.isCharging(i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0), i.getIntExtra(BatteryManager.EXTRA_STATUS, -1))
     }
 
     private fun notifPermission(): String =

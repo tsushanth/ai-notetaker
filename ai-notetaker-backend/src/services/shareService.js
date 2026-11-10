@@ -2,6 +2,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const crypto = require('crypto');
+const { getWebAppUrl } = require('../utils/webAppUrl');
 
 class ShareService {
   /**
@@ -36,7 +37,7 @@ class ShareService {
       .single();
 
     if (existing) {
-      const shareUrl = `${process.env.WEB_APP_URL || 'https://scribeai.app'}/shared/${existing.share_token}`;
+      const shareUrl = `${getWebAppUrl()}/shared/${existing.share_token}`;
       return { shareId: existing.id, shareToken: existing.share_token, shareUrl };
     }
 
@@ -65,7 +66,7 @@ class ShareService {
       throw new AppError('Failed to create share link', 500);
     }
 
-    const shareUrl = `${process.env.WEB_APP_URL || 'https://scribeai.app'}/shared/${shareToken}`;
+    const shareUrl = `${getWebAppUrl()}/shared/${shareToken}`;
 
     logger.info('Share link created', { noteId, shareToken, userId });
 
@@ -164,7 +165,7 @@ class ShareService {
 
     return (data || []).map(s => ({
       ...s,
-      shareUrl: `${process.env.WEB_APP_URL || 'https://scribeai.app'}/shared/${s.share_token}`
+      shareUrl: `${getWebAppUrl()}/shared/${s.share_token}`
     }));
   }
 }

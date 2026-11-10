@@ -71,7 +71,7 @@ class ExportService {
       // --- Footer ---
       const footerY = doc.page.height - 40;
       doc.fontSize(7).fillColor('#BBBBBB').font('Helvetica')
-        .text('Created with Scribe AI — scribeai.app', 50, footerY, { align: 'center', width: 495 });
+        .text('Created with Scribe AI — scribeai.online', 50, footerY, { align: 'center', width: 495 });
 
       doc.end();
     });

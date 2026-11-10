@@ -321,3 +321,9 @@ test('row left in processing because the failed-update was rejected is reported,
   await assert.rejects(service.transcribeRecording('u1', REC_ID));
   assert.ok(reports.some((r) => r[2] && r[2].code === 'MARK_FAILED_UPDATE_FAILED'));
 });
+
+test('getRecording reads with the service-role client (the anon client sees no rows under RLS)', async () => {
+  db = makeDb(baseRecording());
+  const row = await service.getRecording('u1', REC_ID);
+  assert.equal(row.id, REC_ID);
+});

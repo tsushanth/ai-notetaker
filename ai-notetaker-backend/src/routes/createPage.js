@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { asyncHandler } = require('../middleware/errorHandler');
+const { jsLiteral, CLIENT_HELPERS, setPageHeaders } = require('../utils/untrustedPage');
 
 router.get('/:noteId', asyncHandler(async (req, res) => {
   const { noteId } = req.params;
@@ -55,9 +56,9 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
   <div id="app" class="container"></div>
   <script>
     const API = 'https://ai-notetaker-backend.fly.dev';
-    const NOTE_ID = '${noteId}';
-    const TOKEN = '${token}';
-    let createdItems = JSON.parse(localStorage.getItem('create_history_' + NOTE_ID) || '[]');
+    const NOTE_ID = ${jsLiteral(noteId)};
+    const TOKEN = ${jsLiteral(token)};
+${CLIENT_HELPERS}    let createdItems = JSON.parse(localStorage.getItem('create_history_' + NOTE_ID) || '[]');
 
     const suggestions = [
       { emoji: '📋', text: 'Study guide' },
@@ -81,7 +82,7 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
       if (createdItems.length > 0) {
         historyHtml = '<div class="history"><h3>Recent creations</h3>' +
           createdItems.slice(0, 5).map((item, i) =>
-            '<div class="history-item" onclick="showResult(' + i + ')"><div class="prompt-text">' + item.prompt + '</div><div class="time-text">' + new Date(item.time).toLocaleString() + '</div></div>'
+            '<div class="history-item" onclick="showResult(' + i + ')"><div class="prompt-text">' + esc(item.prompt) + '</div><div class="time-text">' + new Date(item.time).toLocaleString() + '</div></div>'
           ).join('') + '</div>';
       }
 
@@ -108,7 +109,7 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
       if (document.activeElement) document.activeElement.blur();
 
       document.getElementById('app').innerHTML =
-        '<div class="generating"><div class="spinner"></div><h2 style="font-size:18px;margin-bottom:8px">Creating...</h2><p style="color:#888;font-size:14px">"' + prompt.substring(0, 60) + (prompt.length > 60 ? '...' : '') + '"</p><p style="color:#555;font-size:12px;margin-top:16px">This may take 30-60 seconds</p></div>';
+        '<div class="generating"><div class="spinner"></div><h2 style="font-size:18px;margin-bottom:8px">Creating...</h2><p style="color:#888;font-size:14px">"' + esc(prompt.substring(0, 60)) + (prompt.length > 60 ? '...' : '') + '"</p><p style="color:#555;font-size:12px;margin-top:16px">This may take 30-60 seconds</p></div>';
 
       try {
         const res = await fetch(API + '/api/create/' + NOTE_ID, {
@@ -148,12 +149,11 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
     }
 
     function renderResult(html, prompt) {
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
+      const url = framedUrl(html);
 
       document.getElementById('app').innerHTML =
-        '<div class="result-header"><button class="back-btn" onclick="showHome()">← Back</button><span style="font-size:13px;color:#888">' + prompt.substring(0, 30) + '</span></div>' +
-        '<iframe class="result-frame" src="' + url + '" sandbox="allow-scripts" style="height:' + (window.innerHeight - 80) + 'px"></iframe>';
+        '<div class="result-header"><button class="back-btn" onclick="showHome()">← Back</button><span style="font-size:13px;color:#888">' + esc(prompt.substring(0, 30)) + '</span></div>' +
+        frameTag('result-frame', url, 'height:' + (window.innerHeight - 80) + 'px');
     }
 
     function showTokenExpired() {
@@ -167,7 +167,7 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
 
     function showError(msg) {
       document.getElementById('app').innerHTML =
-        '<div class="generating"><div class="error">' + msg + '</div><button class="back-btn" onclick="showHome()" style="margin-top:16px">← Try again</button></div>';
+        '<div class="generating"><div class="error">' + esc(msg) + '</div><button class="back-btn" onclick="showHome()" style="margin-top:16px">← Try again</button></div>';
     }
 
     showHome();
@@ -175,7 +175,7 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
 </body>
 </html>`;
 
-  res.setHeader('Content-Type', 'text/html');
+  setPageHeaders(res);
   res.send(html);
 }));
 

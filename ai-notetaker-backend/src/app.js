@@ -42,6 +42,8 @@ const createPageRoutes = require('./routes/createPage');
 const competeRoutes = require('./routes/compete');
 const competePageRoutes = require('./routes/competePage');
 const competeCreatePageRoutes = require('./routes/competeCreatePage');
+const configRoutes = require('./routes/config');
+const { requireFeature } = require('./config/featureFlags');
 const phoneRoutes = require('./routes/phone');
 const adminRoutes = require('./routes/admin');
 const twilioWebhookRoutes = require('./routes/twilioWebhooks');
@@ -57,10 +59,11 @@ const app = express();
 app.set('trust proxy', true);
 
 // These pages must be served before Helmet (use inline scripts)
-app.use('/learn', learnPageRoutes);
-app.use('/create', createPageRoutes);
-app.use('/compete', competePageRoutes);
-app.use('/compete-create', competeCreatePageRoutes);
+// Each is hidden (404) unless its feature flag is on; see config/featureFlags.js
+app.use('/learn', requireFeature('learn', { page: true }), learnPageRoutes);
+app.use('/create', requireFeature('create', { page: true }), createPageRoutes);
+app.use('/compete', requireFeature('compete', { page: true }), competePageRoutes);
+app.use('/compete-create', requireFeature('compete', { page: true }), competeCreatePageRoutes);
 
 // Security middleware
 app.use(helmet());
@@ -316,10 +319,12 @@ app.use('/api/notes', exportsRoutes);
 app.use('/api/notes', sharingRoutes);
 app.use('/api', sharingRoutes);
 app.use('/api/integrations', integrationsRoutes);
-app.use('/api/learn', learningRoutes);
-app.use('/api/create', createContentRoutes);
-app.use('/api/compete', competeRoutes);
-app.use('/api/phone', phoneRoutes);
+app.use('/api/config', configRoutes);
+// Worker callbacks of the learning pipeline stay reachable: they are not the user-facing feature.
+app.use('/api/learn', requireFeature('learn', { except: /^\/webhook\// }), learningRoutes);
+app.use('/api/create', requireFeature('create'), createContentRoutes);
+app.use('/api/compete', requireFeature('compete'), competeRoutes);
+app.use('/api/phone', requireFeature('phone_calls'), phoneRoutes);
 app.use('/api/admin', adminRoutes);
 // Twilio webhooks need to be reachable without the /api prefix to match
 // the Voice/Status callback URLs configured in twilioService.js.

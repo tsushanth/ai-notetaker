@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
+import EmailSignInForm from '@/components/EmailSignInForm';
 import { Loader2 } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
 import { safeNext } from '@/lib/session';
@@ -123,6 +124,8 @@ export default function LoginPage() {
           {error && (
             <p className="text-sm text-[var(--accent-red)] mt-4 text-center">{error}</p>
           )}
+
+          <EmailSignInForm />
 
           <p className="text-center text-sm text-[var(--text-secondary)] mt-8">
             New here?{' '}

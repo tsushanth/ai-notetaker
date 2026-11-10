@@ -32,7 +32,7 @@ const FAQ = [
   },
   {
     q: 'Do I need the app to use it?',
-    a: 'No — Scribe AI works in the browser. iOS and Android apps are there if you’d rather record from your phone.',
+    a: 'No — Scribe AI works in the browser. There is also an Android app if you’d rather record from your phone.',
   },
   {
     q: 'Is there a free plan?',
@@ -222,7 +222,7 @@ export default function Home() {
             <h2 className="font-[family-name:var(--font-display)] text-2xl md:text-3xl font-medium mb-3">
               Stop rereading. Start remembering.
             </h2>
-            <p className="text-[var(--text-secondary)] mb-8">Free to start. Web, iOS, and Android.</p>
+            <p className="text-[var(--text-secondary)] mb-8">Free to start. Web and Android.</p>
             <Link
               href="/login"
               className="inline-block bg-[var(--accent-purple)] text-[#14110a] px-8 py-3.5 rounded-full font-semibold hover:bg-[var(--accent-purple-hover)] transition"

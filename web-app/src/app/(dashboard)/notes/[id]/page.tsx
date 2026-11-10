@@ -913,7 +913,7 @@ export default function NoteDetailPage() {
               onClick={() => handleExport(format)}
               disabled={exportingFormat !== null}
               className="flex items-center gap-1 px-2 py-2 rounded-lg hover:bg-[var(--card-background)] transition text-sm disabled:opacity-50"
-              title={format === 'pdf' ? 'Export as PDF (Premium)' : 'Export as Word (Premium)'}
+              title={format === 'pdf' ? 'Export as PDF' : 'Export as Word'}
             >
               {exportingFormat === format ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
               <span>{format === 'pdf' ? 'PDF' : 'Word'}</span>

@@ -52,8 +52,7 @@ enum class OnboardingStep(val index: Int) {
     FEATURE_AUDIO(6),
     SOCIAL_PROOF(7),
     COMPARISON(8),
-    TRIAL(9),
-    NOTIFICATIONS(10);
+    NOTIFICATIONS(9);
 
     val totalSteps: Int get() = values().size
 
@@ -166,13 +165,6 @@ class OnboardingManager(context: Context) {
 
     fun skipOnboarding() {
         completeOnboarding()
-    }
-
-    fun skipTrial() {
-        // Move to notifications or complete
-        if (_currentStep.value == OnboardingStep.TRIAL) {
-            nextStep()
-        }
     }
 
     // MARK: - Completion

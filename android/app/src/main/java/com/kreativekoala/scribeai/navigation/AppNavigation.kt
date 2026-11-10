@@ -125,7 +125,6 @@ fun AppNavigation(
         composable(Screen.Onboarding.route) {
             OnboardingScreen(
                 onboardingManager = onboardingManager,
-                subscriptionManager = subscriptionManager,
                 onComplete = {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Onboarding.route) { inclusive = true }

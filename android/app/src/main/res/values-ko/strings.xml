@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">홈</string>
     <string name="menu">메뉴</string>
     <string name="menu_language">언어</string>
-    <string name="menu_upgrade_pro">Pro로 업그레이드</string>
     <string name="menu_manage_subscription">구독 관리</string>
     <string name="menu_appearance">외관</string>
     <string name="menu_sign_out">로그아웃</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">닫기</string>
-    <string name="unlock_pro">Scribe AI Pro 잠금 해제</string>
-    <string name="unlimited_access">모든 기능을 무제한으로 사용하세요</string>
-    <string name="feature_unlimited_notes">모든 소스에서 무제한 노트</string>
-    <string name="feature_ai_summaries">AI 요약 &amp; 퀴즈</string>
-    <string name="feature_flashcards">플래시카드 생성</string>
-    <string name="feature_ai_chat">노트와 AI 채팅</string>
-    <string name="feature_mind_map">마인드맵 시각화</string>
-    <string name="feature_podcast">오디오 팟캐스트 생성</string>
     <string name="plan_yearly">연간</string>
     <string name="plan_monthly">월간</string>
     <string name="per_month_format">%s/월</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI는 누구나 무료입니다. Pro는 운영 비용이 가장 많이 드는 세 가지 기능을 제공합니다.</string>
+    <string name="pro_needed_podcast">팟캐스트는 ScribeAI Pro 기능입니다.</string>
+    <string name="pro_needed_infographic">인포그래픽은 ScribeAI Pro 기능입니다.</string>
+    <string name="pro_needed_meeting">회의 봇은 ScribeAI Pro 기능입니다.</string>
+    <string name="pro_feature_podcast">팟캐스트</string>
+    <string name="pro_feature_podcast_desc">노트를 오디오로 변환</string>
+    <string name="pro_feature_infographic">인포그래픽</string>
+    <string name="pro_feature_infographic_desc">노트를 시각적 요약으로 변환</string>
+    <string name="pro_feature_meeting">회의 봇</string>
+    <string name="pro_feature_meeting_desc">온라인 회의에 참여해 노트를 작성합니다</string>
+    <string name="pro_cancel_anytime">자동으로 갱신됩니다. Google Play에서 언제든지 취소할 수 있습니다.</string>
+    <string name="pro_go_pro">Pro 시작하기</string>
+    <string name="pro_terms">서비스 약관</string>
+    <string name="pro_trial_format">%d일 무료 체험</string>
+    <string name="pro_plans_unavailable">Google Play에서 요금제를 불러오지 못했습니다. 나중에 다시 시도해 주세요.</string>
+    <string name="pro_nothing_to_restore">활성 구독을 찾을 수 없습니다</string>
 </resources>

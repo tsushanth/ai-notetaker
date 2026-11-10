@@ -87,7 +87,9 @@ fun NoteDetailScreen(
     onNavigateBack: () -> Unit,
     onNoteDeleted: () -> Unit = onNavigateBack
 ) {
+    // The Go Pro screen: shown only when a Pro feature (podcast) is opened without Pro.
     var showPaywall by remember { mutableStateOf(false) }
+    var pendingProTab by remember { mutableStateOf<Int?>(null) }
     // Tab indices: 0 = Notes, 1 = Learn, 2 = Create, 3 = Compete, 4 = Chat, 5 = Quiz, 6 = Flashcards, 7 = Podcast, 8 = Mind Map
     var selectedTab by remember { mutableStateOf(0) }
     val authToken by authManager.authToken.collectAsState(initial = null)
@@ -123,10 +125,8 @@ fun NoteDetailScreen(
                     }
                 }
                 is ShareLinkResult.LimitReached -> {
-                    // 403 = the free plan's 3 share links a month are used up: sharing beyond that is paid.
+                    // Sharing is free; the server only caps how many links can be made in a day. Show its message.
                     Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
-                    AnalyticsService.trackPaywallViewed("share_link_limit")
-                    showPaywall = true
                 }
                 is ShareLinkResult.Failure -> {
                     AnalyticsService.trackEvent("share_link_failed", mapOf("note_id" to note.id, "reason" to result.message))
@@ -136,10 +136,11 @@ fun NoteDetailScreen(
         }
     }
 
-    // Learn, Create, Compete and Podcast stay paid: a dismissible paywall shows when a free user opens one of them.
+    // Every tab is free except Podcast (tab 7): opening it without Pro shows the dismissible Go Pro screen.
     fun selectTab(tab: Int, source: String? = null) {
-        if (tab in PAID_TABS && subscriptionManager?.isSubscribed() == false) {
+        if (tab in PRO_TABS && subscriptionManager?.hasProAccess() == false) {
             AnalyticsService.trackPaywallViewed(source ?: "tab_$tab")
+            pendingProTab = tab
             showPaywall = true
         } else {
             selectedTab = tab
@@ -273,24 +274,16 @@ fun NoteDetailScreen(
                                 }
                             )
                             HorizontalDivider(color = DarkSurfaceVariant)
-                            // Premium: Export as PDF
+                            // Free: Export as PDF
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("Export as PDF", color = TextPrimary)
-                                        if (subscriptionManager?.canExportNotes() != true) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = AccentAmber, modifier = Modifier.size(16.dp))
-                                        }
                                     }
                                 },
                                 onClick = {
                                     showMenu = false
-                                    if (subscriptionManager?.canExportNotes() != true) {
-                                        AnalyticsService.trackPaywallViewed("export_pdf")
-                                        showPaywall = true
-                                    } else {
-                                        scope.launch {
+                                    scope.launch {
                                             authToken?.let { token ->
                                                 Toast.makeText(context, "Generating PDF...", Toast.LENGTH_SHORT).show()
                                                 when (val result = ExportManager.exportNote(context, token, note.id, note.title, ExportFormat.PDF)) {
@@ -298,39 +291,28 @@ fun NoteDetailScreen(
                                                         val intent = ExportManager.createShareIntent(result.fileUri, result.mimeType, note.title)
                                                         context.startActivity(Intent.createChooser(intent, "Share PDF"))
                                                     }
-                                                    is ExportResult.PremiumRequired -> {
-                                                        showPaywall = true
-                                                    }
                                                     is ExportResult.Error -> {
                                                         Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
                                                     }
                                                 }
                                             }
                                         }
-                                    }
+                                    
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Purple80)
                                 }
                             )
-                            // Premium: Export as DOCX
+                            // Free: Export as DOCX
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("Export as Word", color = TextPrimary)
-                                        if (subscriptionManager?.canExportNotes() != true) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = AccentAmber, modifier = Modifier.size(16.dp))
-                                        }
                                     }
                                 },
                                 onClick = {
                                     showMenu = false
-                                    if (subscriptionManager?.canExportNotes() != true) {
-                                        AnalyticsService.trackPaywallViewed("export_docx")
-                                        showPaywall = true
-                                    } else {
-                                        scope.launch {
+                                    scope.launch {
                                             authToken?.let { token ->
                                                 Toast.makeText(context, "Generating document...", Toast.LENGTH_SHORT).show()
                                                 when (val result = ExportManager.exportNote(context, token, note.id, note.title, ExportFormat.DOCX)) {
@@ -338,23 +320,20 @@ fun NoteDetailScreen(
                                                         val intent = ExportManager.createShareIntent(result.fileUri, result.mimeType, note.title)
                                                         context.startActivity(Intent.createChooser(intent, "Share Document"))
                                                     }
-                                                    is ExportResult.PremiumRequired -> {
-                                                        showPaywall = true
-                                                    }
                                                     is ExportResult.Error -> {
                                                         Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
                                                     }
                                                 }
                                             }
                                         }
-                                    }
+                                    
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.Description, contentDescription = null, tint = Purple80)
                                 }
                             )
                             HorizontalDivider(color = DarkSurfaceVariant)
-                            // Free: Create Share Link (copies the link; the free plan allows 3 a month)
+                            // Free: Create Share Link (copies the link)
                             DropdownMenuItem(
                                 text = { Text("Create Share Link", color = TextPrimary) },
                                 onClick = {
@@ -366,30 +345,22 @@ fun NoteDetailScreen(
                                 }
                             )
                             HorizontalDivider(color = DarkSurfaceVariant)
-                            // Premium: Google Drive
+                            // Free: Google Drive
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text("Save to Google Drive", color = TextPrimary)
-                                        if (subscriptionManager?.canExportNotes() != true) {
-                                            Spacer(Modifier.width(6.dp))
-                                            Icon(Icons.Default.Star, contentDescription = "Premium", tint = AccentAmber, modifier = Modifier.size(16.dp))
-                                        }
                                     }
                                 },
                                 onClick = {
                                     showMenu = false
-                                    if (subscriptionManager?.canExportNotes() != true) {
-                                        AnalyticsService.trackPaywallViewed("integration_google_drive")
-                                        showPaywall = true
-                                    } else {
-                                        scope.launch {
+                                    scope.launch {
                                             authToken?.let { token ->
                                                 Toast.makeText(context, "Exporting to Google Drive...", Toast.LENGTH_SHORT).show()
                                                 IntegrationHelper.exportToProvider(context, token, note.id, "google-drive/export")
                                             }
                                         }
-                                    }
+                                    
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.CloudUpload, contentDescription = null, tint = Purple80)
@@ -451,8 +422,7 @@ fun NoteDetailScreen(
             HorizontalDivider(color = DarkSurfaceVariant, thickness = 1.dp)
             BottomTabBar(
                 selectedTab = selectedTab,
-                // Notes (summary), Chat, Quiz, Flashcards and Mind Map are free (the server only applies
-                // a daily abuse backstop); see selectTab for the paid ones.
+                // Every tab is free (the server only applies a daily abuse backstop) except Podcast; see selectTab.
                 onTabSelected = { tab -> selectTab(tab) }
             )
         }
@@ -461,9 +431,13 @@ fun NoteDetailScreen(
     if (showPaywall && subscriptionManager != null) {
         PaywallScreen(
             subscriptionManager = subscriptionManager,
-            onDismiss = { showPaywall = false },
-            onSubscribe = { showPaywall = false },
-            dismissable = true
+            feature = ProFeature.PODCAST,
+            onDismiss = { showPaywall = false; pendingProTab = null },
+            onSubscribe = {
+                showPaywall = false
+                pendingProTab?.let { selectedTab = it }
+                pendingProTab = null
+            }
         )
     }
 }
@@ -471,8 +445,8 @@ fun NoteDetailScreen(
 /**
  * Bottom tab bar component - shows 4 primary tabs + "More" which opens a sheet
  */
-// Tab indices that still need a subscription: 1 = Learn, 2 = Create, 3 = Compete, 7 = Podcast.
-private val PAID_TABS = setOf(1, 2, 3, 7)
+// Tab indices that need Pro: 7 = Podcast. Learn, Create, Compete and all other tabs are free.
+private val PRO_TABS = setOf(7)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2434,7 +2408,7 @@ fun InfographicTab(
 
                     Spacer(Modifier.height(8.dp))
 
-                    // Premium note
+                    // Pro note
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center,
@@ -2448,7 +2422,7 @@ fun InfographicTab(
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
-                            "Premium feature - requires subscription",
+                            "Infographics are part of ScribeAI Pro",
                             fontSize = 12.sp,
                             color = TextTertiary
                         )

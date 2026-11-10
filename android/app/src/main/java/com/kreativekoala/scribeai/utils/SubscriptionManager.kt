@@ -11,7 +11,6 @@ import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.models.AccessStatusData
 import com.kreativekoala.scribeai.data.models.SubscriptionEventRequest
 import com.kreativekoala.scribeai.data.models.SubscriptionSyncRequest
-import com.kreativekoala.scribeai.data.models.TrialCheckRequest
 import com.kreativekoala.scribeai.service.FacebookSDKHelper
 import com.kreativekoala.scribeai.service.TikTokHelper
 import kotlinx.coroutines.*
@@ -38,7 +37,6 @@ class SubscriptionManager(private val context: Context) {
         // trial, server-granted). Used by the Retrofit interceptor to decide
         // whether to send the rate-limit bypass header.
         private const val KEY_HAS_ACCESS = "has_access"
-        private const val KEY_APP_OPEN_COUNT = "app_open_count"
     }
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -60,9 +58,6 @@ class SubscriptionManager(private val context: Context) {
 
     private val _serverAccessStatus = MutableStateFlow<AccessStatusData?>(null)
     val serverAccessStatus: StateFlow<AccessStatusData?> = _serverAccessStatus.asStateFlow()
-
-    private val _deviceTrialExpired = MutableStateFlow(false)
-    val deviceTrialExpired: StateFlow<Boolean> = _deviceTrialExpired.asStateFlow()
 
     // ── Sealed states ─────────────────────────────────────────────────────────
 
@@ -381,40 +376,26 @@ class SubscriptionManager(private val context: Context) {
                 getPriceAmountMicros(YEARLY_SUB_ID) > 0
 
     // ── Usage counters ────────────────────────────────────────────────────────
-    // Note creation, voice transcription and AI summaries are free for everyone: nothing here gates
-    // the app any more (the old 3-notebook and 3-opens limits were removed in 58.25). Counters are kept
-    // only as stored stats; stale values in prefs have no effect.
+    // ScribeAI is free for everyone except three Pro features (podcasts, infographics, meeting bot):
+    // nothing here gates the rest of the app. The counter is kept only as a stored stat.
 
     fun getLifetimeNotebooksCreated(): Int = prefs.getInt(KEY_LIFETIME_NOTEBOOKS, 0)
     fun incrementLifetimeNotebooks() {
         prefs.edit().putInt(KEY_LIFETIME_NOTEBOOKS, getLifetimeNotebooksCreated() + 1).apply()
     }
 
-    fun getAppOpenCount(): Int = prefs.getInt(KEY_APP_OPEN_COUNT, 0)
-    fun incrementAppOpenCount() {
-        prefs.edit().putInt(KEY_APP_OPEN_COUNT, getAppOpenCount() + 1).apply()
-    }
-
     // ── Feature gates ─────────────────────────────────────────────────────────
 
-    fun hasServerVerifiedAccess(): Boolean = _serverAccessStatus.value?.hasAccess == true
-
-    fun canUseAI(): Boolean {
-        if (_deviceTrialExpired.value && !isSubscribed()) return false
-        val s = _serverAccessStatus.value
-        return if (s != null) s.features?.canUseAI == true || s.hasAccess else isSubscribed()
-    }
-
-    fun canGeneratePodcasts(): Boolean {
-        if (_deviceTrialExpired.value && !isSubscribed()) return false
-        val s = _serverAccessStatus.value
-        return if (s != null) s.features?.canGeneratePodcasts == true || s.isSubscribed || s.isInTrial else isSubscribed()
-    }
-
-    fun canExportNotes(): Boolean {
-        if (_deviceTrialExpired.value && !isSubscribed()) return false
-        val s = _serverAccessStatus.value
-        return if (s != null) s.features?.canExportNotes == true || s.isSubscribed || s.isInTrial else isSubscribed()
+    /**
+     * True when the user may open the three Pro features (podcasts, infographics, meeting bot): an
+     * active Play subscription on this device, or access the server reports for this account
+     * (subscription bought elsewhere, or a server grant). The server stays the source of truth: it
+     * still answers 402/403 if this is wrong, and the UI then shows the Go Pro screen.
+     */
+    fun hasProAccess(): Boolean {
+        if (isSubscribed()) return true
+        val s = _serverAccessStatus.value ?: return false
+        return s.isSubscribed || s.isInTrial || s.features?.canGeneratePodcasts == true
     }
 
     // ── Server sync ───────────────────────────────────────────────────────────
@@ -456,16 +437,6 @@ class SubscriptionManager(private val context: Context) {
         scope.launch {
             try {
                 val token = authManager?.getFreshToken() ?: return@launch
-                try {
-                    val trialResponse = RetrofitClient.apiService.checkTrialWithDevice(
-                        "Bearer $token", TrialCheckRequest(deviceId = deviceId)
-                    )
-                    if (trialResponse.isSuccessful) {
-                        val d = trialResponse.body()?.data
-                        _deviceTrialExpired.value = d?.deviceTrialUsed == true && d.trialExpired
-                    }
-                } catch (e: Exception) { Log.e(TAG, "Trial check error", e) }
-
                 val response = RetrofitClient.apiService.getAccessStatus("Bearer $token")
                 if (response.isSuccessful) {
                     val accessData = response.body()?.data

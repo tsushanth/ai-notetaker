@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">Accueil</string>
     <string name="menu">Menu</string>
     <string name="menu_language">Langue</string>
-    <string name="menu_upgrade_pro">Passer à Pro</string>
     <string name="menu_manage_subscription">Gérer l\'abonnement</string>
     <string name="menu_appearance">Apparence</string>
     <string name="menu_sign_out">Se d\u00e9connecter</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">Fermer</string>
-    <string name="unlock_pro">D\u00e9bloquer Scribe AI Pro</string>
-    <string name="unlimited_access">Acc\u00e8s illimit\u00e9 \u00e0 toutes les fonctionnalit\u00e9s</string>
-    <string name="feature_unlimited_notes">Notes illimit\u00e9es depuis toute source</string>
-    <string name="feature_ai_summaries">R\u00e9sum\u00e9s et quiz par IA</string>
-    <string name="feature_flashcards">G\u00e9n\u00e9ration de cartes m\u00e9moire</string>
-    <string name="feature_ai_chat">Chat IA avec vos notes</string>
-    <string name="feature_mind_map">Visualisation en carte mentale</string>
-    <string name="feature_podcast">G\u00e9n\u00e9ration de podcast audio</string>
     <string name="plan_yearly">Annuel</string>
     <string name="plan_monthly">Mensuel</string>
     <string name="per_month_format">%s/mois</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI est gratuit pour tous. Pro couvre les trois fonctions les plus coûteuses à faire fonctionner.</string>
+    <string name="pro_needed_podcast">Les podcasts font partie de ScribeAI Pro.</string>
+    <string name="pro_needed_infographic">Les infographies font partie de ScribeAI Pro.</string>
+    <string name="pro_needed_meeting">Le bot de réunion fait partie de ScribeAI Pro.</string>
+    <string name="pro_feature_podcast">Podcasts</string>
+    <string name="pro_feature_podcast_desc">Transformez vos notes en audio</string>
+    <string name="pro_feature_infographic">Infographies</string>
+    <string name="pro_feature_infographic_desc">Transformez vos notes en résumé visuel</string>
+    <string name="pro_feature_meeting">Bot de réunion</string>
+    <string name="pro_feature_meeting_desc">Rejoint vos réunions en ligne et rédige les notes</string>
+    <string name="pro_cancel_anytime">Renouvellement automatique. Résiliable à tout moment dans Google Play.</string>
+    <string name="pro_go_pro">Passer à Pro</string>
+    <string name="pro_terms">Conditions d\'utilisation</string>
+    <string name="pro_trial_format">Essai gratuit de %d jours</string>
+    <string name="pro_plans_unavailable">Impossible de charger les offres depuis Google Play. Veuillez réessayer plus tard.</string>
+    <string name="pro_nothing_to_restore">Aucun abonnement actif trouvé</string>
 </resources>

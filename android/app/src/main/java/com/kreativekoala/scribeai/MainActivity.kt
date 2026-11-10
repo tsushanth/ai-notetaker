@@ -40,9 +40,6 @@ import com.kreativekoala.scribeai.utils.ThemeManager
 import com.kreativekoala.scribeai.utils.TutorialManager
 import com.kreativekoala.scribeai.viewmodel.AuthViewModel
 import com.kreativekoala.scribeai.viewmodel.AuthViewModelFactory
-import com.kreativekoala.paywallkit.models.PaywallFeature
-import com.kreativekoala.paywallkit.models.PaywallProduct
-import com.kreativekoala.scribeai.ui.screens.TurboPaywallContent
 
 class MainActivity : AppCompatActivity() {
 
@@ -83,9 +80,6 @@ class MainActivity : AppCompatActivity() {
             localRepository = localNoteRepository,
             authManager = authManager
         )
-
-        // Track app open count (once per cold-start session)
-        subscriptionManager.incrementAppOpenCount()
 
         // Initialize billing with auth manager for server sync
         subscriptionManager.setAuthManager(authManager)

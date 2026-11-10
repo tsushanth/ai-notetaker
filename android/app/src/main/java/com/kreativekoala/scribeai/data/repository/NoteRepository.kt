@@ -273,20 +273,8 @@ class NoteRepository {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
                         401 -> "Session expired. Please log in again."
-                        403 -> {
-                            // Check if this is a subscription limit error
-                            when {
-                                errorBody.contains("subscription", ignoreCase = true) ||
-                                errorBody.contains("premium", ignoreCase = true) ||
-                                errorBody.contains("limit", ignoreCase = true) ||
-                                errorBody.contains("upgrade", ignoreCase = true) ->
-                                    "This feature requires a premium subscription. Upgrade to continue."
-                                errorBody.contains("trial", ignoreCase = true) ->
-                                    "Your free trial has ended. Subscribe to continue using AI features."
-                                else -> "Access denied. Please check your subscription status."
-                            }
-                        }
-                        402 -> "Subscription required. Upgrade to access this feature."
+                        // Everything except podcasts, infographics and the meeting bot is free: no upgrade prompt here.
+                        402, 403 -> "This is not available right now. Please try again later."
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         500, 502, 503, 504 -> "Server error. Please try again later."
                         else -> "Failed to generate $contentType. Please try again."
@@ -320,16 +308,7 @@ class NoteRepository {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
                         401 -> "Session expired. Please log in again."
-                        403, 402 -> {
-                            when {
-                                errorBody.contains("subscription", ignoreCase = true) ||
-                                errorBody.contains("premium", ignoreCase = true) ->
-                                    "Infographic generation requires a premium subscription."
-                                errorBody.contains("trial", ignoreCase = true) ->
-                                    "Your free trial has ended. Subscribe to continue."
-                                else -> "Access denied. Please check your subscription status."
-                            }
-                        }
+                        403, 402 -> "Infographics are part of ScribeAI Pro."
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to generate infographic. Please try again."
                     }
@@ -365,16 +344,7 @@ class NoteRepository {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
                         401 -> "Session expired. Please log in again."
-                        403, 402 -> {
-                            when {
-                                errorBody.contains("subscription", ignoreCase = true) ||
-                                errorBody.contains("premium", ignoreCase = true) ->
-                                    "Podcast generation requires a premium subscription."
-                                errorBody.contains("trial", ignoreCase = true) ->
-                                    "Your free trial has ended. Subscribe to generate podcasts."
-                                else -> "Upgrade to premium to access podcast generation."
-                            }
-                        }
+                        403, 402 -> "Podcasts are part of ScribeAI Pro."
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to start podcast generation. Please try again."
                     }
@@ -425,7 +395,7 @@ class NoteRepository {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
                         401 -> "Session expired. Please log in again."
-                        402, 403 -> "This feature requires a premium subscription."
+                        402, 403 -> "This is not available right now. Please try again later."
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to generate mind map. Please try again."
                     }
@@ -493,7 +463,7 @@ class NoteRepository {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
                         401 -> "Session expired. Please log in again."
-                        402, 403 -> "This feature requires a premium subscription."
+                        402, 403 -> "This is not available right now. Please try again later."
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> "Failed to generate audio. Please try again."
                     }

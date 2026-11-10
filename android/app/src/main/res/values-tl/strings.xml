@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">Home</string>
     <string name="menu">Menu</string>
     <string name="menu_language">Wika</string>
-    <string name="menu_upgrade_pro">I-upgrade sa Pro</string>
     <string name="menu_manage_subscription">Pamahalaan ang Subscription</string>
     <string name="menu_appearance">Hitsura</string>
     <string name="menu_sign_out">Mag-sign Out</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">Isara</string>
-    <string name="unlock_pro">I-unlock ang Scribe AI Pro</string>
-    <string name="unlimited_access">Makakuha ng walang limitasyong access sa lahat ng feature</string>
-    <string name="feature_unlimited_notes">Walang limitasyong tala mula sa anumang pinagmulan</string>
-    <string name="feature_ai_summaries">AI-powered na buod at pagsusulit</string>
-    <string name="feature_flashcards">Paggawa ng flashcard</string>
-    <string name="feature_ai_chat">AI chat kasama ang iyong mga tala</string>
-    <string name="feature_mind_map">Mind map visualization</string>
-    <string name="feature_podcast">Audio podcast generation</string>
     <string name="plan_yearly">Taunan</string>
     <string name="plan_monthly">Buwanan</string>
     <string name="per_month_format">%s/buwan</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">Libre ang ScribeAI para sa lahat. Saklaw ng Pro ang tatlong feature na pinakamahal patakbuhin.</string>
+    <string name="pro_needed_podcast">Bahagi ng ScribeAI Pro ang mga podcast.</string>
+    <string name="pro_needed_infographic">Bahagi ng ScribeAI Pro ang mga infographic.</string>
+    <string name="pro_needed_meeting">Bahagi ng ScribeAI Pro ang meeting bot.</string>
+    <string name="pro_feature_podcast">Mga podcast</string>
+    <string name="pro_feature_podcast_desc">Gawing audio ang iyong mga tala</string>
+    <string name="pro_feature_infographic">Mga infographic</string>
+    <string name="pro_feature_infographic_desc">Gawing visual na buod ang iyong mga tala</string>
+    <string name="pro_feature_meeting">Meeting bot</string>
+    <string name="pro_feature_meeting_desc">Sumasali sa iyong mga online na meeting at nagsusulat ng mga tala</string>
+    <string name="pro_cancel_anytime">Awtomatikong nagre-renew. Maaaring kanselahin anumang oras sa Google Play.</string>
+    <string name="pro_go_pro">Mag-Pro</string>
+    <string name="pro_terms">Mga Tuntunin ng Serbisyo</string>
+    <string name="pro_trial_format">%d-araw na libreng pagsubok</string>
+    <string name="pro_plans_unavailable">Hindi ma-load ang mga plano mula sa Google Play. Pakisubukang muli mamaya.</string>
+    <string name="pro_nothing_to_restore">Walang nakitang aktibong subscription</string>
 </resources>

@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useNotesStore } from '@/store/notesStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { notesApi, aiApi, ttsApi, learningApi } from '@/lib/api';
+import { useFeatureFlags } from '@/lib/useFeatureFlags';
 import { downloadExport, exportFileName, PremiumRequiredError, type ExportFormat } from '@/lib/noteExport';
 import FormattedNote from '@/components/FormattedNote';
 import { displayContent, hasFormattedContent, shouldPollFormatting, countWords, type ViewMode } from '@/lib/noteView';
@@ -61,6 +62,7 @@ export default function NoteDetailPage() {
   const noteId = params.id as string;
 
   const { token } = useAuthStore();
+  const { flags } = useFeatureFlags();
   const { currentNote, setCurrentNote, removeNote } = useNotesStore();
   const { language } = useSettingsStore();
 
@@ -898,22 +900,24 @@ export default function NoteDetailPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleStartLearning}
-            disabled={isStartingLearning}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--accent-purple)] text-[var(--on-accent)] text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
-            title="Turn this into a learning session"
-          >
-            {isStartingLearning ? <Loader2 size={18} className="animate-spin" /> : <Layers size={18} />}
-            <span>Turn into a lesson</span>
-          </button>
+          {flags.learn && (
+            <button
+              onClick={handleStartLearning}
+              disabled={isStartingLearning}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[var(--accent-purple)] text-[var(--on-accent)] text-sm font-medium hover:opacity-90 transition disabled:opacity-50"
+              title="Turn this into a learning session"
+            >
+              {isStartingLearning ? <Loader2 size={18} className="animate-spin" /> : <Layers size={18} />}
+              <span>Turn into a lesson</span>
+            </button>
+          )}
           {(['pdf', 'docx'] as const).map((format) => (
             <button
               key={format}
               onClick={() => handleExport(format)}
               disabled={exportingFormat !== null}
               className="flex items-center gap-1 px-2 py-2 rounded-lg hover:bg-[var(--card-background)] transition text-sm disabled:opacity-50"
-              title={format === 'pdf' ? 'Export as PDF (Premium)' : 'Export as Word (Premium)'}
+              title={format === 'pdf' ? 'Export as PDF' : 'Export as Word'}
             >
               {exportingFormat === format ? <Loader2 size={18} className="animate-spin" /> : <FileDown size={18} />}
               <span>{format === 'pdf' ? 'PDF' : 'Word'}</span>

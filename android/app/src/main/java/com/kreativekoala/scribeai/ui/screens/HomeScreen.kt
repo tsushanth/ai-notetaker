@@ -24,6 +24,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.ui.unit.sp
 import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.api.RetrofitClient
@@ -42,10 +44,9 @@ import com.kreativekoala.scribeai.viewmodel.NoteUiState
 import com.kreativekoala.scribeai.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import com.kreativekoala.scribeai.utils.AnalyticsService
+import com.kreativekoala.scribeai.utils.FeatureFlags
 import com.kreativekoala.scribeai.utils.SubscriptionManager
-import com.kreativekoala.paywallkit.models.PaywallFeature
-import com.kreativekoala.paywallkit.models.PaywallTheme
-import com.kreativekoala.paywallkit.view.PaywallPreview
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -65,14 +66,13 @@ fun HomeScreen(
     onSignOut: () -> Unit = {}
 ) {
     var showCreateSheet by remember { mutableStateOf(false) }
+    // The Go Pro screen: shown only when the meeting bot (a Pro feature) is opened without Pro.
     var showPaywall by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showSignOutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
-    var tapCount by remember { mutableIntStateOf(0) }
-    var showPaywallPreview by remember { mutableStateOf(false) }
 
     // Retention dialog state
     var userStats by remember { mutableStateOf<UserStats?>(null) }
@@ -137,22 +137,6 @@ fun HomeScreen(
         }
     }
 
-    if (showPaywallPreview) {
-        PaywallPreview(
-            appId = "scribeai",
-            appName = "ScribeAI",
-            features = listOf(
-                PaywallFeature("\uD83D\uDCE4", "Export and Integrations"),
-                PaywallFeature("\uD83C\uDF99", "Podcast Mode"),
-                PaywallFeature("\uD83C\uDF93", "Learn, Create and Compete"),
-                PaywallFeature("\uD83D\uDD17", "Sharing and Higher Limits")
-            ),
-            theme = PaywallTheme(accent = Purple80, accent2 = Purple40, background = DarkBackground, cardBackground = DarkSurface),
-            onDone = { showPaywallPreview = false }
-        )
-        return
-    }
-
     // Creating notes is free for everyone: just require a signed-in user.
     // Every create entry point goes through this.
     val requestCreate: (() -> Unit) -> Unit = { action ->
@@ -198,24 +182,15 @@ fun HomeScreen(
                         expanded = showMenu,
                         onDismissRequest = { showMenu = false }
                     ) {
-                        if (!isSubscribed) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.menu_upgrade_pro), color = Purple80, fontWeight = FontWeight.SemiBold) },
-                                onClick = {
-                                    showMenu = false
-                                    showPaywall = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Star, contentDescription = null, tint = Purple80)
-                                }
-                            )
-                            HorizontalDivider()
-                        } else {
+                        // Only people who already have a subscription see this: it opens Google Play's
+                        // subscription page. There is no "Upgrade" entry; Go Pro appears only when a Pro feature is opened.
+                        if (isSubscribed) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.menu_manage_subscription)) },
                                 onClick = {
                                     showMenu = false
-                                    showPaywall = true
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(MANAGE_SUBSCRIPTION_URL))
+                                    try { context.startActivity(intent) } catch (_: Exception) {}
                                 },
                                 leadingIcon = {
                                     Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = Purple80)
@@ -284,13 +259,7 @@ fun HomeScreen(
                         HorizontalDivider()
                         DropdownMenuItem(
                             text = { Text("v1.0.0", color = Color.Gray) },
-                            onClick = {
-                                tapCount++
-                                if (tapCount >= 5) {
-                                    showMenu = false
-                                    showPaywallPreview = true
-                                }
-                            },
+                            onClick = {},
                             leadingIcon = {
                                 Icon(Icons.Default.Info, contentDescription = null, tint = Color.Gray)
                             }
@@ -569,7 +538,13 @@ fun HomeScreen(
             },
             onMeetings = {
                 showCreateSheet = false
-                onMeetings()
+                // Meeting bot is a Pro feature: without Pro, show the Go Pro screen instead of opening it.
+                if (subscriptionManager.hasProAccess()) {
+                    onMeetings()
+                } else {
+                    AnalyticsService.trackPaywallViewed("meeting_bot")
+                    showPaywall = true
+                }
             },
             onPhone = {
                 showCreateSheet = false
@@ -581,9 +556,12 @@ fun HomeScreen(
     if (showPaywall) {
         PaywallScreen(
             subscriptionManager = subscriptionManager,
+            feature = ProFeature.MEETING_BOT,
             onDismiss = { showPaywall = false },
-            onSubscribe = { showPaywall = false },
-            dismissable = true
+            onSubscribe = {
+                showPaywall = false
+                onMeetings()
+            }
         )
     }
 
@@ -1004,6 +982,8 @@ fun CreateOptionsBottomSheet(
     onMeetings: () -> Unit = {},
     onPhone: () -> Unit = {}
 ) {
+    // The Phone Call option is hidden unless the server switches it on (utils/FeatureFlags.kt).
+    val phoneCallsEnabled = FeatureFlags.flags.collectAsState().value.phoneCalls
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
@@ -1053,13 +1033,15 @@ fun CreateOptionsBottomSheet(
                 subtitle = stringResource(R.string.join_meeting_subtitle),
                 onClick = onMeetings
             )
-            Spacer(Modifier.height(12.dp))
-            CreateOption(
-                icon = Icons.Default.Phone,
-                title = "Phone Call",
-                subtitle = "Place a recorded call, transcript saved to your notes",
-                onClick = onPhone
-            )
+            if (phoneCallsEnabled) {
+                Spacer(Modifier.height(12.dp))
+                CreateOption(
+                    icon = Icons.Default.Phone,
+                    title = "Phone Call",
+                    subtitle = "Place a recorded call, transcript saved to your notes",
+                    onClick = onPhone
+                )
+            }
         }
     }
 }
@@ -1166,3 +1148,4 @@ private suspend fun loadUserStats(token: String?, onResult: (UserStats?) -> Unit
     }
 }
 
+private const val MANAGE_SUBSCRIPTION_URL = "https://play.google.com/store/account/subscriptions?package=com.kreativekoala.scribeai"

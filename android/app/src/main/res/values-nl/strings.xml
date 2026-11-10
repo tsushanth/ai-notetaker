@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">Home</string>
     <string name="menu">Menu</string>
     <string name="menu_language">Taal</string>
-    <string name="menu_upgrade_pro">Upgraden naar Pro</string>
     <string name="menu_manage_subscription">Abonnement Beheren</string>
     <string name="menu_appearance">Weergave</string>
     <string name="menu_sign_out">Uitloggen</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">Sluiten</string>
-    <string name="unlock_pro">Ontgrendel Scribe AI Pro</string>
-    <string name="unlimited_access">Krijg onbeperkt toegang tot alle functies</string>
-    <string name="feature_unlimited_notes">Onbeperkt notities van elke bron</string>
-    <string name="feature_ai_summaries">AI-aangedreven samenvattingen &amp; quizzen</string>
-    <string name="feature_flashcards">Flashcard generatie</string>
-    <string name="feature_ai_chat">AI-chat met je notities</string>
-    <string name="feature_mind_map">Mindmap visualisatie</string>
-    <string name="feature_podcast">Audio podcast generatie</string>
     <string name="plan_yearly">Jaarlijks</string>
     <string name="plan_monthly">Maandelijks</string>
     <string name="per_month_format">%s/mnd</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI is gratis voor iedereen. Pro dekt de drie functies die het duurst zijn om te draaien.</string>
+    <string name="pro_needed_podcast">Podcasts maken deel uit van ScribeAI Pro.</string>
+    <string name="pro_needed_infographic">Infographics maken deel uit van ScribeAI Pro.</string>
+    <string name="pro_needed_meeting">De vergaderbot maakt deel uit van ScribeAI Pro.</string>
+    <string name="pro_feature_podcast">Podcasts</string>
+    <string name="pro_feature_podcast_desc">Zet je notities om in audio</string>
+    <string name="pro_feature_infographic">Infographics</string>
+    <string name="pro_feature_infographic_desc">Zet je notities om in een visuele samenvatting</string>
+    <string name="pro_feature_meeting">Vergaderbot</string>
+    <string name="pro_feature_meeting_desc">Neemt deel aan je online vergaderingen en schrijft de notities</string>
+    <string name="pro_cancel_anytime">Wordt automatisch verlengd. Op elk moment opzegbaar in Google Play.</string>
+    <string name="pro_go_pro">Naar Pro</string>
+    <string name="pro_terms">Servicevoorwaarden</string>
+    <string name="pro_trial_format">%d dagen gratis proberen</string>
+    <string name="pro_plans_unavailable">De abonnementen konden niet uit Google Play worden geladen. Probeer het later opnieuw.</string>
+    <string name="pro_nothing_to_restore">Geen actief abonnement gevonden</string>
 </resources>

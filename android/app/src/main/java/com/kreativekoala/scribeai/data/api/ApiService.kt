@@ -19,6 +19,10 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface ApiService {
+
+    // Server-driven feature flags (public, no sign-in); see utils/FeatureFlags.kt
+    @GET("api/config/features")
+    suspend fun getFeatureFlags(): Response<okhttp3.ResponseBody>
     
     // Notes endpoints
     @GET("api/notes")

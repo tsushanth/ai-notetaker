@@ -7,7 +7,10 @@ import com.google.gson.JsonParser
  * generation). That is NOT a paywall: the message must be plain and must not tell the user to upgrade.
  */
 object FreeTierErrors {
-    const val DEFAULT_LIMIT_MESSAGE = "You have reached today's free limit, try again later"
+    const val DEFAULT_LIMIT_MESSAGE = "You've reached today's daily limit. Please come back tomorrow."
+
+    // A daily-limit message must never push an upgrade: ignore server text that does.
+    private val UPSELL_WORDS = listOf("upgrade", "subscri", "premium")
 
     /** Server message from a JSON error body ({"error": "..."} or {"message": "..."}), else the default. */
     fun dailyLimitMessage(errorBody: String?): String {
@@ -22,7 +25,9 @@ object FreeTierErrors {
         } catch (e: Exception) {
             null
         }
-        return if (fromServer != null && fromServer.length <= 300) fromServer else DEFAULT_LIMIT_MESSAGE
+        val usable = fromServer != null && fromServer.length <= 300 &&
+            UPSELL_WORDS.none { fromServer.contains(it, ignoreCase = true) }
+        return if (usable) fromServer!! else DEFAULT_LIMIT_MESSAGE
     }
 
     /** Thrown for a 429 so callers can show the message as is, without a "failed" prefix. */

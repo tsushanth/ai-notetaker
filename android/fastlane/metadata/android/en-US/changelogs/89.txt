@@ -1,0 +1,1 @@
+Cleaner app: features that are not ready are hidden. Fixes and improvements.

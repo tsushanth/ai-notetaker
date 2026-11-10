@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">\u0939\u094b\u092e</string>
     <string name="menu">\u092e\u0947\u0928\u094d\u092f\u0942</string>
     <string name="menu_language">\u092d\u093e\u0937\u093e</string>
-    <string name="menu_upgrade_pro">Pro में अपग्रेड करें</string>
     <string name="menu_manage_subscription">सदस्यता प्रबंधित करें</string>
     <string name="menu_appearance">\u0926\u093f\u0916\u093e\u0935\u091f</string>
     <string name="menu_sign_out">\u0938\u093e\u0907\u0928 \u0906\u0909\u091f</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">\u092c\u0902\u0926 \u0915\u0930\u0947\u0902</string>
-    <string name="unlock_pro">Scribe AI Pro \u0905\u0928\u0932\u0949\u0915 \u0915\u0930\u0947\u0902</string>
-    <string name="unlimited_access">\u0938\u092d\u0940 \u0938\u0941\u0935\u093f\u0927\u093e\u0913\u0902 \u0924\u0915 \u0905\u0938\u0940\u092e\u093f\u0924 \u092a\u0939\u0941\u0902\u091a \u092a\u093e\u090f\u0902</string>
-    <string name="feature_unlimited_notes">\u0915\u093f\u0938\u0940 \u092d\u0940 \u0938\u094d\u0930\u094b\u0924 \u0938\u0947 \u0905\u0938\u0940\u092e\u093f\u0924 \u0928\u094b\u091f\u094d\u0938</string>
-    <string name="feature_ai_summaries">AI \u0938\u093e\u0930\u093e\u0902\u0936 &amp; \u0915\u094d\u0935\u093f\u091c\u093c</string>
-    <string name="feature_flashcards">\u092b\u094d\u0932\u0948\u0936\u0915\u093e\u0930\u094d\u0921 \u091c\u0947\u0928\u0930\u0947\u0936\u0928</string>
-    <string name="feature_ai_chat">\u0905\u092a\u0928\u0947 \u0928\u094b\u091f\u094d\u0938 \u092a\u0930 AI \u091a\u0948\u091f</string>
-    <string name="feature_mind_map">\u092e\u093e\u0907\u0902\u0921 \u092e\u0948\u092a \u0935\u093f\u091c\u093c\u0941\u0905\u0932\u093e\u0907\u091c\u093c\u0947\u0936\u0928</string>
-    <string name="feature_podcast">\u0911\u0921\u093f\u092f\u094b \u092a\u0949\u0921\u0915\u093e\u0938\u094d\u091f \u091c\u0947\u0928\u0930\u0947\u0936\u0928</string>
     <string name="plan_yearly">\u0935\u093e\u0930\u094d\u0937\u093f\u0915</string>
     <string name="plan_monthly">\u092e\u093e\u0938\u093f\u0915</string>
     <string name="per_month_format">%s/\u092e\u093e\u0939</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI सभी के लिए मुफ़्त है। Pro उन तीन सुविधाओं के लिए है जिन्हें चलाने में सबसे ज़्यादा खर्च आता है।</string>
+    <string name="pro_needed_podcast">पॉडकास्ट ScribeAI Pro का हिस्सा हैं।</string>
+    <string name="pro_needed_infographic">इन्फोग्राफ़िक ScribeAI Pro का हिस्सा हैं।</string>
+    <string name="pro_needed_meeting">मीटिंग बॉट ScribeAI Pro का हिस्सा है।</string>
+    <string name="pro_feature_podcast">पॉडकास्ट</string>
+    <string name="pro_feature_podcast_desc">अपने नोट्स को ऑडियो में बदलें</string>
+    <string name="pro_feature_infographic">इन्फोग्राफ़िक</string>
+    <string name="pro_feature_infographic_desc">अपने नोट्स को विज़ुअल सारांश में बदलें</string>
+    <string name="pro_feature_meeting">मीटिंग बॉट</string>
+    <string name="pro_feature_meeting_desc">आपकी ऑनलाइन मीटिंग में शामिल होकर नोट्स लिखता है</string>
+    <string name="pro_cancel_anytime">अपने आप रिन्यू होता है। Google Play में कभी भी रद्द करें।</string>
+    <string name="pro_go_pro">Pro लें</string>
+    <string name="pro_terms">सेवा की शर्तें</string>
+    <string name="pro_trial_format">%d दिन का निःशुल्क परीक्षण</string>
+    <string name="pro_plans_unavailable">Google Play से प्लान लोड नहीं हो सके। कृपया बाद में पुनः प्रयास करें।</string>
+    <string name="pro_nothing_to_restore">कोई सक्रिय सदस्यता नहीं मिली</string>
 </resources>

@@ -2,6 +2,7 @@ package com.kreativekoala.scribeai.data.repository
 
 import com.kreativekoala.scribeai.data.api.RetrofitClient
 import com.kreativekoala.scribeai.data.models.*
+import com.kreativekoala.scribeai.utils.FreeTierErrors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -32,7 +33,8 @@ class MeetingRepository {
                 val errorBody = response.errorBody()?.string()
                 val errorMessage = when (response.code()) {
                     401 -> "Authentication required"
-                    403 -> "Premium subscription required for meeting bot"
+                    402, 403 -> "The meeting bot is part of ScribeAI Pro."
+                    429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                     400 -> errorBody?.let { parseErrorMessage(it) } ?: "Invalid meeting URL"
                     else -> errorBody?.let { parseErrorMessage(it) } ?: "Failed to create meeting"
                 }
@@ -61,7 +63,8 @@ class MeetingRepository {
             } else {
                 val errorMessage = when (response.code()) {
                     401 -> "Authentication required"
-                    403 -> "Premium subscription required"
+                    402, 403 -> "The meeting bot is part of ScribeAI Pro."
+                    429 -> FreeTierErrors.dailyLimitMessage(null)
                     else -> "Failed to load meetings"
                 }
                 Result.failure(Exception(errorMessage))

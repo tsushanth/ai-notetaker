@@ -13,7 +13,7 @@ test('paid extras stay locked for a free user even when core features are free',
   const rows = featureRows({ freeTier: { legacyLimits: false }, features: lockedFeatures });
   // The three Pro features stay locked while the backend gates them (see PODCASTS_GATED); the freed features are always open.
   for (const key of ['podcasts', 'infographics', 'meetingBot']) assert.equal(rows.find((r) => r.key === key)!.included, !PODCASTS_GATED, key);
-  for (const key of ['export', 'learn']) assert.equal(rows.find((r) => r.key === key)!.included, true, key);
+  for (const key of ['export']) assert.equal(rows.find((r) => r.key === key)!.included, true, key);
 });
 
 test('legacy limits on, or an older backend with no freeTier field: the server flags decide', () => {

@@ -50,8 +50,8 @@ object IntegrationHelper {
                             val error = json.optString("error", "Integration not connected. Connect in Settings.")
                             Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                         }
-                        403 -> {
-                            Toast.makeText(context, "Premium subscription required", Toast.LENGTH_SHORT).show()
+                        429 -> {
+                            Toast.makeText(context, FreeTierErrors.dailyLimitMessage(body), Toast.LENGTH_LONG).show()
                         }
                         else -> {
                             Toast.makeText(context, "Export failed. Please try again.", Toast.LENGTH_LONG).show()

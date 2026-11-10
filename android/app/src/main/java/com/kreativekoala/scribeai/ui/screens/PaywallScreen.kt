@@ -3,7 +3,7 @@ package com.kreativekoala.scribeai.ui.screens
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
-import androidx.activity.compose.BackHandler
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,15 +27,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.VideoCall
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Podcasts
-import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -49,22 +46,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kreativekoala.paywallkit.models.PaywallFeature
 import com.kreativekoala.paywallkit.models.PaywallProduct
-import com.kreativekoala.paywallkit.models.PaywallTheme
-import com.kreativekoala.paywallkit.view.PaywallView
-import com.kreativekoala.scribeai.ui.theme.DarkBackground
-import com.kreativekoala.scribeai.ui.theme.DarkSurface
-import com.kreativekoala.scribeai.ui.theme.Purple40
+import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.theme.Purple80
 import com.kreativekoala.scribeai.utils.SubscriptionManager
-
-// Flip to false to fall back to the shared PaywallKit view (A/B templates, winback, etc.)
-// unchanged. Kept as an easy revert switch for the native Turbo-styled paywall below.
-private const val USE_NATIVE_PAYWALL = true
 
 // Turbo AI light-theme palette, observed on-device. Local to this screen only — the rest
 // of the app is dark, so these are NOT added to ui/theme/Color.kt.
@@ -78,41 +67,72 @@ private val TurboLightAccentLip = Color(0xFF7A4CC0)
 private val TurboLightCardBorder = Color(0xFFE4E0EC)
 private val TurboLightIconTile = Color(0xFFEEE8FA)
 
-// Small hardcoded English copy for the native Turbo-style layout. Adding new strings.xml
-// keys here would require ~25 translations for a paywall-only redesign, so plain English
-// constants are used instead (matches existing behavior: paywallkit's copy was also
-// hardcoded English inside the library).
-private const val TURBO_HEADLINE = "Choose your ScribeAI Pro plan"
-private const val TURBO_FREE_NOTE = "Voice transcription and AI summaries are free for everyone. Pro adds:"
-private const val TURBO_NO_COMMITMENT = "No commitment, cancel any time"
-private const val TURBO_SUBSCRIBE_CTA = "Subscribe Now"
-private const val TURBO_RESTORE = "Restore Purchases"
-private const val TURBO_TERMS = "Terms of Service"
-private const val TURBO_REDEEM_CODE = "Redeem code"
-private const val TURBO_TERMS_URL = "https://scribeai.online/terms"
+/** The three Pro features: everything else in ScribeAI is free. */
+enum class ProFeature { PODCAST, INFOGRAPHIC, MEETING_BOT }
 
+private const val TURBO_TERMS_URL = "https://scribeai.online/terms"
+private const val PLANS_TIMEOUT_MS = 8_000L
+
+/**
+ * The single "Go Pro" screen. It is only shown when someone opens a Pro feature (podcast, infographic,
+ * meeting bot) without Pro; it is always dismissible. [feature] tells the user which feature they
+ * opened. Prices come from Google Play Billing.
+ */
 @Composable
 fun PaywallScreen(
     subscriptionManager: SubscriptionManager,
     onDismiss: () -> Unit,
     onSubscribe: () -> Unit,
-    dismissable: Boolean = true
+    feature: ProFeature? = null
 ) {
     val context = LocalContext.current
     val activity = context as? Activity
     val products by subscriptionManager.products.collectAsState()
+    val subscriptionState by subscriptionManager.subscriptionState.collectAsState()
 
-    // Swallow back when this paywall is operating as a hard gate.
-    BackHandler(enabled = !dismissable) { /* no-op */ }
+    // Close by itself once a purchase (or restore) turns Pro on.
+    LaunchedEffect(subscriptionState) {
+        if (subscriptionState is SubscriptionManager.SubscriptionState.Subscribed) onSubscribe()
+    }
+
+    // Google Play can fail to return plans (no Play account, offline): say so instead of spinning forever.
+    var plansTimedOut by remember { mutableStateOf(false) }
+    LaunchedEffect(products.isEmpty()) {
+        if (products.isEmpty()) {
+            kotlinx.coroutines.delay(PLANS_TIMEOUT_MS)
+            plansTimedOut = true
+        } else {
+            plansTimedOut = false
+        }
+    }
 
     if (products.isEmpty()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(if (USE_NATIVE_PAYWALL) TurboLightBase else DarkBackground),
+                .background(TurboLightBase)
+                .windowInsetsPadding(WindowInsets.statusBars),
             contentAlignment = Alignment.Center
         ) {
-            CircularProgressIndicator(color = Purple80)
+            if (plansTimedOut) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.pro_plans_unavailable),
+                        color = TurboLightTextPrimary,
+                        fontSize = 16.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    TextButton(onClick = onDismiss) {
+                        Text(stringResource(R.string.close), color = TurboLightAccent)
+                    }
+                }
+            } else {
+                CircularProgressIndicator(color = Purple80)
+            }
         }
         return
     }
@@ -144,84 +164,38 @@ fun PaywallScreen(
         )
     }
 
-    val features = listOf(
-        PaywallFeature("\uD83D\uDCE4", "Export and Integrations", "PDF, Word and Google Drive"),
-        PaywallFeature("\uD83C\uDF99", "Podcast Mode", "Turn notes into audio"),
-        PaywallFeature("\uD83C\uDF93", "Learn, Create and Compete", "Study and creative tools"),
-        PaywallFeature("\uD83D\uDD17", "Sharing and Higher Limits", "Unlimited share links, higher daily limits")
-    )
-
-    val onPurchase: (String) -> Unit = { productId ->
-        if (activity != null) {
-            subscriptionManager.launchSubscriptionFlow(
-                activity = activity,
-                productId = productId,
+    TurboPaywallContent(
+        products = paywallProducts,
+        feature = feature,
+        onDismiss = onDismiss,
+        onPurchase = { productId ->
+            if (activity != null) {
+                subscriptionManager.launchSubscriptionFlow(
+                    activity = activity,
+                    productId = productId,
+                    onSuccess = { onSubscribe() },
+                    onError = { /* handled by billing client listener */ }
+                )
+            }
+        },
+        onRestore = {
+            subscriptionManager.restorePurchases(
                 onSuccess = { onSubscribe() },
-                onError = { /* handled by billing client listener */ }
+                onError = {
+                    Toast.makeText(context, context.getString(R.string.pro_nothing_to_restore), Toast.LENGTH_SHORT).show()
+                }
             )
         }
-    }
-
-    val onRestore: () -> Unit = {
-        subscriptionManager.restorePurchases(
-            onSuccess = { onSubscribe() },
-            onError = { /* silently ignore */ }
-        )
-    }
-
-    val onRedeemCode: () -> Unit = {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/redeem?code=promo-1month-free"))
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        try { activity?.startActivity(intent) } catch (_: Exception) {}
-    }
-
-    if (USE_NATIVE_PAYWALL) {
-        TurboPaywallContent(
-            products = paywallProducts,
-            features = features,
-            dismissable = dismissable,
-            onDismiss = onDismiss,
-            onPurchase = onPurchase,
-            onRestore = onRestore,
-            onRedeemCode = onRedeemCode
-        )
-    } else {
-        PaywallView(
-            appId = "scribeai",
-            appName = "ScribeAI",
-            features = features,
-            products = paywallProducts,
-            theme = PaywallTheme(
-                accent = Purple80,
-                accent2 = Purple40,
-                background = DarkBackground,
-                cardBackground = DarkSurface
-            ),
-            showWinback = true,
-            isDismissible = dismissable,
-            onPurchase = onPurchase,
-            onRestore = onRestore,
-            onRedeemCode = onRedeemCode,
-            onDismiss = onDismiss
-        )
-    }
+    )
 }
 
-/**
- * The native Turbo-styled paywall body. Public so other paywall entry points in the app
- * (e.g. MainActivity's post-onboarding hard gate) can reuse it instead of duplicating the
- * gradient/card styling. [onRedeemCode] is nullable: pass null to hide that affordance for
- * a placement that never offered it.
- */
 @Composable
-fun TurboPaywallContent(
+private fun TurboPaywallContent(
     products: List<PaywallProduct>,
-    features: List<PaywallFeature>,
-    dismissable: Boolean,
+    feature: ProFeature?,
     onDismiss: () -> Unit,
     onPurchase: (String) -> Unit,
-    onRestore: () -> Unit,
-    onRedeemCode: (() -> Unit)? = null
+    onRestore: () -> Unit
 ) {
     val yearlyProduct = products.firstOrNull { it.period == PaywallProduct.Period.YEARLY }
     var selectedProductId by remember(products) {
@@ -243,37 +217,33 @@ fun TurboPaywallContent(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 // Without this, the close button/headline sit under the real system status
-                // bar window on some devices — the tap never reaches Compose at all because
+                // bar window on some devices: the tap never reaches Compose at all because
                 // that window intercepts it first, even though the content is drawn visibly.
                 .windowInsetsPadding(WindowInsets.statusBars)
                 .padding(horizontal = 20.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (dismissable) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                        .clickable { onDismiss() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Close",
-                        tint = TurboLightTextPrimary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            } else {
-                Spacer(modifier = Modifier.height(36.dp))
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .clickable { onDismiss() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.close),
+                    tint = TurboLightTextPrimary,
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(
-                text = TURBO_HEADLINE,
+                text = stringResource(R.string.pro_title),
                 color = TurboLightTextPrimary,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
@@ -283,8 +253,26 @@ fun TurboPaywallContent(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            if (feature != null) {
+                Text(
+                    text = stringResource(
+                        when (feature) {
+                            ProFeature.PODCAST -> R.string.pro_needed_podcast
+                            ProFeature.INFOGRAPHIC -> R.string.pro_needed_infographic
+                            ProFeature.MEETING_BOT -> R.string.pro_needed_meeting
+                        }
+                    ),
+                    color = TurboLightTextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             Text(
-                text = TURBO_FREE_NOTE,
+                text = stringResource(R.string.pro_intro),
                 color = TurboLightTextSecondary,
                 fontSize = 15.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -293,22 +281,22 @@ fun TurboPaywallContent(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            val featureIcons = mapOf(
-                "Export and Integrations" to Icons.Filled.Description,
-                "Podcast Mode" to Icons.Filled.Podcasts,
-                "Learn, Create and Compete" to Icons.Filled.Style,
-                "Sharing and Higher Limits" to Icons.Filled.AutoAwesome
-            )
-            val featuresToShow = features.take(4)
-
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                featuresToShow.forEach { feature ->
-                    TurboFeatureCard(
-                        icon = featureIcons[feature.title] ?: Icons.Filled.AutoAwesome,
-                        title = feature.title,
-                        subtitle = feature.description
-                    )
-                }
+                TurboFeatureCard(
+                    icon = Icons.Filled.Podcasts,
+                    title = stringResource(R.string.pro_feature_podcast),
+                    subtitle = stringResource(R.string.pro_feature_podcast_desc)
+                )
+                TurboFeatureCard(
+                    icon = Icons.Filled.Image,
+                    title = stringResource(R.string.pro_feature_infographic),
+                    subtitle = stringResource(R.string.pro_feature_infographic_desc)
+                )
+                TurboFeatureCard(
+                    icon = Icons.Filled.VideoCall,
+                    title = stringResource(R.string.pro_feature_meeting),
+                    subtitle = stringResource(R.string.pro_feature_meeting_desc)
+                )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -340,7 +328,7 @@ fun TurboPaywallContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = TURBO_NO_COMMITMENT,
+                    text = stringResource(R.string.pro_cancel_anytime),
                     color = TurboLightTextSecondary,
                     fontSize = 14.sp
                 )
@@ -362,7 +350,7 @@ fun TurboPaywallContent(
                     .height(56.dp)
             ) {
                 Text(
-                    text = TURBO_SUBSCRIBE_CTA,
+                    text = stringResource(R.string.pro_go_pro),
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -376,27 +364,14 @@ fun TurboPaywallContent(
                 horizontalArrangement = Arrangement.Center
             ) {
                 TextButton(onClick = onRestore) {
-                    Text(TURBO_RESTORE, color = TurboLightTextSecondary, fontSize = 13.sp)
+                    Text(stringResource(R.string.restore_purchases), color = TurboLightTextSecondary, fontSize = 13.sp)
                 }
                 TextButton(onClick = {
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(TURBO_TERMS_URL))
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     try { termsContext.startActivity(intent) } catch (_: Exception) {}
                 }) {
-                    Text(TURBO_TERMS, color = TurboLightTextSecondary, fontSize = 13.sp)
-                }
-            }
-
-            if (onRedeemCode != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    TextButton(onClick = onRedeemCode) {
-                        Text(TURBO_REDEEM_CODE, color = TurboLightTextSecondary, fontSize = 12.sp)
-                    }
+                    Text(stringResource(R.string.pro_terms), color = TurboLightTextSecondary, fontSize = 13.sp)
                 }
             }
 
@@ -460,12 +435,10 @@ private fun TurboPlanCard(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val periodLabel = when (product.period) {
-        PaywallProduct.Period.WEEKLY -> "Weekly"
-        PaywallProduct.Period.MONTHLY -> "Monthly"
-        PaywallProduct.Period.YEARLY -> "Yearly"
-        PaywallProduct.Period.LIFETIME -> "Lifetime"
-    }
+    // Only the monthly and yearly Play subscriptions exist.
+    val periodLabel = stringResource(
+        if (product.period == PaywallProduct.Period.YEARLY) R.string.plan_yearly else R.string.plan_monthly
+    )
 
     Row(
         modifier = Modifier
@@ -489,13 +462,13 @@ private fun TurboPlanCard(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = product.localizedPrice + (monthlyEquivalent?.let { " ($it/mo)" } ?: ""),
+                text = product.localizedPrice + (monthlyEquivalent?.let { " (" + stringResource(R.string.per_month_format, it) + ")" } ?: ""),
                 color = TurboLightTextSecondary,
                 fontSize = 13.sp
             )
             product.trialDays?.let { days ->
                 Text(
-                    text = "$days-day free trial",
+                    text = stringResource(R.string.pro_trial_format, days),
                     color = TurboLightAccent,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium

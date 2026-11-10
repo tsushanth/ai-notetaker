@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { asyncHandler } = require('../middleware/errorHandler');
+const { jsLiteral, CLIENT_HELPERS, setPageHeaders } = require('../utils/untrustedPage');
 
 /**
  * Serve the learn page HTML directly from the backend
@@ -64,9 +65,9 @@ router.get('/:sessionId', (req, res, next) => {
   <div id="app"></div>
   <script>
     const API = 'https://ai-notetaker-backend.fly.dev';
-    const SESSION_ID = '${sessionId}';
-    const TOKEN = '${token}';
-    let pollTimer = null;
+    const SESSION_ID = ${jsLiteral(sessionId)};
+    const TOKEN = ${jsLiteral(token)};
+${CLIENT_HELPERS}    let pollTimer = null;
     let session = null;
 
     async function fetchStatus() {
@@ -100,7 +101,7 @@ router.get('/:sessionId', (req, res, next) => {
 
     function showError(msg) {
       stopPolling();
-      document.getElementById('app').innerHTML = '<div class="loading error"><div class="error-icon">⚠️</div><h2>' + msg + '</h2><p class="text-muted" style="margin:8px 0 24px">This share link may have expired.</p><button class="btn" onclick="location.reload()">Retry</button></div>';
+      document.getElementById('app').innerHTML = '<div class="loading error"><div class="error-icon">⚠️</div><h2>' + esc(msg) + '</h2><p class="text-muted" style="margin:8px 0 24px">This share link may have expired.</p><button class="btn" onclick="location.reload()">Retry</button></div>';
     }
 
     function showGenerating() {
@@ -112,10 +113,10 @@ router.get('/:sessionId', (req, res, next) => {
 
       let statsHtml = '';
       if (lessons > 0) {
-        statsHtml = '<div style="margin-top:32px;padding:16px;background:#111;border:1px solid #222;border-radius:12px"><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px"><span class="text-muted">Mastery</span><span class="text-purple">' + mastery + '%</span></div><div class="progress-bar-bg"><div class="progress-bar" style="width:' + mastery + '%"></div></div><div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;color:#666"><span>🏆 ' + lessons + ' lessons</span><span>🔥 ' + streak + ' streak</span></div></div>';
+        statsHtml = '<div style="margin-top:32px;padding:16px;background:#111;border:1px solid #222;border-radius:12px"><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px"><span class="text-muted">Mastery</span><span class="text-purple">' + esc(mastery) + '%</span></div><div class="progress-bar-bg"><div class="progress-bar" style="width:' + esc(mastery) + '%"></div></div><div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;color:#666"><span>🏆 ' + esc(lessons) + ' lessons</span><span>🔥 ' + esc(streak) + ' streak</span></div></div>';
       }
 
-      document.getElementById('app').innerHTML = '<div class="loading generating"><div class="gen-icon">📚</div><h2 style="font-size:20px;margin-bottom:8px">' + title + '</h2><p class="text-muted">' + sub + '</p><div class="spinner" style="margin-top:24px"></div>' + statsHtml + '</div>';
+      document.getElementById('app').innerHTML = '<div class="loading generating"><div class="gen-icon">📚</div><h2 style="font-size:20px;margin-bottom:8px">' + esc(title) + '</h2><p class="text-muted">' + sub + '</p><div class="spinner" style="margin-top:24px"></div>' + statsHtml + '</div>';
     }
 
     function showLesson(lesson) {
@@ -127,13 +128,15 @@ router.get('/:sessionId', (req, res, next) => {
       let html = lesson.content_html;
       html = html.includes('</head>') ? html.replace('</head>', bridge + '</head>') : bridge + html;
 
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
+      const url = framedUrl(html);
 
-      document.getElementById('app').innerHTML = '<div class="lesson-container"><div class="header"><div style="display:flex;align-items:center"><span class="lesson-badge">Lesson ' + lesson.lesson_number + '</span><span class="lesson-title">' + (lesson.title || '') + '</span></div><div class="header-stats">🔥' + streak + ' · ' + mastery + '%</div></div><iframe class="lesson-frame" src="' + url + '" sandbox="allow-scripts allow-same-origin"></iframe></div>';
+      document.getElementById('app').innerHTML = '<div class="lesson-container"><div class="header"><div style="display:flex;align-items:center"><span class="lesson-badge">Lesson ' + esc(lesson.lesson_number) + '</span><span class="lesson-title">' + esc(lesson.title || '') + '</span></div><div class="header-stats">🔥' + esc(streak) + ' · ' + esc(mastery) + '%</div></div>' + frameTag('lesson-frame', url, '') + '</div>';
 
       window.onmessage = function(e) {
-        if (e.data && e.data.type === 'score') submitScore(lesson.id, e.data.correct, e.data.total);
+        // Only the lesson frame may talk to this page, and its numbers are treated as untrusted input.
+        var frame = document.querySelector('.lesson-frame');
+        if (!frame || e.source !== frame.contentWindow) return;
+        if (e.data && e.data.type === 'score') submitScore(lesson.id, Math.max(0, Number(e.data.correct) || 0), Math.max(0, Number(e.data.total) || 0));
         if (e.data && e.data.type === 'next') nextLesson();
       };
     }
@@ -141,7 +144,7 @@ router.get('/:sessionId', (req, res, next) => {
     async function submitScore(lessonId, correct, total) {
       const score = total > 0 ? correct / total : 0;
       try {
-        await fetch(API + '/api/learn/lesson/' + lessonId + '/submit', {
+        await fetch(API + '/api/learn/lesson/' + encodeURIComponent(lessonId) + '/submit', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
           body: JSON.stringify({ correct, total, totalQuestions: total, score })
@@ -174,7 +177,7 @@ router.get('/:sessionId', (req, res, next) => {
 </body>
 </html>`;
 
-  res.setHeader('Content-Type', 'text/html');
+  setPageHeaders(res);
   res.send(html);
 }));
 

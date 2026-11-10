@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ScribeAI Pro</string>
+    <string name="app_name">ScribeAI</string>
     <string name="web_client_id">917362189743-mllfqc9jjog1a3n8mie52grd3qk9at00.apps.googleusercontent.com</string>
 
     <!-- Home Screen -->
@@ -7,7 +7,6 @@
     <string name="home">Ana Sayfa</string>
     <string name="menu">Menü</string>
     <string name="menu_language">Dil</string>
-    <string name="menu_upgrade_pro">Pro\'ya Yükselt</string>
     <string name="menu_manage_subscription">Aboneliği Yönet</string>
     <string name="menu_appearance">Görünüm</string>
     <string name="menu_sign_out">Çıkış Yap</string>
@@ -219,14 +218,6 @@
 
     <!-- Paywall Screen -->
     <string name="close">Kapat</string>
-    <string name="unlock_pro">Scribe AI Pro\'yu Aç</string>
-    <string name="unlimited_access">Tüm özelliklere sınırsız erişim elde edin</string>
-    <string name="feature_unlimited_notes">Herhangi bir kaynaktan sınırsız not</string>
-    <string name="feature_ai_summaries">Yapay zeka destekli özetler ve testler</string>
-    <string name="feature_flashcards">Bilgi kartı oluşturma</string>
-    <string name="feature_ai_chat">Notlarınızla yapay zeka sohbeti</string>
-    <string name="feature_mind_map">Zihin haritası görselleştirmesi</string>
-    <string name="feature_podcast">Sesli podcast oluşturma</string>
     <string name="plan_yearly">Yıllık</string>
     <string name="plan_monthly">Aylık</string>
     <string name="per_month_format">%s/ay</string>
@@ -324,4 +315,23 @@
     <string name="language_portuguese">Portugu\u00eas</string>
     <string name="language_italian">Italiano</string>
     <string name="language_hindi">\u0939\u093f\u0928\u094d\u0926\u0940</string>
+
+    <!-- Go Pro screen (podcasts, infographics, meeting bot) -->
+    <string name="pro_title">ScribeAI Pro</string>
+    <string name="pro_intro">ScribeAI herkes için ücretsizdir. Pro, işletmesi en pahalı olan üç özelliği kapsar.</string>
+    <string name="pro_needed_podcast">Podcast\'ler ScribeAI Pro\'nun bir parçasıdır.</string>
+    <string name="pro_needed_infographic">İnfografikler ScribeAI Pro\'nun bir parçasıdır.</string>
+    <string name="pro_needed_meeting">Toplantı botu ScribeAI Pro\'nun bir parçasıdır.</string>
+    <string name="pro_feature_podcast">Podcast\'ler</string>
+    <string name="pro_feature_podcast_desc">Notlarınızı sese dönüştürün</string>
+    <string name="pro_feature_infographic">İnfografikler</string>
+    <string name="pro_feature_infographic_desc">Notlarınızı görsel bir özete dönüştürün</string>
+    <string name="pro_feature_meeting">Toplantı botu</string>
+    <string name="pro_feature_meeting_desc">Çevrim içi toplantılarınıza katılır ve notları yazar</string>
+    <string name="pro_cancel_anytime">Otomatik olarak yenilenir. Google Play\'den istediğiniz zaman iptal edebilirsiniz.</string>
+    <string name="pro_go_pro">Pro\'ya geç</string>
+    <string name="pro_terms">Hizmet Şartları</string>
+    <string name="pro_trial_format">%d gün ücretsiz deneme</string>
+    <string name="pro_plans_unavailable">Planlar Google Play\'den yüklenemedi. Lütfen daha sonra tekrar deneyin.</string>
+    <string name="pro_nothing_to_restore">Etkin abonelik bulunamadı</string>
 </resources>

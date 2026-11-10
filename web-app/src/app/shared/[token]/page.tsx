@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { FileText, Eye, Calendar, Loader2, AlertCircle, Download } from 'lucide-react';
+import { sharedNoteCtaUrl } from '@/lib/site';
 
 const API_BASE_URL = 'https://ai-notetaker-backend.fly.dev';
 
@@ -63,7 +64,7 @@ export default function SharedNotePage() {
             This share link may have expired or been revoked.
           </p>
           <a
-            href="https://scribeai.app"
+            href={sharedNoteCtaUrl('expired')}
             className="inline-block mt-6 px-6 py-3 rounded-lg text-white font-medium"
             style={{ background: 'var(--accent-purple)' }}
           >
@@ -99,7 +100,7 @@ export default function SharedNotePage() {
             <span className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>Scribe AI</span>
           </div>
           <a
-            href="https://scribeai.app"
+            href={sharedNoteCtaUrl('header')}
             className="px-4 py-2 rounded-lg text-sm font-medium text-white"
             style={{ background: 'var(--accent-purple)' }}
           >
@@ -149,7 +150,7 @@ export default function SharedNotePage() {
             Record lectures, upload PDFs, or paste content — AI generates summaries, quizzes, flashcards, and more.
           </p>
           <a
-            href="https://scribeai.app"
+            href={sharedNoteCtaUrl('footer')}
             className="inline-block px-6 py-3 rounded-lg text-white font-medium"
             style={{ background: 'var(--accent-purple)' }}
           >

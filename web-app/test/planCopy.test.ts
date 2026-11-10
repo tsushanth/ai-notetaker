@@ -67,7 +67,7 @@ test('PREMIUM_PERKS lists only Pro features: podcasts, infographics, meeting bot
 
 test('the free list names what really is free', () => {
   const text = FREE_FOR_EVERYONE.join(' | ').toLowerCase();
-  for (const word of ['transcription', 'summaries', 'quizzes', 'flashcards', 'chat', 'mind maps', 'export', 'learn, create and compete', 'integrations', 'share links']) assert.ok(text.includes(word), word);
+  for (const word of ['transcription', 'summaries', 'quizzes', 'flashcards', 'chat', 'mind maps', 'export', 'integrations', 'share links']) assert.ok(text.includes(word), word);
   assert.ok(!/podcast|infographic|meeting bot/.test(text), text);
 });
 
@@ -75,7 +75,7 @@ test('the homepage FAQ answer comes from the same lists and never sells a free f
   const answer = freePlanAnswer();
   const [free, pro] = answer.split('Pro adds');
   assert.ok(pro, 'answer should have a Pro part');
-  for (const word of ['quizzes', 'flashcards', 'chat', 'summaries', 'mind maps', 'export', 'learn', 'integrations', 'share links']) {
+  for (const word of ['quizzes', 'flashcards', 'chat', 'summaries', 'mind maps', 'export', 'integrations', 'share links']) {
     assert.ok(free.toLowerCase().includes(word), `${word} should be in the free part`);
     assert.ok(!pro.toLowerCase().includes(word), `${word} must not be in the Pro part`);
   }
@@ -90,7 +90,7 @@ test('Settings "Your Features" locks podcasts, infographics and the meeting bot 
     assert.equal(featureRows(freeUser).find((r) => r.key === key)!.included, !PODCASTS_GATED, `${key} (free user)`);
     assert.equal(featureRows(pro).find((r) => r.key === key)!.included, true, `${key} (Pro)`);
   }
-  for (const key of ['export', 'learn']) assert.equal(featureRows(freeUser).find((r) => r.key === key)!.included, true, key);
+  for (const key of ['export']) assert.equal(featureRows(freeUser).find((r) => r.key === key)!.included, true, key);
   // An older backend that does not send the new flags: the podcast flag decides for all three (same gate).
   const old = { freeTier: { legacyLimits: false }, features: { canCreateNotes: true, canUseAI: true, canGeneratePodcasts: true, unlimitedAccess: false } };
   for (const key of ['infographics', 'meetingBot']) assert.equal(featureRows(old).find((r) => r.key === key)!.included, true, key);

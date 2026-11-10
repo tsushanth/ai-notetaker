@@ -7,6 +7,11 @@ import com.kreativekoala.paywallkit.manager.PromoCodeManager
 import com.kreativekoala.scribeai.phone.VoipService
 import com.kreativekoala.scribeai.service.FacebookSDKHelper
 import com.kreativekoala.scribeai.service.TikTokHelper
+import com.kreativekoala.scribeai.utils.FeatureFlags
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class ScribeAIApplication : Application() {
 
@@ -19,6 +24,8 @@ class ScribeAIApplication : Application() {
         ExperimentManager.init(this)
         PromoCodeManager.init(this)
         VoipService.init(applicationContext)
+        FeatureFlags.load(applicationContext)
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch { FeatureFlags.refresh(applicationContext) }
     }
 
     companion object {

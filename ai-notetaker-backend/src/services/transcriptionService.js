@@ -5,7 +5,8 @@ const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 const storageService = require('./storageService');
 const path = require('path');
-const { transcribeAudio, TranscriptionError } = require('./deepgramClient');
+const { TranscriptionError } = require('./deepgramClient');
+const { transcribeAudio } = require('./stt');
 const { measureLevel } = require('../utils/audioLevel');
 const { reportFailure, reportCounted } = require('../utils/failureReporter');
 
@@ -203,7 +204,7 @@ class TranscriptionService {
       // The downloaded buffer is sent as is: no temp file and no second read into memory.
       let dg;
       try {
-        dg = await transcribeAudio({ body: audioBuffer, mimeType });
+        dg = await transcribeAudio({ body: audioBuffer, mimeType, durationHintSec: recording.duration });
       } catch (dgErr) {
         outcome.providerStatus = dgErr.providerStatus ?? null;
         outcome.attempts = dgErr.attempts || 0;

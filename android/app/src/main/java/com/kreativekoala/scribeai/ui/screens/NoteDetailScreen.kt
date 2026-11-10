@@ -39,6 +39,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import kotlinx.coroutines.launch
+import com.kreativekoala.scribeai.utils.FeatureFlagValues
+import com.kreativekoala.scribeai.utils.FeatureFlags
 import com.kreativekoala.scribeai.utils.ShareLink
 import com.kreativekoala.scribeai.utils.ShareLinkResult
 import android.app.Activity
@@ -92,6 +94,11 @@ fun NoteDetailScreen(
     var pendingProTab by remember { mutableStateOf<Int?>(null) }
     // Tab indices: 0 = Notes, 1 = Learn, 2 = Create, 3 = Compete, 4 = Chat, 5 = Quiz, 6 = Flashcards, 7 = Podcast, 8 = Mind Map
     var selectedTab by remember { mutableStateOf(0) }
+    val featureFlags by FeatureFlags.flags.collectAsState()
+    // If the server switches a tab off while it is open, fall back to Notes.
+    LaunchedEffect(featureFlags, selectedTab) {
+        if (!isTabAvailable(selectedTab, featureFlags)) selectedTab = 0
+    }
     val authToken by authManager.authToken.collectAsState(initial = null)
     val context = LocalContext.current
     val sharedPrefs = context.getSharedPreferences("scribe_prefs", Context.MODE_PRIVATE)
@@ -138,6 +145,7 @@ fun NoteDetailScreen(
 
     // Every tab is free except Podcast (tab 7): opening it without Pro shows the dismissible Go Pro screen.
     fun selectTab(tab: Int, source: String? = null) {
+        if (!isTabAvailable(tab, featureFlags)) return
         if (tab in PRO_TABS && subscriptionManager?.hasProAccess() == false) {
             AnalyticsService.trackPaywallViewed(source ?: "tab_$tab")
             pendingProTab = tab
@@ -405,7 +413,8 @@ fun NoteDetailScreen(
                     0 -> NotesTab(
                         note, aiViewModel, authToken, preferredLanguage,
                         onShareNote = { createShareLink(openShareSheet = true) },
-                        onChallengeFriends = { selectTab(3, source = "summary_cta_challenge") }
+                        onChallengeFriends = { selectTab(3, source = "summary_cta_challenge") },
+                        showChallengeFriends = featureFlags.compete
                     )
                     1 -> LearnTab(note, authToken, authManager)
                     2 -> CreateTab(note, authToken)
@@ -422,6 +431,7 @@ fun NoteDetailScreen(
             HorizontalDivider(color = DarkSurfaceVariant, thickness = 1.dp)
             BottomTabBar(
                 selectedTab = selectedTab,
+                flags = featureFlags,
                 // Every tab is free (the server only applies a daily abuse backstop) except Podcast; see selectTab.
                 onTabSelected = { tab -> selectTab(tab) }
             )
@@ -445,6 +455,14 @@ fun NoteDetailScreen(
 /**
  * Bottom tab bar component - shows 4 primary tabs + "More" which opens a sheet
  */
+/** Tabs 1 to 3 (Learn, Create, Compete) exist only while the server flag for each is on; every other tab is always available. */
+internal fun isTabAvailable(tab: Int, flags: FeatureFlagValues): Boolean = when (tab) {
+    1 -> flags.learn
+    2 -> flags.create
+    3 -> flags.compete
+    else -> true
+}
+
 // Tab indices that need Pro: 7 = Podcast. Learn, Create, Compete and all other tabs are free.
 private val PRO_TABS = setOf(7)
 
@@ -452,6 +470,7 @@ private val PRO_TABS = setOf(7)
 @Composable
 private fun BottomTabBar(
     selectedTab: Int,
+    flags: FeatureFlagValues,
     onTabSelected: (Int) -> Unit
 ) {
     var showMoreSheet by remember { mutableStateOf(false) }
@@ -471,24 +490,24 @@ private fun BottomTabBar(
             onClick = { onTabSelected(0) },
             modifier = Modifier.weight(1f)
         )
-        // Learn tab
-        BottomTabItem(
+        // Learn tab (hidden unless the server switches it on)
+        if (flags.learn) BottomTabItem(
             icon = Icons.Default.School,
             label = "Learn",
             isSelected = selectedTab == 1,
             onClick = { onTabSelected(1) },
             modifier = Modifier.weight(1f)
         )
-        // Create tab
-        BottomTabItem(
+        // Create tab (hidden unless the server switches it on)
+        if (flags.create) BottomTabItem(
             icon = Icons.Default.AutoAwesome,
             label = "Create",
             isSelected = selectedTab == 2,
             onClick = { onTabSelected(2) },
             modifier = Modifier.weight(1f)
         )
-        // Compete tab
-        BottomTabItem(
+        // Compete tab (hidden unless the server switches it on)
+        if (flags.compete) BottomTabItem(
             icon = Icons.Default.EmojiEvents,
             label = "Compete",
             isSelected = selectedTab == 3,
@@ -656,7 +675,8 @@ fun NotesTab(
     authToken: String?,
     preferredLanguage: String,
     onShareNote: () -> Unit = {},
-    onChallengeFriends: () -> Unit = {}
+    onChallengeFriends: () -> Unit = {},
+    showChallengeFriends: Boolean = false
 ) {
     // State for current note (may be updated when formatting completes)
     var currentNote by remember { mutableStateOf(note) }
@@ -936,6 +956,7 @@ fun NotesTab(
                     AnalyticsService.trackEvent("share_cta_clicked", mapOf("note_id" to note.id))
                     onShareNote()
                 },
+                showChallengeFriends = showChallengeFriends,
                 onChallengeFriends = {
                     AnalyticsService.trackEvent("challenge_cta_clicked", mapOf("note_id" to note.id))
                     onChallengeFriends()
@@ -1052,6 +1073,7 @@ private fun SummarySection(
     onGenerateSummary: () -> Unit,
     onShareNote: () -> Unit,
     onChallengeFriends: () -> Unit,
+    showChallengeFriends: Boolean,
     onCtaShown: () -> Unit
 ) {
     val hasSummary = summaryState is AIContentState.Success<*> &&
@@ -1179,7 +1201,7 @@ private fun SummarySection(
                                         Spacer(Modifier.width(6.dp))
                                         Text("Share this note", fontSize = 13.sp, maxLines = 1)
                                     }
-                                    OutlinedButton(onClick = onChallengeFriends, modifier = Modifier.weight(1f)) {
+                                    if (showChallengeFriends) OutlinedButton(onClick = onChallengeFriends, modifier = Modifier.weight(1f)) {
                                         Icon(Icons.Default.EmojiEvents, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text("Challenge friends", fontSize = 13.sp, maxLines = 1)

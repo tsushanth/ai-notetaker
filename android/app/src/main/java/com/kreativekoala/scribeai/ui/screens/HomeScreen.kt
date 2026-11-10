@@ -45,6 +45,7 @@ import com.kreativekoala.scribeai.viewmodel.NoteViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
+import com.kreativekoala.scribeai.utils.FeatureFlags
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import kotlinx.coroutines.launch
 
@@ -981,6 +982,8 @@ fun CreateOptionsBottomSheet(
     onMeetings: () -> Unit = {},
     onPhone: () -> Unit = {}
 ) {
+    // The Phone Call option is hidden unless the server switches it on (utils/FeatureFlags.kt).
+    val phoneCallsEnabled = FeatureFlags.flags.collectAsState().value.phoneCalls
     val sheetState = rememberModalBottomSheetState(
         skipPartiallyExpanded = true
     )
@@ -1030,13 +1033,15 @@ fun CreateOptionsBottomSheet(
                 subtitle = stringResource(R.string.join_meeting_subtitle),
                 onClick = onMeetings
             )
-            Spacer(Modifier.height(12.dp))
-            CreateOption(
-                icon = Icons.Default.Phone,
-                title = "Phone Call",
-                subtitle = "Place a recorded call, transcript saved to your notes",
-                onClick = onPhone
-            )
+            if (phoneCallsEnabled) {
+                Spacer(Modifier.height(12.dp))
+                CreateOption(
+                    icon = Icons.Default.Phone,
+                    title = "Phone Call",
+                    subtitle = "Place a recorded call, transcript saved to your notes",
+                    onClick = onPhone
+                )
+            }
         }
     }
 }

@@ -9,6 +9,7 @@
     <string name="menu_language">语言</string>
     <string name="menu_manage_subscription">管理订阅</string>
     <string name="menu_appearance">外观</string>
+    <string name="menu_privacy_policy">隐私政策</string>
     <string name="menu_sign_out">退出登录</string>
     <string name="menu_delete_account">删除账户</string>
     <string name="add">添加</string>

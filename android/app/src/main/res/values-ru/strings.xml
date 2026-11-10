@@ -9,6 +9,7 @@
     <string name="menu_language">Язык</string>
     <string name="menu_manage_subscription">Управление подпиской</string>
     <string name="menu_appearance">Оформление</string>
+    <string name="menu_privacy_policy">Политика конфиденциальности</string>
     <string name="menu_sign_out">Выйти</string>
     <string name="menu_delete_account">Удалить аккаунт</string>
     <string name="add">Добавить</string>

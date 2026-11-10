@@ -9,6 +9,7 @@
     <string name="menu_language">Bahasa</string>
     <string name="menu_manage_subscription">Urus Langganan</string>
     <string name="menu_appearance">Penampilan</string>
+    <string name="menu_privacy_policy">Dasar Privasi</string>
     <string name="menu_sign_out">Log Keluar</string>
     <string name="menu_delete_account">Padam Akaun</string>
     <string name="add">Tambah</string>

@@ -82,6 +82,12 @@ class TutorialManager(
             val existingTutorial = localRepository.getNoteById(TutorialContent.TUTORIAL_ID)
             val serverIdMissing = getTutorialServerId() == null
 
+            // Older installs hold an earlier copy of the tutorial text locally; replace it with the current text
+            // (the tutorial text is app-supplied, not user content).
+            if (existingTutorial != null && existingTutorial.content != TutorialContent.TUTORIAL_CONTENT) {
+                localRepository.addNote(userId, existingTutorial.copy(content = TutorialContent.TUTORIAL_CONTENT))
+            }
+
             if (seeded && existingTutorial != null && !serverIdMissing) {
                 Log.d(TAG, "Tutorial already seeded + server id present for user: $userId")
                 return

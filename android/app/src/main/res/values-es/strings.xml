@@ -9,6 +9,7 @@
     <string name="menu_language">Idioma</string>
     <string name="menu_manage_subscription">Gestionar Suscripción</string>
     <string name="menu_appearance">Apariencia</string>
+    <string name="menu_privacy_policy">Política de privacidad</string>
     <string name="menu_sign_out">Cerrar sesi\u00f3n</string>
     <string name="menu_delete_account">Eliminar cuenta</string>
     <string name="add">A\u00f1adir</string>

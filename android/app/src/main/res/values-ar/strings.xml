@@ -9,6 +9,7 @@
     <string name="menu_language">اللغة</string>
     <string name="menu_manage_subscription">إدارة الاشتراك</string>
     <string name="menu_appearance">المظهر</string>
+    <string name="menu_privacy_policy">سياسة الخصوصية</string>
     <string name="menu_sign_out">تسجيل الخروج</string>
     <string name="menu_delete_account">حذف الحساب</string>
     <string name="add">إضافة</string>

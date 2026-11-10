@@ -70,7 +70,6 @@ private val TurboLightIconTile = Color(0xFFEEE8FA)
 /** The three Pro features: everything else in ScribeAI is free. */
 enum class ProFeature { PODCAST, INFOGRAPHIC, MEETING_BOT }
 
-private const val TURBO_TERMS_URL = "https://scribeai.online/terms"
 private const val PLANS_TIMEOUT_MS = 8_000L
 
 /**
@@ -367,7 +366,7 @@ private fun TurboPaywallContent(
                     Text(stringResource(R.string.restore_purchases), color = TurboLightTextSecondary, fontSize = 13.sp)
                 }
                 TextButton(onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(TURBO_TERMS_URL))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(com.kreativekoala.scribeai.utils.LegalLinks.TERMS_URL))
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     try { termsContext.startActivity(intent) } catch (_: Exception) {}
                 }) {

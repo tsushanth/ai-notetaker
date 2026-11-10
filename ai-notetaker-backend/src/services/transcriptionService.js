@@ -337,7 +337,7 @@ class TranscriptionService {
    */
   async getRecording(userId, recordingId) {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from('recordings')
         .select('*')
         .eq('id', recordingId)
@@ -366,7 +366,7 @@ class TranscriptionService {
     const offset = (page - 1) * limit;
 
     try {
-      const { data, error, count } = await supabase
+      const { data, error, count } = await supabaseAdmin
         .from('recordings')
         .select('*', { count: 'exact' })
         .eq('user_id', userId)
@@ -403,7 +403,7 @@ class TranscriptionService {
       await storageService.deleteFile(recording.storage_path);
 
       // Delete database record
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from('recordings')
         .delete()
         .eq('id', recordingId)

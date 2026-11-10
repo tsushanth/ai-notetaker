@@ -24,6 +24,5 @@ Students, professionals, learners, and researchers.
 
 ## Platforms
 
-Available as a web app, and as native iOS and Android apps:
-- iOS: https://apps.apple.com/us/app/scribe-ai-learn/id6755475602
+Available as a web app and an Android app:
 - Android: https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai

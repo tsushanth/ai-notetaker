@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Strings for the recording service, the recording notification and the recording screen's progress and failure
+     texts. Kept in their own file so they do not collide with the large per-locale strings.xml edits in flight;
+     other locales fall back to English until translated. -->
+<resources>
+    <!-- Notification -->
+    <string name="rec_channel_recording">Recording</string>
+    <string name="rec_channel_saved">Saved recordings</string>
+    <string name="rec_notification_recording">Recording voice note</string>
+    <string name="rec_notification_paused">Recording paused</string>
+    <string name="rec_notification_text">Tap to return to ScribeAI</string>
+    <string name="rec_action_pause">Pause</string>
+    <string name="rec_action_resume">Resume</string>
+    <string name="rec_action_stop">Stop</string>
+    <string name="rec_notification_saved_title">Recording saved</string>
+    <string name="rec_saved_generic">Your recording was stopped and kept. Open ScribeAI to send it.</string>
+    <string name="rec_saved_low_storage">Storage is almost full, so the recording was stopped and kept. Open ScribeAI to send it.</string>
+    <string name="rec_saved_low_battery">The battery is very low, so the recording was stopped and kept. Open ScribeAI to send it.</string>
+    <string name="rec_saved_max_length">The recording reached the maximum length and was kept. Open ScribeAI to send it.</string>
+    <string name="rec_saved_audio_taken">Another app took over the audio, so the recording was stopped and kept. Open ScribeAI to send it.</string>
+
+    <!-- Short warnings (notification line) -->
+    <string name="rec_warn_mic_silenced">Another app is using the microphone</string>
+    <string name="rec_warn_no_sound_short">No sound detected</string>
+    <string name="rec_warn_low_storage">Storage almost full</string>
+    <string name="rec_warn_low_battery">Battery low</string>
+    <string name="rec_warn_audio_taken">Paused: another app is using audio</string>
+
+    <!-- Live warnings on the recording screen -->
+    <string name="rec_warn_no_sound_long">No sound detected. Check that ScribeAI is allowed to use the microphone and that no other app is using it.</string>
+    <string name="rec_warn_low_sound_long">Very quiet. Move the phone closer to the speaker and make sure the microphone is not covered.</string>
+    <string name="rec_warn_mic_silenced_long">Another app is using the microphone, so this recording is silent right now.</string>
+    <string name="rec_warn_low_storage_long">Storage is almost full. The recording will stop and be kept if it runs out.</string>
+    <string name="rec_warn_low_battery_long">Battery is low. The recording will stop and be kept if the battery runs out.</string>
+    <string name="rec_paused_transient">Paused while another app uses audio (for example a call). Recording resumes by itself.</string>
+    <string name="rec_paused_audio_taken">Paused because another app took the audio. Tap resume to continue.</string>
+
+    <!-- Leaving while recording -->
+    <string name="rec_leave_title">Recording in progress</string>
+    <string name="rec_leave_text">The recording keeps running in the background. Stop and save it now, or discard it?</string>
+    <string name="rec_stop_and_save">Stop and save</string>
+    <string name="rec_keep_recording">Keep recording</string>
+
+    <!-- Review -->
+    <string name="rec_silent_review">We recorded no sound at all, so there is nothing to transcribe. Check the microphone permission and that no other app is using the microphone, then record again.</string>
+    <string name="rec_send_anyway">Send anyway</string>
+    <string name="rec_record_again">Record again</string>
+
+    <!-- Unsent recordings -->
+    <string name="rec_unsent_title">Unsent recordings</string>
+    <string name="rec_unsent_recovered">Recovered after the app was closed</string>
+    <string name="rec_send">Send</string>
+    <string name="rec_open">Open</string>
+    <string name="rec_sending">Sending…</string>
+
+    <!-- Real progress -->
+    <string name="rec_uploading_percent">Uploading audio %1$d%%</string>
+    <string name="rec_waiting_network">Waiting for a connection. Your recording is safe on this phone.</string>
+    <string name="rec_retry_in">Trying again in %1$d s. Your recording is safe on this phone.</string>
+    <string name="rec_queued">Waiting to send</string>
+    <string name="rec_transcribing_hint">Long recordings can take a few minutes. You can leave this screen.</string>
+
+    <!-- Why it failed -->
+    <string name="rec_fail_silent">We heard no speech: the recording was completely silent. Check that ScribeAI is allowed to use the microphone, that it is not muted and that no other app is using it, then try again.</string>
+    <string name="rec_fail_no_speech">We did not find any speech in this recording. Move closer to the speaker and try again.</string>
+    <string name="rec_fail_language">We could not find speech we can transcribe. If it was in a language other than English, it may not be supported yet.</string>
+    <string name="rec_fail_too_short">This recording was too short to transcribe. Record at least a few seconds of speech.</string>
+    <string name="rec_fail_too_large">This recording is too large to upload. Record it in shorter parts.</string>
+    <string name="rec_fail_daily_limit">You have reached today\'s free limit. Your recording is saved; try again later.</string>
+    <string name="rec_fail_service">Our transcription service had a problem. Your recording is safe, try again in a moment.</string>
+    <string name="rec_fail_network">We could not reach the server. Your recording is safe on this phone.</string>
+    <string name="rec_fail_auth">Please sign in again. Your recording is safe on this phone.</string>
+    <string name="rec_fail_unknown">Something went wrong with this recording.</string>
+
+    <!-- Could not start -->
+    <string name="rec_err_permission">Microphone permission is needed to record.</string>
+    <string name="rec_err_low_storage">Not enough free storage to start a recording. Free up some space and try again.</string>
+    <string name="rec_err_not_allowed">Android did not allow recording to start. Keep the app open and try again.</string>
+    <string name="rec_err_recorder">The microphone could not be started. Close other apps that use it and try again.</string>
+    <string name="rec_too_short_notice">That recording was too short to keep.</string>
+</resources>

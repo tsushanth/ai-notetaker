@@ -10,6 +10,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Recording runs in a foreground service of type microphone (Android 14+ needs the type permission). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <!-- Android 13+: the ongoing "Recording" notification is only shown if this is granted; recording works without it. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Advertising ID for TikTok attribution -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
@@ -48,6 +53,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- Started from the recording screen (a visible activity). Not exported: only this app can control it. -->
+        <service
+            android:name=".recording.RecordingService"
+            android:exported="false"
+            android:foregroundServiceType="microphone" />
         <meta-data
             android:name="com.facebook.sdk.ApplicationId"
             android:value="@string/facebook_app_id" />

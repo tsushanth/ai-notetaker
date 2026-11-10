@@ -14,6 +14,7 @@ class ScribeAIApplication : Application() {
         super.onCreate()
         FailureReporter.init(this, "scribeai", "afr_4e157f1621b41e23192afbecf48be0f6", BuildConfig.VERSION_NAME)
         appContext = applicationContext
+        com.kreativekoala.scribeai.recording.AppVisibility.init(this)
         TikTokHelper.initialize(this)
         FacebookSDKHelper.initialize(this)
         ExperimentManager.init(this)

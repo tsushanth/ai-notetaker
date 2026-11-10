@@ -7,15 +7,13 @@ import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.provider.Settings
-import android.media.MediaRecorder
 import android.os.Build
+import android.provider.Settings
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -31,10 +29,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,53 +38,59 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kreativekoala.scribeai.R
+import com.kreativekoala.scribeai.recording.Failure
+import com.kreativekoala.scribeai.recording.FailureKind
+import com.kreativekoala.scribeai.recording.Interruption
+import com.kreativekoala.scribeai.recording.Notice
+import com.kreativekoala.scribeai.recording.PendingRecording
+import com.kreativekoala.scribeai.recording.RecordingPhase
+import com.kreativekoala.scribeai.recording.RecordingSession
+import com.kreativekoala.scribeai.recording.RecordingUi
+import com.kreativekoala.scribeai.recording.RecordingViewModel
+import com.kreativekoala.scribeai.recording.SendPhase
+import com.kreativekoala.scribeai.recording.UploadProgress
 import com.kreativekoala.scribeai.ui.components.TurboRecordButton
 import com.kreativekoala.scribeai.ui.components.TurboWaveform
 import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
-import com.kreativekoala.scribeai.utils.FreeTierErrors
-import com.kreativekoala.scribeai.utils.RecordingErrors
 import com.kreativekoala.scribeai.utils.SubscriptionManager
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
-import java.io.File
-import java.text.SimpleDateFormat
+import java.text.DateFormat
 import java.util.*
-import java.util.concurrent.TimeUnit
 
-// Processing steps for recording
-enum class RecordingStep(val titleResId: Int, val index: Int) {
-    UPLOADING_AUDIO(R.string.step_uploading_audio, 0),
-    TRANSCRIBING_AUDIO(R.string.step_transcribing_audio, 1),
-    IDENTIFYING_SPEAKERS(R.string.step_identifying_speakers, 2),
-    ANALYZING_CONTENT(R.string.step_analyzing_content, 3),
-    SUMMARIZING_KEY_POINTS(R.string.step_summarizing_key_points, 4),
-    FINALIZING_NOTE(R.string.step_finalizing_note, 5)
-}
+private val WarningAmber = Color(0xFFFFB74D)
 
-// Screen states
-sealed class RecordingScreenState {
+// Screen states. The recording itself lives in RecordingService; these are derived from its state, the files on disk
+// and the real sending progress (see RecordingViewModel), so rotation or leaving the screen loses nothing.
+private sealed class RecordingScreenState {
     object Idle : RecordingScreenState()
     object Recording : RecordingScreenState()
     object Paused : RecordingScreenState()
     object ReviewingRecording : RecordingScreenState()
-    data class Processing(
-        val currentStep: RecordingStep,
-        val completedSteps: Set<RecordingStep> = emptySet(),
-        val uploadComplete: Boolean = false
-    ) : RecordingScreenState()
+    data class Processing(val progress: UploadProgress?, val uploaded: Boolean) : RecordingScreenState()
     data class Success(val noteId: String) : RecordingScreenState()
-    /** [keepRecording]: the audio file is still on the device and sending it again may work, so "Try Again" returns to the review screen. */
-    data class Error(val message: String, val keepRecording: Boolean = false) : RecordingScreenState()
+    /** [recordingId] is set when the audio still exists (on the phone or the server) and [failure] says whether a retry can help. */
+    data class Error(val failure: Failure?, val serverText: String?, val recordingId: String?) : RecordingScreenState()
+}
+
+private fun RecordingUi.toScreenState(): RecordingScreenState {
+    if (session.isActive) return if (session.isPaused) RecordingScreenState.Paused else RecordingScreenState.Recording
+    val p = progress
+    val r = review
+    return when {
+        p?.phase == SendPhase.DONE -> RecordingScreenState.Success(p.noteId ?: "")
+        p?.phase == SendPhase.FAILED -> RecordingScreenState.Error(p.failure, r?.failureMessage, r?.id)
+        p != null && r != null -> RecordingScreenState.Processing(p, r.serverRecordingId != null)
+        r?.phase == RecordingPhase.FAILED -> RecordingScreenState.Error(
+            Failure(runCatching { FailureKind.valueOf(r.failureKind ?: "") }.getOrDefault(FailureKind.UNKNOWN)), r.failureMessage, r.id
+        )
+        r != null && r.phase == RecordingPhase.RECORDED -> RecordingScreenState.ReviewingRecording
+        r != null -> RecordingScreenState.Processing(null, r.serverRecordingId != null) // sending was under way: progress arrives shortly
+        else -> RecordingScreenState.Idle
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -98,34 +100,43 @@ fun RecordingScreen(
     subscriptionManager: SubscriptionManager,
     onNavigateBack: () -> Unit,
     onNavigateToNote: (String) -> Unit = {},
-    onSuccess: (noteId: String) -> Unit = {}
+    onSuccess: (noteId: String) -> Unit = {},
+    viewModel: RecordingViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-
-    var screenState by remember { mutableStateOf<RecordingScreenState>(RecordingScreenState.Idle) }
-    var recordingDuration by remember { mutableLongStateOf(0L) }
-    var audioFile by remember { mutableStateOf<File?>(null) }
-    var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
-    var recordingTitle by remember { mutableStateOf("") }
+    val ui by viewModel.ui.collectAsState()
+    val title by viewModel.title.collectAsState()
+    val screenState = ui.toScreenState()
 
     // Permission handling
     var hasPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
         )
     }
-
     var permissionDenied by remember { mutableStateOf(false) }
+    var askedNotifications by rememberSaveable { mutableStateOf(false) }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         hasPermission = granted
         if (!granted) permissionDenied = true
+    }
+
+    // Android 13+: the ongoing "Recording" notification is only shown with this permission. Recording works without
+    // it, so whatever the user answers, recording starts.
+    val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+        viewModel.startRecording()
+    }
+
+    fun beginRecording() {
+        val needsNotificationPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        if (needsNotificationPermission && !askedNotifications) {
+            askedNotifications = true
+            notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            viewModel.startRecording()
+        }
     }
 
     // After two refusals Android stops showing the permission dialog and the launcher does nothing, so the button
@@ -148,226 +159,64 @@ fun RecordingScreen(
         }
     }
 
-    // Timer for recording duration
-    LaunchedEffect(screenState) {
-        if (screenState == RecordingScreenState.Recording) {
-            while (screenState == RecordingScreenState.Recording) {
-                delay(1000)
-                recordingDuration += 1000
-            }
-        }
-    }
-
     // Request permission on launch if needed
     LaunchedEffect(Unit) {
-        if (!hasPermission) {
-            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
+        if (!hasPermission) permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 
-    // Keep the screen on while a recording is running: when the screen turns off Android stops giving the app
-    // microphone audio, and a lecture recorded that way comes out silent.
-    val view = LocalView.current
-    val keepAwake = screenState == RecordingScreenState.Recording || screenState == RecordingScreenState.Paused
-    DisposableEffect(keepAwake) {
-        if (keepAwake) view.keepScreenOn = true
-        onDispose { if (keepAwake) view.keepScreenOn = false }
-    }
-
-    // Leaving while a recording exists that has not been sent would delete it with no warning: ask first.
-    val hasUnsentRecording = screenState == RecordingScreenState.Recording ||
-        screenState == RecordingScreenState.Paused ||
-        screenState == RecordingScreenState.ReviewingRecording
+    // Back while recording: the recording is running in the background service, so ask what to do with it.
+    // Back from the review screen just leaves: the recording is stored and stays in the unsent list.
+    val recordingActive = screenState is RecordingScreenState.Recording || screenState is RecordingScreenState.Paused
     var showLeaveDialog by remember { mutableStateOf(false) }
-    BackHandler(enabled = hasUnsentRecording) { showLeaveDialog = true }
+    BackHandler(enabled = recordingActive) { showLeaveDialog = true }
+    BackHandler(enabled = screenState is RecordingScreenState.ReviewingRecording) {
+        viewModel.leaveReview()
+        onNavigateBack()
+    }
 
-    // Cleanup on dispose
-    DisposableEffect(Unit) {
-        onDispose {
-            mediaRecorder?.release()
-            mediaRecorder = null
+    // The note counter, once per finished recording.
+    LaunchedEffect(screenState) {
+        val s = screenState
+        if (s is RecordingScreenState.Success && s.noteId.isNotEmpty() && viewModel.markSuccessSeen(s.noteId)) {
+            subscriptionManager.incrementLifetimeNotebooks()
         }
     }
 
-    fun startRecording() {
-        try {
-            val fileName = "recording_${System.currentTimeMillis()}.m4a"
-            val file = File(context.cacheDir, fileName)
-            audioFile = file
-
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(context)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
-            }.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                setAudioEncodingBitRate(128000)
-                setAudioSamplingRate(44100)
-                setOutputFile(file.absolutePath)
-                prepare()
-                start()
-            }
-
-            recordingDuration = 0L
-            screenState = RecordingScreenState.Recording
-            Log.d("RecordingScreen", "Recording started: ${file.absolutePath}")
-        } catch (e: Exception) {
-            Log.e("RecordingScreen", "Failed to start recording", e)
-            screenState = RecordingScreenState.Error(context.getString(R.string.error_start_recording, e.message))
-        }
-    }
-
-    fun pauseRecording() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                mediaRecorder?.pause()
-                screenState = RecordingScreenState.Paused
-            }
-        } catch (e: Exception) {
-            Log.e("RecordingScreen", "Failed to pause recording", e)
-        }
-    }
-
-    fun resumeRecording() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                mediaRecorder?.resume()
-                screenState = RecordingScreenState.Recording
-            }
-        } catch (e: Exception) {
-            Log.e("RecordingScreen", "Failed to resume recording", e)
-        }
-    }
-
-    fun stopRecording() {
-        try {
-            mediaRecorder?.apply {
-                stop()
-                release()
-            }
-            mediaRecorder = null
-            screenState = RecordingScreenState.ReviewingRecording
-            Log.d("RecordingScreen", "Recording stopped. File size: ${audioFile?.length() ?: 0}")
-        } catch (e: Exception) {
-            Log.e("RecordingScreen", "Failed to stop recording", e)
-            screenState = RecordingScreenState.Error(context.getString(R.string.error_stop_recording, e.message))
-        }
-    }
-
-    fun discardRecording() {
-        audioFile?.delete()
-        audioFile = null
-        recordingDuration = 0L
-        recordingTitle = ""
-        screenState = RecordingScreenState.Idle
-    }
-
-    fun processRecording() {
-        val file = audioFile ?: return
-        val token = authManager.getCurrentToken() ?: run {
-            screenState = RecordingScreenState.Error(context.getString(R.string.error_not_authenticated))
-            return
-        }
-
-        scope.launch {
-            try {
-                // Start processing UI
-                screenState = RecordingScreenState.Processing(
-                    currentStep = RecordingStep.UPLOADING_AUDIO
-                )
-
-                // Step 1: Upload audio
-                val recordingId = uploadAudio(file, token, recordingTitle)
-
-                if (recordingId == null) {
-                    // The audio is still in the cache: let "Try Again" send it again instead of losing the recording.
-                    screenState = RecordingScreenState.Error(context.getString(R.string.error_upload_failed), keepRecording = true)
-                    return@launch
-                }
-
-                // Update to show upload complete
-                screenState = RecordingScreenState.Processing(
-                    currentStep = RecordingStep.TRANSCRIBING_AUDIO,
-                    completedSteps = setOf(RecordingStep.UPLOADING_AUDIO),
-                    uploadComplete = true
-                )
-
-                // Step 2: Start transcription
-                val outcome = startTranscription(recordingId, token)
-                val result = outcome.data
-
-                if (result == null) {
-                    // HTTP 429 = daily free-tier backstop: plain message from the server, not a generic failure.
-                    screenState = RecordingScreenState.Error(
-                        outcome.limitMessage ?: context.getString(R.string.error_transcribe_failed),
-                        keepRecording = RecordingErrors.canRetrySameAudio(outcome.httpCode)
-                    )
-                    return@launch
-                }
-
-                // Animate through remaining steps
-                val steps = listOf(
-                    RecordingStep.TRANSCRIBING_AUDIO,
-                    RecordingStep.IDENTIFYING_SPEAKERS,
-                    RecordingStep.ANALYZING_CONTENT,
-                    RecordingStep.SUMMARIZING_KEY_POINTS,
-                    RecordingStep.FINALIZING_NOTE
-                )
-
-                val completedSteps = mutableSetOf(RecordingStep.UPLOADING_AUDIO)
-
-                for (step in steps) {
-                    screenState = RecordingScreenState.Processing(
-                        currentStep = step,
-                        completedSteps = completedSteps.toSet(),
-                        uploadComplete = true
-                    )
-                    delay(800) // Brief delay to show progress
-                    completedSteps.add(step)
-                }
-
-                // Success!
-                val noteId = result.optString("note_id", "")
-
-                // Increment lifetime notebooks counter
-                subscriptionManager.incrementLifetimeNotebooks()
-
-                screenState = RecordingScreenState.Success(noteId)
-
-                // Cleanup
-                file.delete()
-
-            } catch (e: Exception) {
-                Log.e("RecordingScreen", "Processing failed", e)
-                screenState = RecordingScreenState.Error(e.message ?: context.getString(R.string.error_processing_failed), keepRecording = audioFile?.exists() == true)
-            }
+    val snackbar = remember { SnackbarHostState() }
+    val noticeText = ui.notice?.let { noticeText(it) }
+    LaunchedEffect(ui.notice) {
+        if (noticeText != null) {
+            snackbar.showSnackbar(noticeText)
+            viewModel.clearNotice()
         }
     }
 
     if (showLeaveDialog) {
         AlertDialog(
             onDismissRequest = { showLeaveDialog = false },
-            title = { Text(stringResource(R.string.discard_recording)) },
-            text = { Text(clockText(recordingDuration)) },
+            title = { Text(stringResource(R.string.rec_leave_title)) },
+            text = { Text(stringResource(R.string.rec_leave_text) + "\n\n" + clockText(ui.session.elapsedMs)) },
             confirmButton = {
-                TextButton(onClick = {
-                    showLeaveDialog = false
-                    mediaRecorder?.release()
-                    mediaRecorder = null
-                    audioFile?.delete()
-                    onNavigateBack()
-                }) { Text(stringResource(R.string.discard), color = AccentRed) }
+                Row {
+                    TextButton(onClick = {
+                        showLeaveDialog = false
+                        viewModel.stopAndDiscard()
+                        onNavigateBack()
+                    }) { Text(stringResource(R.string.discard), color = AccentRed) }
+                    TextButton(onClick = {
+                        showLeaveDialog = false
+                        viewModel.stop()
+                    }) { Text(stringResource(R.string.rec_stop_and_save)) }
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showLeaveDialog = false }) { Text(stringResource(R.string.cancel)) }
+                TextButton(onClick = { showLeaveDialog = false }) { Text(stringResource(R.string.rec_keep_recording)) }
             }
         )
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
@@ -380,9 +229,9 @@ fun RecordingScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (hasUnsentRecording) {
-                            showLeaveDialog = true
-                        } else {
+                        if (recordingActive) showLeaveDialog = true
+                        else {
+                            if (screenState is RecordingScreenState.ReviewingRecording) viewModel.leaveReview()
                             onNavigateBack()
                         }
                     }) {
@@ -393,9 +242,7 @@ fun RecordingScreen(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBackground
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
             )
         },
         containerColor = DarkBackground
@@ -409,49 +256,54 @@ fun RecordingScreen(
                 is RecordingScreenState.Idle -> {
                     IdleContent(
                         hasPermission = hasPermission,
+                        pending = ui.pending,
                         onRequestPermission = { requestMicPermission() },
-                        onStartRecording = { startRecording() }
+                        onStartRecording = { beginRecording() },
+                        onSend = { viewModel.send(it) },
+                        onOpen = { viewModel.review(it) },
+                        onDiscardPending = { viewModel.discard(it) }
                     )
                 }
 
                 is RecordingScreenState.Recording,
                 is RecordingScreenState.Paused -> {
                     RecordingContent(
-                        isRecording = state == RecordingScreenState.Recording,
-                        duration = recordingDuration,
-                        onPause = { pauseRecording() },
-                        onResume = { resumeRecording() },
-                        onStop = { stopRecording() },
-                        onDiscard = { discardRecording() }
+                        isRecording = state is RecordingScreenState.Recording,
+                        duration = ui.session.elapsedMs,
+                        warning = sessionWarningText(ui.session),
+                        onPause = { viewModel.pause() },
+                        onResume = { viewModel.resume() },
+                        onStop = { viewModel.stop() },
+                        onDiscard = { viewModel.stopAndDiscard() }
                     )
                 }
 
                 is RecordingScreenState.ReviewingRecording -> {
+                    val r = ui.review
                     ReviewContent(
-                        duration = recordingDuration,
-                        title = recordingTitle,
-                        onTitleChange = { recordingTitle = it },
-                        onProcess = { processRecording() },
-                        onDiscard = { discardRecording() }
+                        duration = r?.durationMs ?: 0L,
+                        silent = r?.allSilent == true,
+                        title = title,
+                        onTitleChange = { viewModel.title.value = it },
+                        onProcess = { r?.let { viewModel.send(it.id) } },
+                        onDiscard = { r?.let { viewModel.discard(it.id) } }
                     )
                 }
 
                 is RecordingScreenState.Processing -> {
-                    RecordingProcessingContent(
-                        currentStep = state.currentStep,
-                        completedSteps = state.completedSteps,
-                        uploadComplete = state.uploadComplete
-                    )
+                    RecordingProcessingContent(progress = state.progress, uploaded = state.uploaded)
                 }
 
                 is RecordingScreenState.Success -> {
                     SuccessContent(
                         noteId = state.noteId,
                         onViewNote = {
+                            viewModel.finishSuccess()
                             onSuccess(state.noteId)
                             onNavigateToNote(state.noteId)
                         },
                         onGoHome = {
+                            viewModel.finishSuccess()
                             onSuccess(state.noteId)
                             onNavigateBack()
                         }
@@ -459,14 +311,14 @@ fun RecordingScreen(
                 }
 
                 is RecordingScreenState.Error -> {
+                    val id = state.recordingId
+                    val canRetry = id != null && (state.failure?.kind?.retryable == true || state.failure?.kind == FailureKind.DAILY_LIMIT)
                     ErrorContent(
-                        message = state.message,
-                        onRetry = {
-                            screenState = if (state.keepRecording && audioFile?.exists() == true) {
-                                RecordingScreenState.ReviewingRecording
-                            } else {
-                                RecordingScreenState.Idle
-                            }
+                        message = failureText(state.failure, state.serverText),
+                        primaryLabel = stringResource(if (canRetry) R.string.try_again_button else R.string.rec_record_again),
+                        onPrimary = {
+                            if (id == null) return@ErrorContent
+                            if (canRetry) viewModel.retry(id) else viewModel.discard(id)
                         },
                         onGoBack = onNavigateBack
                     )
@@ -476,6 +328,46 @@ fun RecordingScreen(
     }
 }
 
+@Composable
+private fun noticeText(n: Notice): String = stringResource(
+    when (n) {
+        Notice.TOO_SHORT -> R.string.rec_too_short_notice
+        Notice.NO_PERMISSION -> R.string.rec_err_permission
+        Notice.LOW_STORAGE -> R.string.rec_err_low_storage
+        Notice.NOT_ALLOWED -> R.string.rec_err_not_allowed
+        Notice.RECORDER_FAILED -> R.string.rec_err_recorder
+    }
+)
+
+/** The most important thing to tell the user about the recording that is running, or null. */
+@Composable
+private fun sessionWarningText(s: RecordingSession.Snapshot): String? = when {
+    s.interruption == Interruption.FOCUS_TRANSIENT && s.isPaused -> stringResource(R.string.rec_paused_transient)
+    s.interruption == Interruption.FOCUS_LOST && s.isPaused -> stringResource(R.string.rec_paused_audio_taken)
+    RecordingSession.Warning.MIC_SILENCED in s.warnings -> stringResource(R.string.rec_warn_mic_silenced_long)
+    RecordingSession.Warning.NO_SOUND in s.warnings -> stringResource(R.string.rec_warn_no_sound_long)
+    RecordingSession.Warning.LOW_STORAGE in s.warnings -> stringResource(R.string.rec_warn_low_storage_long)
+    RecordingSession.Warning.LOW_BATTERY in s.warnings -> stringResource(R.string.rec_warn_low_battery_long)
+    RecordingSession.Warning.LOW_SOUND in s.warnings -> stringResource(R.string.rec_warn_low_sound_long)
+    else -> null
+}
+
+/** Plain-language reason for a failure. The server's own sentence is used only where it is already user-facing. */
+@Composable
+private fun failureText(f: Failure?, serverText: String?): String = when (f?.kind) {
+    FailureKind.SILENT -> stringResource(R.string.rec_fail_silent)
+    FailureKind.NO_SPEECH -> stringResource(R.string.rec_fail_no_speech)
+    FailureKind.LANGUAGE -> stringResource(R.string.rec_fail_language)
+    FailureKind.TOO_SHORT -> stringResource(R.string.rec_fail_too_short)
+    FailureKind.TOO_LARGE -> stringResource(R.string.rec_fail_too_large)
+    FailureKind.DAILY_LIMIT -> (f.serverText ?: serverText)?.takeIf { it.isNotBlank() } ?: stringResource(R.string.rec_fail_daily_limit)
+    FailureKind.SERVICE -> stringResource(R.string.rec_fail_service)
+    FailureKind.NETWORK -> stringResource(R.string.rec_fail_network)
+    FailureKind.AUTH -> stringResource(R.string.rec_fail_auth)
+    FailureKind.UNKNOWN, null -> (f?.serverText ?: serverText)?.takeIf { it.isNotBlank() } ?: stringResource(R.string.rec_fail_unknown)
+}
+
+
 private fun clockText(millis: Long): String {
     val total = millis / 1000
     return "%02d:%02d:%02d".format(total / 3600, (total % 3600) / 60, total % 60)
@@ -484,16 +376,21 @@ private fun clockText(millis: Long): String {
 @Composable
 private fun IdleContent(
     hasPermission: Boolean,
+    pending: List<PendingRecording>,
     onRequestPermission: () -> Unit,
-    onStartRecording: () -> Unit
+    onStartRecording: () -> Unit,
+    onSend: (String) -> Unit,
+    onOpen: (String) -> Unit,
+    onDiscardPending: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(32.dp))
         Text(
             clockText(0),
             fontSize = 56.sp,
@@ -502,7 +399,12 @@ private fun IdleContent(
         )
         Spacer(Modifier.height(24.dp))
         TurboWaveform(active = false)
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(24.dp))
+
+        if (pending.isNotEmpty()) {
+            PendingList(pending, onSend, onOpen, onDiscardPending)
+            Spacer(Modifier.height(24.dp))
+        }
 
         if (!hasPermission) {
             Text(
@@ -544,10 +446,60 @@ private fun IdleContent(
     }
 }
 
+/** Recordings that were not sent yet: recovered after the app was closed, failed, or still sending. */
+@Composable
+private fun PendingList(
+    pending: List<PendingRecording>,
+    onSend: (String) -> Unit,
+    onOpen: (String) -> Unit,
+    onDiscard: (String) -> Unit
+) {
+    val dateFormat = remember { DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT) }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = CardBackground),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(stringResource(R.string.rec_unsent_title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+            pending.take(3).forEach { p ->
+                Spacer(Modifier.height(12.dp))
+                val inFlight = p.phase == RecordingPhase.UPLOADING || p.phase == RecordingPhase.UPLOADED ||
+                    p.phase == RecordingPhase.TRANSCRIBING || p.phase == RecordingPhase.WAITING
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            formatDuration(p.durationMs) + "  ·  " + dateFormat.format(Date(p.createdAtMs)),
+                            fontSize = 14.sp,
+                            color = TextPrimary
+                        )
+                        val sub = when {
+                            p.phase == RecordingPhase.FAILED -> failureText(
+                                Failure(runCatching { FailureKind.valueOf(p.failureKind ?: "") }.getOrDefault(FailureKind.UNKNOWN)), p.failureMessage
+                            )
+                            p.stopReason == "process_death" -> stringResource(R.string.rec_unsent_recovered)
+                            inFlight -> stringResource(R.string.rec_sending)
+                            else -> null
+                        }
+                        if (sub != null) Text(sub, fontSize = 12.sp, color = TextSecondary, lineHeight = 16.sp)
+                    }
+                    when {
+                        inFlight || p.phase == RecordingPhase.FAILED -> TextButton(onClick = { onOpen(p.id) }) { Text(stringResource(R.string.rec_open)) }
+                        else -> TextButton(onClick = { onSend(p.id) }) { Text(stringResource(R.string.rec_send)) }
+                    }
+                    TextButton(onClick = { onDiscard(p.id) }) { Text(stringResource(R.string.discard), color = AccentRed) }
+                }
+            }
+        }
+    }
+}
+
+
 @Composable
 private fun RecordingContent(
     isRecording: Boolean,
     duration: Long,
+    warning: String?,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onStop: () -> Unit,
@@ -575,6 +527,10 @@ private fun RecordingContent(
         )
         Spacer(Modifier.height(24.dp))
         TurboWaveform(active = isRecording)
+        if (warning != null) {
+            Spacer(Modifier.height(16.dp))
+            Text(warning, fontSize = 14.sp, color = WarningAmber, textAlign = TextAlign.Center, lineHeight = 20.sp)
+        }
         Spacer(Modifier.weight(1f))
 
         // Control buttons
@@ -647,6 +603,7 @@ private fun RecordingContent(
 @Composable
 private fun ReviewContent(
     duration: Long,
+    silent: Boolean,
     title: String,
     onTitleChange: (String) -> Unit,
     onProcess: () -> Unit,
@@ -684,6 +641,18 @@ private fun ReviewContent(
             color = TextSecondary
         )
 
+        if (silent) {
+            // Nothing was heard for the whole recording: sending it would only cost a server call.
+            Spacer(Modifier.height(16.dp))
+            Text(
+                stringResource(R.string.rec_silent_review),
+                fontSize = 14.sp,
+                color = WarningAmber,
+                textAlign = TextAlign.Center,
+                lineHeight = 20.sp
+            )
+        }
+
         Spacer(Modifier.height(32.dp))
 
         // Title input
@@ -718,13 +687,17 @@ private fun ReviewContent(
         ) {
             Icon(Icons.Default.AutoAwesome, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.process_recording), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                stringResource(if (silent) R.string.rec_send_anyway else R.string.process_recording),
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
 
         Spacer(Modifier.height(12.dp))
 
         TextButton(onClick = onDiscard) {
-            Text(stringResource(R.string.discard_recording), color = TextSecondary)
+            Text(stringResource(if (silent) R.string.rec_record_again else R.string.discard_recording), color = TextSecondary)
         }
 
         Spacer(Modifier.height(24.dp))
@@ -732,12 +705,26 @@ private fun ReviewContent(
 }
 
 @Composable
-private fun RecordingProcessingContent(
-    currentStep: RecordingStep,
-    completedSteps: Set<RecordingStep>,
-    uploadComplete: Boolean
-) {
-    val steps = RecordingStep.entries
+private fun RecordingProcessingContent(progress: UploadProgress?, uploaded: Boolean) {
+    val phase = progress?.phase ?: SendPhase.QUEUED
+    val uploadDone = uploaded || phase == SendPhase.TRANSCRIBING || phase == SendPhase.DONE
+    val waiting = phase == SendPhase.WAITING_RETRY
+
+    // Seconds until the next automatic retry, counted down on screen.
+    var secondsLeft by remember(progress?.retryAtMs) { mutableStateOf(secondsUntil(progress?.retryAtMs)) }
+    LaunchedEffect(progress?.retryAtMs) {
+        while (progress?.retryAtMs != null) {
+            secondsLeft = secondsUntil(progress.retryAtMs)
+            delay(1000)
+        }
+    }
+
+    val uploadTitle = when {
+        uploadDone -> stringResource(R.string.step_uploading_audio)
+        phase == SendPhase.UPLOADING -> stringResource(R.string.rec_uploading_percent, progress?.percent ?: 0)
+        phase == SendPhase.QUEUED -> stringResource(R.string.rec_queued)
+        else -> stringResource(R.string.step_uploading_audio)
+    }
 
     Column(
         modifier = Modifier
@@ -747,84 +734,72 @@ private fun RecordingProcessingContent(
     ) {
         Spacer(Modifier.height(16.dp))
 
-        // Progress steps
-        steps.forEachIndexed { index, step ->
-            val isCompleted = step in completedSteps
-            val isCurrent = step == currentStep && step !in completedSteps
-
-            ProcessingStepItem(
-                title = stringResource(step.titleResId),
-                isCompleted = isCompleted,
-                isCurrent = isCurrent,
-                isLast = index == steps.lastIndex
+        // Two steps, both real: the upload is measured in bytes sent, the transcription ends when the server says so.
+        ProcessingStepItem(
+            title = uploadTitle,
+            isCompleted = uploadDone,
+            isCurrent = !uploadDone,
+            isLast = false
+        )
+        if (phase == SendPhase.UPLOADING && !uploadDone) {
+            LinearProgressIndicator(
+                progress = { (progress?.percent ?: 0) / 100f },
+                modifier = Modifier.fillMaxWidth().padding(start = 48.dp, bottom = 8.dp),
+                color = Purple80
             )
         }
+        ProcessingStepItem(
+            title = stringResource(R.string.step_transcribing_audio),
+            isCompleted = false,
+            isCurrent = uploadDone,
+            isLast = true
+        )
 
-        Spacer(Modifier.height(40.dp))
+        Spacer(Modifier.height(32.dp))
 
-        // Upload complete message
-        AnimatedVisibility(
-            visible = uploadComplete,
-            enter = fadeIn() + slideInVertically()
-        ) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = CardBackground
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Icons.Default.CloudDone,
-                        contentDescription = null,
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(
-                        stringResource(R.string.upload_complete_safe),
-                        fontSize = 14.sp,
-                        color = TextSecondary
-                    )
-                }
-            }
+        val statusText = when {
+            waiting && progress?.retryAtMs != null && secondsLeft > 0 -> stringResource(R.string.rec_retry_in, secondsLeft)
+            waiting -> stringResource(R.string.rec_waiting_network)
+            uploadDone -> stringResource(R.string.rec_transcribing_hint)
+            else -> stringResource(R.string.processing_info)
         }
-
-        Spacer(Modifier.height(24.dp))
-
-        // Info card about processing time
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = CardBackground
-            ),
+            colors = CardDefaults.cardColors(containerColor = CardBackground),
             shape = RoundedCornerShape(16.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.Top
-            ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
                 Icon(
-                    Icons.Default.Info,
+                    if (waiting) Icons.Default.CloudOff else Icons.Default.Info,
                     contentDescription = null,
                     tint = Purple80,
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(12.dp))
-                Text(
-                    stringResource(R.string.processing_info),
-                    fontSize = 14.sp,
-                    color = TextSecondary,
-                    lineHeight = 20.sp
-                )
+                Text(statusText, fontSize = 14.sp, color = TextSecondary, lineHeight = 20.sp)
+            }
+        }
+
+        if (uploadDone) {
+            Spacer(Modifier.height(16.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = CardBackground),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CloudDone, contentDescription = null, tint = Color(0xFF4CAF50), modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Text(stringResource(R.string.upload_complete_safe), fontSize = 14.sp, color = TextSecondary)
+                }
             }
         }
     }
 }
+
+private fun secondsUntil(timeMs: Long?): Int =
+    if (timeMs == null) 0 else ((timeMs - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(0)
+
 
 @Composable
 private fun ProcessingStepItem(
@@ -979,12 +954,14 @@ private fun SuccessContent(
 @Composable
 private fun ErrorContent(
     message: String,
-    onRetry: () -> Unit,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
     onGoBack: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -1017,7 +994,7 @@ private fun ErrorContent(
         Spacer(Modifier.height(48.dp))
 
         Button(
-            onClick = onRetry,
+            onClick = onPrimary,
             colors = ButtonDefaults.buttonColors(containerColor = Purple80),
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier
@@ -1026,7 +1003,7 @@ private fun ErrorContent(
         ) {
             Icon(Icons.Default.Refresh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.try_again_button), fontSize = 16.sp)
+            Text(primaryLabel, fontSize = 16.sp)
         }
 
         Spacer(Modifier.height(12.dp))
@@ -1036,6 +1013,7 @@ private fun ErrorContent(
         }
     }
 }
+
 
 // Helper functions
 private fun formatDuration(millis: Long): String {
@@ -1050,101 +1028,6 @@ private fun formatDuration(millis: Long): String {
     }
 }
 
-private suspend fun uploadAudio(file: File, token: String, title: String): String? {
-    return withContext(Dispatchers.IO) {
-        try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(60, TimeUnit.SECONDS)
-                .writeTimeout(120, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .build()
-
-            val requestBody = MultipartBody.Builder()
-                .setType(MultipartBody.FORM)
-                .addFormDataPart(
-                    "audio",
-                    file.name,
-                    file.asRequestBody("audio/mp4".toMediaType())
-                )
-                .addFormDataPart("title", title.ifEmpty {
-                    "Recording ${SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date())}"
-                })
-                .build()
-
-            val request = Request.Builder()
-                .url("https://ai-notetaker-backend.fly.dev/api/recordings/upload")
-                .addHeader("Authorization", "Bearer $token")
-                .post(requestBody)
-                .build()
-
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string()
-
-            Log.d("RecordingScreen", "Upload response: ${response.code} - $responseBody")
-
-            if (response.isSuccessful && responseBody != null) {
-                val json = JSONObject(responseBody)
-                val data = json.optJSONObject("data")
-                data?.optString("id")
-            } else {
-                Log.e("RecordingScreen", "Upload failed: ${response.code}")
-                null
-            }
-        } catch (e: Exception) {
-            Log.e("RecordingScreen", "Upload error", e)
-            null
-        }
-    }
-}
-
-/** [httpCode] is null when no response came back (network error). */
-private class TranscriptionOutcome(val data: JSONObject?, val limitMessage: String? = null, val httpCode: Int? = null)
-
-private suspend fun startTranscription(recordingId: String, token: String): TranscriptionOutcome {
-    return withContext(Dispatchers.IO) {
-        try {
-            val client = OkHttpClient.Builder()
-                .connectTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(300, TimeUnit.SECONDS) // 5 min for transcription
-                .build()
-
-            val json = JSONObject().apply {
-                put("recording_id", recordingId)
-            }
-
-            val requestBody = json.toString()
-                .toRequestBody("application/json".toMediaType())
-
-            val request = Request.Builder()
-                .url("https://ai-notetaker-backend.fly.dev/api/recordings/transcribe")
-                .addHeader("Authorization", "Bearer $token")
-                .addHeader("Content-Type", "application/json")
-                .post(requestBody)
-                .build()
-
-            val response = client.newCall(request).execute()
-            val responseBody = response.body?.string()
-
-            Log.d("RecordingScreen", "Transcription response: ${response.code} - $responseBody")
-
-            if (response.isSuccessful && responseBody != null) {
-                val responseJson = JSONObject(responseBody)
-                TranscriptionOutcome(responseJson.optJSONObject("data"))
-            } else {
-                Log.e("RecordingScreen", "Transcription failed: ${response.code}")
-                if (response.code == 429) {
-                    TranscriptionOutcome(null, FreeTierErrors.dailyLimitMessage(responseBody), response.code)
-                } else {
-                    // 422 carries the reason (for example "the recording is completely silent, check the microphone").
-                    TranscriptionOutcome(null, RecordingErrors.serverMessage(response.code, responseBody), response.code)
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("RecordingScreen", "Transcription error", e)
-            TranscriptionOutcome(null)
-        }
-    }
-}
 private fun Context.findActivity(): Activity? {
     var c: Context? = this
     while (c is ContextWrapper) {

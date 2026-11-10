@@ -142,6 +142,9 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
+    // Background sending of recordings (retry with backoff, survives process death)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+
     // Google Play In-App Review
     implementation(libs.play.review.ktx)
 

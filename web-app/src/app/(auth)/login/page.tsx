@@ -8,6 +8,7 @@ import { authApi } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
 import { safeNext } from '@/lib/session';
+import { GOOGLE_UNAVAILABLE_MESSAGE } from '@/components/GoogleSignInButton';
 
 const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
@@ -41,10 +42,17 @@ export default function LoginPage() {
   useEffect(() => {
     let cancelled = false;
 
+    let waitedMs = 0;
     const initGoogle = () => {
       if (cancelled) return;
       const { google } = window as any;
       if (!google?.accounts?.id || !googleButtonRef.current) {
+        waitedMs += 100;
+        if (waitedMs >= 10_000) {
+          // The script never loaded (ad blocker or no connection): say so instead of showing an empty page.
+          setError(GOOGLE_UNAVAILABLE_MESSAGE);
+          return;
+        }
         setTimeout(initGoogle, 100);
         return;
       }

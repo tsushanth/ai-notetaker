@@ -11,7 +11,7 @@ import {
   Mic,
   FileText,
   Youtube,
-  Camera,
+  ClipboardPaste,
   Search,
   Loader2,
   Clock,
@@ -23,6 +23,14 @@ import {
   Trash2
 } from 'lucide-react';
 import type { Note } from '@/types';
+
+// The four ways to start a note. Used by the New Note menu and by the empty state, so a new user sees them at once.
+const NEW_NOTE_OPTIONS = [
+  { href: '/notes/new/record', label: 'Record Audio', hint: 'Transcribe voice recordings', Icon: Mic },
+  { href: '/notes/new/upload', label: 'Upload PDF', hint: 'Extract text from documents', Icon: FileText },
+  { href: '/notes/new/youtube', label: 'YouTube Video', hint: 'Generate notes from videos', Icon: Youtube },
+  { href: '/notes/new/text', label: 'Paste Text', hint: 'Create from existing content', Icon: ClipboardPaste },
+];
 
 export default function NotesPage() {
   const router = useRouter();
@@ -139,50 +147,20 @@ export default function NotesPage() {
                 onClick={() => setShowNewNoteMenu(false)}
               />
               <div className="absolute right-0 top-full mt-2 w-56 bg-[var(--card-background)] border border-[var(--border)] rounded-lg shadow-lg z-50 overflow-hidden">
-                <Link
-                  href="/notes/new/record"
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-variant)] transition"
-                  onClick={() => setShowNewNoteMenu(false)}
-                >
-                  <Mic className="w-5 h-5 text-[var(--accent-purple)]" />
-                  <div>
-                    <p className="font-medium">Record Audio</p>
-                    <p className="text-xs text-[var(--text-muted)]">Transcribe voice recordings</p>
-                  </div>
-                </Link>
-                <Link
-                  href="/notes/new/upload"
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-variant)] transition"
-                  onClick={() => setShowNewNoteMenu(false)}
-                >
-                  <FileText className="w-5 h-5 text-[var(--accent-purple)]" />
-                  <div>
-                    <p className="font-medium">Upload PDF</p>
-                    <p className="text-xs text-[var(--text-muted)]">Extract text from documents</p>
-                  </div>
-                </Link>
-                <Link
-                  href="/notes/new/youtube"
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-variant)] transition"
-                  onClick={() => setShowNewNoteMenu(false)}
-                >
-                  <Youtube className="w-5 h-5 text-[var(--accent-purple)]" />
-                  <div>
-                    <p className="font-medium">YouTube Video</p>
-                    <p className="text-xs text-[var(--text-muted)]">Generate notes from videos</p>
-                  </div>
-                </Link>
-                <Link
-                  href="/notes/new/text"
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-variant)] transition"
-                  onClick={() => setShowNewNoteMenu(false)}
-                >
-                  <Camera className="w-5 h-5 text-[var(--accent-purple)]" />
-                  <div>
-                    <p className="font-medium">Paste Text</p>
-                    <p className="text-xs text-[var(--text-muted)]">Create from existing content</p>
-                  </div>
-                </Link>
+                {NEW_NOTE_OPTIONS.map(({ href, label, hint, Icon }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface-variant)] transition"
+                    onClick={() => setShowNewNoteMenu(false)}
+                  >
+                    <Icon className="w-5 h-5 text-[var(--accent-purple)]" />
+                    <div>
+                      <p className="font-medium">{label}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{hint}</p>
+                    </div>
+                  </Link>
+                ))}
               </div>
             </>
           )}
@@ -229,16 +207,24 @@ export default function NotesPage() {
           <p className="text-[var(--text-secondary)] mb-6">
             {searchQuery
               ? 'Try a different search term'
-              : 'Create your first note by recording audio, uploading a PDF, or pasting text'}
+              : 'Pick one to make your first note. Everything here is free.'}
           </p>
           {!searchQuery && (
-            <button
-              onClick={() => setShowNewNoteMenu(true)}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              <Plus size={20} />
-              Create Note
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left">
+              {NEW_NOTE_OPTIONS.map(({ href, label, hint, Icon }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg border border-[var(--border)] hover:bg-[var(--surface-variant)] transition"
+                >
+                  <Icon className="w-5 h-5 shrink-0 text-[var(--accent-purple)]" />
+                  <div>
+                    <p className="font-medium">{label}</p>
+                    <p className="text-xs text-[var(--text-muted)]">{hint}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
       )}

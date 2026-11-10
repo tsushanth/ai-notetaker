@@ -186,11 +186,13 @@ Pro is optional and only needed for those three features.
 
 ## 🔒 Privacy & Security
 
-- Your notes are private and encrypted
-- AI processing happens securely
-- We never share your data
-- You can delete notes anytime
+- Your notes are private to your account unless you share a link
+- To transcribe and summarize, audio is sent to Deepgram and text is sent to Anthropic (Claude)
+- We do not sell your data or use it to train AI models
+- Connections to our servers use HTTPS
+- You can delete notes or your account anytime
 - Export your data when needed
+- Full details: scribeai.online/privacy
 
 ---
 
@@ -243,7 +245,7 @@ Once you've created a note, explore five powerful AI features through the tabs:
 ScribeAI is free to use. Podcasts, infographics and the meeting bot are part of the optional Pro plan.
 
 **Best Practices:**
-For best results, use quiet environments for recording, ensure good lighting for scans, and provide clear, structured content. Your data is private, encrypted, and never shared.
+For best results, use quiet environments for recording, ensure good lighting for scans, and provide clear, structured content. Your notes are private to your account, and we do not sell your data. See scribeai.online/privacy for details.
 
 Ready to start? Tap the + button on your home screen to create your first note!"""
 
@@ -288,7 +290,7 @@ Professionals can record meetings and presentations, upload training materials a
 Researchers benefit from uploading research papers and articles, generating summaries of key findings and methodologies, using chat to explore complex concepts in depth, creating flashcards for specialized terminology, and generating comprehension quizzes.
 
 **Privacy and Security:**
-Your notes are completely private and encrypted. All AI processing happens securely on our servers. We never share, sell, or use your data for training. You maintain full control—delete notes anytime and export your data whenever needed.
+Your notes are private to your account. To transcribe and summarize, audio is sent to Deepgram and text is sent to Anthropic (Claude). We do not sell your data or use it to train AI models, and connections to our servers use HTTPS. You can delete notes or your account anytime and export your data whenever needed. Full details are in the privacy policy at scribeai.online/privacy.
 
 **Getting Started:**
 Start exploring by reviewing the tabs at the top of this tutorial note. Try the Summary tab to see condensed versions, the Podcast tab to hear this content, the Quiz tab to test your understanding, the Chat tab to ask questions, and the Flashcards tab to study key concepts.
@@ -332,7 +334,7 @@ For researchers: upload research papers, generate summaries of findings, use cha
 
 A few tips for getting the best results. When recording, use a quiet environment and speak clearly. When uploading documents, ensure text is readable and use high-quality scans. When scanning physical materials, use good lighting and keep pages flat.
 
-Your privacy is paramount. All your notes are private and encrypted. AI processing happens securely, and we never share your data. You can delete notes anytime and export your data whenever you need it.
+Your privacy matters. Your notes are private to your account. To transcribe and summarize, audio goes to Deepgram and text goes to Anthropic, and we do not sell your data or use it to train AI models. You can delete notes or your account anytime and export your data whenever you need it. The full privacy policy is at scribeai dot online slash privacy.
 
 So, what should you do next? Try exploring the other tabs in this tutorial note. Check out the Summary tab to see different length summaries. Try the Quiz tab to test what you've learned about Scribe AI. Use the Chat tab to ask any questions. And review the Flashcards tab to see key concepts.
 

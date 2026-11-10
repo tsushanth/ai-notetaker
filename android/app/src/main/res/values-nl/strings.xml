@@ -9,6 +9,7 @@
     <string name="menu_language">Taal</string>
     <string name="menu_manage_subscription">Abonnement Beheren</string>
     <string name="menu_appearance">Weergave</string>
+    <string name="menu_privacy_policy">Privacybeleid</string>
     <string name="menu_sign_out">Uitloggen</string>
     <string name="menu_delete_account">Account verwijderen</string>
     <string name="add">Toevoegen</string>

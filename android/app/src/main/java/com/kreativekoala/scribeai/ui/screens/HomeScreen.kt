@@ -36,6 +36,7 @@ import com.kreativekoala.scribeai.data.repository.AccountRepository
 import com.kreativekoala.scribeai.ui.components.DeleteAccountRetentionDialog
 import com.kreativekoala.scribeai.ui.components.SignOutRetentionDialog
 import com.kreativekoala.scribeai.ui.components.ThemeSelectionDialog
+import com.kreativekoala.scribeai.utils.LegalLinks
 import com.kreativekoala.scribeai.ui.components.TurboChip
 import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
@@ -218,6 +219,32 @@ fun HomeScreen(
                             },
                             leadingIcon = {
                                 Icon(Icons.Default.Palette, contentDescription = null, tint = Purple80)
+                            }
+                        )
+                        HorizontalDivider()
+
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_privacy_policy)) },
+                            onClick = {
+                                showMenu = false
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(LegalLinks.PRIVACY_URL))
+                                try { context.startActivity(intent) } catch (_: Exception) {}
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.PrivacyTip, contentDescription = null, tint = Purple80)
+                            }
+                        )
+                        HorizontalDivider()
+
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.pro_terms)) },
+                            onClick = {
+                                showMenu = false
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(LegalLinks.TERMS_URL))
+                                try { context.startActivity(intent) } catch (_: Exception) {}
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Description, contentDescription = null, tint = Purple80)
                             }
                         )
                         HorizontalDivider()

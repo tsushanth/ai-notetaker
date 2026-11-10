@@ -9,6 +9,7 @@
     <string name="menu_language">Dil</string>
     <string name="menu_manage_subscription">Aboneliği Yönet</string>
     <string name="menu_appearance">Görünüm</string>
+    <string name="menu_privacy_policy">Gizlilik Politikası</string>
     <string name="menu_sign_out">Çıkış Yap</string>
     <string name="menu_delete_account">Hesabı Sil</string>
     <string name="add">Ekle</string>

@@ -8,6 +8,7 @@
     <string name="menu">Menu</string>
     <string name="menu_language">Ngôn ngữ</string>
     <string name="menu_appearance">Giao diện</string>
+    <string name="menu_privacy_policy">Chính sách quyền riêng tư</string>
     <string name="menu_sign_out">Đăng xuất</string>
     <string name="menu_delete_account">Xóa tài khoản</string>
     <string name="add">Thêm</string>

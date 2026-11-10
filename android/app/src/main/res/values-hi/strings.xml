@@ -9,6 +9,7 @@
     <string name="menu_language">\u092d\u093e\u0937\u093e</string>
     <string name="menu_manage_subscription">सदस्यता प्रबंधित करें</string>
     <string name="menu_appearance">\u0926\u093f\u0916\u093e\u0935\u091f</string>
+    <string name="menu_privacy_policy">गोपनीयता नीति</string>
     <string name="menu_sign_out">\u0938\u093e\u0907\u0928 \u0906\u0909\u091f</string>
     <string name="menu_delete_account">\u0916\u093e\u0924\u093e \u0939\u091f\u093e\u090f\u0902</string>
     <string name="add">\u091c\u094b\u0921\u093c\u0947\u0902</string>

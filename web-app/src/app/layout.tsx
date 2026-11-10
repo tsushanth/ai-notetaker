@@ -16,6 +16,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://scribeai.online'),
+  alternates: { canonical: './' },
   title: 'Scribe AI - Smart Note Taking',
   description: 'Transform your learning with AI-powered notes, quizzes, flashcards, and podcasts. Record, upload, or paste content and let AI help you study smarter.',
   keywords: ['note taking', 'AI', 'study', 'flashcards', 'quiz', 'learning', 'transcription'],

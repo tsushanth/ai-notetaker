@@ -32,3 +32,22 @@ test('no web source file links to scribeai.app (a different company)', () => {
   const offenders = walk(join(here, '..', 'src')).filter((f) => /\.(tsx?|css)$/.test(f) && readFileSync(f, 'utf8').includes('scribeai.app'));
   assert.deepEqual(offenders, []);
 });
+
+test('the privacy policy names the services the product actually sends data to', () => {
+  const page = readFileSync(join(here, '..', 'src', 'app', '(marketing)', 'privacy', 'page.tsx'), 'utf8');
+  for (const name of ['Deepgram', 'Anthropic', 'Supabase', 'Firebase', 'Meta', 'TikTok', 'advertising ID', 'Stripe']) {
+    assert.ok(page.includes(name), `privacy page should mention ${name}`);
+  }
+  assert.ok(!/mobile application/i.test(page), 'privacy page should cover the website as well as the app');
+});
+
+test('public files carry no App Store link and the sitemap is declared', () => {
+  const root = join(here, '..', 'public');
+  assert.ok(!readFileSync(join(root, 'llms.txt'), 'utf8').includes('apps.apple.com'));
+  assert.ok(readFileSync(join(root, 'robots.txt'), 'utf8').includes('Sitemap: https://scribeai.online/sitemap.xml'));
+});
+
+test('next.config sets the baseline security headers', () => {
+  const cfg = readFileSync(join(here, '..', 'next.config.ts'), 'utf8');
+  for (const h of ['Strict-Transport-Security', 'X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy']) assert.ok(cfg.includes(h), h);
+});

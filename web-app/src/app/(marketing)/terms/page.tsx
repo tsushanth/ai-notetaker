@@ -10,12 +10,12 @@ export default function TermsPage() {
     <div className="py-16">
       <div className="max-w-[900px] mx-auto px-6">
         <h1 className="text-3xl md:text-4xl font-bold mb-2">Terms of Service</h1>
-        <p className="text-[var(--text-muted)] text-sm mb-12">Last updated: December 28, 2025</p>
+        <p className="text-[var(--text-muted)] text-sm mb-12">Last updated: November 10, 2026</p>
 
         <section className="mb-10">
           <h2 className="text-xl font-semibold mb-4">1. Agreement to Terms</h2>
           <p className="text-[var(--text-secondary)] leading-relaxed">
-            By downloading, installing, or using the Scribe AI mobile application (&quot;App&quot;), you agree to be bound
+            By downloading, installing, or using the Scribe AI Android app or website at scribeai.online (together, the &quot;App&quot;), you agree to be bound
             by these Terms of Service. If you do not agree, do not use the App.
           </p>
         </section>
@@ -59,13 +59,13 @@ export default function TermsPage() {
           <h3 className="text-lg font-medium text-[var(--text-secondary)] mb-3">Billing</h3>
           <ul className="list-disc list-inside text-[var(--text-secondary)] space-y-2 mb-4">
             <li>Subscriptions are billed in advance on a recurring basis</li>
-            <li>Payment is processed through Apple App Store or Google Play Store</li>
+            <li>Payment is processed through Google Play (Android app) or Stripe (website)</li>
             <li>Subscriptions automatically renew unless canceled at least 24 hours before the end of the current period</li>
           </ul>
 
           <h3 className="text-lg font-medium text-[var(--text-secondary)] mb-3">Refunds</h3>
           <p className="text-[var(--text-secondary)]">
-            Refunds are handled by Apple or Google according to their respective refund policies.
+            Refunds for Google Play purchases are handled by Google according to its refund policy. For website purchases, contact support@scribeai.online.
           </p>
         </section>
 

@@ -20,6 +20,10 @@ const FLAG_ENV = Object.freeze({
   compete: 'FEATURE_COMPETE',
 });
 
+const DISABLED_PAGE = '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+  + '<title>Scribe AI</title><style>body{background:#0a0a0b;color:#fff;font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center}p{color:#aaa;max-width:320px;line-height:1.5}</style></head>'
+  + '<body><div><h2>This feature is no longer available</h2><p>Your notes, summaries, chat, quizzes, flashcards and podcasts are unchanged. Use the Notes tab or the menu to open them.</p></div></body></html>';
+
 const ON = new Set(['1', 'true', 'on', 'yes']);
 
 function isEnabled(flag, env = process.env) {
@@ -41,7 +45,11 @@ function requireFeature(flag, { page = false, except = null } = {}) {
   return (req, res, next) => {
     if (except && except.test(req.path)) return next();
     if (isEnabled(flag)) return next();
-    if (page) return res.status(404).type('text/plain').send('Not found');
+    if (page) {
+      // Released Android apps still open these pages inside a tab: show a short message instead of a bare "Not found".
+      res.set({ 'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'", 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+      return res.status(404).type('html').send(DISABLED_PAGE);
+    }
     return res.status(404).json({ success: false, code: 'FEATURE_DISABLED', error: 'This feature is not available.' });
   };
 }

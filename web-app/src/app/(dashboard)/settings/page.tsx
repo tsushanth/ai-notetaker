@@ -508,10 +508,10 @@ function SettingsContent() {
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-sm text-[var(--text-muted)] mb-3">
-                      Subscribe on iOS or Android to unlock all features
+                      Pro plans are not available here right now. Pro adds podcasts, infographics and the meeting bot; everything else is free.
                     </p>
                     <p className="text-xs text-[var(--text-muted)]">
-                      Your subscription will sync automatically
+                      A subscription from the Android app will sync automatically
                     </p>
                   </div>
                 )}

@@ -12,6 +12,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const emailOutreachService = require('../services/sendgridOutreachService');
 const universityScraperService = require('../services/universityScraperService');
 const companyScraperService = require('../services/companyScraperService');
+const { webLink, playLink, isStaleOutreachBody } = require('../utils/outreachContent');
 
 // Async handler wrapper
 const asyncHandler = (fn) => (req, res, next) => {
@@ -588,6 +589,20 @@ router.post('/campaigns/:id/send', authenticate, requireAdmin, asyncHandler(asyn
     });
   }
 
+  // Mail queued from the old templates (App Store link, SecureVox) is never sent from this sender.
+  // It stays queued, untouched, so it can be reviewed or removed by hand.
+  const sendable = emails.filter((e) => !isStaleOutreachBody(e.body_html));
+  const skippedStale = emails.length - sendable.length;
+  if (sendable.length === 0) {
+    return res.json({
+      success: true,
+      message: 'Nothing sent: every queued email uses outdated content (App Store link or SecureVox). Re-queue with the current templates.',
+      sent: 0,
+      skippedStale,
+    });
+  }
+  emails.splice(0, emails.length, ...sendable);
+
   // Update campaign status
   if (campaign.status === 'draft') {
     await supabaseAdmin
@@ -628,6 +643,7 @@ router.post('/campaigns/:id/send', authenticate, requireAdmin, asyncHandler(asyn
   res.json({
     success: true,
     data: result,
+    skippedStale,
   });
 }));
 
@@ -646,6 +662,13 @@ router.post('/send-test', authenticate, requireAdmin, asyncHandler(async (req, r
     return res.status(400).json({
       success: false,
       error: 'to, subject, and body are required',
+    });
+  }
+
+  if (isStaleOutreachBody(body)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Body contains an App Store link or SecureVox. Scribe AI is Android and web only.',
     });
   }
 
@@ -736,6 +759,14 @@ router.post('/webhook/ses', asyncHandler(async (req, res) => {
  * Get sample email templates
  */
 router.get('/templates', authenticate, requireAdmin, asyncHandler(async (req, res) => {
+  // Scribe AI is on Android and the web only. Links carry utm_source=email (see utils/outreachContent.js).
+  const links = (content) => ({
+    web: webLink('educator', content),
+    play: playLink('educator', content),
+  });
+  const intro = links('intro');
+  const fu1 = links('followup1');
+  const fu2 = links('followup2');
   const templates = [
     {
       name: 'Educator Introduction',
@@ -743,9 +774,9 @@ router.get('/templates', authenticate, requireAdmin, asyncHandler(async (req, re
       body: `
 <p>Hi {{first_name}},</p>
 
-<p>I'm reaching out because I built <strong>Scribe AI</strong> - a study tool that helps students turn their lecture notes, textbooks, and videos into flashcards, quizzes, and summaries using AI.</p>
+<p>I'm reaching out because I built <strong>Scribe AI</strong> - a study tool that helps students turn their lecture recordings, textbooks, and videos into notes, flashcards, quizzes, and summaries using AI.</p>
 
-<p>I'd love to offer you and your students at {{university}} <strong>free premium access</strong> to try it out this semester.</p>
+<p>It is free to use, and I'd love for you and your students at {{university}} to try it this semester.</p>
 
 <p>Here's what students use it for:</p>
 <ul>
@@ -753,26 +784,21 @@ router.get('/templates', authenticate, requireAdmin, asyncHandler(async (req, re
   <li>Generate practice quizzes from any material</li>
   <li>Create flashcards from textbook chapters</li>
   <li>Summarize long readings quickly</li>
-  <li>Turn any content into a podcast to learn on the go</li>
-  <li>Explore similar topics to deepen understanding</li>
-  <li>Create mind maps to visualize concepts</li>
 </ul>
-<p><em>...and more features coming soon!</em></p>
 
-<p>Would you be open to sharing it with your class? I can set up free access for everyone.</p>
+<p>Would you be open to sharing it with your class?</p>
 
-<p><a href="https://scribeai.online/screenshots/screenshot-1.jpg">See what it looks like →</a></p>
+<p><a href="https://scribeai.online/screenshots/screenshot-1.jpg">See what it looks like</a></p>
 
-<p>Students can download it here:</p>
+<p>Students can use it here:</p>
 <ul>
-  <li><a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iPhone/iPad App Store</a></li>
-  <li><a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android Play Store</a></li>
-  <li><a href="https://scribeai.online">Web App</a></li>
+  <li><a href="${intro.web}">In the browser (scribeai.online)</a></li>
+  <li><a href="${intro.play}">Android app on Google Play</a></li>
 </ul>
 
 <p>Best,<br>
 Sushanth<br>
-Founder, <a href="https://scribeai.online">Scribe AI</a></p>
+Founder, <a href="${intro.web}">Scribe AI</a></p>
       `.trim(),
     },
     {
@@ -783,24 +809,22 @@ Founder, <a href="https://scribeai.online">Scribe AI</a></p>
 
 <p>Just following up on my note about Scribe AI - the free study tool for your students.</p>
 
-<p>A few {{department}} professors at other universities have found it especially useful for:</p>
+<p>It can help with:</p>
 <ul>
-  <li>Reducing repetitive questions during office hours</li>
-  <li>Helping students prepare more effectively for exams</li>
+  <li>Preparing for exams with quizzes and flashcards made from course material</li>
   <li>Making dense course material more accessible</li>
+  <li>Turning a recorded lecture into notes students can search</li>
 </ul>
 
-<p>Happy to give you a personal walkthrough if you're interested, or just set up free access for your class directly.</p>
+<p>Happy to give you a personal walkthrough if you're interested.</p>
 
-<p>Here are the download links to share:</p>
-<ul>
-  <li><a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iOS</a> | <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android</a> | <a href="https://scribeai.online">Web</a></li>
-</ul>
+<p>Links to share: <a href="${fu1.web}">Web</a> | <a href="${fu1.play}">Android</a></p>
 
 <p>Let me know!</p>
 
 <p>Best,<br>
-Sushanth</p>
+Sushanth<br>
+Founder, <a href="${fu1.web}">Scribe AI</a></p>
       `.trim(),
     },
     {
@@ -811,14 +835,15 @@ Sushanth</p>
 
 <p>Wanted to send one last note - I know how busy the semester gets.</p>
 
-<p>If Scribe AI could help your students this term, I'm happy to set up free access anytime. Just reply "interested" and I'll send the details.</p>
+<p>If Scribe AI could help your students this term, just reply "interested" and I'll send a short walkthrough.</p>
 
-<p>Quick links: <a href="https://apps.apple.com/us/app/scribe-ai-learn/id6755475602">iOS</a> | <a href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai">Android</a> | <a href="https://scribeai.online">Web</a></p>
+<p>Quick links: <a href="${fu2.web}">Web</a> | <a href="${fu2.play}">Android</a></p>
 
 <p>If not, no worries at all - I appreciate your time!</p>
 
 <p>Best,<br>
-Sushanth</p>
+Sushanth<br>
+Founder, <a href="${fu2.web}">Scribe AI</a></p>
       `.trim(),
     },
   ];
@@ -1183,227 +1208,7 @@ Sushanth</p>
   });
 }));
 
-// =====================================================
-// SECUREVOX OUTREACH TEMPLATES
-// =====================================================
-
-/**
- * GET /api/outreach/templates/securevox
- * Get SecureVox B2B/B2C email templates
- */
-router.get('/templates/securevox', authenticate, requireAdmin, asyncHandler(async (req, res) => {
-  const templates = [
-    {
-      name: 'Legal Professional Introduction',
-      target_industry: 'legal',
-      subject: 'Transcribe confidential client calls without the cloud',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>As a {{title}} at {{company}}, you handle sensitive client conversations daily. But most transcription tools send your audio to the cloud, creating confidentiality concerns.</p>
-
-<p><strong>SecureVox</strong> is different: 100% offline, on-device transcription powered by OpenAI's Whisper AI. Your recordings never leave your device.</p>
-
-<p>Key benefits for legal professionals:</p>
-<ul>
-  <li>Complete client confidentiality - no cloud uploads ever</li>
-  <li>Works without internet connection</li>
-  <li>Supports 99+ languages with auto-detection</li>
-  <li>Export to TXT, SRT (subtitles), VTT formats</li>
-  <li>Word-level timestamps for easy reference</li>
-</ul>
-
-<p>I'd love to offer you <strong>free access</strong> to try it out. Would a brief demo be helpful?</p>
-
-<p>Best,<br>
-Sushanth<br>
-Founder, <a href="https://securevox.app">SecureVox</a></p>
-      `.trim(),
-    },
-    {
-      name: 'Healthcare Professional Introduction',
-      target_industry: 'healthcare',
-      subject: 'HIPAA-friendly transcription for patient notes',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>Most AI transcription tools upload audio to third-party servers, creating HIPAA compliance concerns for healthcare providers.</p>
-
-<p><strong>SecureVox</strong> solves this by processing everything locally on your device. No cloud uploads, no data collection, no compliance headaches.</p>
-
-<p>Why healthcare professionals love it:</p>
-<ul>
-  <li>100% on-device processing - audio never leaves your device</li>
-  <li>No account required - zero data collection</li>
-  <li>Works offline in any environment</li>
-  <li>Accurate medical terminology recognition</li>
-  <li>Custom dictionary support for specialized terms</li>
-</ul>
-
-<p>Would this be useful for your practice at {{company}}? I'd be happy to set up a free trial.</p>
-
-<p>Best,<br>
-Sushanth<br>
-Founder, <a href="https://securevox.app">SecureVox</a></p>
-      `.trim(),
-    },
-    {
-      name: 'Journalist/Media Introduction',
-      target_industry: 'media',
-      subject: 'Protect your sources with offline transcription',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>When you're interviewing confidential sources, the last thing you need is your audio being uploaded to a third-party server.</p>
-
-<p><strong>SecureVox</strong> transcribes everything on your device using AI - completely offline. Perfect for sensitive interviews where source protection matters.</p>
-
-<p>Built for journalists:</p>
-<ul>
-  <li>100% offline - works in the field without internet</li>
-  <li>No cloud, no accounts, no data trail</li>
-  <li>99+ language support for international reporting</li>
-  <li>Export timestamps for easy audio navigation</li>
-  <li>Import audio/video files from any source</li>
-</ul>
-
-<p>I'd love to offer you free access to try it. Want me to set that up?</p>
-
-<p>Best,<br>
-Sushanth<br>
-Founder, <a href="https://securevox.app">SecureVox</a></p>
-      `.trim(),
-    },
-    {
-      name: 'Research/Academic Introduction',
-      target_industry: 'research',
-      subject: 'IRB-compliant transcription for research interviews',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>Research involving human subjects often requires strict data handling protocols. Most transcription services upload audio to external servers, complicating IRB compliance.</p>
-
-<p><strong>SecureVox</strong> processes everything locally on your device - no cloud uploads, no external data sharing, no compliance concerns.</p>
-
-<p>Perfect for research:</p>
-<ul>
-  <li>Complete data sovereignty - audio never leaves your device</li>
-  <li>No third-party data processing agreements needed</li>
-  <li>Works offline for field research</li>
-  <li>99+ languages for international studies</li>
-  <li>Export transcripts in multiple formats</li>
-</ul>
-
-<p>Would this help with your research at {{company}}? Happy to provide free access for your team.</p>
-
-<p>Best,<br>
-Sushanth<br>
-Founder, <a href="https://securevox.app">SecureVox</a></p>
-      `.trim(),
-    },
-    {
-      name: 'Therapist/Counselor Introduction',
-      target_industry: 'mental_health',
-      subject: 'Private session notes without cloud concerns',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>Therapy and counseling sessions contain deeply sensitive information. Using cloud-based transcription tools puts that confidentiality at risk.</p>
-
-<p><strong>SecureVox</strong> keeps everything on your device. Record sessions, get accurate transcripts, and maintain complete client confidentiality.</p>
-
-<p>Built for mental health professionals:</p>
-<ul>
-  <li>100% local processing - nothing uploaded anywhere</li>
-  <li>No accounts, no data collection</li>
-  <li>Works without internet</li>
-  <li>Easy session note organization</li>
-  <li>Searchable transcript archive</li>
-</ul>
-
-<p>I'd be happy to offer you free access to try it. Interested?</p>
-
-<p>Best,<br>
-Sushanth<br>
-Founder, <a href="https://securevox.app">SecureVox</a></p>
-      `.trim(),
-    },
-    {
-      name: 'Executive/Board Introduction',
-      target_industry: 'enterprise',
-      subject: 'Confidential meeting transcription - 100% offline',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>Board meetings, strategy sessions, and executive discussions contain information that shouldn't leave your organization. Yet most transcription tools send audio to external cloud servers.</p>
-
-<p><strong>SecureVox</strong> processes everything on-device. No cloud, no external servers, no data leaks.</p>
-
-<p>Why executives trust it:</p>
-<ul>
-  <li>Complete confidentiality - audio never leaves your device</li>
-  <li>No vendor data processing agreements</li>
-  <li>Works offline - perfect for secure facilities</li>
-  <li>Accurate transcription of business discussions</li>
-  <li>Easy sharing within your organization</li>
-</ul>
-
-<p>Would a demo be helpful? I can show you how it works in 15 minutes.</p>
-
-<p>Best,<br>
-Sushanth<br>
-Founder, <a href="https://securevox.app">SecureVox</a></p>
-      `.trim(),
-    },
-    {
-      name: 'Follow-up #1',
-      target_industry: 'all',
-      subject: 'Re: Offline transcription for {{company}}',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>Just following up on my note about SecureVox - the privacy-first transcription app.</p>
-
-<p>Quick highlights:</p>
-<ul>
-  <li>100% on-device - your audio never touches a cloud server</li>
-  <li>Works completely offline</li>
-  <li>99+ languages supported</li>
-</ul>
-
-<p>If privacy matters for your work at {{company}}, I'd love to give you free access to try it out.</p>
-
-<p>Let me know!</p>
-
-<p>Best,<br>
-Sushanth</p>
-      `.trim(),
-    },
-    {
-      name: 'Follow-up #2 (Final)',
-      target_industry: 'all',
-      subject: 'Last note: SecureVox for {{company}}',
-      body: `
-<p>Hi {{first_name}},</p>
-
-<p>Wanted to send one final note - I know how busy things get.</p>
-
-<p>If you ever need transcription that keeps your audio 100% private (no cloud, no uploads, nothing leaving your device), SecureVox is here.</p>
-
-<p>Just reply "interested" and I'll send over free access details.</p>
-
-<p>If not, no worries at all - I appreciate your time!</p>
-
-<p>Best,<br>
-Sushanth</p>
-      `.trim(),
-    },
-  ];
-
-  res.json({
-    success: true,
-    data: templates,
-  });
-}));
+// SecureVox templates were removed from this file: SecureVox is a different product and must not be sent from the
+// Scribe AI sender. They remain in git history (commit 25f663a and earlier).
 
 module.exports = router;

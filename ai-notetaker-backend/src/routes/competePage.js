@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { asyncHandler } = require('../middleware/errorHandler');
+const { jsLiteral, CLIENT_HELPERS, setPageHeaders } = require('../utils/untrustedPage');
 
 router.get('/:shareToken', asyncHandler(async (req, res) => {
   const { shareToken } = req.params;
@@ -64,10 +65,10 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
   <div id="app" class="container"></div>
   <script>
     const API = 'https://ai-notetaker-backend.fly.dev';
-    const SHARE_TOKEN = '${shareToken}';
-    const AUTH_TOKEN = '${token}';
-    const MODE = '${mode}';
-    let challenge = null;
+    const SHARE_TOKEN = ${jsLiteral(shareToken)};
+    const AUTH_TOKEN = ${jsLiteral(token)};
+    const MODE = ${jsLiteral(mode)};
+${CLIENT_HELPERS}    let challenge = null;
     let leaderboard = [];
     let playerName = localStorage.getItem('compete_name') || '';
     let currentView = MODE === 'leaderboard' ? 'leaderboard' : 'name';
@@ -92,9 +93,9 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
       document.getElementById('app').innerHTML =
         '<div class="name-screen">' +
           '<div style="font-size:48px;margin-bottom:16px">🏆</div>' +
-          '<h1>' + (challenge ? challenge.title : 'Challenge') + '</h1>' +
-          '<p>' + (challenge ? challenge.challenge_type.replace('_',' ') + ' • ' + challenge.total_questions + ' questions' : '') + '</p>' +
-          '<input class="name-input" id="nameInput" placeholder="Enter your name" value="' + playerName + '" maxlength="50" />' +
+          '<h1>' + esc(challenge ? challenge.title : 'Challenge') + '</h1>' +
+          '<p>' + (challenge ? esc(String(challenge.challenge_type).replace('_',' ')) + ' • ' + esc(challenge.total_questions) + ' questions' : '') + '</p>' +
+          '<input class="name-input" id="nameInput" placeholder="Enter your name" value="' + esc(playerName) + '" maxlength="50" />' +
           '<button class="btn" id="startBtn" onclick="startChallenge()">Start Challenge</button>' +
           '<button class="btn btn-outline" style="margin-top:8px" onclick="showLeaderboard()">View Leaderboard (' + leaderboard.length + ')</button>' +
         '</div>';
@@ -122,18 +123,20 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
         const bridge = '<script>window.ScribeCompete={submitScore:function(c,t,s){window.parent.postMessage({type:"compete_score",correct:c,total:t,time:s},"*")},showLeaderboard:function(){window.parent.postMessage({type:"compete_leaderboard"},"*")},shareChallenge:function(){window.parent.postMessage({type:"compete_share"},"*")}}<\\/script>';
         gameHtml = gameHtml.includes('</head>') ? gameHtml.replace('</head>', bridge + '</head>') : bridge + gameHtml;
 
-        const blob = new Blob([gameHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
+        const url = framedUrl(gameHtml);
 
         document.getElementById('app').className = '';
         document.getElementById('app').innerHTML =
           '<div class="game-container">' +
-            '<div class="game-header"><span>' + playerName + '</span><span>' + (challenge ? challenge.title : '') + '</span></div>' +
-            '<iframe class="game-frame" src="' + url + '" sandbox="allow-scripts" style="flex:1;height:' + (window.innerHeight - 50) + 'px"></iframe>' +
+            '<div class="game-header"><span>' + esc(playerName) + '</span><span>' + esc(challenge ? challenge.title : '') + '</span></div>' +
+            frameTag('game-frame', url, 'flex:1;height:' + (window.innerHeight - 50) + 'px') +
           '</div>';
 
         window.onmessage = function(e) {
-          if (e.data?.type === 'compete_score') submitScore(e.data.correct, e.data.total, e.data.time);
+          // Only the game frame may talk to this page, and its numbers are treated as untrusted input.
+          var frame = document.querySelector('.game-frame');
+          if (!frame || e.source !== frame.contentWindow) return;
+          if (e.data?.type === 'compete_score') submitScore(Math.max(0, Number(e.data.correct) || 0), Math.max(0, Number(e.data.total) || 0), Math.max(0, Number(e.data.time) || 0));
           if (e.data?.type === 'compete_leaderboard') showLeaderboard();
           if (e.data?.type === 'compete_share') shareLink();
         };
@@ -167,10 +170,10 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
         '<div style="text-align:center;padding:24px 0">' +
           '<div style="font-size:56px">' + emoji + '</div>' +
           '<h1 style="font-size:28px;margin:8px 0">' + pct + '%</h1>' +
-          '<p style="color:#888;font-size:14px">' + correct + '/' + total + ' correct • ' + timeSeconds + 's</p>' +
+          '<p style="color:#888;font-size:14px">' + esc(correct) + '/' + esc(total) + ' correct • ' + esc(timeSeconds) + 's</p>' +
           '<div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin:20px 0;display:inline-block">' +
             '<span style="font-size:14px;color:#888">Your Rank</span><br>' +
-            '<span style="font-size:32px;font-weight:700;color:#9333ea">#' + rank + '</span>' +
+            '<span style="font-size:32px;font-weight:700;color:#9333ea">#' + esc(rank) + '</span>' +
             '<span style="font-size:14px;color:#666"> of ' + leaderboard.length + '</span>' +
           '</div>' +
         '</div>' +
@@ -193,15 +196,15 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
           const pct = p.total_questions > 0 ? Math.round(p.score * 100) : 0;
           return '<div class="lb-row">' +
             '<div class="lb-rank ' + rankClass + '">' + medal + '</div>' +
-            '<div class="lb-name">' + p.display_name + '</div>' +
-            '<div class="lb-score">' + pct + '%</div>' +
-            '<div class="lb-time">' + (p.time_spent_seconds || 0) + 's</div>' +
+            '<div class="lb-name">' + esc(p.display_name) + '</div>' +
+            '<div class="lb-score">' + esc(pct) + '%</div>' +
+            '<div class="lb-time">' + esc(p.time_spent_seconds || 0) + 's</div>' +
           '</div>';
         }).join('');
       }
 
       document.getElementById('app').innerHTML =
-        (challenge ? '<div class="challenge-meta"><h1>' + challenge.title + '</h1><p>' + challenge.challenge_type.replace('_',' ') + ' • ' + challenge.total_questions + ' questions • ' + leaderboard.length + ' players</p></div>' : '') +
+        (challenge ? '<div class="challenge-meta"><h1>' + esc(challenge.title) + '</h1><p>' + esc(String(challenge.challenge_type).replace('_',' ')) + ' • ' + esc(challenge.total_questions) + ' questions • ' + leaderboard.length + ' players</p></div>' : '') +
         '<div class="lb"><h2>🏆 Leaderboard</h2>' + lbHtml + '</div>' +
         '<button class="btn" style="margin-top:16px" onclick="showNameScreen()">Play Challenge</button>' +
         '<button class="btn btn-outline" style="margin-top:8px" onclick="shareLink()">📤 Share with Friends</button>';
@@ -217,7 +220,7 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
     }
 
     function showError(msg) {
-      document.getElementById('app').innerHTML = '<div class="loading"><div style="font-size:48px;margin-bottom:16px">⚠️</div><p style="color:#888">' + msg + '</p><button class="btn" style="max-width:200px;margin-top:16px" onclick="location.reload()">Retry</button></div>';
+      document.getElementById('app').innerHTML = '<div class="loading"><div style="font-size:48px;margin-bottom:16px">⚠️</div><p style="color:#888">' + esc(msg) + '</p><button class="btn" style="max-width:200px;margin-top:16px" onclick="location.reload()">Retry</button></div>';
     }
 
     fetchChallenge();
@@ -225,7 +228,7 @@ router.get('/:shareToken', asyncHandler(async (req, res) => {
 </body>
 </html>`;
 
-  res.setHeader('Content-Type', 'text/html');
+  setPageHeaders(res);
   res.send(html);
 }));
 

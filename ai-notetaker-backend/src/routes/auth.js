@@ -6,6 +6,7 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
+const { loginLimiters } = require('../middleware/loginRateLimit');
 
 // The one shared admin client (service role). It is also the client /health inspects, so a regression that makes it act
 // as a user is visible there.
@@ -124,8 +125,8 @@ router.post('/register', async (req, res) => {
  * POST /api/auth/login
  * Sign in with email and password
  */
-router.post('/login', async (req, res) => {
-    const { email, password } = req.body;
+router.post('/login', ...loginLimiters, async (req, res) => {
+    const { email, password } = req.body || {};
 
     if (!email || !password) {
         return res.status(400).json({
@@ -133,23 +134,30 @@ router.post('/login', async (req, res) => {
             error: 'Email and password are required'
         });
     }
+    if (typeof email !== 'string' || typeof password !== 'string' || email.length > 254 || password.length > 1024) {
+        return res.status(400).json({
+            success: false,
+            error: 'Email and password are required'
+        });
+    }
 
     try {
-        const { data, error } = await passwordSignIn(email, password);
+        const { data, error } = await passwordSignIn(email.trim(), password);
 
         if (error) {
-            console.error('Login error:', error);
+            console.error('Login error:', error.code || error.status || error.message);
 
-            if (error.message?.includes('Invalid login credentials')) {
-                return res.status(401).json({
+            // Supabase answers a wrong password and an unknown address with the same error. Everything except a
+            // server-side failure gets the same generic reply, so the response never says whether an account exists.
+            if (error.status >= 500) {
+                return res.status(503).json({
                     success: false,
-                    error: 'Invalid email or password'
+                    error: 'Sign-in is temporarily unavailable. Please try again.'
                 });
             }
-
             return res.status(401).json({
                 success: false,
-                error: error.message || 'Login failed'
+                error: 'Invalid email or password'
             });
         }
 
@@ -160,13 +168,32 @@ router.post('/login', async (req, res) => {
             .eq('id', data.user.id)
             .single();
 
+        const name = profile?.name || data.user.user_metadata?.name || data.user.email.split('@')[0];
+
+        // Same 7-day token as Google sign-in (the middleware accepts it). Supabase's own access token lasts about an
+        // hour and the web app has no refresh, so handing that one back would sign people out of the web within the hour.
+        const jwtSecret = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
+        const token = jwtSecret
+            ? require('jsonwebtoken').sign(
+                {
+                    sub: data.user.id,
+                    email: data.user.email,
+                    role: 'authenticated',
+                    aud: 'authenticated',
+                    user_metadata: { name, provider: 'email' }
+                },
+                jwtSecret,
+                { expiresIn: '7d' }
+            )
+            : data.session.access_token;
+
         res.status(200).json({
             success: true,
-            token: data.session.access_token,
+            token,
             user: {
                 id: data.user.id,
                 email: data.user.email,
-                name: profile?.name || data.user.user_metadata?.name || data.user.email.split('@')[0]
+                name
             }
         });
 

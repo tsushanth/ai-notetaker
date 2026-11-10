@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
+import EmailSignInForm from '@/components/EmailSignInForm';
 import { Loader2 } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
 import { safeNext } from '@/lib/session';
+import { GOOGLE_UNAVAILABLE_MESSAGE } from '@/components/GoogleSignInButton';
 
 const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
@@ -41,10 +43,17 @@ export default function LoginPage() {
   useEffect(() => {
     let cancelled = false;
 
+    let waitedMs = 0;
     const initGoogle = () => {
       if (cancelled) return;
       const { google } = window as any;
       if (!google?.accounts?.id || !googleButtonRef.current) {
+        waitedMs += 100;
+        if (waitedMs >= 10_000) {
+          // The script never loaded (ad blocker or no connection): say so instead of showing an empty page.
+          setError(GOOGLE_UNAVAILABLE_MESSAGE);
+          return;
+        }
         setTimeout(initGoogle, 100);
         return;
       }
@@ -106,10 +115,10 @@ export default function LoginPage() {
           )}
 
           <h1 className="font-[family-name:var(--font-display)] text-2xl font-medium mb-1.5">
-            Sign in to keep studying
+            Sign in or start free
           </h1>
           <p className="text-[var(--text-secondary)] text-sm mb-8">
-            Your notes, flashcards, and quizzes are waiting.
+            Continue with Google. New here? Your free account is created the first time you sign in.
           </p>
 
           <div ref={googleButtonRef} className="flex justify-center" />
@@ -123,6 +132,8 @@ export default function LoginPage() {
           {error && (
             <p className="text-sm text-[var(--accent-red)] mt-4 text-center">{error}</p>
           )}
+
+          <EmailSignInForm />
 
           <p className="text-center text-sm text-[var(--text-secondary)] mt-8">
             New here?{' '}

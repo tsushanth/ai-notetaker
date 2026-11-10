@@ -65,6 +65,18 @@ export default function RecordAudioPage() {
     };
   }, [audioUrl]);
 
+  // A recording that has not been uploaded exists only in this tab: warn before the tab is closed or reloaded.
+  const hasUnsentRecording = recordingState !== 'idle' && !isUploading;
+  useEffect(() => {
+    if (!hasUnsentRecording) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [hasUnsentRecording]);
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;

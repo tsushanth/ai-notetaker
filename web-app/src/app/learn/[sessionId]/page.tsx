@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Loader2, BookOpen, Trophy, Flame, ChevronRight, RefreshCw } from 'lucide-react';
+import { FRAME_SANDBOX, withFrameCsp } from '@/lib/frameHtml';
+import { useFeatureFlags } from '@/lib/useFeatureFlags';
 
 const API_BASE_URL = 'https://ai-notetaker-backend.fly.dev';
 
@@ -36,6 +38,7 @@ interface CompletedLesson {
 }
 
 export default function LearnPage() {
+  const { flags, loaded: flagsLoaded } = useFeatureFlags();
   const params = useParams();
   const searchParams = useSearchParams();
   const sessionId = params.sessionId as string;
@@ -96,8 +99,11 @@ export default function LearnPage() {
   // Bridge for lesson HTML to call back
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
+      // Only the lesson frame may talk to this page, and the numbers it sends are untrusted input.
+      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
       if (event.data?.type === 'scribeai_submit_score') {
-        const { correct, total } = event.data;
+        const correct = Math.max(0, Number(event.data.correct) || 0);
+        const total = Math.max(0, Number(event.data.total) || 0);
         const score = total > 0 ? correct / total : 0;
         setLastScore(score);
         setShowScoreCard(true);
@@ -148,6 +154,22 @@ export default function LearnPage() {
     }
     return bridge + html;
   };
+
+  // Hidden unless the server has switched Learn on (see lib/features.ts).
+  if (!flagsLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0b' }}>
+        <Loader2 className="w-6 h-6 animate-spin" style={{ color: '#9333ea' }} />
+      </div>
+    );
+  }
+  if (!flags.learn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-6 text-center" style={{ background: '#0a0a0b', color: '#fff' }}>
+        <p>This feature is not available.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -265,7 +287,7 @@ export default function LearnPage() {
 
   // Render lesson in iframe
   if (currentLesson) {
-    const html = getLessonHtmlWithBridge(currentLesson.content_html);
+    const html = withFrameCsp(getLessonHtmlWithBridge(currentLesson.content_html));
     const blob = new Blob([html], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
 
@@ -292,7 +314,7 @@ export default function LearnPage() {
           ref={iframeRef}
           src={blobUrl}
           className="flex-1 w-full border-0"
-          sandbox="allow-scripts allow-same-origin"
+          sandbox={FRAME_SANDBOX}
           title={currentLesson.title}
         />
       </div>

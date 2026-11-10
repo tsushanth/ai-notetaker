@@ -243,6 +243,11 @@ export const userApi = {
   },
 };
 
+// Server-driven feature flags (public endpoint, no sign-in). The caller parses the answer with parseFeatureFlags (lib/features.ts).
+export const featuresApi = {
+  get: () => apiRequest<unknown>('/api/config/features'),
+};
+
 // Learning API (existing backend endpoints, previously never called by any client)
 export const learningApi = {
   startSession: async (token: string, noteId: string) => {

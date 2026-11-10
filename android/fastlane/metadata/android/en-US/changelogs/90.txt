@@ -1,0 +1,1 @@
+More reliable recording: keeps recording when the screen locks, recovers unfinished recordings, and shows clear progress.

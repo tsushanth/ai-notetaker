@@ -35,8 +35,8 @@ android {
         applicationId = "com.kreativekoala.scribeai"
         minSdk = 26
         targetSdk = 36
-        versionCode = 89
-        versionName = "58.28"
+        versionCode = 90
+        versionName = "58.29"
 
         // 16KB page size support
         ndk {
@@ -141,6 +141,9 @@ dependencies {
 
     // DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // Background sending of recordings (retry with backoff, survives process death)
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Google Play In-App Review
     implementation(libs.play.review.ktx)

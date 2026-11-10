@@ -61,6 +61,8 @@ class MainActivity : AppCompatActivity() {
         // Initialize analytics service and track app launch
         AnalyticsService.initialize(applicationContext, authManager)
         AnalyticsService.trackAppLaunch()
+        // Recording: hand the auth manager to the background sender, replay queued events, recover unfinished recordings.
+        com.kreativekoala.scribeai.recording.RecordingBootstrap.onAppStart(applicationContext, authManager)
 
         // Initialize in-app review helper
         InAppReviewHelper.initialize(applicationContext)

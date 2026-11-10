@@ -186,6 +186,9 @@ object AnalyticsService {
         }
     }
 
+    /** True once [initialize] has run in this process (a background-only process has no analytics session yet). */
+    fun isReady(): Boolean = prefs != null && authManager != null
+
     // MARK: - Core Tracking (Fire and Forget)
 
     /**

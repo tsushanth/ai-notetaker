@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { asyncHandler } = require('../middleware/errorHandler');
+const { jsLiteral, CLIENT_HELPERS, setPageHeaders } = require('../utils/untrustedPage');
 
 router.get('/:noteId', asyncHandler(async (req, res) => {
   const { noteId } = req.params;
@@ -49,9 +50,9 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
   <div id="app" class="container"></div>
   <script>
     const API = 'https://ai-notetaker-backend.fly.dev';
-    const NOTE_ID = '${noteId}';
-    const TOKEN = '${token}';
-    let selectedType = 'quiz';
+    const NOTE_ID = ${jsLiteral(noteId)};
+    const TOKEN = ${jsLiteral(token)};
+${CLIENT_HELPERS}    let selectedType = 'quiz';
     let myChallenges = [];
 
     const types = [
@@ -74,10 +75,10 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
       if (myChallenges.length > 0) {
         listHtml = '<div class="challenges-list"><h3>Your Challenges</h3>' +
           myChallenges.map(c =>
-            '<div class="challenge-item" onclick="openChallenge(\\'' + c.share_token + '\\')">' +
-              '<div><div class="challenge-title">' + c.title + '</div>' +
-              '<div class="challenge-meta">' + c.challenge_type.replace('_',' ') + ' • ' + c.total_questions + ' questions</div></div>' +
-              '<div class="challenge-players">' + (c.participantCount||0) + ' played</div>' +
+            '<div class="challenge-item" data-token="' + esc(c.share_token) + '" onclick="openChallenge(this.dataset.token)">' +
+              '<div><div class="challenge-title">' + esc(c.title) + '</div>' +
+              '<div class="challenge-meta">' + esc(String(c.challenge_type).replace('_',' ')) + ' • ' + esc(c.total_questions) + ' questions</div></div>' +
+              '<div class="challenge-players">' + esc(c.participantCount||0) + ' played</div>' +
             '</div>'
           ).join('') + '</div>';
       }
@@ -131,21 +132,21 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
         if (json.success) {
           const shareUrl = json.data.shareUrl;
           try { await navigator.clipboard.writeText(shareUrl); } catch(e) {}
-          window.location.href = API + '/compete/' + json.data.shareToken + '?token=' + TOKEN;
+          window.location.href = API + '/compete/' + encodeURIComponent(json.data.shareToken) + '?token=' + encodeURIComponent(TOKEN);
         } else {
           document.getElementById('app').innerHTML =
-            '<div class="generating"><div class="error">' + (json.error || 'Failed to create challenge') + '</div>' +
+            '<div class="generating"><div class="error">' + esc(json.error || 'Failed to create challenge') + '</div>' +
             '<button class="btn" onclick="showHome()" style="max-width:200px;margin:16px auto">← Try Again</button></div>';
         }
       } catch (e) {
         document.getElementById('app').innerHTML =
-          '<div class="generating"><div class="error">Connection error: ' + e.message + '</div>' +
+          '<div class="generating"><div class="error">Connection error: ' + esc(e.message) + '</div>' +
           '<button class="btn" onclick="showHome()" style="max-width:200px;margin:16px auto">← Try Again</button></div>';
       }
     }
 
     function openChallenge(shareToken) {
-      window.location.href = API + '/compete/' + shareToken + '?token=' + TOKEN;
+      window.location.href = API + '/compete/' + encodeURIComponent(shareToken) + '?token=' + encodeURIComponent(TOKEN);
     }
 
     showHome();
@@ -153,7 +154,7 @@ router.get('/:noteId', asyncHandler(async (req, res) => {
 </body>
 </html>`;
 
-  res.setHeader('Content-Type', 'text/html');
+  setPageHeaders(res);
   res.send(html);
 }));
 

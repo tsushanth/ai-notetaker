@@ -25,7 +25,7 @@ export function backendRoutes(src = backendSrc): Route[] {
   for (const m of app.matchAll(/\bapp\.(get|post|put|delete|patch)\(\s*['"]([^'"]+)['"]/g)) {
     routes.push({ method: m[1].toUpperCase(), path: m[2] });
   }
-  for (const m of app.matchAll(/\bapp\.use\(\s*['"](\/[^'"]*)['"]\s*,\s*(\w+)\s*\)/g)) {
+  for (const m of app.matchAll(/\bapp\.use\(\s*['"](\/[^'"]*)['"]\s*,(?:[^;]*?\)\s*,)?\s*(\w+)\s*\)/g)) {
     const file = fileOf.get(m[2]);
     if (!file) continue; // inline middleware or a router built elsewhere
     const body = readFileSync(join(src, 'routes', `${file}.js`), 'utf8');

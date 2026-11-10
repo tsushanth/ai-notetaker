@@ -1,10 +1,17 @@
 package com.kreativekoala.scribeai.ui.screens
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -27,11 +34,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.ui.components.TurboRecordButton
@@ -40,6 +49,7 @@ import com.kreativekoala.scribeai.ui.components.turboLip
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.FreeTierErrors
+import com.kreativekoala.scribeai.utils.RecordingErrors
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -77,7 +87,8 @@ sealed class RecordingScreenState {
         val uploadComplete: Boolean = false
     ) : RecordingScreenState()
     data class Success(val noteId: String) : RecordingScreenState()
-    data class Error(val message: String) : RecordingScreenState()
+    /** [keepRecording]: the audio file is still on the device and sending it again may work, so "Try Again" returns to the review screen. */
+    data class Error(val message: String, val keepRecording: Boolean = false) : RecordingScreenState()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,10 +119,33 @@ fun RecordingScreen(
         )
     }
 
+    var permissionDenied by remember { mutableStateOf(false) }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasPermission = granted
+        if (!granted) permissionDenied = true
+    }
+
+    // After two refusals Android stops showing the permission dialog and the launcher does nothing, so the button
+    // would be dead. Send the user to the app's settings page instead.
+    fun requestMicPermission() {
+        val activity = context.findActivity()
+        val blocked = permissionDenied && activity != null &&
+            !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.RECORD_AUDIO)
+        if (blocked) {
+            try {
+                context.startActivity(
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                )
+            } catch (e: Exception) {
+                Log.w("RecordingScreen", "Could not open app settings", e)
+            }
+        } else {
+            permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
     }
 
     // Timer for recording duration
@@ -130,6 +164,22 @@ fun RecordingScreen(
             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
+
+    // Keep the screen on while a recording is running: when the screen turns off Android stops giving the app
+    // microphone audio, and a lecture recorded that way comes out silent.
+    val view = LocalView.current
+    val keepAwake = screenState == RecordingScreenState.Recording || screenState == RecordingScreenState.Paused
+    DisposableEffect(keepAwake) {
+        if (keepAwake) view.keepScreenOn = true
+        onDispose { if (keepAwake) view.keepScreenOn = false }
+    }
+
+    // Leaving while a recording exists that has not been sent would delete it with no warning: ask first.
+    val hasUnsentRecording = screenState == RecordingScreenState.Recording ||
+        screenState == RecordingScreenState.Paused ||
+        screenState == RecordingScreenState.ReviewingRecording
+    var showLeaveDialog by remember { mutableStateOf(false) }
+    BackHandler(enabled = hasUnsentRecording) { showLeaveDialog = true }
 
     // Cleanup on dispose
     DisposableEffect(Unit) {
@@ -233,7 +283,8 @@ fun RecordingScreen(
                 val recordingId = uploadAudio(file, token, recordingTitle)
 
                 if (recordingId == null) {
-                    screenState = RecordingScreenState.Error(context.getString(R.string.error_upload_failed))
+                    // The audio is still in the cache: let "Try Again" send it again instead of losing the recording.
+                    screenState = RecordingScreenState.Error(context.getString(R.string.error_upload_failed), keepRecording = true)
                     return@launch
                 }
 
@@ -251,7 +302,8 @@ fun RecordingScreen(
                 if (result == null) {
                     // HTTP 429 = daily free-tier backstop: plain message from the server, not a generic failure.
                     screenState = RecordingScreenState.Error(
-                        outcome.limitMessage ?: context.getString(R.string.error_transcribe_failed)
+                        outcome.limitMessage ?: context.getString(R.string.error_transcribe_failed),
+                        keepRecording = RecordingErrors.canRetrySameAudio(outcome.httpCode)
                     )
                     return@launch
                 }
@@ -290,9 +342,29 @@ fun RecordingScreen(
 
             } catch (e: Exception) {
                 Log.e("RecordingScreen", "Processing failed", e)
-                screenState = RecordingScreenState.Error(e.message ?: context.getString(R.string.error_processing_failed))
+                screenState = RecordingScreenState.Error(e.message ?: context.getString(R.string.error_processing_failed), keepRecording = audioFile?.exists() == true)
             }
         }
+    }
+
+    if (showLeaveDialog) {
+        AlertDialog(
+            onDismissRequest = { showLeaveDialog = false },
+            title = { Text(stringResource(R.string.discard_recording)) },
+            text = { Text(clockText(recordingDuration)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showLeaveDialog = false
+                    mediaRecorder?.release()
+                    mediaRecorder = null
+                    audioFile?.delete()
+                    onNavigateBack()
+                }) { Text(stringResource(R.string.discard), color = AccentRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveDialog = false }) { Text(stringResource(R.string.cancel)) }
+            }
+        )
     }
 
     Scaffold(
@@ -308,17 +380,11 @@ fun RecordingScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        when (screenState) {
-                            is RecordingScreenState.Recording,
-                            is RecordingScreenState.Paused -> {
-                                // Stop and discard if recording
-                                mediaRecorder?.release()
-                                mediaRecorder = null
-                                audioFile?.delete()
-                            }
-                            else -> { }
+                        if (hasUnsentRecording) {
+                            showLeaveDialog = true
+                        } else {
+                            onNavigateBack()
                         }
-                        onNavigateBack()
                     }) {
                         Icon(
                             Icons.Default.ArrowBack,
@@ -343,7 +409,7 @@ fun RecordingScreen(
                 is RecordingScreenState.Idle -> {
                     IdleContent(
                         hasPermission = hasPermission,
-                        onRequestPermission = { permissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+                        onRequestPermission = { requestMicPermission() },
                         onStartRecording = { startRecording() }
                     )
                 }
@@ -395,7 +461,13 @@ fun RecordingScreen(
                 is RecordingScreenState.Error -> {
                     ErrorContent(
                         message = state.message,
-                        onRetry = { screenState = RecordingScreenState.Idle },
+                        onRetry = {
+                            screenState = if (state.keepRecording && audioFile?.exists() == true) {
+                                RecordingScreenState.ReviewingRecording
+                            } else {
+                                RecordingScreenState.Idle
+                            }
+                        },
                         onGoBack = onNavigateBack
                     )
                 }
@@ -1025,7 +1097,8 @@ private suspend fun uploadAudio(file: File, token: String, title: String): Strin
     }
 }
 
-private class TranscriptionOutcome(val data: JSONObject?, val limitMessage: String? = null)
+/** [httpCode] is null when no response came back (network error). */
+private class TranscriptionOutcome(val data: JSONObject?, val limitMessage: String? = null, val httpCode: Int? = null)
 
 private suspend fun startTranscription(recordingId: String, token: String): TranscriptionOutcome {
     return withContext(Dispatchers.IO) {
@@ -1060,9 +1133,10 @@ private suspend fun startTranscription(recordingId: String, token: String): Tran
             } else {
                 Log.e("RecordingScreen", "Transcription failed: ${response.code}")
                 if (response.code == 429) {
-                    TranscriptionOutcome(null, FreeTierErrors.dailyLimitMessage(responseBody))
+                    TranscriptionOutcome(null, FreeTierErrors.dailyLimitMessage(responseBody), response.code)
                 } else {
-                    TranscriptionOutcome(null)
+                    // 422 carries the reason (for example "the recording is completely silent, check the microphone").
+                    TranscriptionOutcome(null, RecordingErrors.serverMessage(response.code, responseBody), response.code)
                 }
             }
         } catch (e: Exception) {
@@ -1070,4 +1144,12 @@ private suspend fun startTranscription(recordingId: String, token: String): Tran
             TranscriptionOutcome(null)
         }
     }
+}
+private fun Context.findActivity(): Activity? {
+    var c: Context? = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
 }

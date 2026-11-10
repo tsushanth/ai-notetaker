@@ -7,6 +7,7 @@ const { rejectLocalOnlyNote } = require('../middleware/localOnlyNote');
 const integrationService = require('../services/integrationService');
 const { logger } = require('../utils/logger');
 const { OAuth2Client } = require('google-auth-library');
+const { getWebAppUrl } = require('../utils/webAppUrl');
 
 /**
  * Require premium for integration actions
@@ -72,7 +73,7 @@ router.get('/google-drive/callback', asyncHandler(async (req, res) => {
   await integrationService.saveGoogleDriveTokens(userId, tokens);
 
   // Redirect to web app settings or show success
-  const webAppUrl = process.env.WEB_APP_URL || 'https://scribeai.app';
+  const webAppUrl = getWebAppUrl();
   res.redirect(`${webAppUrl}/settings?integration=google_drive&status=connected`);
 }));
 
@@ -124,7 +125,7 @@ router.get('/notion/callback', asyncHandler(async (req, res) => {
 
   await integrationService.saveNotionTokens(userId, tokenRes.data);
 
-  const webAppUrl = process.env.WEB_APP_URL || 'https://scribeai.app';
+  const webAppUrl = getWebAppUrl();
   res.redirect(`${webAppUrl}/settings?integration=notion&status=connected`);
 }));
 
@@ -178,7 +179,7 @@ router.get('/slack/callback', asyncHandler(async (req, res) => {
 
   await integrationService.saveSlackTokens(userId, tokenRes.data);
 
-  const webAppUrl = process.env.WEB_APP_URL || 'https://scribeai.app';
+  const webAppUrl = getWebAppUrl();
   res.redirect(`${webAppUrl}/settings?integration=slack&status=connected`);
 }));
 

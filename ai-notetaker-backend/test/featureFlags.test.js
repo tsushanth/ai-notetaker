@@ -49,7 +49,7 @@ test('a gated API route answers 404 FEATURE_DISABLED while off, and works when o
   } finally { s.close(); }
 });
 
-test('gated pages are a plain 404, and the learn worker webhooks stay reachable while off', async () => {
+test('gated pages are a 404 with a short message, and the learn worker webhooks stay reachable while off', async () => {
   const app = express();
   app.use('/learn', requireFeature('learn', { page: true }), (req, res) => res.send('page'));
   app.use('/api/learn', requireFeature('learn', { except: /^\/webhook\// }), (req, res) => res.json({ path: req.path }));
@@ -57,7 +57,9 @@ test('gated pages are a plain 404, and the learn worker webhooks stay reachable 
   try {
     let r = await get(s, '/learn/abc');
     assert.equal(r.status, 404);
-    assert.equal(r.text, 'Not found');
+    assert.match(r.text, /no longer available/);
+    assert.doesNotMatch(r.text, /<script/i);
+    assert.match(r.headers.get('content-security-policy'), /default-src 'none'/);
     assert.equal((await get(s, '/api/learn/session/1')).status, 404);
     assert.equal((await get(s, '/api/learn/webhook/lesson-ready', 'POST')).status, 200);
     assert.equal((await get(s, '/api/learn/webhook/infographic-ready', 'POST')).status, 200);

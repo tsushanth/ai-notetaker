@@ -22,8 +22,9 @@
         android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"
-        tools:ignore="SelectedPhotoAccess" />
+    <!-- READ_MEDIA_AUDIO intentionally NOT declared. The app has no audio-import feature: it records into its
+         own app storage and uploads that file. Documents are picked with the system picker (GetContent) and
+         images with the Photo Picker, neither needs a storage permission. Do not re-add. -->
     <!-- READ_MEDIA_IMAGES intentionally NOT declared. The app uses
          ActivityResultContracts.PickVisualMedia (Android Photo Picker), which
          grants per-pick URI access without any storage permission. Declaring

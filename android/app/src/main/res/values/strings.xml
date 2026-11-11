@@ -242,7 +242,7 @@
     <string name="keep_my_account">Keep My Account</string>
     <string name="delete_anyway">Delete Anyway</string>
     <string name="before_you_go">Before you go\u2026</string>
-    <string name="feedback_reason">Help us improve by telling us why you\'re leaving</string>
+    <string name="feedback_reason">Help us improve by telling us why you\'re leaving (optional)</string>
     <string name="delete_my_account">Delete My Account</string>
 
     <!-- Review Prompt Dialog -->

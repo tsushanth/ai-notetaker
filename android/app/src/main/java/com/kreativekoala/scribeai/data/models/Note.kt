@@ -116,8 +116,9 @@ data class UserStatsResponse(
     val error: String? = null
 )
 
+/** `reason` is optional: when the user picks none it is omitted from the request body (Gson skips nulls). */
 data class DeleteAccountRequest(
-    val reason: String
+    val reason: String? = null
 )
 
 // Deletion reasons for account deletion
@@ -130,3 +131,9 @@ enum class DeletionReason(val displayName: String) {
     BUGS_ISSUES("Too many bugs/issues"),
     OTHER("Other reason")
 }
+
+/**
+ * The only thing about the deletion reason that may leave the device through analytics: the enum name of a
+ * fixed choice, or "none" when the user skipped it. Never free text.
+ */
+fun DeletionReason?.analyticsValue(): String = this?.name ?: "none"

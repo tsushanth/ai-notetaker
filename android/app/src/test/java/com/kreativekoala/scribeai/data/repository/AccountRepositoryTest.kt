@@ -4,6 +4,7 @@ import com.kreativekoala.scribeai.data.api.ApiService
 import com.kreativekoala.scribeai.data.models.DeleteAccountRequest
 import com.kreativekoala.scribeai.data.models.DeletionReason
 import com.kreativekoala.scribeai.data.models.GenericResponse
+import com.kreativekoala.scribeai.data.models.analyticsValue
 import kotlinx.coroutines.runBlocking
 import okhttp3.Call
 import okhttp3.Callback
@@ -75,6 +76,24 @@ class AccountRepositoryTest {
         assertEquals("Bearer tok123", req.header("Authorization"))
         val sent = Buffer().also { req.body!!.writeTo(it) }.readUtf8()
         assertEquals("""{"reason":"TOO_EXPENSIVE"}""", sent)
+    }
+
+    @Test
+    fun deleteAccountWithoutAReasonSendsNoReasonField() = runBlocking {
+        val factory = RecordingFactory(200, """{"success":true}""")
+        val result = AccountRepository(serviceWith(factory)).deleteAccount("tok123")
+
+        assertTrue(result.isSuccess)
+        val sent = Buffer().also { factory.captured!!.body!!.writeTo(it) }.readUtf8()
+        assertEquals("{}", sent)
+    }
+
+    @Test
+    fun onlyAnEnumeratedChoiceIsEverUsedForAnalytics() {
+        assertEquals("none", (null as DeletionReason?).analyticsValue())
+        // Every value that can reach analytics is the name of a fixed enum constant, never free text.
+        for (r in DeletionReason.values()) assertEquals(r.name, r.analyticsValue())
+        assertTrue(DeletionReason.values().all { it.analyticsValue().matches(Regex("[A-Z_]+")) })
     }
 
     // ---- result mapping, with ApiService faked by a proxy that only answers deleteAccount ------------------

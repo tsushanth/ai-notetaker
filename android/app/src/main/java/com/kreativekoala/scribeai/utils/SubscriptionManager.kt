@@ -1,10 +1,8 @@
 package com.kreativekoala.scribeai.utils
 
-import android.annotation.SuppressLint
 import android.app.Activity
 import com.kreativekoala.paywallkit.manager.PromoCodeManager
 import android.content.Context
-import android.provider.Settings
 import android.util.Log
 import com.android.billingclient.api.*
 import com.kreativekoala.scribeai.data.api.RetrofitClient
@@ -31,7 +29,8 @@ class SubscriptionManager(private val context: Context) {
 
         private const val PREFS_NAME = "scribe_ai_prefs"
         private const val KEY_LIFETIME_NOTEBOOKS = "lifetime_notebooks_created"
-        private const val KEY_DEVICE_ID = "device_id"
+        // Old versions stored a device id derived from the Android ID here; it is no longer used or sent. Removed on startup.
+        private const val LEGACY_KEY_DEVICE_ID = "device_id"
         private const val KEY_IS_SUBSCRIBED = "is_subscribed"
         // Set true whenever the server confirms ANY active access (subscription,
         // trial, server-granted). Used by the Retrofit interceptor to decide
@@ -39,7 +38,9 @@ class SubscriptionManager(private val context: Context) {
         private const val KEY_HAS_ACCESS = "has_access"
     }
 
-    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).also {
+        if (it.contains(LEGACY_KEY_DEVICE_ID)) it.edit().remove(LEGACY_KEY_DEVICE_ID).apply()
+    }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var authManager: AuthManager? = null
 
@@ -69,19 +70,6 @@ class SubscriptionManager(private val context: Context) {
     }
 
     enum class SubscriptionType { MONTHLY, YEARLY }
-
-    // ── Device ID ─────────────────────────────────────────────────────────────
-
-    @get:SuppressLint("HardwareIds")
-    val deviceId: String by lazy {
-        prefs.getString(KEY_DEVICE_ID, null) ?: run {
-            val androidId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-            val id = if (androidId != null && androidId != "9774d56d682e549c") "android_$androidId"
-            else "uuid_${UUID.randomUUID()}"
-            prefs.edit().putString(KEY_DEVICE_ID, id).apply()
-            id
-        }
-    }
 
     // ── BillingClient ─────────────────────────────────────────────────────────
 
@@ -419,8 +407,7 @@ class SubscriptionManager(private val context: Context) {
                     isTrial = false,
                     autoRenewEnabled = true,
                     priceAmount = getFormattedPrice(resolvedProductId).replace(Regex("[^0-9.]"), ""),
-                    priceCurrency = getPriceCurrencyCode(resolvedProductId),
-                    deviceId = deviceId
+                    priceCurrency = getPriceCurrencyCode(resolvedProductId)
                 )
                 val response = RetrofitClient.apiService.syncSubscription("Bearer $token", request)
                 if (response.isSuccessful) {

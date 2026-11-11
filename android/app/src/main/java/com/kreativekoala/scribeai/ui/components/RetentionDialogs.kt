@@ -24,6 +24,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.models.DeletionReason
+import com.kreativekoala.scribeai.data.models.analyticsValue
 import com.kreativekoala.scribeai.data.models.UserStats
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.FirebaseAnalyticsHelper
@@ -174,7 +175,7 @@ fun DeleteAccountRetentionDialog(
     isDeleting: Boolean,
     onDismiss: () -> Unit,
     onKeepAccount: () -> Unit,
-    onDelete: (DeletionReason) -> Unit
+    onDelete: (DeletionReason?) -> Unit
 ) {
     var showReasonPicker by remember { mutableStateOf(false) }
     var selectedReason by remember { mutableStateOf<DeletionReason?>(null) }
@@ -276,16 +277,15 @@ fun DeleteAccountRetentionDialog(
                     // Delete button
                     TextButton(
                         onClick = {
-                            selectedReason?.let { reason ->
-                                FirebaseAnalyticsHelper.logDeleteAccountCompleted(
-                                    reason = reason.name,
-                                    notesCount = stats?.notesCount ?: 0
-                                )
-                                onDelete(reason)
-                            }
+                            // The reason is optional; only the enum choice (never free text) goes to analytics.
+                            FirebaseAnalyticsHelper.logDeleteAccountCompleted(
+                                reason = selectedReason.analyticsValue(),
+                                notesCount = stats?.notesCount ?: 0
+                            )
+                            onDelete(selectedReason)
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = selectedReason != null && !isDeleting
+                        enabled = !isDeleting
                     ) {
                         if (isDeleting) {
                             CircularProgressIndicator(
@@ -297,7 +297,7 @@ fun DeleteAccountRetentionDialog(
                             Text(
                                 text = stringResource(R.string.delete_my_account),
                                 fontSize = 16.sp,
-                                color = if (selectedReason != null) AccentRed else TextTertiary
+                                color = AccentRed
                             )
                         }
                     }

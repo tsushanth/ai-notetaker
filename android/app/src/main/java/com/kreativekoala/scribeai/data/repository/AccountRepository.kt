@@ -14,9 +14,9 @@ import kotlinx.coroutines.withContext
  */
 class AccountRepository(private val api: ApiService = RetrofitClient.apiService) {
 
-    suspend fun deleteAccount(token: String, reason: DeletionReason): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun deleteAccount(token: String, reason: DeletionReason? = null): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val response = api.deleteAccount("Bearer $token", DeleteAccountRequest(reason = reason.name))
+            val response = api.deleteAccount("Bearer $token", DeleteAccountRequest(reason = reason?.name))
             when {
                 response.isSuccessful && response.body()?.success == true -> Result.success(Unit)
                 response.isSuccessful -> Result.failure(Exception(response.body()?.error ?: GENERIC_FAILURE))

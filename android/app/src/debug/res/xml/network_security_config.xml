@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only (this file overrides src/main for the debug build type; it is not packaged in release).
+     Lets a developer point the app at a local backend over http and inspect traffic with a user-installed proxy CA. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- The production backend stays HTTPS with system CAs even in debug. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">ai-notetaker-backend.fly.dev</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>

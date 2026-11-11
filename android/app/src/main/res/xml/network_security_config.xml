@@ -1,18 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Release network policy: HTTPS only, system certificate authorities only.
+     Every host the app talks to is https (backend, Supabase, failure reporter, legal pages, PaywallKit API, Play).
+     Debug builds use src/debug/res/xml/network_security_config.xml instead; keep dev-only relaxations there. -->
 <network-security-config>
-    <!-- Allow all connections (for development) -->
-    <base-config cleartextTrafficPermitted="true">
+    <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
-            <certificates src="user" />
         </trust-anchors>
     </base-config>
-
-    <!-- Specific domain configuration -->
-    <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">ai-notetaker-backend.fly.dev</domain>
-        <trust-anchors>
-            <certificates src="system" />
-        </trust-anchors>
-    </domain-config>
 </network-security-config>

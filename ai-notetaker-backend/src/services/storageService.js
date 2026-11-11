@@ -201,6 +201,20 @@ class StorageService {
   }
 
   /**
+   * Remove one file from storage. A file that is already gone is not an error.
+   * @param {string} storagePath - Path to file in storage
+   */
+  async deleteFile(storagePath) {
+    if (!storagePath) return;
+    const supabaseAdmin = this.getAdminClient();
+    const { error } = await supabaseAdmin.storage.from(this.bucket).remove([storagePath]);
+    if (error && !/not found|does not exist/i.test(error.message || '')) {
+      logger.error('Storage delete error', { error: error.message, storagePath });
+      throw new AppError('Failed to delete file', 500);
+    }
+  }
+
+  /**
    * Upload a file (PDF, slideshow, etc.)
    * @param {string} userId - User ID
    * @param {Object} file - File object with buffer and metadata

@@ -1,6 +1,7 @@
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
+const { collectNoteFiles, removeFiles } = require('./noteFileCleanup');
 
 class NoteService {
   /**
@@ -210,10 +211,26 @@ class NoteService {
   }
 
   /**
-   * Delete a note
+   * Delete a note and the stored files that belong to it (audio recording, uploaded or scanned
+   * document, generated audio / infographic). Returns true when the note is gone (also when it was
+   * already gone, so a retried delete stays a success).
+   *
+   * Order: look up the files first (the DB cascade would hide them), delete the note row, then remove
+   * the files best effort. A file that is already gone, or a storage failure, never fails the delete.
    */
   async deleteNote(userId, noteId) {
     try {
+      const { data: note, error: lookupError } = await supabaseAdmin
+        .from('notes')
+        .select('id, metadata')
+        .eq('id', noteId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+
+      let cleanup = { files: [], recordingIds: [] };
+      if (note) cleanup = await collectNoteFiles(supabaseAdmin, userId, note, logger);
+
       const { error } = await supabaseAdmin
         .from('notes')
         .delete()
@@ -222,7 +239,19 @@ class NoteService {
 
       if (error) throw error;
 
-      logger.info('Note deleted', { userId, noteId });
+      logger.info('Note deleted', { userId, noteId, files: cleanup.files.length });
+
+      if (cleanup.files.length > 0 || cleanup.recordingIds.length > 0) {
+        try {
+          await removeFiles(supabaseAdmin, cleanup.files, logger);
+          if (cleanup.recordingIds.length > 0) {
+            // Rows linked by note_id went with the note (ON DELETE CASCADE); this clears one that was not linked.
+            await supabaseAdmin.from('recordings').delete().eq('user_id', userId).in('id', cleanup.recordingIds);
+          }
+        } catch (cleanupError) {
+          logger.error('Note file cleanup failed', { error: cleanupError.message, userId, noteId });
+        }
+      }
       return true;
     } catch (error) {
       logger.error('Error deleting note', { error: error.message, userId, noteId });

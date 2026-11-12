@@ -1,66 +1,30 @@
-Scribe AI – Convierte videos, audio y documentos en notas
+ScribeAI convierte vídeos, grabaciones y documentos en notas con las que puedes estudiar. Pega un enlace de YouTube, graba audio, añade un archivo PDF, DOCX, PPT o TXT, o escanea texto de fotos. ScribeAI te escribe un resumen y los puntos clave.
 
-Scribe AI es una aplicación de toma de notas con inteligencia artificial que te ayuda a transformar videos largos, grabaciones de audio y documentos en resúmenes claros y fáciles de entender. Está diseñada para estudiantes, profesionales y cualquier persona que quiera aprender más rápido y ahorrar tiempo.
+ScribeAI es gratis. Las notas, la transcripción de voz, los resúmenes con IA, el chat, los cuestionarios, las tarjetas de estudio, los mapas mentales, las exportaciones y los enlaces para compartir son gratuitos, con límites diarios razonables. Los pódcast y el bot de reuniones requieren ScribeAI Pro.
 
-Sube un archivo o pega un enlace y Scribe AI te entregará notas estructuradas en segundos. Úsala para estudiar de forma más eficiente, revisar reuniones, entender tutoriales, crear material de aprendizaje u organizar tu investigación.
+QUÉ PUEDES HACER
 
-Funciones principales
+• Resumir vídeos: pega un enlace de YouTube y obtén un resumen con los puntos clave.
+• Transcribir audio: graba una clase, una entrevista o una nota de voz y obtén el texto.
+• Leer documentos más rápido: añade un archivo PDF, DOCX, PPT o TXT y obtén un resumen y los puntos clave.
+• Escanear texto: convierte fotos de páginas en notas.
+• Chatear con tus notas: haz preguntas y recibe respuestas basadas en tu propia nota.
+• Practicar: convierte una nota en tarjetas de estudio y cuestionarios, o ábrela como mapa mental.
+• Exportar y compartir: guarda las notas como PDF o Word, envíalas a Google Drive o comparte un enlace.
+• Tu idioma: elige el idioma de tus notas generadas con IA.
 
-Resumir videos
-Obtén las ideas clave de videos largos, incluyendo clases, reuniones, tutoriales y cursos en línea.
+SCRIBEAI PRO
 
-Transcribir audio
-Convierte grabaciones de voz, entrevistas, podcasts y notas de audio en texto preciso.
+Pro es opcional. Añade:
+• Pódcast: escucha tus notas como audio hablado al estilo de un pódcast.
+• Bot de reuniones: envía un bot para grabar y transcribir reuniones de Zoom, Google Meet, Teams y Webex.
 
-Procesar documentos
-Sube archivos PDF, artículos, informes o materiales de estudio y recibe resúmenes instantáneos con los puntos clave.
+Todo lo demás que se describe arriba es gratis. Las cuentas gratuitas tienen límites diarios razonables para que la app pueda seguir siendo gratuita para todos.
 
-Generar fichas de estudio
-Transforma tu contenido en fichas sencillas para memorizar y retener información.
+CÓMO FUNCIONA
 
-Crear cuestionarios
-Pon a prueba tus conocimientos con preguntas de práctica generadas automáticamente.
+1. Inicia sesión y toca + para añadir un enlace de YouTube, una grabación de audio, un documento o un escaneo.
+2. ScribeAI lo transcribe y escribe tus notas.
+3. Estudia con el chat, las tarjetas de estudio, los cuestionarios y los mapas mentales, o exporta y comparte.
 
-Salida en formato podcast
-Escucha resúmenes hablados creados a partir de tu contenido.
-
-Chatea con tus archivos
-Haz preguntas y obtén respuestas basadas en los archivos que subiste.
-
-¿Para quién es Scribe AI?
-
-Estudiantes que aprenden de clases y materiales de estudio
-Profesionales que resumen reuniones, sesiones de capacitación y documentos
-Investigadores que organizan información de múltiples fuentes
-Creadores de contenido y podcasters que trabajan con grabaciones
-Cualquier persona que quiera aprender más rápido y mejorar su productividad
-
-¿Por qué usar Scribe AI?
-
-Procesamiento rápido y preciso
-Compatible con formatos de video, audio y documentos
-Resúmenes claros, estructurados y fáciles de digerir
-Interfaz sencilla e intuitiva
-Diseñada para mejorar el aprendizaje y la productividad
-
-Privacidad y seguridad
-
-Todo el contenido subido se cifra durante la transmisión.
-Los archivos se usan únicamente para generar resultados y se eliminan después del procesamiento.
-Scribe AI no vende ni comparte tus datos con terceros.
-
-Cómo funciona
-
-Sube un video, archivo de audio o documento
-
-Scribe AI analiza el contenido
-
-Recibe tu resumen, fichas, cuestionario o audio
-
-Usa los resultados para aprender o trabajar de forma más eficiente
-
-Mejora tu aprendizaje y productividad
-
-Scribe AI te ayuda a convertir contenido extenso en notas claras y útiles para que puedas concentrarte en lo más importante. Es una herramienta poderosa para el estudio, la investigación y la productividad diaria.
-
-Descarga Scribe AI y comienza a transformar la forma en que procesas la información.
+Descarga ScribeAI y convierte vídeos largos, clases y documentos en notas que puedes usar.

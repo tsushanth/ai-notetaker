@@ -336,6 +336,8 @@ app.use('/api/jobs', createJobRoutes());
 if (process.env.ENABLE_CRON_JOBS === 'true') {
   initializeCronJobs();
 }
+// Outreach daily stats rollup (read/aggregate only). Off unless OUTREACH_STATS_ROLLUP_CRON=true.
+require('./services/outreachStatsRollup').initializeOutreachRollupCron();
 
 // 404 handler
 app.use('*', (req, res) => {

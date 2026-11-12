@@ -1,66 +1,30 @@
-Scribe AI – Convert Videos, Audio and Documents Into Notes
+ScribeAI turns videos, recordings and documents into notes you can study from. Paste a YouTube link, record audio, add a PDF, DOCX, PPT or TXT file, or scan text from photos. ScribeAI writes a summary and key points for you.
 
-Scribe AI is an AI powered note taking app that helps you turn long videos, audio recordings and documents into clear and easy to understand summaries. It is designed for students, professionals and anyone who wants to learn faster and save time.
+ScribeAI is free to use. Notes, voice transcription, AI summaries, chat, quizzes, flashcards, mind maps, exports and share links are free, with fair daily limits. Podcasts and the meeting bot need ScribeAI Pro.
 
-Upload a file or paste a link and Scribe AI delivers structured notes in seconds. You can use it to study more efficiently, review meetings, understand tutorials, create learning material or organize research.
+WHAT YOU CAN DO
 
-Key Features
+• Summarize videos: paste a YouTube link and get a summary with key points.
+• Transcribe audio: record a lecture, interview or voice note and get the text.
+• Read documents faster: add a PDF, DOCX, PPT or TXT file and get a summary and key points.
+• Scan text: turn photos of pages into notes.
+• Chat with your notes: ask questions and get answers based on your own note.
+• Practice: turn a note into flashcards and quizzes, or open it as a mind map.
+• Export and share: save notes as PDF or Word, send them to Google Drive, or share a link.
+• Your language: choose the language of your AI-generated notes.
 
-Summarize videos
-Get quick takeaways from long videos including lectures, meetings, tutorials and online courses.
+SCRIBEAI PRO
 
-Transcribe audio
-Convert voice recordings, interviews, podcasts and notes into accurate text.
+Pro is optional. It adds:
+• Podcasts: listen to your notes as spoken, podcast-style audio.
+• Meeting bot: send a bot to record and transcribe Zoom, Google Meet, Teams and Webex meetings.
 
-Process documents
-Upload PDFs, articles, reports or study materials and receive instant summaries and key points.
+Everything else described above is free. Free accounts have fair daily limits so the app can stay free for everyone.
 
-Generate flashcards
-Turn your content into simple flashcards to help memorize and retain information.
+HOW IT WORKS
 
-Create quizzes
-Test your knowledge with automatically generated practice questions.
+1. Sign in and tap + to add a YouTube link, an audio recording, a document or a scan.
+2. ScribeAI transcribes it and writes your notes.
+3. Study with chat, flashcards, quizzes and mind maps, or export and share.
 
-Podcast style outputs
-Listen to spoken summaries created from your content.
-
-Chat with your files
-Ask questions and get answers based on the files you uploaded.
-
-Who Is Scribe AI For
-
-Students learning from lectures and study materials
-Professionals summarizing meetings, training sessions and documents
-Researchers organizing information from multiple sources
-Content creators and podcasters working with recordings
-Anyone who wants to learn faster and improve productivity
-
-Why Use Scribe AI
-
-Fast and accurate processing
-Supports video, audio and document formats
-Clear, structured and digestible summaries
-Simple and intuitive interface
-Designed to improve learning and productivity
-
-Privacy and Security
-
-All uploaded content is encrypted in transit.
-Files are used only to generate results and are deleted after processing.
-Scribe AI does not sell or share your data with third parties.
-
-How It Works
-
-Upload a video, audio file or document
-
-Scribe AI analyzes the content
-
-Receive your summary, flashcards, quiz or audio output
-
-Use the results to learn or work more efficiently
-
-Improve Learning and Productivity
-
-Scribe AI helps you turn long content into clear and actionable notes so you can focus on what is most important. It is a powerful tool for studying, research and everyday productivity.
-
-Download Scribe AI and start transforming the way you process information.
+Download ScribeAI and turn long videos, lectures and documents into notes you can use.

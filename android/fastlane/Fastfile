@@ -1,6 +1,12 @@
 default_platform(:android)
 
 platform :android do
+  # Listing text and images are NOT uploaded from this repo. The live Play listing is edited
+  # through the Play API / Play Console, and fastlane/metadata is only a mirror of it (see the
+  # README there). fastlane supply uploads metadata, images and screenshots unless each one is
+  # skipped, so every upload_to_play_store call below keeps skip_upload_metadata,
+  # skip_upload_images and skip_upload_screenshots true. Release notes (changelogs) have their
+  # own flag, skip_upload_changelogs, and are unaffected.
   lane :deploy do
     upload_to_play_store(
       track: "production",

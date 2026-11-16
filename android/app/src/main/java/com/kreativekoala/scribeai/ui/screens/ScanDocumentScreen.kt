@@ -1,5 +1,6 @@
 package com.kreativekoala.scribeai.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import android.Manifest
 import android.content.Context
 import android.graphics.Bitmap
@@ -155,7 +156,7 @@ fun ScanDocumentScreen(
                 title = { Text(stringResource(R.string.scan_document)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -394,7 +395,7 @@ fun ScanDocumentScreen(
                         // Instructions
                         if (scannedPages.isEmpty()) {
                             Text(
-                                text = "Position document within frame",
+                                text = stringResource(R.string.ui_position_document_within_frame),
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
                                     .padding(top = 32.dp)
@@ -451,7 +452,7 @@ fun ScanDocumentScreen(
                                 ) {
                                     Icon(
                                         Icons.Default.PhotoLibrary,
-                                        contentDescription = "Choose from gallery",
+                                        contentDescription = stringResource(R.string.ui_choose_from_gallery),
                                         tint = if (isProcessing)
                                             MaterialTheme.colorScheme.outline
                                         else
@@ -508,7 +509,7 @@ fun ScanDocumentScreen(
                                     } else {
                                         Icon(
                                             Icons.Default.CameraAlt,
-                                            contentDescription = "Capture",
+                                            contentDescription = stringResource(R.string.ui_capture),
                                             modifier = Modifier.size(32.dp)
                                         )
                                     }
@@ -660,7 +661,7 @@ fun PreviewScannedPages(
                             IconButton(onClick = { onDeletePage(index) }) {
                                 Icon(
                                     Icons.Default.Delete,
-                                    contentDescription = "Delete page",
+                                    contentDescription = stringResource(R.string.ui_delete_page),
                                     tint = MaterialTheme.colorScheme.error
                                 )
                             }
@@ -679,7 +680,7 @@ fun PreviewScannedPages(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "Extracted text preview:",
+                            text = stringResource(R.string.ui_extracted_text_preview),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -1,5 +1,7 @@
 package com.kreativekoala.scribeai.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.Logout
+import com.kreativekoala.scribeai.utils.AiLanguage
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -83,7 +85,7 @@ fun HomeScreen(
 
     val context = LocalContext.current  // NEW: For Toast
     val sharedPrefs = context.getSharedPreferences("scribe_prefs", Context.MODE_PRIVATE)
-    var selectedLanguage by remember { mutableStateOf(sharedPrefs.getString("preferred_language", "english") ?: "english") }
+    var selectedLanguage by remember { mutableStateOf(AiLanguage.preferred(sharedPrefs)) }
 
     // Get auth token
     val authToken by authManager.authToken.collectAsState(initial = null)
@@ -262,7 +264,7 @@ fun HomeScreen(
                                 showSignOutDialog = true
                             },
                             leadingIcon = {
-                                Icon(Icons.Default.Logout, contentDescription = null)
+                                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                             }
                         )
                         HorizontalDivider()
@@ -643,53 +645,7 @@ fun HomeScreen(
 
     // Language Selection Dialog
     if (showLanguageDialog) {
-        val languages = listOf(
-            // Major World Languages
-            "english" to "English",
-            "spanish" to "Spanish",
-            "french" to "French",
-            "german" to "German",
-            "portuguese" to "Portuguese",
-            "italian" to "Italian",
-            "chinese" to "Chinese (Simplified)",
-            "chinese_traditional" to "Chinese (Traditional)",
-            "japanese" to "Japanese",
-            "korean" to "Korean",
-            // South Asian Languages
-            "hindi" to "Hindi",
-            "bengali" to "Bengali",
-            "tamil" to "Tamil",
-            "telugu" to "Telugu",
-            "urdu" to "Urdu",
-            "marathi" to "Marathi",
-            "gujarati" to "Gujarati",
-            "punjabi" to "Punjabi",
-            // European Languages
-            "dutch" to "Dutch",
-            "polish" to "Polish",
-            "russian" to "Russian",
-            "ukrainian" to "Ukrainian",
-            "swedish" to "Swedish",
-            "norwegian" to "Norwegian",
-            "danish" to "Danish",
-            "finnish" to "Finnish",
-            "greek" to "Greek",
-            "czech" to "Czech",
-            "romanian" to "Romanian",
-            "hungarian" to "Hungarian",
-            // Middle Eastern & African Languages
-            "arabic" to "Arabic",
-            "hebrew" to "Hebrew",
-            "turkish" to "Turkish",
-            "persian" to "Persian (Farsi)",
-            "swahili" to "Swahili",
-            // Southeast Asian Languages
-            "thai" to "Thai",
-            "vietnamese" to "Vietnamese",
-            "indonesian" to "Indonesian",
-            "malay" to "Malay",
-            "tagalog" to "Filipino (Tagalog)"
-        )
+        val languages = remember { AiLanguage.ALL.map { (code, tag) -> code to AiLanguage.displayName(tag) } }
         var tempLanguage by remember { mutableStateOf(selectedLanguage) }
 
         AlertDialog(
@@ -742,7 +698,7 @@ fun HomeScreen(
                 Button(
                     onClick = {
                         selectedLanguage = tempLanguage
-                        sharedPrefs.edit().putString("preferred_language", tempLanguage).apply()
+                        sharedPrefs.edit().putString(AiLanguage.PREF_KEY, tempLanguage).apply()
                         showLanguageDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Purple80)

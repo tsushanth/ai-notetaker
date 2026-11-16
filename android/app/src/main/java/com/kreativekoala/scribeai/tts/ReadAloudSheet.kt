@@ -1,5 +1,7 @@
 package com.kreativekoala.scribeai.tts
 
+import com.kreativekoala.scribeai.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,7 +104,7 @@ fun ReadAloudSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.VolumeUp, contentDescription = null)
                 Spacer(Modifier.width(12.dp))
-                Text("Read Aloud", style = MaterialTheme.typography.titleLarge)
+                Text(stringResource(R.string.ui_read_aloud), style = MaterialTheme.typography.titleLarge)
             }
 
             // Voice picker
@@ -143,7 +145,7 @@ fun ReadAloudSheet(
                 }
                 TtsState.Preparing -> {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                    Text("Preparing voice engine…", style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.ui_preparing_voice_engine), style = MaterialTheme.typography.bodySmall)
                 }
                 is TtsState.Speaking -> {
                     @Suppress("DEPRECATION")
@@ -155,7 +157,7 @@ fun ReadAloudSheet(
                         style = MaterialTheme.typography.bodySmall)
                 }
                 TtsState.Paused -> {
-                    Text("Paused — tap Resume to continue.",
+                    Text(stringResource(R.string.ui_paused_tap_resume_to_continue),
                         style = MaterialTheme.typography.bodySmall)
                 }
                 is TtsState.Failed -> {
@@ -178,7 +180,7 @@ fun ReadAloudSheet(
                             Icon(Icons.Filled.Stop, contentDescription = null,
                                 modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text("Stop")
+                            Text(stringResource(R.string.stop))
                         }
                     }
                 }
@@ -195,7 +197,7 @@ fun ReadAloudSheet(
                         Icon(Icons.Filled.PlayArrow, contentDescription = null,
                             modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Read")
+                        Text(stringResource(R.string.ui_read))
                     }
                 }
             }
@@ -207,7 +209,7 @@ fun ReadAloudSheet(
                 },
                 modifier = Modifier.align(Alignment.End),
             ) {
-                Text("Done")
+                Text(stringResource(R.string.done))
             }
 
             Spacer(Modifier.padding(WindowInsetsBottom()))

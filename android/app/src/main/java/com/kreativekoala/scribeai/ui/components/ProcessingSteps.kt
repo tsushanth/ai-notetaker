@@ -166,7 +166,7 @@ private fun ProcessingStepRow(
                     StepStatus.COMPLETED -> {
                         Icon(
                             Icons.Default.Check,
-                            contentDescription = "Completed",
+                            contentDescription = stringResource(R.string.ui_completed),
                             tint = Color.White,
                             modifier = Modifier.size(16.dp)
                         )
@@ -285,7 +285,7 @@ fun ProcessingSuccessView(
         ) {
             Icon(
                 Icons.Default.CheckCircle,
-                contentDescription = "Success",
+                contentDescription = stringResource(R.string.ui_success),
                 tint = AccentGreen,
                 modifier = Modifier.size(64.dp)
             )
@@ -365,7 +365,7 @@ fun ProcessingErrorView(
         // Error icon
         Icon(
             Icons.Default.Error,
-            contentDescription = "Error",
+            contentDescription = stringResource(R.string.error_label),
             tint = AccentRed,
             modifier = Modifier.size(64.dp)
         )

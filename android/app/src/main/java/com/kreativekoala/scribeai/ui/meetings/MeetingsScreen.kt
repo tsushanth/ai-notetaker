@@ -1,5 +1,6 @@
 package com.kreativekoala.scribeai.ui.meetings
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -55,7 +56,7 @@ fun MeetingsScreen(
                 title = { Text(stringResource(R.string.meeting_bot)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {

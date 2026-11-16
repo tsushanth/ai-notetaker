@@ -106,7 +106,7 @@ fun NoteDetailScreen(
     val authToken by authManager.authToken.collectAsState(initial = null)
     val context = LocalContext.current
     val sharedPrefs = context.getSharedPreferences("scribe_prefs", Context.MODE_PRIVATE)
-    val preferredLanguage = AiLanguage.preferred(sharedPrefs)
+    val preferredLanguage = AiLanguage.preferred(context, sharedPrefs)
     val scope = rememberCoroutineScope()
 
     // Menu and dialog state

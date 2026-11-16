@@ -85,7 +85,7 @@ fun HomeScreen(
 
     val context = LocalContext.current  // NEW: For Toast
     val sharedPrefs = context.getSharedPreferences("scribe_prefs", Context.MODE_PRIVATE)
-    var selectedLanguage by remember { mutableStateOf(AiLanguage.preferred(sharedPrefs)) }
+    var selectedLanguage by remember { mutableStateOf(AiLanguage.preferred(context, sharedPrefs)) }
 
     // Get auth token
     val authToken by authManager.authToken.collectAsState(initial = null)

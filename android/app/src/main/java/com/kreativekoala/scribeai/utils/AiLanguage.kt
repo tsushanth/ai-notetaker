@@ -1,5 +1,6 @@
 package com.kreativekoala.scribeai.utils
 
+import android.content.Context
 import android.content.SharedPreferences
 import java.util.Locale
 
@@ -46,9 +47,26 @@ object AiLanguage {
         return nameByLanguage[lang] ?: DEFAULT
     }
 
-    /** The stored choice, or the phone's language when nothing has been stored yet. */
-    fun preferred(prefs: SharedPreferences, locale: Locale = Locale.getDefault()): String =
-        prefs.getString(PREF_KEY, null)?.takeIf { name -> ALL.any { it.first == name } } ?: forLocale(locale)
+    private const val PREF_DEFAULT_RESOLVED = "preferred_language_default"
+
+    /**
+     * The stored choice if there is one. Otherwise a default that is decided once and then kept: fresh installs follow the
+     * phone's language, installs that already existed before this default was introduced keep "english" (their behaviour
+     * must not change silently). A fresh install is one that has never been updated (first install time equals last update time).
+     */
+    fun preferred(context: Context, prefs: SharedPreferences, locale: Locale = Locale.getDefault()): String {
+        prefs.getString(PREF_KEY, null)?.takeIf { name -> ALL.any { it.first == name } }?.let { return it }
+        prefs.getString(PREF_DEFAULT_RESOLVED, null)?.takeIf { name -> ALL.any { it.first == name } }?.let { return it }
+        val fresh = try {
+            val info = context.packageManager.getPackageInfo(context.packageName, 0)
+            info.firstInstallTime == info.lastUpdateTime
+        } catch (e: Exception) {
+            false
+        }
+        val resolved = if (fresh) forLocale(locale) else DEFAULT
+        prefs.edit().putString(PREF_DEFAULT_RESOLVED, resolved).apply()
+        return resolved
+    }
 
     /** Name for the dialog in the app's language, with the language's own name when it differs: "Spanish (Español)". */
     fun displayName(tag: String, uiLocale: Locale = Locale.getDefault()): String {

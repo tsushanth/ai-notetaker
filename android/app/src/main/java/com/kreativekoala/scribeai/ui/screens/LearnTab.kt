@@ -1,5 +1,7 @@
 package com.kreativekoala.scribeai.ui.screens
 
+import com.kreativekoala.scribeai.R
+import androidx.compose.ui.res.stringResource
 import android.annotation.SuppressLint
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -101,7 +103,7 @@ private fun LearnLanding(
             )
 
             Text(
-                "AI Tutor",
+                stringResource(R.string.ui_ai_tutor),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
@@ -147,7 +149,7 @@ private fun LearnLanding(
                         strokeWidth = 2.dp
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("Preparing lesson…", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.ui_preparing_lesson), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
                 } else {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(8.dp))

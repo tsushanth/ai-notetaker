@@ -268,20 +268,20 @@ fun YouTubeInputScreen(
             text = {
                 Column {
                     Text(
-                        "This feature extracts captions/subtitles from YouTube videos.",
+                        stringResource(R.string.ui_this_feature_extracts_captions_subtitles),
                         fontSize = 14.sp,
                         color = TextSecondary
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        "Requirements:",
+                        stringResource(R.string.ui_requirements),
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = TextPrimary
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        "• Video must have captions enabled\n• Auto-generated or manual subtitles\n• Works with most public videos",
+                        stringResource(R.string.ui_video_must_have_captions_enabled),
                         fontSize = 13.sp,
                         color = TextSecondary,
                         lineHeight = 20.sp

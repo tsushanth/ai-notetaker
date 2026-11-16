@@ -335,4 +335,7 @@
     <string name="pro_trial_format">Prueba gratuita de %d días</string>
     <string name="pro_plans_unavailable">No se pudieron cargar los planes desde Google Play. Inténtalo de nuevo más tarde.</string>
     <string name="pro_nothing_to_restore">No se encontró ninguna suscripción activa</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">Podcast</string>
 </resources>

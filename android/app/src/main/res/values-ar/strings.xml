@@ -335,4 +335,7 @@
     <string name="pro_trial_format">تجربة مجانية لمدة %d يوم</string>
     <string name="pro_plans_unavailable">تعذّر تحميل الباقات من Google Play. يرجى المحاولة لاحقاً.</string>
     <string name="pro_nothing_to_restore">لم يتم العثور على اشتراك نشط</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">بودكاست</string>
 </resources>

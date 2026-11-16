@@ -1,5 +1,7 @@
 package com.kreativekoala.scribeai.ui.screens
 
+import com.kreativekoala.scribeai.R
+import androidx.compose.ui.res.stringResource
 import android.annotation.SuppressLint
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -64,7 +66,7 @@ fun CreateTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text("Open in browser", color = PurpleColor, fontSize = 14.sp)
+                    Text(stringResource(R.string.ui_open_in_browser), color = PurpleColor, fontSize = 14.sp)
                     Text("↗", color = PurpleColor, fontSize = 14.sp)
                 }
             }

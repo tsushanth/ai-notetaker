@@ -335,4 +335,7 @@
     <string name="pro_trial_format">ทดลองใช้ฟรี %d วัน</string>
     <string name="pro_plans_unavailable">ไม่สามารถโหลดแพ็กเกจจาก Google Play ได้ โปรดลองอีกครั้งในภายหลัง</string>
     <string name="pro_nothing_to_restore">ไม่พบการสมัครสมาชิกที่ใช้งานอยู่</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">พอดแคสต์</string>
 </resources>

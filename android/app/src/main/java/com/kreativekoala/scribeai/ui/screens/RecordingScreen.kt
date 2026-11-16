@@ -1,5 +1,6 @@
 package com.kreativekoala.scribeai.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import android.Manifest
 import android.app.Activity
 import android.content.Context
@@ -238,7 +239,7 @@ fun RecordingScreen(
                         }
                     }) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = stringResource(R.string.back),
                             tint = TextPrimary
                         )

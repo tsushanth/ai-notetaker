@@ -136,7 +136,7 @@ private fun ThemeOption(
         if (isSelected) {
             Icon(
                 imageVector = Icons.Default.Check,
-                contentDescription = "Selected",
+                contentDescription = stringResource(R.string.ui_selected),
                 tint = Purple80
             )
         }

@@ -1,5 +1,7 @@
 package com.kreativekoala.scribeai.navigation
 
+import com.kreativekoala.scribeai.R
+import androidx.compose.ui.res.stringResource
 import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -261,7 +263,7 @@ fun AppNavigation(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
-                                    "Error loading note",
+                                    stringResource(R.string.ui_error_loading_note),
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
@@ -271,7 +273,7 @@ fun AppNavigation(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(onClick = { navController.popBackStack() }) {
-                                    Text("Go Back")
+                                    Text(stringResource(R.string.go_back))
                                 }
                             }
                         }

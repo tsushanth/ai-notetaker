@@ -1,5 +1,8 @@
 package com.kreativekoala.scribeai.phone
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import com.kreativekoala.scribeai.R
+import androidx.compose.ui.res.stringResource
 import android.Manifest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -88,15 +91,15 @@ fun PhoneScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Phone") },
+                title = { Text(stringResource(R.string.ui_phone)) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showVerificationSheet = true }) {
-                        Icon(Icons.Default.AddCircle, contentDescription = "Verify phone")
+                        Icon(Icons.Default.AddCircle, contentDescription = stringResource(R.string.ui_verify_phone))
                     }
                 }
             )
@@ -114,12 +117,12 @@ fun PhoneScreen(
                 Tab(
                     selected = uiState.selectedTab == PhoneTab.CALLS,
                     onClick = { viewModel.selectTab(PhoneTab.CALLS) },
-                    text = { Text("Calls") }
+                    text = { Text(stringResource(R.string.ui_calls)) }
                 )
                 Tab(
                     selected = uiState.selectedTab == PhoneTab.DIALER,
                     onClick = { viewModel.selectTab(PhoneTab.DIALER) },
-                    text = { Text("Dialer") }
+                    text = { Text(stringResource(R.string.ui_dialer)) }
                 )
             }
 
@@ -298,7 +301,7 @@ private fun PhoneCallCard(call: PhoneCall, onCallClick: (PhoneCall) -> Unit) {
             IconButton(onClick = { onCallClick(call) }) {
                 Icon(
                     Icons.Default.Phone,
-                    contentDescription = "Call",
+                    contentDescription = stringResource(R.string.ui_call),
                     tint = MaterialTheme.colorScheme.primary
                 )
             }
@@ -320,7 +323,7 @@ private fun EmptyCallsContent(hasVerifiedPhone: Boolean, onVerifyClick: () -> Un
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
         )
         Spacer(Modifier.height(16.dp))
-        Text("No calls yet", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
+        Text(stringResource(R.string.ui_no_calls_yet), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Medium)
         Spacer(Modifier.height(8.dp))
         Text(
             text = if (hasVerifiedPhone)
@@ -336,7 +339,7 @@ private fun EmptyCallsContent(hasVerifiedPhone: Boolean, onVerifyClick: () -> Un
             Button(onClick = onVerifyClick) {
                 Icon(Icons.Default.Phone, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Verify Phone Number")
+                Text(stringResource(R.string.ui_verify_phone_number))
             }
         }
     }
@@ -362,7 +365,7 @@ private fun DialerContent(
             modifier = Modifier.fillMaxWidth(),
             textStyle = LocalTextStyle.current.copy(fontSize = 28.sp, textAlign = TextAlign.Center),
             placeholder = {
-                Text("Enter phone number", textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                Text(stringResource(R.string.ui_enter_phone_number), textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
             },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             singleLine = true
@@ -382,16 +385,16 @@ private fun DialerContent(
             ) {
                 Icon(
                     Icons.Default.Phone,
-                    contentDescription = "Call",
+                    contentDescription = stringResource(R.string.ui_call),
                     tint = Color.White,
                     modifier = Modifier.size(32.dp)
                 )
             }
             Spacer(Modifier.height(4.dp))
-            Text("Call", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.ui_call), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             if (!hasVerifiedPhone) {
                 Text(
-                    "Verify phone to call",
+                    stringResource(R.string.ui_verify_phone_to_call),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -424,7 +427,7 @@ private fun DialPad(onDigitClick: (String) -> Unit, onDeleteClick: () -> Unit) {
             Spacer(Modifier.size(72.dp))
             DialPadButton(digit = "+", letters = "", onClick = { onDigitClick("+") })
             IconButton(onClick = onDeleteClick, modifier = Modifier.size(72.dp)) {
-                Icon(Icons.Default.Backspace, contentDescription = "Delete")
+                Icon(Icons.Default.Backspace, contentDescription = stringResource(R.string.delete))
             }
         }
     }
@@ -498,7 +501,7 @@ private fun ActiveCallSheet(
                 ) {
                     Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(Color.Red))
                     Spacer(Modifier.width(8.dp))
-                    Text("Recording", color = Color.Red, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.rec_channel_recording), color = Color.Red, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -591,13 +594,13 @@ private fun ActiveCallSheet(
                     ) {
                         Icon(
                             Icons.Default.CallEnd,
-                            contentDescription = "End Call",
+                            contentDescription = stringResource(R.string.ui_end_call),
                             modifier = Modifier.size(32.dp),
                             tint = Color.White
                         )
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text("End Call", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.ui_end_call), style = MaterialTheme.typography.labelSmall)
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -613,7 +616,7 @@ private fun ActiveCallSheet(
                         )
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text("Speaker", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(R.string.ui_speaker), style = MaterialTheme.typography.labelSmall)
                 }
             }
 
@@ -643,13 +646,13 @@ private fun VerificationBottomSheet(
             modifier = Modifier.fillMaxWidth().padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Verify Phone Number", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.ui_verify_phone_number), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(24.dp))
 
             when (verificationState) {
                 VerificationState.IDLE, VerificationState.SENDING_CODE -> {
                     Text(
-                        "Enter your phone number. We'll call you with a verification code.",
+                        stringResource(R.string.ui_enter_your_phone_number_we),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -658,7 +661,7 @@ private fun VerificationBottomSheet(
                     OutlinedTextField(
                         value = verificationPhoneNumber,
                         onValueChange = onPhoneNumberChange,
-                        label = { Text("Phone number") },
+                        label = { Text(stringResource(R.string.ui_phone_number)) },
                         placeholder = { Text("+1 (555) 123-4567") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         modifier = Modifier.fillMaxWidth(),
@@ -674,14 +677,14 @@ private fun VerificationBottomSheet(
                         if (verificationState == VerificationState.SENDING_CODE) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                         } else {
-                            Text("Call Me with Code")
+                            Text(stringResource(R.string.ui_call_me_with_code))
                         }
                     }
                 }
 
                 VerificationState.CODE_SENT, VerificationState.VERIFYING -> {
                     Text(
-                        "Answer your phone! Enter the 6-digit code you hear.",
+                        stringResource(R.string.ui_answer_your_phone_enter_the),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -692,7 +695,7 @@ private fun VerificationBottomSheet(
                     OutlinedTextField(
                         value = verificationCode,
                         onValueChange = { if (it.length <= 6) onCodeChange(it) },
-                        label = { Text("Verification code") },
+                        label = { Text(stringResource(R.string.ui_verification_code)) },
                         placeholder = { Text("123456") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth(),
@@ -713,31 +716,31 @@ private fun VerificationBottomSheet(
                         if (verificationState == VerificationState.VERIFYING) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                         } else {
-                            Text("Verify")
+                            Text(stringResource(R.string.ui_verify))
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    TextButton(onClick = onReset) { Text("Request New Code") }
+                    TextButton(onClick = onReset) { Text(stringResource(R.string.ui_request_new_code)) }
                 }
 
                 VerificationState.VERIFIED -> {
                     Icon(Icons.Default.CheckCircle, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text("Phone Verified!", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
+                    Text(stringResource(R.string.ui_phone_verified), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color(0xFF4CAF50))
                     Spacer(Modifier.height(8.dp))
-                    Text("You can now make calls through the app.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.ui_you_can_now_make_calls), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Spacer(Modifier.height(24.dp))
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(12.dp)
-                    ) { Text("Done") }
+                    ) { Text(stringResource(R.string.done)) }
                 }
 
                 VerificationState.ERROR -> {
                     Icon(Icons.Default.Error, null, tint = Color.Red, modifier = Modifier.size(64.dp))
                     Spacer(Modifier.height(16.dp))
-                    Text("Verification Failed", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.Red)
+                    Text(stringResource(R.string.ui_verification_failed), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.Red)
                     Spacer(Modifier.height(8.dp))
                     Text(
                         verificationError ?: "Something went wrong. Please try again.",
@@ -750,7 +753,7 @@ private fun VerificationBottomSheet(
                         onClick = onReset,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(12.dp)
-                    ) { Text("Try Again") }
+                    ) { Text(stringResource(R.string.try_again)) }
                 }
             }
 
@@ -759,7 +762,7 @@ private fun VerificationBottomSheet(
                 Divider()
                 Spacer(Modifier.height(16.dp))
                 Text(
-                    "Verified Numbers",
+                    stringResource(R.string.ui_verified_numbers),
                     style = MaterialTheme.typography.titleSmall,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Start
@@ -774,7 +777,7 @@ private fun VerificationBottomSheet(
                         Spacer(Modifier.width(12.dp))
                         Text(phone.formattedPhoneNumber, modifier = Modifier.weight(1f))
                         IconButton(onClick = { onDeletePhone(phone) }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Red)
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = Color.Red)
                         }
                     }
                 }

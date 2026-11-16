@@ -335,4 +335,7 @@
     <string name="pro_trial_format">%d dni za darmo</string>
     <string name="pro_plans_unavailable">Nie udało się wczytać planów z Google Play. Spróbuj ponownie później.</string>
     <string name="pro_nothing_to_restore">Nie znaleziono aktywnej subskrypcji</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">Podcast</string>
 </resources>

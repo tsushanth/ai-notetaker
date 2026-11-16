@@ -335,4 +335,7 @@
     <string name="pro_trial_format">%d일 무료 체험</string>
     <string name="pro_plans_unavailable">Google Play에서 요금제를 불러오지 못했습니다. 나중에 다시 시도해 주세요.</string>
     <string name="pro_nothing_to_restore">활성 구독을 찾을 수 없습니다</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">팟캐스트</string>
 </resources>

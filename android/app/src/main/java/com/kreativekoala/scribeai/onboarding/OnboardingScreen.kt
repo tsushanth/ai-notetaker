@@ -1,5 +1,7 @@
 package com.kreativekoala.scribeai.onboarding
 
+import com.kreativekoala.scribeai.R
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
@@ -161,7 +163,7 @@ private fun OnboardingHeader(
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                    contentDescription = "Back",
+                    contentDescription = stringResource(R.string.back),
                     tint = TextPrimary,
                     modifier = Modifier.size(32.dp)
                 )
@@ -170,7 +172,7 @@ private fun OnboardingHeader(
             // Skip button
             TextButton(onClick = onSkip) {
                 Text(
-                    "Skip",
+                    stringResource(R.string.ui_skip),
                     color = TextSecondary,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
@@ -215,7 +217,7 @@ private fun UserTypeScreen(manager: OnboardingManager) {
         Spacer(Modifier.height(32.dp))
 
         Text(
-            "Tell us about yourself",
+            stringResource(R.string.ui_tell_us_about_yourself),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
@@ -225,7 +227,7 @@ private fun UserTypeScreen(manager: OnboardingManager) {
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "This helps us personalize your experience",
+            stringResource(R.string.ui_this_helps_us_personalize_your),
             fontSize = 16.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -270,7 +272,7 @@ private fun UseCaseScreen(manager: OnboardingManager) {
         Spacer(Modifier.height(32.dp))
 
         Text(
-            "How will you use ScribeAI?",
+            stringResource(R.string.ui_how_will_you_use_scribeai),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
@@ -280,7 +282,7 @@ private fun UseCaseScreen(manager: OnboardingManager) {
         Spacer(Modifier.height(8.dp))
 
         Text(
-            "Select all that apply",
+            stringResource(R.string.ui_select_all_that_apply),
             fontSize = 16.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center
@@ -397,7 +399,7 @@ private fun SocialProofScreen(onContinue: () -> Unit) {
         Spacer(Modifier.height(32.dp))
 
         Text(
-            "Built for Students",
+            stringResource(R.string.ui_built_for_students),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
@@ -470,7 +472,7 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
         Spacer(Modifier.height(32.dp))
 
         Text(
-            "Study Smarter, Not Harder",
+            stringResource(R.string.ui_study_smarter_not_harder),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
@@ -494,13 +496,13 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
                 // Header
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "Feature",
+                        stringResource(R.string.ui_feature),
                         modifier = Modifier.weight(1f),
                         fontWeight = FontWeight.SemiBold,
                         color = TextSecondary
                     )
                     Text(
-                        "Others",
+                        stringResource(R.string.ui_others),
                         modifier = Modifier.weight(0.5f),
                         fontWeight = FontWeight.SemiBold,
                         color = TextSecondary,
@@ -619,7 +621,7 @@ private fun NotificationsScreen(onComplete: () -> Unit) {
         Spacer(Modifier.height(40.dp))
 
         Text(
-            "Stay on Track",
+            stringResource(R.string.ui_stay_on_track),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary,
@@ -629,7 +631,7 @@ private fun NotificationsScreen(onComplete: () -> Unit) {
         Spacer(Modifier.height(16.dp))
 
         Text(
-            "Get reminders to study, notifications about new features, and tips to maximize your learning.",
+            stringResource(R.string.ui_get_reminders_to_study_notifications),
             fontSize = 16.sp,
             color = TextSecondary,
             textAlign = TextAlign.Center,
@@ -650,7 +652,7 @@ private fun NotificationsScreen(onComplete: () -> Unit) {
 
         TextButton(onClick = onComplete) {
             Text(
-                "Maybe Later",
+                stringResource(R.string.ui_maybe_later),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
                 color = TextSecondary

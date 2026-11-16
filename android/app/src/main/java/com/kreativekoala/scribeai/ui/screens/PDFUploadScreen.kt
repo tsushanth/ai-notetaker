@@ -1,5 +1,6 @@
 package com.kreativekoala.scribeai.ui.screens
 
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -152,7 +153,7 @@ fun PDFUploadScreen(
                             onNavigateBack()
                         }
                     }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                     }
                 },
                 actions = {
@@ -530,13 +531,13 @@ private fun ProcessingContent(
                     Spacer(Modifier.width(12.dp))
                     Column {
                         Text(
-                            "Get notified when your notes are ready",
+                            stringResource(R.string.ui_get_notified_when_your_notes),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = TextPrimary
                         )
                         Text(
-                            "Notes usually take a few minutes to generate. We'll let you know when they're ready.",
+                            stringResource(R.string.ui_notes_usually_take_a_few),
                             fontSize = 12.sp,
                             color = TextSecondary
                         )
@@ -551,7 +552,7 @@ private fun ProcessingContent(
                     colors = ButtonDefaults.buttonColors(containerColor = Purple80),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Notify me")
+                    Text(stringResource(R.string.ui_notify_me))
                 }
             }
         }

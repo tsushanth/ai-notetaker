@@ -335,4 +335,7 @@
     <string name="pro_trial_format">%d 天免费试用</string>
     <string name="pro_plans_unavailable">无法从 Google Play 加载套餐，请稍后重试。</string>
     <string name="pro_nothing_to_restore">未找到有效订阅</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">播客</string>
 </resources>

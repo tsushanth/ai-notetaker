@@ -335,4 +335,7 @@
     <string name="pro_trial_format">%d दिन का निःशुल्क परीक्षण</string>
     <string name="pro_plans_unavailable">Google Play से प्लान लोड नहीं हो सके। कृपया बाद में पुनः प्रयास करें।</string>
     <string name="pro_nothing_to_restore">कोई सक्रिय सदस्यता नहीं मिली</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">पॉडकास्ट</string>
 </resources>

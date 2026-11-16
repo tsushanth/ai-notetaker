@@ -335,4 +335,7 @@
     <string name="pro_trial_format">Teste grátis de %d dias</string>
     <string name="pro_plans_unavailable">Não foi possível carregar os planos do Google Play. Tente novamente mais tarde.</string>
     <string name="pro_nothing_to_restore">Nenhuma assinatura ativa encontrada</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">Podcast</string>
 </resources>

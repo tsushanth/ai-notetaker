@@ -335,4 +335,7 @@
     <string name="pro_trial_format">%d gün ücretsiz deneme</string>
     <string name="pro_plans_unavailable">Planlar Google Play\'den yüklenemedi. Lütfen daha sonra tekrar deneyin.</string>
     <string name="pro_nothing_to_restore">Etkin abonelik bulunamadı</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">Podcast</string>
 </resources>

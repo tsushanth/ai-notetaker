@@ -335,4 +335,7 @@
     <string name="pro_trial_format">%d dagen gratis proberen</string>
     <string name="pro_plans_unavailable">De abonnementen konden niet uit Google Play worden geladen. Probeer het later opnieuw.</string>
     <string name="pro_nothing_to_restore">Geen actief abonnement gevonden</string>
+
+    <!-- wave2: machine-translated, needs native review -->
+    <string name="tab_podcast">Podcast</string>
 </resources>

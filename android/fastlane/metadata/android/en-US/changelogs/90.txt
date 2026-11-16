@@ -1,1 +1,1 @@
-More reliable recording: keeps recording when the screen locks, recovers unfinished recordings, and shows clear progress.
+Now in 28 languages, including Czech, Greek, Finnish, Hungarian, Romanian, Swedish and Ukrainian. More reliable recording: keeps recording when the screen locks, recovers unfinished recordings, and shows clear progress.

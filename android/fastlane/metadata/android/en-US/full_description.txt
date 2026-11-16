@@ -1,13 +1,13 @@
-ScribeAI turns videos, recordings and documents into notes you can study from. Paste a YouTube link, record audio, add a PDF, DOCX, PPT or TXT file, or scan text from photos. ScribeAI writes a summary and key points for you.
+ScribeAI is a free AI note taker and summarizer for studying. It turns YouTube videos, lectures, recordings and documents into notes you can study from. Paste a YouTube link, record audio, add a PDF, DOCX, PPT or TXT file, or scan text from photos. ScribeAI writes a summary and key points for you.
 
 ScribeAI is free to use. Notes, voice transcription, AI summaries, chat, quizzes, flashcards, mind maps, exports and share links are free, with fair daily limits. Podcasts and the meeting bot need ScribeAI Pro.
 
 WHAT YOU CAN DO
 
 • Summarize videos: paste a YouTube link and get a summary with key points.
-• Transcribe audio: record a lecture, interview or voice note and get the text.
+• Transcribe audio: record a lecture, interview or voice note and get the text. Make lecture notes from a recording.
 • Read documents faster: add a PDF, DOCX, PPT or TXT file and get a summary and key points.
-• Scan text: turn photos of pages into notes.
+• Scan text: turn photos of printed pages into notes. Scanning reads Latin-script text such as English, Spanish or French.
 • Chat with your notes: ask questions and get answers based on your own note.
 • Practice: turn a note into flashcards and quizzes, or open it as a mind map.
 • Export and share: save notes as PDF or Word, send them to Google Drive, or share a link.

@@ -81,6 +81,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.kreativekoala.scribeai.utils.AppStrings
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.pluralStringResource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,7 +120,7 @@ fun NoteDetailScreen(
     // From the menu the link is copied; from the post-summary button it opens the system share sheet.
     fun createShareLink(openShareSheet: Boolean) {
         val token = authToken ?: return
-        Toast.makeText(context, "Creating share link...", Toast.LENGTH_SHORT).show()
+        Toast.makeText(context, context.getString(R.string.note_toast_creating_link), Toast.LENGTH_SHORT).show()
         scope.launch {
             when (val result = ShareLink.create(com.kreativekoala.scribeai.BuildConfig.BASE_URL, token, note.id)) {
                 is ShareLinkResult.Success -> {
@@ -132,7 +135,7 @@ fun NoteDetailScreen(
                     } else {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(ClipData.newPlainText("Share Link", result.url))
-                        Toast.makeText(context, "Share link copied!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.note_toast_link_copied), Toast.LENGTH_SHORT).show()
                     }
                 }
                 is ShareLinkResult.LimitReached -> {
@@ -261,7 +264,7 @@ fun NoteDetailScreen(
                                     showMenu = false
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                     clipboard.setPrimaryClip(ClipData.newPlainText("Note", note.displayContent))
-                                    Toast.makeText(context, "Copied to clipboard", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.note_toast_copied), Toast.LENGTH_SHORT).show()
                                     AnalyticsService.trackEvent("export_clipboard", mapOf("note_id" to note.id))
                                 },
                                 leadingIcon = {
@@ -277,7 +280,7 @@ fun NoteDetailScreen(
                                         action = Intent.ACTION_SEND
                                         type = "text/plain"
                                         putExtra(Intent.EXTRA_SUBJECT, note.title)
-                                        putExtra(Intent.EXTRA_TEXT, "${note.title}\n\n${note.displayContent}\n\n---\nCreated with Scribe AI")
+                                        putExtra(Intent.EXTRA_TEXT, "${note.title}\n\n${note.displayContent}\n\n---\n${context.getString(R.string.note_share_footer)}")
                                     }
                                     context.startActivity(Intent.createChooser(shareIntent, context.getString(R.string.share_note)))
                                 },
@@ -297,11 +300,11 @@ fun NoteDetailScreen(
                                     showMenu = false
                                     scope.launch {
                                             authToken?.let { token ->
-                                                Toast.makeText(context, "Generating PDF...", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, context.getString(R.string.note_toast_generating_pdf), Toast.LENGTH_SHORT).show()
                                                 when (val result = ExportManager.exportNote(context, token, note.id, note.title, ExportFormat.PDF)) {
                                                     is ExportResult.Success -> {
                                                         val intent = ExportManager.createShareIntent(result.fileUri, result.mimeType, note.title)
-                                                        context.startActivity(Intent.createChooser(intent, "Share PDF"))
+                                                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.note_share_chooser_pdf)))
                                                     }
                                                     is ExportResult.Error -> {
                                                         Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
@@ -326,11 +329,11 @@ fun NoteDetailScreen(
                                     showMenu = false
                                     scope.launch {
                                             authToken?.let { token ->
-                                                Toast.makeText(context, "Generating document...", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, context.getString(R.string.note_toast_generating_doc), Toast.LENGTH_SHORT).show()
                                                 when (val result = ExportManager.exportNote(context, token, note.id, note.title, ExportFormat.DOCX)) {
                                                     is ExportResult.Success -> {
                                                         val intent = ExportManager.createShareIntent(result.fileUri, result.mimeType, note.title)
-                                                        context.startActivity(Intent.createChooser(intent, "Share Document"))
+                                                        context.startActivity(Intent.createChooser(intent, context.getString(R.string.note_share_chooser_doc)))
                                                     }
                                                     is ExportResult.Error -> {
                                                         Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
@@ -368,7 +371,7 @@ fun NoteDetailScreen(
                                     showMenu = false
                                     scope.launch {
                                             authToken?.let { token ->
-                                                Toast.makeText(context, "Exporting to Google Drive...", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, context.getString(R.string.note_toast_exporting_drive), Toast.LENGTH_SHORT).show()
                                                 IntegrationHelper.exportToProvider(context, token, note.id, "google-drive/export")
                                             }
                                         }
@@ -497,7 +500,7 @@ private fun BottomTabBar(
         // Learn tab (hidden unless the server switches it on)
         if (flags.learn) BottomTabItem(
             icon = Icons.Default.School,
-            label = "Learn",
+            label = stringResource(R.string.tab_learn),
             isSelected = selectedTab == 1,
             onClick = { onTabSelected(1) },
             modifier = Modifier.weight(1f)
@@ -505,7 +508,7 @@ private fun BottomTabBar(
         // Create tab (hidden unless the server switches it on)
         if (flags.create) BottomTabItem(
             icon = Icons.Default.AutoAwesome,
-            label = "Create",
+            label = stringResource(R.string.tab_create),
             isSelected = selectedTab == 2,
             onClick = { onTabSelected(2) },
             modifier = Modifier.weight(1f)
@@ -513,7 +516,7 @@ private fun BottomTabBar(
         // Compete tab (hidden unless the server switches it on)
         if (flags.compete) BottomTabItem(
             icon = Icons.Default.EmojiEvents,
-            label = "Compete",
+            label = stringResource(R.string.tab_compete),
             isSelected = selectedTab == 3,
             onClick = { onTabSelected(3) },
             modifier = Modifier.weight(1f)
@@ -521,7 +524,7 @@ private fun BottomTabBar(
         // More tab - selected when any secondary tab (4-8) is active
         BottomTabItem(
             icon = Icons.Default.MoreHoriz,
-            label = "More",
+            label = stringResource(R.string.more),
             isSelected = selectedTab in 4..8,
             onClick = { showMoreSheet = true },
             modifier = Modifier.weight(1f)
@@ -552,7 +555,7 @@ private fun BottomTabBar(
                     Triple(Icons.Default.Quiz, stringResource(R.string.tab_quiz), 5),
                     Triple(Icons.Default.Style, stringResource(R.string.tab_cards), 6),
                     Triple(Icons.Default.Podcasts, stringResource(R.string.tab_podcast), 7),
-                    Triple(Icons.Default.AccountTree, "Mind Map", 8)
+                    Triple(Icons.Default.AccountTree, stringResource(R.string.tab_mind_map), 8)
                 )
                 secondaryTabs.forEach { (icon, label, index) ->
                     val isSelected = selectedTab == index
@@ -1402,7 +1405,7 @@ private fun ReadAloudSection(
                                         ) {
                                             Icon(
                                                 if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                                contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.note_play),
                                                 tint = Color.White,
                                                 modifier = Modifier.size(28.dp)
                                             )
@@ -1490,7 +1493,7 @@ private fun ReadAloudGenerateSection(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(voice.name, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = if (isSelected) Color.White else TextPrimary)
-                        Text(voice.gender, fontSize = 9.sp, color = if (isSelected) Color.White.copy(alpha = 0.7f) else TextTertiary)
+                        Text(stringResource(voice.genderRes), fontSize = 9.sp, color = if (isSelected) Color.White.copy(alpha = 0.7f) else TextTertiary)
                     }
                 }
             }
@@ -1581,7 +1584,11 @@ fun SummaryTab(note: Note, aiViewModel: AIViewModel, authToken: String?, languag
                             FilterChip(
                                 selected = selectedLength == length,
                                 onClick = { selectedLength = length },
-                                label = { Text(length.capitalize()) },
+                                label = { Text(stringResource(when (length) {
+                                    "short" -> R.string.note_length_short
+                                    "medium" -> R.string.note_length_medium
+                                    else -> R.string.note_length_long
+                                })) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Purple80,
                                     selectedLabelColor = DarkBackground
@@ -1844,13 +1851,13 @@ fun ChatTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
                         isListening = true
                         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                            putExtra(RecognizerIntent.EXTRA_PROMPT, "Ask a question about your notes...")
+                            putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.note_voice_prompt))
                         }
                         try {
                             speechRecognizerLauncher.launch(intent)
                         } catch (e: Exception) {
                             isListening = false
-                            Toast.makeText(context, "Voice input not available", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.note_toast_voice_unavailable), Toast.LENGTH_SHORT).show()
                         }
                     }
                 },
@@ -1882,12 +1889,12 @@ fun ChatTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferredL
                 onVoiceInput = {
                     val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-                        putExtra(RecognizerIntent.EXTRA_PROMPT, "Ask a question about your notes...")
+                        putExtra(RecognizerIntent.EXTRA_PROMPT, context.getString(R.string.note_voice_prompt))
                     }
                     try {
                         speechRecognizerLauncher.launch(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(context, "Voice input not available", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.note_toast_voice_unavailable), Toast.LENGTH_SHORT).show()
                     }
                 }
             )
@@ -2096,7 +2103,7 @@ private fun sendChatMessage(
         } catch (e: Exception) {
             val errorMessage = ChatMessage(
                 id = System.currentTimeMillis().toString(),
-                text = "Sorry, I encountered an error: ${e.message}",
+                text = AppStrings.get(R.string.note_chat_error, e.message ?: ""),
                 isUser = false
             )
             onMessagesUpdate(messages + userMessage + errorMessage)
@@ -2314,7 +2321,7 @@ private fun sendChatMessage(
         } catch (e: Exception) {
             val errorMessage = ChatMessage(
                 id = System.currentTimeMillis().toString(),
-                text = "Sorry, I encountered an error: ${e.message}",
+                text = AppStrings.get(R.string.note_chat_error, e.message ?: ""),
                 isUser = false
             )
             onMessagesUpdate(messages + userMessage + errorMessage)
@@ -2329,11 +2336,11 @@ private fun sendChatMessage(
 // MARK: - Infographic Tab
 
 // Style options for infographic
-enum class InfographicStyle(val value: String, val displayName: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    MODERN("modern", "Modern", Icons.Default.AutoAwesome),
-    COLORFUL("colorful", "Colorful", Icons.Default.Palette),
-    MINIMAL("minimal", "Minimal", Icons.Default.GridOn),
-    PROFESSIONAL("professional", "Pro", Icons.Default.BusinessCenter)
+enum class InfographicStyle(val value: String, @StringRes val labelRes: Int, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    MODERN("modern", R.string.infographic_style_modern, Icons.Default.AutoAwesome),
+    COLORFUL("colorful", R.string.infographic_style_colorful, Icons.Default.Palette),
+    MINIMAL("minimal", R.string.infographic_style_minimal, Icons.Default.GridOn),
+    PROFESSIONAL("professional", R.string.infographic_style_pro, Icons.Default.BusinessCenter)
 }
 
 @Composable
@@ -2426,10 +2433,10 @@ fun InfographicTab(
                         modifier = Modifier.fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        InfographicFeatureRow(Icons.Default.AutoAwesome, "AI-generated visual design")
-                        InfographicFeatureRow(Icons.Default.DataUsage, "Key statistics highlighted")
-                        InfographicFeatureRow(Icons.Default.FormatListBulleted, "Main points summarized")
-                        InfographicFeatureRow(Icons.Default.Share, "Save and share anywhere")
+                        InfographicFeatureRow(Icons.Default.AutoAwesome, stringResource(R.string.infographic_feature_design))
+                        InfographicFeatureRow(Icons.Default.DataUsage, stringResource(R.string.infographic_feature_stats))
+                        InfographicFeatureRow(Icons.Default.FormatListBulleted, stringResource(R.string.infographic_feature_points))
+                        InfographicFeatureRow(Icons.Default.Share, stringResource(R.string.infographic_feature_share))
                     }
 
                     Spacer(Modifier.height(8.dp))
@@ -2500,7 +2507,7 @@ fun InfographicTab(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            "Time elapsed: ${timeElapsed}s",
+                            stringResource(R.string.note_time_elapsed_label, timeElapsed),
                             fontSize = 12.sp,
                             color = TextTertiary
                         )
@@ -2619,7 +2626,7 @@ fun InfographicTab(
                                     // Open URL in browser to download
                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(data.imageUrl))
                                     context.startActivity(intent)
-                                    Toast.makeText(context, "Opening image...", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, context.getString(R.string.note_toast_opening_image), Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier
                                     .weight(1f)
@@ -2690,7 +2697,7 @@ private fun InfographicStyleCard(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                style.displayName,
+                stringResource(style.labelRes),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
                 color = if (isSelected) Purple80 else TextSecondary
@@ -2860,9 +2867,9 @@ private fun InfographicFullScreenDialog(
 }
 
 // Voice gender grouping for podcast (like iOS)
-enum class VoiceGender(val displayName: String) {
-    FEMALE("Female"),
-    MALE("Male")
+enum class VoiceGender(@StringRes val labelRes: Int) {
+    FEMALE(R.string.voice_gender_female),
+    MALE(R.string.voice_gender_male)
 }
 
 // Individual voice options (like iOS) - maps human names to TTS voice IDs
@@ -2880,14 +2887,14 @@ enum class PodcastVoice(
 }
 
 // TTS voice options for Read Aloud
-data class TTSVoice(val id: String, val name: String, val gender: String)
+data class TTSVoice(val id: String, val name: String, @StringRes val genderRes: Int)
 
 val ttsVoices = listOf(
-    TTSVoice("nova", "Sarah", "Female"),
-    TTSVoice("shimmer", "Emily", "Female"),
-    TTSVoice("echo", "James", "Male"),
-    TTSVoice("fable", "Daniel", "Male"),
-    TTSVoice("onyx", "Marcus", "Male")
+    TTSVoice("nova", "Sarah", R.string.voice_gender_female),
+    TTSVoice("shimmer", "Emily", R.string.voice_gender_female),
+    TTSVoice("echo", "James", R.string.voice_gender_male),
+    TTSVoice("fable", "Daniel", R.string.voice_gender_male),
+    TTSVoice("onyx", "Marcus", R.string.voice_gender_male)
 )
 
 // Duration options
@@ -2911,9 +2918,9 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
     var showOnDeviceReadAloud by remember { mutableStateOf(false) }
 
     val durationOptions = listOf(
-        DurationOption("short", "Short", "3-5 min"),
-        DurationOption("medium", "Medium", "8-12 min"),
-        DurationOption("long", "Long", "15-20 min")
+        DurationOption("short", stringResource(R.string.podcast_duration_short), stringResource(R.string.podcast_duration_range, 3, 5)),
+        DurationOption("medium", stringResource(R.string.podcast_duration_medium), stringResource(R.string.podcast_duration_range, 8, 12)),
+        DurationOption("long", stringResource(R.string.podcast_duration_long), stringResource(R.string.podcast_duration_range, 15, 20))
     )
 
     val context = LocalContext.current
@@ -3006,8 +3013,8 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         )
                         Spacer(Modifier.width(6.dp))
                         Text(
-                            if (hasEnoughContent) "$wordCount words — ready to generate"
-                            else "$wordCount words — needs at least 50 words",
+                            if (hasEnoughContent) pluralStringResource(R.plurals.note_words_ready, wordCount, wordCount)
+                            else pluralStringResource(R.plurals.note_words_needs_more, wordCount, wordCount),
                             fontSize = 13.sp,
                             color = if (hasEnoughContent) Purple80 else AccentRed,
                             fontWeight = FontWeight.Medium
@@ -3063,7 +3070,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                                     // Auto-select first voice of that gender
                                     selectedVoice = PodcastVoice.entries.first { it.gender == gender }
                                 },
-                                label = { Text(gender.displayName) },
+                                label = { Text(stringResource(gender.labelRes)) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = Purple80,
                                     selectedLabelColor = DarkBackground
@@ -3232,7 +3239,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         )
                         Spacer(Modifier.height(8.dp))
                         Text(
-                            "${timeElapsed}s elapsed",
+                            stringResource(R.string.note_seconds_elapsed, timeElapsed),
                             fontSize = 12.sp,
                             color = TextTertiary
                         )
@@ -3244,9 +3251,9 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 val steps = listOf(
-                                    "Writing a 2-host conversation script",
-                                    "Converting script to natural speech",
-                                    "Mixing and finalizing audio"
+                                    stringResource(R.string.podcast_step_script),
+                                    stringResource(R.string.podcast_step_speech),
+                                    stringResource(R.string.podcast_step_mix)
                                 )
                                 steps.forEachIndexed { i, step ->
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -3426,7 +3433,7 @@ fun PodcastTab(note: Note, aiViewModel: AIViewModel, authToken: String?, preferr
 
                                 // Status text
                                 Text(
-                                    if (isPlaying) "Now Playing" else "Ready to Play",
+                                    stringResource(if (isPlaying) R.string.podcast_now_playing else R.string.podcast_ready_to_play),
                                     fontSize = 14.sp,
                                     color = if (isPlaying) Purple80 else TextSecondary,
                                     fontWeight = if (isPlaying) FontWeight.Medium else FontWeight.Normal
@@ -3932,10 +3939,10 @@ fun QuizResultsView(
     val percentage = if (total > 0) (score * 100) / total else 0
 
     val message = when {
-        percentage >= 90 -> "Outstanding! 🎉"
-        percentage >= 70 -> "Great job! 👏"
-        percentage >= 50 -> "Good effort! 💪"
-        else -> "Keep practicing! 📚"
+        percentage >= 90 -> stringResource(R.string.quiz_result_outstanding)
+        percentage >= 70 -> stringResource(R.string.quiz_result_great)
+        percentage >= 50 -> stringResource(R.string.quiz_result_good)
+        else -> stringResource(R.string.quiz_result_practice)
     }
 
     Column(
@@ -4199,7 +4206,7 @@ fun FlashcardsTab(
                         Spacer(Modifier.height(8.dp))
                         Text(stringResource(R.string.ui_this_may_take_20_40), fontSize = 14.sp, color = TextSecondary)
                         Spacer(Modifier.height(16.dp))
-                        Text("${timeElapsed}s elapsed", fontSize = 12.sp, color = TextTertiary)
+                        Text(stringResource(R.string.note_seconds_elapsed, timeElapsed), fontSize = 12.sp, color = TextTertiary)
                     }
                 }
             }
@@ -4528,7 +4535,7 @@ fun MindMapTab(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    data.title ?: "Mind Map",
+                                    data.title ?: stringResource(R.string.tab_mind_map),
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = TextPrimary,
@@ -4701,10 +4708,10 @@ private fun MindMapGeneratePrompt(
 
         // Feature list
         listOf(
-            "Visual hierarchy of concepts",
-            "Tap nodes to expand/collapse",
-            "AI-suggested topics to explore",
-            "Color-coded branches"
+            stringResource(R.string.mindmap_feature_hierarchy),
+            stringResource(R.string.mindmap_feature_expand),
+            stringResource(R.string.mindmap_feature_topics),
+            stringResource(R.string.mindmap_feature_colors)
         ).forEach { feature ->
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),

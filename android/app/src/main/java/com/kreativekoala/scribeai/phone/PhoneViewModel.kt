@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 enum class PhoneTab { CALLS, DIALER }
 
@@ -98,7 +100,7 @@ class PhoneViewModel(
                     if (state.reason != CallEndReason.COMPLETED &&
                         state.reason != CallEndReason.CANCELLED
                     ) {
-                        _uiState.value = _uiState.value.copy(error = state.reason.displayMessage)
+                        _uiState.value = _uiState.value.copy(error = AppStrings.get(state.reason.messageRes))
                     }
                     delay(3000)
                     clearActiveCall()
@@ -125,7 +127,7 @@ class PhoneViewModel(
     fun loadData() {
         viewModelScope.launch {
             val token = authManager.getFreshToken() ?: run {
-                _uiState.value = _uiState.value.copy(error = "Sign in required")
+                _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_sign_in))
                 return@launch
             }
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
@@ -139,7 +141,7 @@ class PhoneViewModel(
                     )
                 },
                 onFailure = {
-                    _uiState.value = _uiState.value.copy(error = "Couldn't load phones")
+                    _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_load_phones))
                 }
             )
 
@@ -155,7 +157,7 @@ class PhoneViewModel(
                 onFailure = {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        error = "Couldn't load calls"
+                        error = AppStrings.get(R.string.phone_error_load_calls)
                     )
                 }
             )
@@ -219,7 +221,7 @@ class PhoneViewModel(
     fun sendVerificationCode() {
         val phoneNumber = _uiState.value.verificationPhoneNumber
         if (phoneNumber.isBlank()) {
-            _uiState.value = _uiState.value.copy(error = "Enter a phone number")
+            _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_enter_number))
             return
         }
         viewModelScope.launch {
@@ -243,7 +245,7 @@ class PhoneViewModel(
     fun checkVerificationCode() {
         val code = _uiState.value.verificationCode
         if (code.length != 6) {
-            _uiState.value = _uiState.value.copy(error = "Enter the 6-digit code")
+            _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_enter_code))
             return
         }
         viewModelScope.launch {
@@ -264,7 +266,7 @@ class PhoneViewModel(
                     } else {
                         _uiState.value = _uiState.value.copy(
                             verificationState = VerificationState.ERROR,
-                            verificationError = "Invalid verification code"
+                            verificationError = AppStrings.get(R.string.phone_error_invalid_code)
                         )
                     }
                 },
@@ -352,23 +354,23 @@ class PhoneViewModel(
     fun initiateCall() {
         val selectedPhone = _uiState.value.selectedPhone
         if (selectedPhone == null) {
-            _uiState.value = _uiState.value.copy(error = "Verify a phone number first")
+            _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_verify_first))
             return
         }
         val number = _uiState.value.dialerNumber
         if (number.isBlank()) {
-            _uiState.value = _uiState.value.copy(error = "Enter a number to call")
+            _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_enter_call_number))
             return
         }
         val digitCount = number.count { it.isDigit() }
         if (digitCount < 10) {
-            _uiState.value = _uiState.value.copy(error = "Enter a complete 10-digit number")
+            _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_incomplete_number))
             return
         }
 
         viewModelScope.launch {
             val token = authManager.getFreshToken() ?: run {
-                _uiState.value = _uiState.value.copy(error = "Sign in required")
+                _uiState.value = _uiState.value.copy(error = AppStrings.get(R.string.phone_error_sign_in))
                 return@launch
             }
             _uiState.value = _uiState.value.copy(
@@ -379,7 +381,7 @@ class PhoneViewModel(
             val voipToken = repo.getVoipToken(token).getOrElse {
                 _uiState.value = _uiState.value.copy(
                     activeCallState = ActiveCallState.ERROR,
-                    error = "Couldn't get VoIP token"
+                    error = AppStrings.get(R.string.phone_error_voip_token)
                 )
                 return@launch
             }
@@ -393,7 +395,7 @@ class PhoneViewModel(
             ).getOrElse {
                 _uiState.value = _uiState.value.copy(
                     activeCallState = ActiveCallState.ERROR,
-                    error = "Couldn't create call"
+                    error = AppStrings.get(R.string.phone_error_create_call)
                 )
                 return@launch
             }
@@ -412,7 +414,7 @@ class PhoneViewModel(
             if (!ok) {
                 _uiState.value = _uiState.value.copy(
                     activeCallState = ActiveCallState.ERROR,
-                    error = "Couldn't start VoIP call"
+                    error = AppStrings.get(R.string.phone_error_start_voip)
                 )
                 return@launch
             }

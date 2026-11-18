@@ -90,7 +90,9 @@ fun JoinMeetingDialog(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        "${validationResult.second?.displayName} detected",
+                                        validationResult.second?.let {
+                                            stringResource(R.string.meeting_platform_detected, stringResource(it.labelRes))
+                                        } ?: "",
                                         color = Color(0xFF4CAF50)
                                     )
                                 }

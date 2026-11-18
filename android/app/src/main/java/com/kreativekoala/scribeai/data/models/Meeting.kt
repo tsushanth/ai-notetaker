@@ -1,6 +1,8 @@
 package com.kreativekoala.scribeai.data.models
 
 import com.google.gson.annotations.SerializedName
+import androidx.annotation.StringRes
+import com.kreativekoala.scribeai.R
 
 /**
  * Meeting model representing a meeting bot session
@@ -67,17 +69,18 @@ enum class MeetingStatus {
     @SerializedName("failed") FAILED,
     @SerializedName("cancelled") CANCELLED;
 
-    val displayText: String
+    @get:StringRes
+    val displayTextRes: Int
         get() = when (this) {
-            PENDING -> "Waiting to join"
-            BOT_JOINING -> "Bot joining..."
-            IN_PROGRESS -> "In meeting"
-            RECORDING -> "Recording"
-            PROCESSING -> "Processing"
-            TRANSCRIBING -> "Transcribing"
-            COMPLETED -> "Completed"
-            FAILED -> "Failed"
-            CANCELLED -> "Cancelled"
+            PENDING -> R.string.meeting_status_pending
+            BOT_JOINING -> R.string.meeting_status_bot_joining
+            IN_PROGRESS -> R.string.meeting_status_in_progress
+            RECORDING -> R.string.meeting_status_recording
+            PROCESSING -> R.string.meeting_status_processing
+            TRANSCRIBING -> R.string.meeting_status_transcribing
+            COMPLETED -> R.string.meeting_status_completed
+            FAILED -> R.string.meeting_status_failed
+            CANCELLED -> R.string.meeting_status_cancelled
         }
 
     val isActive: Boolean
@@ -97,13 +100,14 @@ enum class MeetingPlatform {
     @SerializedName("webex") WEBEX,
     @SerializedName("other") OTHER;
 
-    val displayName: String
+    @get:StringRes
+    val labelRes: Int
         get() = when (this) {
-            ZOOM -> "Zoom"
-            GOOGLE_MEET -> "Google Meet"
-            TEAMS -> "Microsoft Teams"
-            WEBEX -> "Webex"
-            OTHER -> "Other"
+            ZOOM -> R.string.meeting_platform_zoom
+            GOOGLE_MEET -> R.string.meeting_platform_google_meet
+            TEAMS -> R.string.meeting_platform_teams
+            WEBEX -> R.string.meeting_platform_webex
+            OTHER -> R.string.meeting_platform_other
         }
 }
 

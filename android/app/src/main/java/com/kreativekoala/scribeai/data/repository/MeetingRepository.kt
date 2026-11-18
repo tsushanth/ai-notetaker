@@ -5,6 +5,8 @@ import com.kreativekoala.scribeai.data.models.*
 import com.kreativekoala.scribeai.utils.FreeTierErrors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 /**
  * Repository for meeting-related API operations
@@ -28,15 +30,15 @@ class MeetingRepository {
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)
-                } ?: Result.failure(Exception("Empty response"))
+                } ?: Result.failure(Exception(AppStrings.get(R.string.error_empty_response)))
             } else {
                 val errorBody = response.errorBody()?.string()
                 val errorMessage = when (response.code()) {
-                    401 -> "Authentication required"
-                    402, 403 -> "The meeting bot is part of ScribeAI Pro."
+                    401 -> AppStrings.get(R.string.error_auth_required)
+                    402, 403 -> AppStrings.get(R.string.error_meeting_bot_pro)
                     429 -> FreeTierErrors.dailyLimitMessage(errorBody)
-                    400 -> errorBody?.let { parseErrorMessage(it) } ?: "Invalid meeting URL"
-                    else -> errorBody?.let { parseErrorMessage(it) } ?: "Failed to create meeting"
+                    400 -> errorBody?.let { parseErrorMessage(it) } ?: AppStrings.get(R.string.error_meeting_invalid_url)
+                    else -> errorBody?.let { parseErrorMessage(it) } ?: AppStrings.get(R.string.error_meeting_create)
                 }
                 Result.failure(Exception(errorMessage))
             }
@@ -59,13 +61,13 @@ class MeetingRepository {
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)
-                } ?: Result.failure(Exception("Empty response"))
+                } ?: Result.failure(Exception(AppStrings.get(R.string.error_empty_response)))
             } else {
                 val errorMessage = when (response.code()) {
-                    401 -> "Authentication required"
-                    402, 403 -> "The meeting bot is part of ScribeAI Pro."
+                    401 -> AppStrings.get(R.string.error_auth_required)
+                    402, 403 -> AppStrings.get(R.string.error_meeting_bot_pro)
                     429 -> FreeTierErrors.dailyLimitMessage(null)
-                    else -> "Failed to load meetings"
+                    else -> AppStrings.get(R.string.error_meetings_load)
                 }
                 Result.failure(Exception(errorMessage))
             }
@@ -87,9 +89,9 @@ class MeetingRepository {
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)
-                } ?: Result.failure(Exception("Empty response"))
+                } ?: Result.failure(Exception(AppStrings.get(R.string.error_empty_response)))
             } else {
-                Result.failure(Exception("Failed to get meeting status"))
+                Result.failure(Exception(AppStrings.get(R.string.error_meeting_status)))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -110,8 +112,8 @@ class MeetingRepository {
                 Result.success(Unit)
             } else {
                 val errorMessage = when (response.code()) {
-                    404 -> "Meeting not found"
-                    else -> "Failed to cancel meeting"
+                    404 -> AppStrings.get(R.string.error_meeting_not_found)
+                    else -> AppStrings.get(R.string.error_meeting_cancel)
                 }
                 Result.failure(Exception(errorMessage))
             }
@@ -134,8 +136,8 @@ class MeetingRepository {
                 Result.success(Unit)
             } else {
                 val errorMessage = when (response.code()) {
-                    404 -> "Meeting not found"
-                    else -> "Failed to delete meeting"
+                    404 -> AppStrings.get(R.string.error_meeting_not_found)
+                    else -> AppStrings.get(R.string.error_meeting_delete)
                 }
                 Result.failure(Exception(errorMessage))
             }
@@ -158,9 +160,9 @@ class MeetingRepository {
             if (response.isSuccessful) {
                 response.body()?.let {
                     Result.success(it)
-                } ?: Result.failure(Exception("Empty response"))
+                } ?: Result.failure(Exception(AppStrings.get(R.string.error_empty_response)))
             } else {
-                Result.failure(Exception("Failed to validate URL"))
+                Result.failure(Exception(AppStrings.get(R.string.error_meeting_validate)))
             }
         } catch (e: Exception) {
             Result.failure(e)

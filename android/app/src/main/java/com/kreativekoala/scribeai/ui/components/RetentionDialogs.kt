@@ -237,7 +237,7 @@ fun DeleteAccountRetentionDialog(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = reason.displayName,
+                                        text = stringResource(reason.labelRes),
                                         fontSize = 16.sp,
                                         color = TextPrimary,
                                         modifier = Modifier.weight(1f)

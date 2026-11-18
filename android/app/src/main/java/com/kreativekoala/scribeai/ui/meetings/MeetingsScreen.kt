@@ -253,7 +253,7 @@ fun MeetingCard(
             // Content
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = meeting.title ?: "Untitled Meeting",
+                    text = meeting.title ?: stringResource(R.string.meeting_untitled),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -270,7 +270,7 @@ fun MeetingCard(
                     Spacer(modifier = Modifier.width(6.dp))
 
                     Text(
-                        text = meeting.status.displayText,
+                        text = stringResource(meeting.status.displayTextRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = getStatusColor(meeting.status)
                     )
@@ -279,7 +279,7 @@ fun MeetingCard(
                 meeting.formattedDuration?.let { duration ->
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Duration: $duration",
+                        text = stringResource(R.string.meeting_duration, duration),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

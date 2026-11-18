@@ -9,6 +9,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 /**
  * UI state for meetings list
@@ -72,7 +74,7 @@ class MeetingViewModel : ViewModel() {
                         }
                     },
                     onFailure = { error ->
-                        _uiState.value = MeetingUiState.Error(error.message ?: "Failed to load meetings")
+                        _uiState.value = MeetingUiState.Error(error.message ?: AppStrings.get(R.string.error_meetings_load))
                     }
                 )
             } finally {
@@ -94,15 +96,15 @@ class MeetingViewModel : ViewModel() {
                             _createState.value = CreateMeetingState.Success(it.meeting)
                             loadMeetings(token) // Refresh list
                         } ?: run {
-                            _createState.value = CreateMeetingState.Error(response.error ?: "Unknown error")
+                            _createState.value = CreateMeetingState.Error(response.error ?: AppStrings.get(R.string.error_unknown))
                         }
                     },
                     onFailure = { error ->
-                        _createState.value = CreateMeetingState.Error(error.message ?: "Failed to create meeting")
+                        _createState.value = CreateMeetingState.Error(error.message ?: AppStrings.get(R.string.error_meeting_create))
                     }
                 )
             } catch (e: Exception) {
-                _createState.value = CreateMeetingState.Error(e.message ?: "Failed to create meeting")
+                _createState.value = CreateMeetingState.Error(e.message ?: AppStrings.get(R.string.error_meeting_create))
             }
         }
     }

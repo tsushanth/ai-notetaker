@@ -1,6 +1,8 @@
 package com.kreativekoala.scribeai.data.models
 
 import com.google.gson.annotations.SerializedName
+import androidx.annotation.StringRes
+import com.kreativekoala.scribeai.R
 
 data class Note(
     @SerializedName("id")
@@ -122,14 +124,14 @@ data class DeleteAccountRequest(
 )
 
 // Deletion reasons for account deletion
-enum class DeletionReason(val displayName: String) {
-    NOT_USEFUL("App isn't useful for me"),
-    TOO_EXPENSIVE("Too expensive"),
-    FOUND_ALTERNATIVE("Found a better alternative"),
-    PRIVACY_CONCERNS("Privacy concerns"),
-    TOO_COMPLICATED("Too complicated to use"),
-    BUGS_ISSUES("Too many bugs/issues"),
-    OTHER("Other reason")
+enum class DeletionReason(@StringRes val labelRes: Int) {
+    NOT_USEFUL(R.string.deletion_reason_not_useful),
+    TOO_EXPENSIVE(R.string.deletion_reason_too_expensive),
+    FOUND_ALTERNATIVE(R.string.deletion_reason_found_alternative),
+    PRIVACY_CONCERNS(R.string.deletion_reason_privacy),
+    TOO_COMPLICATED(R.string.deletion_reason_too_complicated),
+    BUGS_ISSUES(R.string.deletion_reason_bugs),
+    OTHER(R.string.deletion_reason_other)
 }
 
 /**

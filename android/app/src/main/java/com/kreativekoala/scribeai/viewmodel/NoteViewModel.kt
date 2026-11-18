@@ -8,6 +8,7 @@ import com.kreativekoala.scribeai.data.local.NoteCacheRepository as LocalNoteRep
 import com.kreativekoala.scribeai.data.local.toNote
 import com.kreativekoala.scribeai.data.models.*
 import com.kreativekoala.scribeai.data.repository.NoteRepository
+import com.kreativekoala.scribeai.data.repository.NotesNotFoundException
 import com.kreativekoala.scribeai.utils.ErrorReportingService
 import com.kreativekoala.scribeai.utils.FreeTierErrors
 import com.kreativekoala.scribeai.utils.SubscriptionManager
@@ -27,6 +28,8 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.TimeUnit
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 sealed class NoteUiState {
     object Loading : NoteUiState()
@@ -125,7 +128,7 @@ class NoteViewModel(
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading notes", e)
-                _uiState.value = NoteUiState.Error(e.message ?: "Failed to load notes")
+                _uiState.value = NoteUiState.Error(e.message ?: AppStrings.get(R.string.error_notes_load))
             }
         }
     }
@@ -177,7 +180,8 @@ class NoteViewModel(
                     Log.e(TAG, "Error fetching from server", exception)
 
                     val errorMessage = exception.message?.lowercase() ?: ""
-                    val isEmptyStateError = errorMessage.contains("no notes") ||
+                    val isEmptyStateError = exception is NotesNotFoundException ||
+                            errorMessage.contains("no notes") ||
                             errorMessage.contains("not found") ||
                             errorMessage.contains("empty") ||
                             errorMessage.contains("404")
@@ -186,6 +190,7 @@ class NoteViewModel(
                             errorMessage.contains("failed to connect") ||
                             errorMessage.contains("timeout") ||
                             errorMessage.contains("network error") ||
+                            errorMessage == AppStrings.get(R.string.error_network_generic).lowercase() ||
                             errorMessage.contains("connection failed")
 
                     when {
@@ -199,7 +204,7 @@ class NoteViewModel(
                             Log.w(TAG, "⚠️ Network error but keeping cached data visible")
                         }
                         _uiState.value is NoteUiState.Loading -> {
-                            _uiState.value = NoteUiState.Error(exception.message ?: "Failed to fetch notes")
+                            _uiState.value = NoteUiState.Error(exception.message ?: AppStrings.get(R.string.error_notes_fetch))
                         }
                         else -> {
                             Log.w(TAG, "⚠️ Error occurred but keeping current state")
@@ -299,7 +304,7 @@ class NoteViewModel(
                     onFailure = { exception ->
                         // If we have cached data, keep showing it
                         if (cachedNote == null) {
-                            val error = exception.message ?: "Failed to load note"
+                            val error = exception.message ?: AppStrings.get(R.string.error_note_load)
                             _noteDetailState.value = NoteDetailState.Error(error)
                             Log.e(TAG, "❌ Error loading note: $error")
                         } else {
@@ -308,7 +313,7 @@ class NoteViewModel(
                     }
                 )
             } catch (e: Exception) {
-                val error = e.message ?: "Unknown error"
+                val error = e.message ?: AppStrings.get(R.string.error_unknown)
                 _noteDetailState.value = NoteDetailState.Error(error)
                 Log.e(TAG, "❌ Error loading note", e)
             }
@@ -345,8 +350,8 @@ class NoteViewModel(
                 val tokenParts = cleanToken.split(".")
                 if (tokenParts.size != 3) {
                     withContext(Dispatchers.Main) {
-                        _uploadState.value = UploadState.Error("Invalid token format")
-                        onError("Invalid token format")
+                        _uploadState.value = UploadState.Error(AppStrings.get(R.string.error_invalid_token))
+                        onError(AppStrings.get(R.string.error_invalid_token))
                     }
                     return@launch
                 }
@@ -380,9 +385,9 @@ class NoteViewModel(
                 if (!response.isSuccessful) {
                     val errorMessage = try {
                         val errorJson = JSONObject(responseBody ?: "{}")
-                        errorJson.optString("error", "Failed to upload scanned document")
+                        errorJson.optString("error", AppStrings.get(R.string.error_scan_upload))
                     } catch (e: Exception) {
-                        "Failed to upload scanned document (${response.code})"
+                        AppStrings.get(R.string.error_scan_upload_code, response.code)
                     }
 
                     Log.e(TAG, "Upload failed: $errorMessage")
@@ -401,7 +406,7 @@ class NoteViewModel(
                     val note = Note(
                         id = noteJson.optString("id", ""),
                         userId = noteJson.optString("userId", ""),
-                        title = noteJson.optString("title", "Scanned Document"),
+                        title = noteJson.optString("title", AppStrings.get(R.string.source_scanned_document)),
                         content = noteJson.optString("content", ""),
                         sourceType = noteJson.optString("sourceType", "scan"),
                         createdAt = noteJson.optString("createdAt", ""),
@@ -421,7 +426,7 @@ class NoteViewModel(
                     val note = Note(
                         id = responseJson.optString("noteId", ""),
                         userId = "",
-                        title = "Scanned Document",
+                        title = AppStrings.get(R.string.source_scanned_document),
                         content = extractedText,
                         sourceType = "scan",
                         createdAt = "",
@@ -441,7 +446,7 @@ class NoteViewModel(
                 Log.e(TAG, "Error uploading scanned document", e)
                 ErrorReportingService.reportError(ErrorReportingService.UserFlow.SCAN_DOCUMENT, e)
                 withContext(Dispatchers.Main) {
-                    val errorMessage = e.message ?: "Unknown error occurred"
+                    val errorMessage = e.message ?: AppStrings.get(R.string.error_unknown_occurred)
                     _uploadState.value = UploadState.Error(errorMessage)
                     onError(errorMessage)
                 }
@@ -470,7 +475,7 @@ class NoteViewModel(
                 val tokenParts = cleanToken.split(".")
                 if (tokenParts.size != 3) {
                     withContext(Dispatchers.Main) {
-                        onError("Invalid token format")
+                        onError(AppStrings.get(R.string.error_invalid_token))
                     }
                     return@launch
                 }
@@ -500,9 +505,9 @@ class NoteViewModel(
                 if (!response.isSuccessful) {
                     val errorMessage = try {
                         val errorJson = JSONObject(responseBody ?: "{}")
-                        errorJson.optString("error", "Failed to process video")
+                        errorJson.optString("error", AppStrings.get(R.string.error_video_process))
                     } catch (e: Exception) {
-                        "Failed to process video (${response.code})"
+                        AppStrings.get(R.string.error_video_process_code, response.code)
                     }
 
                     Log.e(TAG, "Request failed: $errorMessage")
@@ -522,7 +527,7 @@ class NoteViewModel(
                 Log.e(TAG, "Error processing video", e)
                 ErrorReportingService.reportError(ErrorReportingService.UserFlow.YOUTUBE_LINK, e)
                 withContext(Dispatchers.Main) {
-                    onError(e.message ?: "Unknown error occurred")
+                    onError(e.message ?: AppStrings.get(R.string.error_unknown_occurred))
                 }
             }
         }
@@ -554,12 +559,12 @@ class NoteViewModel(
                     },
                     onFailure = { exception ->
                         ErrorReportingService.reportError(ErrorReportingService.UserFlow.UPLOAD_PDF, exception)
-                        onError(exception.message ?: "Failed to upload PDF")
+                        onError(exception.message ?: AppStrings.get(R.string.error_pdf_upload))
                     }
                 )
             } catch (e: Exception) {
                 ErrorReportingService.reportError(ErrorReportingService.UserFlow.UPLOAD_PDF, e)
-                onError(e.message ?: "Error uploading PDF")
+                onError(e.message ?: AppStrings.get(R.string.error_pdf_uploading))
             }
         }
     }
@@ -582,13 +587,13 @@ class NoteViewModel(
 
                 if (!audioFile.exists()) {
                     Log.e(TAG, "❌ Audio file doesn't exist: ${audioFile.absolutePath}")
-                    onError("Audio file not found")
+                    onError(AppStrings.get(R.string.error_audio_not_found))
                     return@launch
                 }
 
                 if (audioFile.length() == 0L) {
                     Log.e(TAG, "❌ Audio file is empty")
-                    onError("Audio file is empty")
+                    onError(AppStrings.get(R.string.error_audio_empty))
                     return@launch
                 }
 
@@ -627,21 +632,21 @@ class NoteViewModel(
                                                 },
                                                 onFailure = { error ->
                                                     Log.e(TAG, "❌ Failed to load note: ${error.message}", error)
-                                                    onError("Transcription completed but failed to load note: ${error.message}")
+                                                    onError(AppStrings.get(R.string.error_transcribe_load_note, error.message ?: ""))
                                                 }
                                             )
                                         } else {
                                             Log.w(TAG, "⚠️ No note_id returned from transcription")
-                                            onError("Transcription completed but no note was created")
+                                            onError(AppStrings.get(R.string.error_transcribe_no_note))
                                         }
                                     } else {
-                                        val errorMsg = transcriptionResponse.error ?: "Transcription failed"
+                                        val errorMsg = transcriptionResponse.error ?: AppStrings.get(R.string.error_transcription_generic)
                                         Log.e(TAG, "❌ $errorMsg")
                                         onError(errorMsg)
                                     }
                                 },
                                 onFailure = { error ->
-                                    val errorMsg = error.message ?: "Transcription failed"
+                                    val errorMsg = error.message ?: AppStrings.get(R.string.error_transcription_generic)
                                     Log.e(TAG, "❌ Transcription failed: $errorMsg", error)
                                     if (error is FreeTierErrors.DailyLimitException) {
                                         // Daily free-tier backstop (HTTP 429): plain message, not a failure or a paywall.
@@ -654,25 +659,25 @@ class NoteViewModel(
                                             message = "Transcription request failed after upload",
                                             context = mapOf("exception" to error.javaClass.simpleName),
                                         )
-                                        onError("Upload successful but transcription failed: $errorMsg")
+                                        onError(AppStrings.get(R.string.note_upload_ok_transcribe_failed, errorMsg))
                                     }
                                 }
                             )
                         } else {
-                            val errorMsg = uploadResponse.error ?: "Upload failed: No data returned"
+                            val errorMsg = uploadResponse.error ?: AppStrings.get(R.string.error_upload_no_data)
                             Log.e(TAG, "❌ $errorMsg")
                             onError(errorMsg)
                         }
                     },
                     onFailure = { error ->
-                        val errorMsg = error.message ?: "Unknown error occurred"
+                        val errorMsg = error.message ?: AppStrings.get(R.string.error_unknown_occurred)
                         Log.e(TAG, "❌ Audio upload failed: $errorMsg", error)
                         ErrorReportingService.reportError(ErrorReportingService.UserFlow.RECORD_AUDIO, error)
                         onError(errorMsg)
                     }
                 )
             } catch (e: Exception) {
-                val errorMsg = "Error uploading audio: ${e.message}"
+                val errorMsg = AppStrings.get(R.string.error_audio_uploading, e.message ?: "")
                 Log.e(TAG, "❌ Exception during audio upload", e)
                 ErrorReportingService.reportError(ErrorReportingService.UserFlow.RECORD_AUDIO, e)
                 onError(errorMsg)
@@ -704,11 +709,11 @@ class NoteViewModel(
                         loadNotes(token)
                     },
                     onFailure = { exception ->
-                        onError(exception.message ?: "Failed to create note")
+                        onError(exception.message ?: AppStrings.get(R.string.error_note_create))
                     }
                 )
             } catch (e: Exception) {
-                onError(e.message ?: "Error creating note")
+                onError(e.message ?: AppStrings.get(R.string.error_note_creating))
             }
         }
     }
@@ -736,12 +741,12 @@ class NoteViewModel(
                     },
                     onFailure = { exception ->
                         Log.e(TAG, "Failed to delete from server", exception)
-                        onError(exception.message ?: "Failed to delete note")
+                        onError(exception.message ?: AppStrings.get(R.string.error_note_delete))
                     }
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error deleting note", e)
-                onError(e.message ?: "Failed to delete note")
+                onError(e.message ?: AppStrings.get(R.string.error_note_delete))
             }
         }
     }
@@ -776,12 +781,12 @@ class NoteViewModel(
                     },
                     onFailure = { exception ->
                         Log.e(TAG, "Failed to update note title", exception)
-                        onError(exception.message ?: "Failed to update title")
+                        onError(exception.message ?: AppStrings.get(R.string.error_title_update))
                     }
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating note title", e)
-                onError(e.message ?: "Failed to update title")
+                onError(e.message ?: AppStrings.get(R.string.error_title_update))
             }
         }
     }

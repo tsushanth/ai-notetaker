@@ -127,7 +127,7 @@ private fun ThemeOption(
         Spacer(modifier = Modifier.width(16.dp))
 
         Text(
-            text = theme.displayName,
+            text = stringResource(theme.labelRes),
             fontSize = 16.sp,
             color = TextPrimary,
             modifier = Modifier.weight(1f)

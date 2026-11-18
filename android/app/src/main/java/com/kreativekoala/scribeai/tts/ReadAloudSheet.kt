@@ -114,7 +114,7 @@ fun ReadAloudSheet(
                     enabled = voices.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(activeVoice?.displayName ?: "Loading voices…")
+                    Text(activeVoice?.displayName ?: stringResource(R.string.readaloud_loading_voices))
                 }
                 DropdownMenu(
                     expanded = voiceMenuOpen,
@@ -138,8 +138,8 @@ fun ReadAloudSheet(
             when (val s = state) {
                 TtsState.Idle, TtsState.Ready -> {
                     Text(
-                        if (voices.isEmpty()) "Preparing…"
-                        else "Tap Read to start.",
+                        if (voices.isEmpty()) stringResource(R.string.readaloud_preparing)
+                        else stringResource(R.string.readaloud_tap_read),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -153,7 +153,7 @@ fun ReadAloudSheet(
                         progress = s.progressFraction,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Text("Reading… ${(s.progressFraction * 100).toInt()}%",
+                    Text(stringResource(R.string.readaloud_reading_progress, (s.progressFraction * 100).toInt()),
                         style = MaterialTheme.typography.bodySmall)
                 }
                 TtsState.Paused -> {

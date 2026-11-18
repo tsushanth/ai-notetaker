@@ -32,7 +32,7 @@ object ShareLink {
     private val JSON = "application/json".toMediaType()
 
     /** Pure: turn the HTTP status and body into a result. */
-    fun parseResponse(httpCode: Int, body: String?): ShareLinkResult {
+    fun parseResponse(httpCode: Int, body: String?, limitFallback: () -> String = FreeTierErrors::defaultMessage): ShareLinkResult {
         val obj = try {
             JsonParser.parseString(body ?: "").asJsonObject
         } catch (e: Exception) {
@@ -55,7 +55,7 @@ object ShareLink {
         }
         val message = (text("error") ?: text("message"))?.takeIf { it.length <= 300 } ?: DEFAULT_ERROR
         return when (httpCode) {
-            429 -> ShareLinkResult.LimitReached(FreeTierErrors.dailyLimitMessage(body))
+            429 -> ShareLinkResult.LimitReached(FreeTierErrors.dailyLimitMessage(body, limitFallback))
             // Sharing is free now: an older server may still answer 403 with an upgrade message, which must not be shown.
             403 -> ShareLinkResult.Failure(DEFAULT_ERROR)
             else -> ShareLinkResult.Failure(message)

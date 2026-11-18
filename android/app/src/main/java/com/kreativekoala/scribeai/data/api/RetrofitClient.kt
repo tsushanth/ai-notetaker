@@ -17,17 +17,19 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLException
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 /**
  * Network error types for better error handling
  */
 sealed class NetworkError(val message: String, val isRetryable: Boolean) {
-    class Timeout(message: String = "Request timed out. Please try again.") : NetworkError(message, true)
-    class NoConnection(message: String = "No internet connection. Please check your network.") : NetworkError(message, true)
-    class ServerError(message: String = "Server error. Please try again later.") : NetworkError(message, true)
-    class SSLError(message: String = "Secure connection failed. Please try again.") : NetworkError(message, true)
+    class Timeout(message: String = AppStrings.get(R.string.error_network_timeout)) : NetworkError(message, true)
+    class NoConnection(message: String = AppStrings.get(R.string.error_network_no_connection)) : NetworkError(message, true)
+    class ServerError(message: String = AppStrings.get(R.string.error_server)) : NetworkError(message, true)
+    class SSLError(message: String = AppStrings.get(R.string.error_network_ssl)) : NetworkError(message, true)
     class ClientError(message: String, isRetryable: Boolean = false) : NetworkError(message, isRetryable)
-    class Unknown(message: String = "An unexpected error occurred.") : NetworkError(message, false)
+    class Unknown(message: String = AppStrings.get(R.string.error_network_unknown)) : NetworkError(message, false)
 }
 
 /**
@@ -251,10 +253,10 @@ object RetrofitClient {
                     message.contains("timeout") -> NetworkError.Timeout()
                     message.contains("connection") -> NetworkError.NoConnection()
                     message.contains("ssl") || message.contains("certificate") -> NetworkError.SSLError()
-                    else -> NetworkError.Unknown(throwable.message ?: "Network error occurred")
+                    else -> NetworkError.Unknown(throwable.message ?: AppStrings.get(R.string.error_network_generic))
                 }
             }
-            else -> NetworkError.Unknown(throwable.message ?: "An unexpected error occurred")
+            else -> NetworkError.Unknown(throwable.message ?: AppStrings.get(R.string.error_network_unknown))
         }
     }
 }

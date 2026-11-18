@@ -60,6 +60,7 @@ import java.util.*
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
+import com.kreativekoala.scribeai.utils.AppStrings
 
 data class ScannedPage(
     val bitmap: Bitmap,
@@ -94,12 +95,12 @@ fun ScanDocumentScreen(
     // Check authentication on screen load
     LaunchedEffect(authToken) {
         if (authToken == null) {
-            errorMessage = "Please log in to continue"
+            errorMessage = AppStrings.get(R.string.error_please_login)
             kotlinx.coroutines.delay(2000)
             onNavigateToLogin()
         } else if (authManager.isTokenExpired(authToken!!)) {
             authManager.clearAuth()
-            errorMessage = "Session expired. Please log in again."
+            errorMessage = AppStrings.get(R.string.error_session_expired)
             kotlinx.coroutines.delay(2000)
             onNavigateToLogin()
         }
@@ -135,10 +136,10 @@ fun ScanDocumentScreen(
                     }
 
                     if (uris.size > remainingSlots) {
-                        errorMessage = "Only added $remainingSlots images (max 10 pages)"
+                        errorMessage = AppStrings.plural(R.plurals.scan_error_added_images, remainingSlots, remainingSlots)
                     }
                 } catch (e: Exception) {
-                    errorMessage = "Failed to load images: ${e.message}"
+                    errorMessage = AppStrings.get(R.string.scan_error_load_images, e.message ?: "")
                 } finally {
                     isProcessing = false
                 }
@@ -165,7 +166,7 @@ fun ScanDocumentScreen(
                             onClick = {
                                 // Validate token before upload
                                 if (authToken == null) {
-                                    errorMessage = "Session expired. Please log in again."
+                                    errorMessage = AppStrings.get(R.string.error_session_expired)
                                     scope.launch {
                                         kotlinx.coroutines.delay(1000)
                                         onNavigateToLogin()
@@ -174,7 +175,7 @@ fun ScanDocumentScreen(
                                 }
 
                                 if (authManager.isTokenExpired(authToken!!)) {
-                                    errorMessage = "Session expired. Please log in again."
+                                    errorMessage = AppStrings.get(R.string.error_session_expired)
                                     scope.launch {
                                         authManager.clearAuth()
                                         kotlinx.coroutines.delay(1000)
@@ -198,7 +199,7 @@ fun ScanDocumentScreen(
                                         Log.d("ScanDebug", "PDF size: ${pdfSizeMB}MB")
 
                                         if (pdfSizeMB > 25) {
-                                            errorMessage = "PDF too large (${String.format("%.1f", pdfSizeMB)}MB). Try fewer pages."
+                                            errorMessage = AppStrings.get(R.string.scan_error_pdf_too_large, String.format("%.1f", pdfSizeMB))
                                             isProcessing = false
                                             pdfFile.delete()
                                             return@launch
@@ -221,9 +222,9 @@ fun ScanDocumentScreen(
                                                 pdfFile.delete()
 
                                                 if (error.contains("413") || error.contains("too large")) {
-                                                    errorMessage = "Document too large. Try reducing pages or quality."
+                                                    errorMessage = AppStrings.get(R.string.scan_error_doc_too_large)
                                                 } else if (error.contains("401") || error.contains("Unauthorized")) {
-                                                    errorMessage = "Session expired. Please log in again."
+                                                    errorMessage = AppStrings.get(R.string.error_session_expired)
                                                     scope.launch {
                                                         authManager.clearAuth()
                                                         kotlinx.coroutines.delay(1000)
@@ -235,7 +236,7 @@ fun ScanDocumentScreen(
                                             }
                                         )
                                     } catch (e: Exception) {
-                                        errorMessage = "Failed to process document: ${e.message}"
+                                        errorMessage = AppStrings.get(R.string.scan_error_process, e.message ?: "")
                                         isProcessing = false
                                     }
                                 }
@@ -438,7 +439,7 @@ fun ScanDocumentScreen(
                                 IconButton(
                                     onClick = {
                                         if (scannedPages.size >= 10) {
-                                            errorMessage = "Maximum 10 pages allowed"
+                                            errorMessage = AppStrings.get(R.string.scan_error_max_pages)
                                             return@IconButton
                                         }
                                         photoPickerLauncher.launch(
@@ -464,7 +465,7 @@ fun ScanDocumentScreen(
                                 FloatingActionButton(
                                     onClick = {
                                         if (scannedPages.size >= 10) {
-                                            errorMessage = "Maximum 10 pages allowed"
+                                            errorMessage = AppStrings.get(R.string.scan_error_max_pages)
                                             return@FloatingActionButton
                                         }
                                         currentImageCapture?.let { imageCapture ->
@@ -490,7 +491,7 @@ fun ScanDocumentScreen(
                                                     Log.d("ScanDebug", "Total document size: ${totalSizeMB}MB")
 
                                                 } catch (e: Exception) {
-                                                    errorMessage = "Failed to capture: ${e.message}"
+                                                    errorMessage = AppStrings.get(R.string.scan_error_capture, e.message ?: "")
                                                 } finally {
                                                     isProcessing = false
                                                 }
@@ -526,7 +527,7 @@ fun ScanDocumentScreen(
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(
                                                 Icons.Default.GridView,
-                                                contentDescription = "Preview pages"
+                                                contentDescription = stringResource(R.string.scan_preview_pages)
                                             )
                                             // Badge showing count
                                             Box(
@@ -654,7 +655,7 @@ fun PreviewScannedPages(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Page ${page.pageNumber}",
+                                text = stringResource(R.string.scan_page_title, page.pageNumber),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -671,7 +672,7 @@ fun PreviewScannedPages(
 
                         Image(
                             bitmap = page.bitmap.asImageBitmap(),
-                            contentDescription = "Scanned page ${page.pageNumber}",
+                            contentDescription = stringResource(R.string.scan_page_description, page.pageNumber),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(200.dp)

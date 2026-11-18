@@ -31,7 +31,7 @@ class ShareLinkTest {
             ShareLinkResult.LimitReached("You have reached today's limit of share links. Please try again tomorrow."),
             ShareLink.parseResponse(429, body)
         )
-        assertEquals(ShareLinkResult.LimitReached(FreeTierErrors.DEFAULT_LIMIT_MESSAGE), ShareLink.parseResponse(429, "<html>"))
+        assertEquals(ShareLinkResult.LimitReached("daily limit fallback"), ShareLink.parseResponse(429, "<html>") { "daily limit fallback" })
     }
 
     @Test

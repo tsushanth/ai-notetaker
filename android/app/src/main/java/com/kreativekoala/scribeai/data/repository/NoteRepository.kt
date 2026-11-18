@@ -16,6 +16,11 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
+
+/** HTTP 404 on the notes list: the user simply has no notes yet. Typed so callers do not depend on message text. */
+class NotesNotFoundException(message: String) : Exception(message)
 
 class NoteRepository {
 
@@ -47,14 +52,14 @@ class NoteRepository {
                 } else {
                     val errorBody = response.errorBody()?.string()
                     val errorMessage = when (response.code()) {
-                        401 -> "Session expired. Please log in again."
-                        403 -> "Access denied. Please log in again."
-                        404 -> "Notes not found."
-                        500, 502, 503, 504 -> "Server error. Please try again later."
-                        else -> "Failed to load notes (${response.code()})"
+                        401 -> AppStrings.get(R.string.error_session_expired)
+                        403 -> AppStrings.get(R.string.error_access_denied)
+                        404 -> AppStrings.get(R.string.error_notes_not_found)
+                        500, 502, 503, 504 -> AppStrings.get(R.string.error_server)
+                        else -> AppStrings.get(R.string.error_notes_load_code, response.code())
                     }
                     Log.e(TAG, "❌ getNotes failed: $errorMessage - $errorBody")
-                    Result.failure(Exception(errorMessage))
+                    Result.failure(if (response.code() == 404) NotesNotFoundException(errorMessage) else Exception(errorMessage))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ getNotes exception: ${e.javaClass.simpleName} - ${e.message}")
@@ -70,7 +75,7 @@ class NoteRepository {
                 if (response.isSuccessful && response.body()?.data != null) {
                     Result.success(response.body()!!.data!!)
                 } else {
-                    Result.failure(Exception("Failed to fetch note"))
+                    Result.failure(Exception(AppStrings.get(R.string.error_note_fetch)))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -85,7 +90,7 @@ class NoteRepository {
                 if (response.isSuccessful && response.body()?.data != null) {
                     Result.success(response.body()!!.data!!)
                 } else {
-                    Result.failure(Exception("Failed to create note"))
+                    Result.failure(Exception(AppStrings.get(R.string.error_note_create)))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -100,7 +105,7 @@ class NoteRepository {
                 if (response.isSuccessful) {
                     Result.success(true)
                 } else {
-                    Result.failure(Exception("Failed to delete note"))
+                    Result.failure(Exception(AppStrings.get(R.string.error_note_delete)))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -117,7 +122,7 @@ class NoteRepository {
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e(TAG, "Update note failed: ${response.code()} - $errorBody")
-                    Result.failure(Exception("Failed to update note"))
+                    Result.failure(Exception(AppStrings.get(R.string.error_note_update)))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Exception updating note", e)
@@ -176,7 +181,7 @@ class NoteRepository {
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Log.e("NoteRepository", "Upload failed: ${response.code()} - $errorBody")
-                    Result.failure(Exception(errorBody ?: "Upload failed"))
+                    Result.failure(Exception(errorBody ?: AppStrings.get(R.string.error_upload_generic)))
                 }
             } catch (e: Exception) {
                 Log.e("NoteRepository", "Exception uploading recording", e)
@@ -210,7 +215,7 @@ class NoteRepository {
                     if (response.code() == 429) {
                         Result.failure(FreeTierErrors.DailyLimitException(FreeTierErrors.dailyLimitMessage(errorBody)))
                     } else {
-                        Result.failure(Exception(errorBody ?: "Transcription failed"))
+                        Result.failure(Exception(errorBody ?: AppStrings.get(R.string.error_transcription_generic)))
                     }
                 }
             } catch (e: Exception) {
@@ -233,7 +238,7 @@ class NoteRepository {
                 if (response.isSuccessful && response.body()?.data != null) {
                     Result.success(response.body()!!.data!!)
                 } else {
-                    Result.failure(Exception("Failed to upload PDF"))
+                    Result.failure(Exception(AppStrings.get(R.string.error_pdf_upload)))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -256,7 +261,7 @@ class NoteRepository {
                     "flashcards" -> apiService.generateFlashcards("Bearer $token", request)
                     "podcast" -> apiService.generatePodcast("Bearer $token", request)
                     "diagram" -> apiService.generateDiagram("Bearer $token", request)
-                    else -> return@withContext Result.failure(Exception("Invalid content type"))
+                    else -> return@withContext Result.failure(Exception(AppStrings.get(R.string.error_invalid_content_type)))
                 }
 
                 if (response.isSuccessful) {
@@ -266,25 +271,25 @@ class NoteRepository {
                         Result.success(data)
                     } else {
                         Log.e(TAG, "❌ generateAIContent: response successful but data is null")
-                        Result.failure(Exception("No content received from server"))
+                        Result.failure(Exception(AppStrings.get(R.string.error_no_content)))
                     }
                 } else {
                     // Handle subscription-related errors
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
-                        401 -> "Session expired. Please log in again."
+                        401 -> AppStrings.get(R.string.error_session_expired)
                         // Everything except podcasts, infographics and the meeting bot is free: no upgrade prompt here.
-                        402, 403 -> "This is not available right now. Please try again later."
+                        402, 403 -> AppStrings.get(R.string.error_try_again_later)
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
-                        500, 502, 503, 504 -> "Server error. Please try again later."
-                        else -> "Failed to generate $contentType. Please try again."
+                        500, 502, 503, 504 -> AppStrings.get(R.string.error_server)
+                        else -> AppStrings.get(R.string.error_generate_content)
                     }
                     Log.e(TAG, "❌ generateAIContent failed: ${response.code()} - $errorBody")
                     Result.failure(SubscriptionException(errorMessage, response.code()))
                 }
             } catch (e: ClassCastException) {
                 Log.e(TAG, "❌ generateAIContent ClassCastException - possible API response format mismatch", e)
-                Result.failure(Exception("Unexpected response format. Please try again."))
+                Result.failure(Exception(AppStrings.get(R.string.error_unexpected_format)))
             } catch (e: Exception) {
                 Log.e(TAG, "❌ generateAIContent exception", e)
                 Result.failure(e)
@@ -307,10 +312,10 @@ class NoteRepository {
                 } else {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
-                        401 -> "Session expired. Please log in again."
-                        403, 402 -> "Infographics are part of ScribeAI Pro."
+                        401 -> AppStrings.get(R.string.error_session_expired)
+                        403, 402 -> AppStrings.get(R.string.error_infographic_pro)
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
-                        else -> "Failed to generate infographic. Please try again."
+                        else -> AppStrings.get(R.string.error_infographic_generate)
                     }
                     Log.e(TAG, "❌ generateInfographic failed: ${response.code()} - $errorBody")
                     Result.failure(SubscriptionException(errorMessage, response.code()))
@@ -343,10 +348,10 @@ class NoteRepository {
                     // Handle subscription-related errors for podcast generation
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
-                        401 -> "Session expired. Please log in again."
-                        403, 402 -> "Podcasts are part of ScribeAI Pro."
+                        401 -> AppStrings.get(R.string.error_session_expired)
+                        403, 402 -> AppStrings.get(R.string.error_podcast_pro)
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
-                        else -> "Failed to start podcast generation. Please try again."
+                        else -> AppStrings.get(R.string.error_podcast_start)
                     }
                     Log.e(TAG, "❌ startPodcastGeneration failed: ${response.code()} - $errorBody")
                     Result.failure(SubscriptionException(errorMessage, response.code()))
@@ -368,7 +373,7 @@ class NoteRepository {
                 if (response.isSuccessful && response.body()?.data != null) {
                     Result.success(response.body()!!.data!!)
                 } else {
-                    Result.failure(Exception("Failed to get status"))
+                    Result.failure(Exception(AppStrings.get(R.string.error_status_fetch)))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -394,10 +399,10 @@ class NoteRepository {
                 } else {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
-                        401 -> "Session expired. Please log in again."
-                        402, 403 -> "This is not available right now. Please try again later."
+                        401 -> AppStrings.get(R.string.error_session_expired)
+                        402, 403 -> AppStrings.get(R.string.error_try_again_later)
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
-                        else -> "Failed to generate mind map. Please try again."
+                        else -> AppStrings.get(R.string.error_mind_map_generate)
                     }
                     Log.e(TAG, "❌ generateMindMap failed: ${response.code()} - $errorBody")
                     Result.failure(Exception(errorMessage))
@@ -462,10 +467,10 @@ class NoteRepository {
                 } else {
                     val errorBody = response.errorBody()?.string() ?: ""
                     val errorMessage = when (response.code()) {
-                        401 -> "Session expired. Please log in again."
-                        402, 403 -> "This is not available right now. Please try again later."
+                        401 -> AppStrings.get(R.string.error_session_expired)
+                        402, 403 -> AppStrings.get(R.string.error_try_again_later)
                         429 -> FreeTierErrors.dailyLimitMessage(errorBody)
-                        else -> "Failed to generate audio. Please try again."
+                        else -> AppStrings.get(R.string.error_audio_generate)
                     }
                     Log.e(TAG, "❌ generateTTS failed: ${response.code()} - $errorBody")
                     Result.failure(Exception(errorMessage))
@@ -499,7 +504,7 @@ class NoteRepository {
                 if (response.isSuccessful && response.body() != null) {
                     Result.success(response.body()!!)
                 } else {
-                    Result.failure(Exception("Failed to fetch note with AI content"))
+                    Result.failure(Exception(AppStrings.get(R.string.error_note_ai_fetch)))
                 }
             } catch (e: Exception) {
                 Result.failure(e)
@@ -535,7 +540,7 @@ class NoteRepository {
                 if (response.code() == 429) {
                     Result.failure(FreeTierErrors.DailyLimitException(FreeTierErrors.dailyLimitMessage(errorBody)))
                 } else {
-                    Result.failure(Exception(errorBody ?: "Failed to chat with note"))
+                    Result.failure(Exception(errorBody ?: AppStrings.get(R.string.error_note_chat)))
                 }
             }
         } catch (e: Exception) {

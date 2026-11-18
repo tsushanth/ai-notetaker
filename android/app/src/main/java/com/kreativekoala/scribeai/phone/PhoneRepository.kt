@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 /**
  * Repository for phone-related backend operations. Token is passed per-call
@@ -26,7 +28,7 @@ class PhoneRepository {
                 SendVerificationRequest(phoneNumber)
             )
             if (response.isSuccessful) {
-                Result.success(response.body()?.message ?: "Verification code sent")
+                Result.success(response.body()?.message ?: AppStrings.get(R.string.phone_code_sent))
             } else {
                 Result.failure(Exception(parseError(response.code(), response.errorBody()?.string())))
             }
@@ -50,7 +52,7 @@ class PhoneRepository {
                 if (body?.verified == true && body.phone != null) {
                     Result.success(body.phone.toDomain())
                 } else {
-                    Result.failure(Exception("Invalid verification code"))
+                    Result.failure(Exception(AppStrings.get(R.string.phone_error_invalid_code)))
                 }
             } else {
                 Result.failure(Exception(parseError(response.code(), response.errorBody()?.string())))
@@ -89,7 +91,7 @@ class PhoneRepository {
             if (response.isSuccessful) {
                 val voip = response.body()?.token
                 if (voip != null) Result.success(voip)
-                else Result.failure(Exception("No VoIP token in response"))
+                else Result.failure(Exception(AppStrings.get(R.string.phone_error_no_voip_token)))
             } else {
                 Result.failure(Exception(parseError(response.code(), response.errorBody()?.string())))
             }
@@ -119,7 +121,7 @@ class PhoneRepository {
                             toNumber = body.toNumber
                         )
                     )
-                } else Result.failure(Exception("Empty response"))
+                } else Result.failure(Exception(AppStrings.get(R.string.error_empty_response)))
             } else {
                 Result.failure(Exception(parseError(response.code(), response.errorBody()?.string())))
             }
@@ -146,7 +148,7 @@ class PhoneRepository {
                             offset = body.offset
                         )
                     )
-                } else Result.failure(Exception("Empty response"))
+                } else Result.failure(Exception(AppStrings.get(R.string.error_empty_response)))
             } else {
                 Result.failure(Exception(parseError(response.code(), response.errorBody()?.string())))
             }
@@ -160,7 +162,7 @@ class PhoneRepository {
             val response = api.getPhoneCall("Bearer $token", id)
             if (response.isSuccessful) {
                 val call = response.body()?.call?.toDomain()
-                if (call != null) Result.success(call) else Result.failure(Exception("Empty response"))
+                if (call != null) Result.success(call) else Result.failure(Exception(AppStrings.get(R.string.error_empty_response)))
             } else {
                 Result.failure(Exception(parseError(response.code(), response.errorBody()?.string())))
             }
@@ -214,9 +216,9 @@ class PhoneRepository {
     }.flowOn(Dispatchers.IO)
 
     private fun parseError(code: Int, body: String?): String = when (code) {
-        401 -> "Authentication required"
-        403 -> "Subscription required"
-        else -> body?.take(200) ?: "Request failed ($code)"
+        401 -> AppStrings.get(R.string.error_auth_required)
+        403 -> AppStrings.get(R.string.error_subscription_required)
+        else -> body?.take(200) ?: AppStrings.get(R.string.phone_error_request_failed, code)
     }
 }
 

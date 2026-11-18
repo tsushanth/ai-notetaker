@@ -13,30 +13,32 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import androidx.annotation.StringRes
+import com.kreativekoala.scribeai.R
 
 /**
  * User types for onboarding
  */
-enum class UserType(val displayName: String, val value: String) {
-    UNDERGRADUATE_STUDENT("Undergraduate Student", "undergraduate_student"),
-    HIGH_SCHOOL_STUDENT("High School Student", "high_school_student"),
-    MIDDLE_SCHOOL_STUDENT("Middle School Student", "middle_school_student"),
-    GRADUATE_STUDENT("Graduate Student", "graduate_student"),
-    PROFESSIONAL("Professional", "professional"),
-    EDUCATOR("Educator", "educator"),
-    OTHER("Other", "other")
+enum class UserType(@StringRes val labelRes: Int, val value: String) {
+    UNDERGRADUATE_STUDENT(R.string.onboarding_user_undergraduate, "undergraduate_student"),
+    HIGH_SCHOOL_STUDENT(R.string.onboarding_user_high_school, "high_school_student"),
+    MIDDLE_SCHOOL_STUDENT(R.string.onboarding_user_middle_school, "middle_school_student"),
+    GRADUATE_STUDENT(R.string.onboarding_user_graduate, "graduate_student"),
+    PROFESSIONAL(R.string.onboarding_user_professional, "professional"),
+    EDUCATOR(R.string.onboarding_user_educator, "educator"),
+    OTHER(R.string.onboarding_other, "other")
 }
 
 /**
  * Use cases for onboarding
  */
-enum class UseCase(val displayName: String, val value: String, val icon: String) {
-    LECTURE_NOTES("Lecture Notes", "lecture_notes", "school"),
-    STUDY_MATERIALS("Study Materials", "study_materials", "menu_book"),
-    MEETING_NOTES("Meeting Notes", "meeting_notes", "groups"),
-    RESEARCH("Research", "research", "search"),
-    PERSONAL_LEARNING("Personal Learning", "personal_learning", "psychology"),
-    OTHER("Other", "other", "more_horiz")
+enum class UseCase(@StringRes val labelRes: Int, val value: String, val icon: String) {
+    LECTURE_NOTES(R.string.onboarding_use_lecture_notes, "lecture_notes", "school"),
+    STUDY_MATERIALS(R.string.onboarding_use_study_materials, "study_materials", "menu_book"),
+    MEETING_NOTES(R.string.onboarding_use_meeting_notes, "meeting_notes", "groups"),
+    RESEARCH(R.string.onboarding_use_research, "research", "search"),
+    PERSONAL_LEARNING(R.string.onboarding_use_personal_learning, "personal_learning", "psychology"),
+    OTHER(R.string.onboarding_other, "other", "more_horiz")
 }
 
 /**

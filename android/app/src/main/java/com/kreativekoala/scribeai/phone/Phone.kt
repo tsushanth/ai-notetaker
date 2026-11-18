@@ -1,20 +1,24 @@
 package com.kreativekoala.scribeai.phone
 
+import androidx.annotation.StringRes
+import com.kreativekoala.scribeai.R
+
 enum class PhoneCallStatus {
     INITIATED, RINGING, IN_PROGRESS, RECORDING,
     COMPLETED, FAILED, BUSY, NO_ANSWER, CANCELLED;
 
-    val displayName: String
+    @get:StringRes
+    val labelRes: Int
         get() = when (this) {
-            INITIATED -> "Initiated"
-            RINGING -> "Ringing"
-            IN_PROGRESS -> "In Progress"
-            RECORDING -> "Recording"
-            COMPLETED -> "Completed"
-            FAILED -> "Failed"
-            BUSY -> "Busy"
-            NO_ANSWER -> "No Answer"
-            CANCELLED -> "Cancelled"
+            INITIATED -> R.string.phone_status_initiated
+            RINGING -> R.string.phone_status_ringing
+            IN_PROGRESS -> R.string.phone_status_in_progress
+            RECORDING -> R.string.phone_status_recording
+            COMPLETED -> R.string.phone_status_completed
+            FAILED -> R.string.phone_status_failed
+            BUSY -> R.string.phone_status_busy
+            NO_ANSWER -> R.string.phone_status_no_answer
+            CANCELLED -> R.string.phone_status_cancelled
         }
 
     val isActive: Boolean

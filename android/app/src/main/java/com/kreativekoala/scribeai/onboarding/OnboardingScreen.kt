@@ -90,32 +90,32 @@ fun OnboardingScreen(
                         OnboardingStep.USE_CASE -> UseCaseScreen(onboardingManager)
                         OnboardingStep.FEATURE_UPLOAD -> FeatureScreen(
                             icon = Icons.Default.CloudUpload,
-                            title = "Upload Any Content",
-                            description = "Import PDFs, record audio, paste YouTube links, or scan documents. We'll convert them to smart notes.",
+                            title = stringResource(R.string.onboarding_upload_title),
+                            description = stringResource(R.string.onboarding_upload_desc),
                             onContinue = { onboardingManager.nextStep() }
                         )
                         OnboardingStep.FEATURE_NOTES -> FeatureScreen(
                             icon = Icons.Default.AutoAwesome,
-                            title = "AI-Powered Notes",
-                            description = "Get instant summaries, key points, and organized notes from any content you upload.",
+                            title = stringResource(R.string.onboarding_notes_title),
+                            description = stringResource(R.string.onboarding_notes_desc),
                             onContinue = { onboardingManager.nextStep() }
                         )
                         OnboardingStep.FEATURE_FLASHCARDS -> FeatureScreen(
                             icon = Icons.Default.Style,
-                            title = "Smart Flashcards",
-                            description = "Auto-generate flashcards from your notes. Perfect for memorization and spaced repetition.",
+                            title = stringResource(R.string.onboarding_flashcards_title),
+                            description = stringResource(R.string.onboarding_flashcards_desc),
                             onContinue = { onboardingManager.nextStep() }
                         )
                         OnboardingStep.FEATURE_QUIZ -> FeatureScreen(
                             icon = Icons.Default.Quiz,
-                            title = "Interactive Quizzes",
-                            description = "Test your knowledge with AI-generated quizzes. Track your progress and identify weak areas.",
+                            title = stringResource(R.string.onboarding_quiz_title),
+                            description = stringResource(R.string.onboarding_quiz_desc),
                             onContinue = { onboardingManager.nextStep() }
                         )
                         OnboardingStep.FEATURE_AUDIO -> FeatureScreen(
                             icon = Icons.Default.Podcasts,
-                            title = "Audio Podcasts (Pro)",
-                            description = "ScribeAI is free. Podcasts are part of the optional Pro plan: turn your notes into audio and learn on the go.",
+                            title = stringResource(R.string.onboarding_audio_title),
+                            description = stringResource(R.string.onboarding_audio_desc),
                             onContinue = { onboardingManager.nextStep() }
                         )
                         OnboardingStep.SOCIAL_PROOF -> SocialProofScreen(
@@ -237,7 +237,7 @@ private fun UserTypeScreen(manager: OnboardingManager) {
 
         UserType.values().forEach { userType ->
             SelectableCard(
-                title = userType.displayName,
+                title = stringResource(userType.labelRes),
                 isSelected = selectedType == userType,
                 onClick = { manager.selectUserType(userType) }
             )
@@ -247,7 +247,7 @@ private fun UserTypeScreen(manager: OnboardingManager) {
         Spacer(Modifier.weight(1f))
 
         OnboardingPrimaryButton(
-            title = "Continue",
+            title = stringResource(R.string.continue_button),
             onClick = { manager.nextStep() },
             enabled = selectedType != null
         )
@@ -292,7 +292,7 @@ private fun UseCaseScreen(manager: OnboardingManager) {
 
         UseCase.values().forEach { useCase ->
             SelectableCard(
-                title = useCase.displayName,
+                title = stringResource(useCase.labelRes),
                 isSelected = selectedCases.contains(useCase),
                 onClick = { manager.toggleUseCase(useCase) },
                 showCheckbox = true
@@ -303,7 +303,7 @@ private fun UseCaseScreen(manager: OnboardingManager) {
         Spacer(Modifier.weight(1f))
 
         OnboardingPrimaryButton(
-            title = "Continue",
+            title = stringResource(R.string.continue_button),
             onClick = { manager.nextStep() },
             enabled = selectedCases.isNotEmpty()
         )
@@ -369,7 +369,7 @@ private fun FeatureScreen(
         Spacer(Modifier.weight(0.5f))
 
         OnboardingPrimaryButton(
-            title = "Continue",
+            title = stringResource(R.string.continue_button),
             onClick = onContinue
         )
 
@@ -384,9 +384,9 @@ private fun FeatureScreen(
 @Composable
 private fun SocialProofScreen(onContinue: () -> Unit) {
     val highlights = listOf(
-        Highlight("AI summaries", "Turn lectures, videos, and documents into clear, organized notes."),
-        Highlight("Flashcards and quizzes", "Generate study material from your own notes to review and practice."),
-        Highlight("Study on the go", "Listen to your notes as audio podcasts whenever it suits you.")
+        Highlight(stringResource(R.string.onboarding_hl_summaries_title), stringResource(R.string.onboarding_hl_summaries_desc)),
+        Highlight(stringResource(R.string.onboarding_hl_study_title), stringResource(R.string.onboarding_hl_study_desc)),
+        Highlight(stringResource(R.string.onboarding_hl_listen_title), stringResource(R.string.onboarding_hl_listen_desc))
     )
 
     Column(
@@ -416,7 +416,7 @@ private fun SocialProofScreen(onContinue: () -> Unit) {
         Spacer(Modifier.weight(1f))
 
         OnboardingPrimaryButton(
-            title = "Continue",
+            title = stringResource(R.string.continue_button),
             onClick = onContinue
         )
 
@@ -522,12 +522,12 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
 
                 val features = listOf(
-                    "AI Summaries" to Pair(false, true),
-                    "Auto Flashcards" to Pair(false, true),
-                    "Quiz Generation" to Pair(false, true),
-                    "Audio Podcasts (Pro)" to Pair(false, true),
-                    "PDF/YouTube Import" to Pair(true, true),
-                    "Cloud Sync" to Pair(true, true)
+                    stringResource(R.string.onboarding_cmp_summaries) to Pair(false, true),
+                    stringResource(R.string.onboarding_cmp_flashcards) to Pair(false, true),
+                    stringResource(R.string.onboarding_cmp_quiz) to Pair(false, true),
+                    stringResource(R.string.onboarding_cmp_podcasts) to Pair(false, true),
+                    stringResource(R.string.onboarding_cmp_import) to Pair(true, true),
+                    stringResource(R.string.onboarding_cmp_sync) to Pair(true, true)
                 )
 
                 features.forEach { (feature, checks) ->
@@ -582,7 +582,7 @@ private fun ComparisonScreen(onContinue: () -> Unit) {
         Spacer(Modifier.weight(1f))
 
         OnboardingPrimaryButton(
-            title = "Continue",
+            title = stringResource(R.string.continue_button),
             onClick = onContinue
         )
 
@@ -641,7 +641,7 @@ private fun NotificationsScreen(onComplete: () -> Unit) {
         Spacer(Modifier.weight(0.5f))
 
         OnboardingPrimaryButton(
-            title = "Enable Notifications",
+            title = stringResource(R.string.onboarding_enable_notifications),
             onClick = {
                 // TODO: Request notification permission
                 onComplete()

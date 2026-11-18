@@ -45,6 +45,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import com.kreativekoala.scribeai.utils.AppStrings
 
 // File size limits
 private const val MAX_FILE_SIZE_MB = 50
@@ -93,13 +94,13 @@ fun PDFUploadScreen(
         if (authToken == null) {
             delay(500)
             if (authToken == null) {
-                errorMessage = "Please log in to continue"
+                errorMessage = AppStrings.get(R.string.error_please_login)
                 delay(1500)
                 onNavigateToLogin()
             }
         } else if (authManager.isTokenExpired(authToken!!)) {
             authManager.clearAuth()
-            errorMessage = "Session expired. Please log in again."
+            errorMessage = AppStrings.get(R.string.error_session_expired)
             delay(1500)
             onNavigateToLogin()
         }
@@ -114,7 +115,7 @@ fun PDFUploadScreen(
             val mime = info.third
 
             if (size > MAX_FILE_SIZE_BYTES) {
-                errorMessage = "File too large (${formatFileSize(size)}). Maximum size is ${MAX_FILE_SIZE_MB}MB"
+                errorMessage = AppStrings.get(R.string.pdf_error_file_too_large, formatFileSize(size), MAX_FILE_SIZE_MB)
                 selectedFileUri = null
                 return@let
             }
@@ -186,7 +187,7 @@ fun PDFUploadScreen(
                     onSelectFile = { filePickerLauncher.launch("*/*") },
                     onUpload = {
                         if (selectedFileUri == null) {
-                            errorMessage = "Please select a file first"
+                            errorMessage = AppStrings.get(R.string.pdf_error_select_file)
                             return@FileSelectionContent
                         }
 
@@ -363,10 +364,10 @@ private fun FileSelectionContent(
                 Spacer(Modifier.height(12.dp))
 
                 val formats = listOf(
-                    Icons.Default.PictureAsPdf to "PDF Documents",
-                    Icons.Default.Description to "Word Documents (.docx)",
-                    Icons.Default.Slideshow to "PowerPoint (.pptx)",
-                    Icons.Default.TextSnippet to "Text Files (.txt)"
+                    Icons.Default.PictureAsPdf to stringResource(R.string.pdf_format_pdf),
+                    Icons.Default.Description to stringResource(R.string.pdf_format_word),
+                    Icons.Default.Slideshow to stringResource(R.string.pdf_format_powerpoint),
+                    Icons.Default.TextSnippet to stringResource(R.string.pdf_format_text)
                 )
 
                 formats.forEach { (icon, label) ->
@@ -388,7 +389,7 @@ private fun FileSelectionContent(
                     Icon(Icons.Default.Info, null, Modifier.size(16.dp), tint = TextTertiary)
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        "Maximum file size: ${MAX_FILE_SIZE_MB}MB",
+                        stringResource(R.string.pdf_max_file_size, MAX_FILE_SIZE_MB),
                         fontSize = 12.sp,
                         color = TextTertiary
                     )
@@ -814,9 +815,9 @@ private suspend fun startUploadFlow(
         if (!requestUploadResponse.isSuccessful) {
             val errorBody = requestUploadResponse.body?.string()
             val errorMsg = try {
-                JSONObject(errorBody ?: "{}").optString("error", "Failed to get upload URL")
+                JSONObject(errorBody ?: "{}").optString("error", AppStrings.get(R.string.pdf_error_upload_url))
             } catch (e: Exception) {
-                "Failed to get upload URL (${requestUploadResponse.code})"
+                AppStrings.get(R.string.pdf_error_upload_url_code, requestUploadResponse.code)
             }
             throw Exception(errorMsg)
         }
@@ -833,7 +834,7 @@ private suspend fun startUploadFlow(
 
         val fileBytes = withContext(Dispatchers.IO) {
             context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                ?: throw Exception("Failed to read file")
+                ?: throw Exception(AppStrings.get(R.string.pdf_error_read_file))
         }
 
         val uploadRequest = Request.Builder()
@@ -846,7 +847,7 @@ private suspend fun startUploadFlow(
         }
 
         if (!uploadResponse.isSuccessful) {
-            throw Exception("Upload failed: ${uploadResponse.code}")
+            throw Exception(AppStrings.get(R.string.pdf_error_upload_code, uploadResponse.code))
         }
 
         Log.d(TAG, "Upload complete, starting processing")
@@ -868,7 +869,7 @@ private suspend fun startUploadFlow(
         }
 
         if (!processResponse.isSuccessful) {
-            throw Exception("Failed to start processing")
+            throw Exception(AppStrings.get(R.string.pdf_error_start_processing))
         }
 
         // Step 4: Poll for status
@@ -877,7 +878,7 @@ private suspend fun startUploadFlow(
 
     } catch (e: Exception) {
         Log.e(TAG, "Upload flow error", e)
-        onStateChange(UploadScreenState.Error(e.message ?: "Upload failed"))
+        onStateChange(UploadScreenState.Error(e.message ?: AppStrings.get(R.string.error_upload_generic)))
     }
 }
 
@@ -929,7 +930,7 @@ private suspend fun pollForStatus(
                     return
                 }
                 "failed" -> {
-                    val error = data.optString("error", "Processing failed")
+                    val error = data.optString("error", AppStrings.get(R.string.pdf_error_processing_failed))
                     onStateChange(UploadScreenState.Error(error))
                     return
                 }
@@ -945,7 +946,7 @@ private suspend fun pollForStatus(
         attempts++
     }
 
-    onStateChange(UploadScreenState.Error("Processing timed out. Please try again."))
+    onStateChange(UploadScreenState.Error(AppStrings.get(R.string.pdf_error_timeout)))
 }
 
 // ==================== Utility Functions ====================

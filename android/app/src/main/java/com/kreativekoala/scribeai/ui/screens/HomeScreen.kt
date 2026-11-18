@@ -1020,8 +1020,8 @@ fun CreateOptionsBottomSheet(
                 Spacer(Modifier.height(12.dp))
                 CreateOption(
                     icon = Icons.Default.Phone,
-                    title = "Phone Call",
-                    subtitle = "Place a recorded call, transcript saved to your notes",
+                    title = stringResource(R.string.home_phone_call),
+                    subtitle = stringResource(R.string.home_phone_call_subtitle),
                     onClick = onPhone
                 )
             }

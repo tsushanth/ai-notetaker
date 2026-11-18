@@ -7,14 +7,16 @@ import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.annotation.StringRes
+import com.kreativekoala.scribeai.R
 
 /**
  * App theme options
  */
-enum class AppTheme(val displayName: String, val icon: String) {
-    SYSTEM("System", "smartphone"),
-    LIGHT("Light", "light_mode"),
-    DARK("Dark", "dark_mode")
+enum class AppTheme(@StringRes val labelRes: Int, val icon: String) {
+    SYSTEM(R.string.theme_system_short, "smartphone"),
+    LIGHT(R.string.theme_light, "light_mode"),
+    DARK(R.string.theme_dark, "dark_mode")
 }
 
 /**

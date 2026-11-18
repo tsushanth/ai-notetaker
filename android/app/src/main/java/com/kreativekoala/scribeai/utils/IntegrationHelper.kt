@@ -10,6 +10,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 /**
  * Helper for integration exports (Google Drive, Notion, Slack)
@@ -40,27 +42,27 @@ object IntegrationHelper {
                         200 -> {
                             val providerName = endpoint.substringBefore("/").replace("-", " ")
                                 .replaceFirstChar { it.uppercase() }
-                            Toast.makeText(context, "Sent to $providerName!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.integration_sent, providerName), Toast.LENGTH_SHORT).show()
                             AnalyticsService.trackEvent("integration_export_completed", mapOf(
                                 "note_id" to noteId,
                                 "provider" to endpoint.substringBefore("/")
                             ))
                         }
                         400 -> {
-                            val error = json.optString("error", "Integration not connected. Connect in Settings.")
+                            val error = json.optString("error", context.getString(R.string.integration_not_connected))
                             Toast.makeText(context, error, Toast.LENGTH_LONG).show()
                         }
                         429 -> {
                             Toast.makeText(context, FreeTierErrors.dailyLimitMessage(body), Toast.LENGTH_LONG).show()
                         }
                         else -> {
-                            Toast.makeText(context, "Export failed. Please try again.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, context.getString(R.string.integration_export_failed), Toast.LENGTH_LONG).show()
                         }
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.integration_failed, e.message ?: ""), Toast.LENGTH_LONG).show()
                 }
             }
         }

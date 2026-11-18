@@ -35,6 +35,7 @@ import com.kreativekoala.scribeai.utils.AuthManager
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import com.kreativekoala.scribeai.utils.AppStrings
 
 private class PhoneViewModelFactory(
     private val authManager: AuthManager
@@ -275,7 +276,7 @@ private fun PhoneCallCard(call: PhoneCall, onCallClick: (PhoneCall) -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = call.status.displayName,
+                        text = stringResource(call.status.labelRes),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -327,9 +328,9 @@ private fun EmptyCallsContent(hasVerifiedPhone: Boolean, onVerifyClick: () -> Un
         Spacer(Modifier.height(8.dp))
         Text(
             text = if (hasVerifiedPhone)
-                "Switch to the Dialer tab to place your first call."
+                stringResource(R.string.phone_calls_empty_verified)
             else
-                "Verify your phone number to start placing calls — recipients hear a recording notice and the transcript is saved to your notes.",
+                stringResource(R.string.phone_calls_empty_unverified),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -506,14 +507,14 @@ private fun ActiveCallSheet(
             }
 
             val statusText = when (callState) {
-                ActiveCallState.INITIATING -> "Connecting..."
-                ActiveCallState.RINGING -> "Ringing..."
-                ActiveCallState.CONNECTED, ActiveCallState.RECORDING -> "Connected - Recording"
-                ActiveCallState.ENDED -> "Call Ended"
-                ActiveCallState.DECLINED -> "Call Declined"
-                ActiveCallState.BUSY -> "Line Busy"
-                ActiveCallState.NO_ANSWER -> "No Answer"
-                ActiveCallState.ERROR -> "Call Failed"
+                ActiveCallState.INITIATING -> stringResource(R.string.phone_status_connecting)
+                ActiveCallState.RINGING -> stringResource(R.string.phone_status_ringing_dots)
+                ActiveCallState.CONNECTED, ActiveCallState.RECORDING -> stringResource(R.string.phone_status_connected_recording)
+                ActiveCallState.ENDED -> stringResource(R.string.phone_status_call_ended)
+                ActiveCallState.DECLINED -> stringResource(R.string.phone_status_call_declined)
+                ActiveCallState.BUSY -> stringResource(R.string.phone_status_line_busy)
+                ActiveCallState.NO_ANSWER -> stringResource(R.string.phone_status_no_answer)
+                ActiveCallState.ERROR -> stringResource(R.string.phone_status_call_failed)
                 else -> ""
             }
             val statusColor = when (callState) {
@@ -578,12 +579,12 @@ private fun ActiveCallSheet(
                     ) {
                         Icon(
                             if (isMuted) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = if (isMuted) "Unmute" else "Mute",
+                            contentDescription = stringResource(if (isMuted) R.string.phone_unmute else R.string.phone_mute),
                             tint = if (isMuted) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Spacer(Modifier.height(4.dp))
-                    Text(if (isMuted) "Unmute" else "Mute", style = MaterialTheme.typography.labelSmall)
+                    Text(stringResource(if (isMuted) R.string.phone_unmute else R.string.phone_mute), style = MaterialTheme.typography.labelSmall)
                 }
 
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -611,7 +612,7 @@ private fun ActiveCallSheet(
                     ) {
                         Icon(
                             if (isSpeakerOn) Icons.Default.VolumeUp else Icons.Default.VolumeDown,
-                            contentDescription = if (isSpeakerOn) "Speaker Off" else "Speaker On",
+                            contentDescription = stringResource(if (isSpeakerOn) R.string.phone_speaker_off else R.string.phone_speaker_on),
                             tint = if (isSpeakerOn) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -743,7 +744,7 @@ private fun VerificationBottomSheet(
                     Text(stringResource(R.string.ui_verification_failed), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = Color.Red)
                     Spacer(Modifier.height(8.dp))
                     Text(
-                        verificationError ?: "Something went wrong. Please try again.",
+                        verificationError ?: stringResource(R.string.phone_error_generic),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -799,11 +800,11 @@ private fun formatCallDate(dateString: String): String {
         when {
             now.get(Calendar.DAY_OF_YEAR) == callDate.get(Calendar.DAY_OF_YEAR) &&
                 now.get(Calendar.YEAR) == callDate.get(Calendar.YEAR) ->
-                "Today ${timeFormat.format(date)}"
+                AppStrings.get(R.string.phone_date_today, timeFormat.format(date))
             now.get(Calendar.DAY_OF_YEAR) - 1 == callDate.get(Calendar.DAY_OF_YEAR) &&
                 now.get(Calendar.YEAR) == callDate.get(Calendar.YEAR) ->
-                "Yesterday ${timeFormat.format(date)}"
-            else -> "${dateFormat.format(date)} ${timeFormat.format(date)}"
+                AppStrings.get(R.string.phone_date_yesterday, timeFormat.format(date))
+            else -> AppStrings.get(R.string.phone_date_time, dateFormat.format(date), timeFormat.format(date))
         }
     } catch (_: Exception) {
         dateString

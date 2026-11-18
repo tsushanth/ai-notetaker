@@ -10,18 +10,21 @@ import com.twilio.voice.Voice
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.annotation.StringRes
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.R
 
 /**
  * Reason a call ended.
  */
-enum class CallEndReason(val displayMessage: String) {
-    COMPLETED("Call ended"),
-    DECLINED("Call was declined"),
-    BUSY("Line is busy"),
-    NO_ANSWER("No answer"),
-    CANCELLED("Call cancelled"),
-    FAILED("Call failed"),
-    UNKNOWN("Call ended")
+enum class CallEndReason(@StringRes val messageRes: Int) {
+    COMPLETED(R.string.voip_end_completed),
+    DECLINED(R.string.voip_end_declined),
+    BUSY(R.string.voip_end_busy),
+    NO_ANSWER(R.string.voip_end_no_answer),
+    CANCELLED(R.string.voip_end_cancelled),
+    FAILED(R.string.voip_end_failed),
+    UNKNOWN(R.string.voip_end_completed)
 }
 
 /**
@@ -91,7 +94,7 @@ class VoipService private constructor(private val appContext: Context) {
         val token = accessToken
         if (token == null) {
             Log.e(TAG, "No access token set")
-            _callState.value = VoipCallState.Failed("No access token")
+            _callState.value = VoipCallState.Failed(AppStrings.get(R.string.voip_error_no_token))
             return false
         }
         if (activeCall != null) {
@@ -125,7 +128,7 @@ class VoipService private constructor(private val appContext: Context) {
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to make call", e)
-            _callState.value = VoipCallState.Failed(e.message ?: "Unknown error")
+            _callState.value = VoipCallState.Failed(e.message ?: AppStrings.get(R.string.error_unknown))
             return false
         }
     }
@@ -167,7 +170,7 @@ class VoipService private constructor(private val appContext: Context) {
         override fun onConnectFailure(call: Call, callException: CallException) {
             Log.e(TAG, "Connect failure: ${callException.message}", callException)
             activeCall = null
-            _callState.value = VoipCallState.Failed(callException.message ?: "Connection failed")
+            _callState.value = VoipCallState.Failed(callException.message ?: AppStrings.get(R.string.voip_error_connection))
             resetAudio()
         }
         override fun onRinging(call: Call) {

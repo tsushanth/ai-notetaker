@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { creatorsApi } from '@/lib/api';
+import { playUrl } from '@/lib/playLinks';
 import { Loader2, CheckCircle, Copy, Check } from 'lucide-react';
 
 const SOCIAL_PLATFORMS = [
@@ -136,7 +137,7 @@ export default function CreatorRegisterPage() {
             </div>
 
             <a
-              href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai"
+              href={playUrl('creators')}
               target="_blank"
               rel="noopener noreferrer"
               className="block btn-secondary text-center"

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { playUrl } from '@/lib/playLinks';
 
 export default function MarketingFooter() {
   return (
@@ -14,7 +15,7 @@ export default function MarketingFooter() {
               <h4 className="text-xs text-[var(--text-muted)] uppercase tracking-wide mb-3">Product</h4>
               <div className="flex flex-col gap-2">
                 <a
-                  href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai"
+                  href={playUrl('footer')}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-[var(--text-secondary)] hover:text-white transition"

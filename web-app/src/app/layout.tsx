@@ -18,21 +18,21 @@ const spaceGrotesk = Space_Grotesk({
 export const metadata: Metadata = {
   metadataBase: new URL('https://scribeai.online'),
   alternates: { canonical: './' },
-  title: 'Scribe AI - Smart Note Taking',
-  description: 'Transform your learning with AI-powered notes, quizzes, flashcards, and podcasts. Record, upload, or paste content and let AI help you study smarter.',
-  keywords: ['note taking', 'AI', 'study', 'flashcards', 'quiz', 'learning', 'transcription'],
+  title: 'Scribe AI: Turn Lectures, YouTube and PDFs into Study Notes',
+  description: 'Record a lecture, paste a YouTube link or upload a PDF, and get study notes, flashcards and a practice quiz in minutes. Free to start on the web and Android.',
+  keywords: ['study notes', 'lecture notes', 'YouTube to notes', 'PDF to flashcards', 'flashcards', 'quiz', 'note taking app', 'transcription'],
   authors: [{ name: 'Kreative Koala' }],
   openGraph: {
-    title: 'Scribe AI - Smart Note Taking',
-    description: 'Transform your learning with AI-powered notes, quizzes, flashcards, and podcasts.',
+    title: 'Scribe AI: Turn Lectures, YouTube and PDFs into Study Notes',
+    description: 'Study notes, flashcards and a practice quiz from a lecture recording, a YouTube link or a PDF.',
     type: 'website',
     locale: 'en_US',
     siteName: 'Scribe AI',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Scribe AI - Smart Note Taking',
-    description: 'Transform your learning with AI-powered notes, quizzes, flashcards, and podcasts.',
+    title: 'Scribe AI: Turn Lectures, YouTube and PDFs into Study Notes',
+    description: 'Study notes, flashcards and a practice quiz from a lecture recording, a YouTube link or a PDF.',
   },
   robots: {
     index: true,

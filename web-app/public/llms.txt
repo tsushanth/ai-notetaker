@@ -25,4 +25,4 @@ Students, professionals, learners, and researchers.
 ## Platforms
 
 Available as a web app and an Android app:
-- Android: https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai
+- Android: https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai&referrer=utm_source%3Dscribeai_web%26utm_medium%3Dweb%26utm_campaign%3Dllms

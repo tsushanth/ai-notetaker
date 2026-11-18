@@ -1,0 +1,19 @@
+{
+  "_note": "Per-file count of hard-coded user-visible English literals in src/main. NoHardcodedUiStringsTest fails if a count rises or a new file adds any. Lower counts are fine. Regenerate deliberately with scripts/update-hardcoded-baseline.sh; see docs/hardcoded-ui-strings-guard.md.",
+  "total": 69,
+  "files": {
+    "src/main/java/com/kreativekoala/scribeai/FailureReporterInterceptor.kt": {"count": 1, "h": ["a4a14917"]},
+    "src/main/java/com/kreativekoala/scribeai/onboarding/OnboardingScreen.kt": {"count": 1, "h": ["eb88a0d2"]},
+    "src/main/java/com/kreativekoala/scribeai/tts/SystemTtsEngine.kt": {"count": 7, "h": ["7f3d4169", "7f3d4169", "8705820a", "95a374d7", "9acb1cb7", "de290a44", "ee0b2d67"]},
+    "src/main/java/com/kreativekoala/scribeai/ui/screens/CreateTab.kt": {"count": 1, "h": ["5168ee34"]},
+    "src/main/java/com/kreativekoala/scribeai/ui/screens/DebugTokenScreen.kt": {"count": 18, "h": ["0e981b0c", "16306418", "1c0bc7bc", "2030294e", "400029f0", "5017a3ad", "5ee4b210", "7252d6d9", "72559767", "7dc93a30", "833f818e", "977d540b", "a82f641e", "affacab1", "b6d2f826", "dc52c385", "f3bd0978", "fd6acb1d"]},
+    "src/main/java/com/kreativekoala/scribeai/ui/screens/YouTubeInputScreen.kt": {"count": 4, "h": ["136b6ea4", "5aa5a935", "63db0e63", "a0d1d9a1"]},
+    "src/main/java/com/kreativekoala/scribeai/utils/ErrorReportingService.kt": {"count": 21, "h": ["0ce8b1dc", "1650de6b", "1d030947", "1dcf3f47", "20432484", "21362c72", "22b2effb", "2b3bad9b", "2eae644f", "683cc253", "70297b5e", "793fcb59", "940cc220", "ac710d3b", "b7039840", "c0eec8fe", "cea8a0cf", "dfb00668", "dfb007de", "f03ddaf7", "f40fb928"]},
+    "src/main/java/com/kreativekoala/scribeai/utils/ExportManager.kt": {"count": 3, "h": ["2ee5e1d4", "584d43c9", "d234dfc2"]},
+    "src/main/java/com/kreativekoala/scribeai/utils/LearnSessionManager.kt": {"count": 1, "h": ["bb2fc38c"]},
+    "src/main/java/com/kreativekoala/scribeai/utils/SubscriptionManager.kt": {"count": 2, "h": ["16455b5d", "c9fdbde4"]},
+    "src/main/java/com/kreativekoala/scribeai/viewmodel/AIViewModel.kt": {"count": 2, "h": ["039c93c3", "db40075a"]},
+    "src/main/java/com/kreativekoala/scribeai/viewmodel/AuthViewModel.kt": {"count": 7, "h": ["09a42565", "09a42565", "701a6954", "7ec00e3a", "7ec00e3a", "7ec00e3a", "bba126e2"]},
+    "src/main/java/com/kreativekoala/scribeai/viewmodel/NoteViewModel.kt": {"count": 1, "h": ["78f9e209"]}
+  }
+}

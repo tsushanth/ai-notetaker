@@ -9,6 +9,7 @@ import MarketingFooter from '@/components/marketing/MarketingFooter';
 import { Mic, Youtube, FileText, ChevronDown } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
 import { freePlanAnswer } from '@/lib/freeTier';
+import { playUrl } from '@/lib/playLinks';
 
 const PIPELINE = [
   {
@@ -44,6 +45,21 @@ const FAQ = [
   },
 ];
 
+// SoftwareApplication structured data for search engines. Only facts that are on the page: no ratings, no review counts.
+const APP_JSON_LD = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'Scribe AI',
+  url: 'https://scribeai.online/',
+  description:
+    'Turns a lecture recording, a YouTube link or a PDF into study notes, flashcards and a practice quiz.',
+  applicationCategory: 'EducationalApplication',
+  operatingSystem: 'Web, Android',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Free plan available' },
+  downloadUrl: 'https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai',
+  publisher: { '@type': 'Organization', name: 'Kreative Koala' },
+};
+
 export default function Home() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -64,6 +80,10 @@ export default function Home() {
 
   return (
     <div className="site-marketing min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] font-[family-name:var(--font-inter)]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(APP_JSON_LD).replace(/</g, '\\u003c') }}
+      />
       <MarketingHeader />
       <main className="flex-1">
         {/* Hero */}
@@ -92,7 +112,7 @@ export default function Home() {
                 </a>
               </div>
               <a
-                href="https://play.google.com/store/apps/details?id=com.kreativekoala.scribeai"
+                href={playUrl('hero')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-block"

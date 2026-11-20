@@ -6,6 +6,8 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
+const { adminOnly } = require('../middleware/adminOnly');
+const statsRollup = require('../services/outreachStatsRollup');
 const { verifySnsMessage, isSnsUrl } = require('../utils/snsVerify');
 const { logger } = require('../utils/logger');
 const { supabaseAdmin } = require('../config/supabase');
@@ -683,6 +685,45 @@ router.post('/send-test', authenticate, requireAdmin, asyncHandler(async (req, r
     success: result.success,
     data: result,
   });
+}));
+
+// =====================================================
+// DAILY STATS ROLLUP (read/aggregate only; sends nothing)
+// =====================================================
+
+/**
+ * POST /api/outreach/stats/rollup  { from?, to?, dryRun? }
+ * Aggregate outreach_emails into outreach_daily_stats for a UTC date range (default: the last 7 complete days).
+ * dryRun returns the rows without writing them.
+ */
+router.post('/stats/rollup', authenticate, adminOnly, asyncHandler(async (req, res) => {
+  const [defFrom, defTo] = statsRollup.recentWindow();
+  const { from = defFrom, to = defTo, dryRun = false } = req.body || {};
+  let rows;
+  try {
+    rows = await statsRollup.rollupRange(supabaseAdmin, from, to, { dryRun: dryRun === true });
+  } catch (error) {
+    if (/must be YYYY-MM-DD|must not be before|range too long/.test(error.message)) {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    throw error;
+  }
+  res.json({ success: true, data: { from, to, dryRun: dryRun === true, days: rows.length, rows } });
+}));
+
+/**
+ * GET /api/outreach/stats/daily?days=14
+ * The stored daily rows, newest first.
+ */
+router.get('/stats/daily', authenticate, adminOnly, asyncHandler(async (req, res) => {
+  const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 120);
+  const { data, error } = await supabaseAdmin
+    .from('outreach_daily_stats')
+    .select('*')
+    .order('date', { ascending: false })
+    .limit(days);
+  if (error) throw error;
+  res.json({ success: true, data });
 }));
 
 // =====================================================

@@ -108,45 +108,24 @@ const RECALL_WEBHOOK_SECRET = process.env.RECALL_WEBHOOK_SECRET;
 // 2025-12-15). Tried in addition to RECALL_WEBHOOK_SECRET.
 const RECALL_VERIFICATION_SECRET = process.env.RECALL_VERIFICATION_SECRET;
 
-// LEGACY check (never matched Recall's real traffic: Recall signs with Svix headers, not x-recall-signature).
-// Kept only so phase 1 never rejects anything the old code accepted. Replaced by the Svix check in phase 2.
-function legacyRecallAccepts(signature, body) {
-  if (!RECALL_WEBHOOK_SECRET || !signature) return true;
-  try {
-    const expectedSignature = crypto.createHmac('sha256', RECALL_WEBHOOK_SECRET).update(body, 'utf8').digest('hex');
-    return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
-  } catch (error) {
-    logger.error('Recall webhook signature verification error', { error: error.message });
-    return false;
-  }
-}
-
 app.post('/api/meetings/webhook/recall',
   express.raw({ type: 'application/json' }),
   async (req, res) => {
-    const rawBody = req.body.toString();
-    const signature = req.headers['x-recall-signature'] || req.headers['x-webhook-signature'];
-
-    // PHASE 1 (log-only for the Svix check): verify with Recall's documented Svix scheme. A failure is logged
-    // (header NAMES only) and counted but the request is still accepted, because we have not yet seen a genuine
-    // signed delivery in our logs. Phase 2 (separate PR) rejects instead.
+    // PHASE 2: enforce the Svix signature (see src/utils/recallWebhook.js). Fail closed: no secret, no/partial headers,
+    // stale timestamp or bad signature are all refused.
     const svix = verifyRecallWebhook({
       rawBody: req.body,
       headers: req.headers,
       secrets: [RECALL_WEBHOOK_SECRET, RECALL_VERIFICATION_SECRET],
     });
-    if (svix.ok) {
-      logger.info('webhookAuth', { provider: 'recall', outcome: 'ok', scheme: svix.scheme });
-    } else {
-      logger.warn('webhookAuth', { provider: 'recall', outcome: 'unverified_accepted', reason: svix.reason, signatureHeaders: svix.headerNames.join(',') || 'none' });
-      reportCounted('webhook_recall', `Recall webhook not verified (phase 1, accepted): ${svix.reason}`, { reason: svix.reason, signatureHeaders: svix.headerNames.join(',') || 'none' });
+    if (!svix.ok) {
+      const status = svix.reason === 'no_secret' ? 503 : 401;
+      logger.warn('webhookAuth', { provider: 'recall', outcome: 'rejected', reason: svix.reason, signatureHeaders: svix.headerNames.join(',') || 'none' });
+      // Missing headers is scanner noise (counted, rate limited); a bad signature or missing secret means real events may be dropped.
+      reportCounted('webhook_recall', `Recall webhook rejected: ${svix.reason}`, { reason: svix.reason, signatureHeaders: svix.headerNames.join(',') || 'none' });
+      return res.status(status).json({ error: 'Invalid webhook signature' });
     }
-
-    if (!svix.ok && !legacyRecallAccepts(signature, rawBody)) {
-      logger.warn('Invalid Recall webhook signature received');
-      reportFailure('webhook_recall', new Error('Recall webhook rejected: invalid signature'), { code: 'BAD_SIGNATURE' });
-      return res.status(401).json({ error: 'Invalid webhook signature' });
-    }
+    const rawBody = req.body.toString();
 
     let payload;
     try {

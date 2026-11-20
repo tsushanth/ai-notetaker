@@ -87,7 +87,9 @@ test('a malformed secret never throws', () => {
 test('guardrail: the Recall route verifies with the Svix helper and reports unverified deliveries', () => {
   const src = fs.readFileSync(path.join(__dirname, '../src/app.js'), 'utf8');
   assert.ok(src.includes('verifyRecallWebhook('), 'route uses the Svix check');
-  assert.ok(src.includes("reportCounted('webhook_recall'"), 'unverified deliveries are counted');
+  assert.ok(src.includes("reportCounted('webhook_recall'"), 'rejections are counted');
+  assert.ok(src.includes("res.status(status).json({ error: 'Invalid webhook signature' })"), 'phase 2 rejects');
+  assert.equal(src.includes('legacyRecallAccepts'), false, 'legacy fail-open check is gone');
   assert.equal(/Allow through in development/.test(src), false);
   assert.equal(/!RECALL_WEBHOOK_SECRET \|\| !signature\) \{\s*logger\.warn[^}]*return true/.test(src), false);
 });

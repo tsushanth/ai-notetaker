@@ -1,9 +1,13 @@
 import Link from 'next/link';
+import Script from 'next/script';
 import { playUrl } from '@/lib/playLinks';
 
 export default function MarketingFooter() {
   return (
     <footer className="border-t border-[var(--border)] py-10">
+      {/* Gaugemint cookieless visit counter. Only here: this footer renders on the public marketing pages and nowhere else
+          (not on app, auth, /shared/[token] or /learn/[sessionId]). Keep it out of the root layout. */}
+      <Script id="gaugemint" defer data-domain="scribeai.online" src="https://guagemint.com/js/script.js" strategy="afterInteractive" />
       <div className="max-w-[900px] mx-auto px-6">
         <div className="flex flex-col md:flex-row justify-between gap-8">
           <Link href="/" className="flex items-center gap-2 font-bold text-xl">

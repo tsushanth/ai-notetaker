@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <div className="py-16">
       <div className="max-w-[900px] mx-auto px-6">
         <h1 className="text-3xl md:text-4xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-[var(--text-muted)] text-sm mb-12">Last updated: November 10, 2026</p>
+        <p className="text-[var(--text-muted)] text-sm mb-12">Last updated: November 21, 2026</p>
 
         <section className="mb-10">
           <h2 className="text-xl font-semibold mb-4">Introduction</h2>
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
           <ul className="list-disc list-inside text-[var(--text-secondary)] space-y-2">
             <li><strong className="text-[var(--text-secondary)]">Usage Data:</strong> Features accessed, time spent, and interaction patterns</li>
             <li><strong className="text-[var(--text-secondary)]">Device Information:</strong> Device type, operating system, and unique identifiers</li>
-            <li><strong className="text-[var(--text-secondary)]">Analytics:</strong> App performance and user experience data, including product events we record in our own database and, in the Android app, Google Firebase Analytics</li>
+            <li><strong className="text-[var(--text-secondary)]">Analytics:</strong> App performance and user experience data, including product events we record in our own database and, in the Android app, Google Firebase Analytics. On the public pages of our website we count visits with Gaugemint, our own analytics: it sets no cookies and does not store your IP address, and it records the page address, the referring page, your browser and your country</li>
             <li><strong className="text-[var(--text-secondary)]">Error Reports:</strong> When something fails, the app or website sends us the error message, technical details, app version and the page or screen involved</li>
             <li><strong className="text-[var(--text-secondary)]">Advertising ID (Android app):</strong> Your Google advertising ID, used for the install and sign-up measurement described below</li>
           </ul>

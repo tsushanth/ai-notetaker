@@ -10,6 +10,7 @@ import ProductPanel from './admin/ProductPanel';
 import LlmPanel from './admin/LlmPanel';
 import ReporterPanel, { type Reporter } from './admin/ReporterPanel';
 import LlmSpendPanel from './admin/LlmSpendPanel';
+import GaugemintPanel from './admin/GaugemintPanel';
 import { DOT, Dot, Section, ago } from './admin/ui';
 
 const API_BASE = 'https://ai-notetaker-backend.fly.dev';
@@ -110,6 +111,7 @@ export default function AdminDashboard({ token }: { token: string }) {
 
           {ov.llm ? <LlmPanel llm={ov.llm} token={token} apiBase={API_BASE} onChanged={load} /> : <Section title="LLM health (Claude)"><p className="text-sm text-[var(--text-muted)]">Health data is unavailable. Check that the llm_calls table exists and the backend is running the monitor.</p></Section>}
           {ov.stats ? <ProductPanel s={ov.stats} /> : <Section title="People and usage"><p className="text-sm text-[var(--text-muted)]">Product numbers could not be loaded.</p></Section>}
+          <GaugemintPanel token={token} />
         </>
       )}
 

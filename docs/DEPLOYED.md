@@ -4,7 +4,12 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
-| Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v23 | `registry.fly.io/scribe-ai-web:deployment-01M7P0BYDFYDQ9HQFB8TQJA0QZ` | `origin/main` at `95435c5` (merge of #65; `web-app/` tree identical to main) | 2026-11-18 (UTC) |
+| Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v25 | `registry.fly.io/scribe-ai-web:deployment-01M80N9W6JV744MXZ3P9SFM6XR` | `origin/main` at `ba41ef8` (squash merge of #73; `web-app/` tree identical to main) | 2026-11-22 (UTC) |
+
+## 2026-11-21 Web (scribeai.online, Fly `scribe-ai-web`): admin card with Gaugemint website visits (#73)
+- Release v25, built from `origin/main` at `ba41ef8` (squash merge of #73; `web-app/` tree `9f000d76d5b6231e40bf73480f3c3bc6764ca516` identical to main), image `registry.fly.io/scribe-ai-web:deployment-01M80N9W6JV744MXZ3P9SFM6XR` (sha256:357eecaf4139...), `flyctl deploy --remote-only` from a clean detached worktree. Adds a "Website visits (Gaugemint)" card to /admin: server-side read-only key, new Fly secret `GAUGEMINT_READ_KEY` (copy in Keychain `GAUGEMINT_READ_KEY_scribeai.online`), admin-gated route `/api/admin/gaugemint` separate from the overview route.
+- Verified live: home 200, `/api/admin/gaugemint` answers 401 without a bearer token (same as overview). NOT verified: the card rendering for the admin account (needs a login); check once and note it here.
+- Tests before merge: 101 pass, 0 fail, `tsc` and `next build` clean.
 
 ## 2026-11-21 Web (scribeai.online, Fly `scribe-ai-web`): Gaugemint visit counter on public marketing pages (#71)
 - Release v24, built from `origin/main` at `0365dfd` (squash merge of #71; the only `web-app/` difference from the v23 tree `95435c5` is this change), deployed with `flyctl deploy --remote-only` from a clean detached worktree. Verified live in a real browser: the landing page injects `<script data-domain="scribeai.online" src="https://guagemint.com/js/script.js">` (absent from server HTML by design: next/script afterInteractive); `/login` has none; the privacy page carries the new Gaugemint sentence. Checked before merge: 11 secret-bearing and app routes (`/shared/[token]`, `/learn/[sessionId]`, `/login`, `/signup`, `/notes`, `/meetings`, `/settings`, `/subscription`, `/creator`, `/admin`) do not load it. The site is registered in the Gaugemint ops account. The script honours Do Not Track and Global Privacy Control.

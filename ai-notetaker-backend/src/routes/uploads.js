@@ -10,6 +10,7 @@ const scanService = require('../services/scanService');
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
 const { reportFailure } = require('../utils/failureReporter');
+const { documentFailureContext } = require('../utils/documentFailure');
 const { featureDailyCap, admitFeature } = require('../middleware/freeTierLimits');
 const { v4: uuidv4 } = require('uuid');
 
@@ -345,11 +346,7 @@ async function processDocumentAsync(jobId) {
     job.status = 'failed';
     job.error = error.message || 'Processing failed';
     // The client only sees this by polling /status; nothing else raises it, and the job map dies with the process.
-    reportFailure('document_processing_failed', new Error('Document processing failed (async job)'), {
-      step: String(job.steps.findIndex(s => s.status === 'in_progress')),
-      mime: String(job.mimeType || 'unknown').slice(0, 80),
-      size_kb: String(Math.round((job.fileSize || 0) / 1024))
-    });
+    reportFailure('document_processing_failed', new Error('Document processing failed (async job)'), documentFailureContext(job, error));
 
     // Mark current step as failed
     const currentStep = job.steps.findIndex(s => s.status === 'in_progress');

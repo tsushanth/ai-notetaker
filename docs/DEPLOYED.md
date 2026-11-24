@@ -5,7 +5,14 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v26 | `registry.fly.io/scribe-ai-web:deployment-01M85HF3541E01QZ2QFR2KFTVJ` | `origin/main` at `447a90f` (#76 + #77; `web-app/` tree `0d84ca5f9e88fa9e7f12b21221b6da3ac896febb` identical to main) | 2026-11-24 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v48 | `registry.fly.io/ai-notetaker-backend:deployment-01M85HBN77DXB9R84TC90TDJ5W` | `origin/main` at `447a90f` (#76 + #77; `ai-notetaker-backend/` tree `736a3c8d2214a01df034501290fad1190d75532e` identical to main) | 2026-11-24 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v49 | `registry.fly.io/ai-notetaker-backend:deployment-01M85NVAWGAHWKJNC1PFJ0C5KD` | `origin/main` at `5f7c4b7` (#75; `ai-notetaker-backend/` tree `bc04163d6206a9b780d4d02db01511b92268f13e` identical to main) | 2026-11-24 (UTC) |
+
+## 2026-11-24 Backend v49: document processing failure report says why (#75)
+- `ai-notetaker-backend` v48 (image `deployment-01M85HBN77DXB9R84TC90TDJ5W`) -> v49 (image `deployment-01M85NVAWGAHWKJNC1PFJ0C5KD`), `flyctl deploy` from a clean detached worktree of `origin/main` at `5f7c4b7`; the deployed subtree equals main's. Delta from 447a90f in `ai-notetaker-backend/`: only #75 (`src/routes/uploads.js`, new `src/utils/documentFailure.js`, new `test/documentFailure.test.js`).
+- Change: the failure-report email for `document_processing_failed` now carries a masked reason and the http status (no file names, user ids or document text). No user-facing behaviour changes.
+- Tests on the rebased tree before merge: `node --test --test-concurrency=2 test/`: 430 pass, 0 fail. Quiet moment: last AI/upload request in the logs was 15 minutes earlier, only the keep-alive ping since.
+- Verified live: `/health` healthy, `/health/ready` 200 `{"ready":true}`; unauthenticated `/api/notes`, `/api/uploads/document` (GET and POST) and `/api/ai/summarize` answer 401 `No authorization token provided`, a made-up route 404, all identical to before the deploy. NOT verified live: a real document failure report (needs an authenticated failing upload); covered by the unit tests.
+- Rollback: `flyctl releases rollback 48 -a ai-notetaker-backend`.
 
 ## 2026-11-24 Android 58.31 (versionCode 92), Play production, staged 20%
 - Tag `play/android-58.31-vc92` = `origin/main` at `678c7f4` (#79; the AAB was built from exactly this commit, clean detached worktree). Play production read-back: 58.31 vc92 `inProgress` userFraction 0.2, 58.30 vc91 `completed` (vc91 had been promoted to 100% beforehand). Package `com.kreativekoala.scribeai`, targetSdk 36 / minSdk 26 (unchanged), AAB sha256 `d8b12e216d216674ca3cae11de1dc418c2295ad3b5c46934fb80d0203326e912`, `jarsigner -verify` ok, manifest versionCode 92 / versionName 58.31. Release notes (en-US): "Traditional Chinese for Taiwan and Hong Kong."

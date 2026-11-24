@@ -174,7 +174,7 @@
     <!-- Recording Screen -->
     <string name="record_audio">錄製音訊</string>
     <string name="record_audio_subtitle">錄製講座、會議或筆記。\n我們將自動轉錄並建立學習資料。</string>
-    <string name="grant_microphone_permission">授權麥克風許可權</string>
+    <string name="grant_microphone_permission">授權麥克風權限</string>
     <string name="start_recording">開始錄製</string>
     <string name="tap_to_start_recording">點選開始錄製</string>
     <string name="recording_status">錄製中\u2026</string>
@@ -229,7 +229,7 @@
 
     <!-- Retention Dialogs -->
     <string name="are_you_sure">確定嗎？</string>
-    <string name="lose_access">你將失去以下訪問許可權:</string>
+    <string name="lose_access">你將失去以下存取權限:</string>
     <string name="stat_notes_created">已建立的筆記</string>
     <string name="stat_quizzes_generated">已生成的測驗</string>
     <string name="stat_flashcards_created">已建立的記憶卡</string>
@@ -268,7 +268,7 @@
 
     <!-- Scan Document Screen -->
     <string name="scan_document">掃描文件</string>
-    <string name="grant_permission">授予許可權</string>
+    <string name="grant_permission">授予權限</string>
     <string name="scan_another_page">掃描下一頁</string>
     <string name="save_with_count">儲存 (%d)</string>
     <string name="dismiss">關閉</string>

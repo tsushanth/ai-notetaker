@@ -1,23 +1,7 @@
 const Joi = require('joi');
 
-/**
- * Supported languages for AI-generated content
- * Matches iOS and Android client language lists
- */
-const SUPPORTED_LANGUAGES = [
-  // Major World Languages
-  'english', 'spanish', 'french', 'german', 'portuguese', 'italian',
-  'chinese', 'chinese_traditional', 'japanese', 'korean',
-  // South Asian Languages
-  'hindi', 'bengali', 'tamil', 'telugu', 'urdu', 'marathi', 'gujarati', 'punjabi',
-  // European Languages
-  'dutch', 'polish', 'russian', 'ukrainian', 'swedish', 'norwegian',
-  'danish', 'finnish', 'greek', 'czech', 'romanian', 'hungarian',
-  // Middle Eastern & African Languages
-  'arabic', 'hebrew', 'turkish', 'persian', 'swahili',
-  // Southeast Asian Languages
-  'thai', 'vietnamese', 'indonesian', 'malay', 'tagalog'
-];
+/** Supported languages for AI-generated content (matches the iOS, Android and web client lists). */
+const { SUPPORTED_LANGUAGES } = require('../utils/languages');
 
 /**
  * Validation schemas for different endpoints

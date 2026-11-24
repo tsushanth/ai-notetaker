@@ -18,7 +18,21 @@ class AiLanguageTest {
     @Test fun chineseSplitsIntoSimplifiedAndTraditional() {
         assertEquals("chinese", AiLanguage.forLocale(Locale.SIMPLIFIED_CHINESE))
         assertEquals("chinese_traditional", AiLanguage.forLocale(Locale.TRADITIONAL_CHINESE))
-        assertEquals("chinese_traditional", AiLanguage.forLocale(Locale("zh", "HK")))
+        assertEquals("chinese_traditional", AiLanguage.forLocale(Locale("zh", "TW")))
+        assertEquals("chinese_traditional_hk", AiLanguage.forLocale(Locale("zh", "HK")))
+        assertEquals("chinese_traditional_hk", AiLanguage.forLocale(Locale("zh", "MO")))
+        assertEquals("chinese_traditional", AiLanguage.forLocale(Locale.forLanguageTag("zh-Hant")))
+        assertEquals("chinese_traditional_hk", AiLanguage.forLocale(Locale.forLanguageTag("zh-Hant-HK")))
+        assertEquals("chinese", AiLanguage.forLocale(Locale.forLanguageTag("zh-Hans-HK")))
+        assertEquals("chinese", AiLanguage.forLocale(Locale.forLanguageTag("zh-SG")))
+        assertEquals("chinese", AiLanguage.forLocale(Locale("zh")))
+    }
+
+    @Test fun chinesePickerEntriesUseTheirOwnNames() {
+        val names = AiLanguage.ALL.associate { (name, tag) -> name to AiLanguage.displayName(tag, Locale.US) }
+        assertEquals("简体中文", names["chinese"])
+        assertEquals("繁體中文（台灣）", names["chinese_traditional"])
+        assertEquals("繁體中文（香港）", names["chinese_traditional_hk"])
     }
 
     @Test fun unknownLanguageFallsBackToEnglish() {

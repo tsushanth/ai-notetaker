@@ -141,7 +141,7 @@
     <string name="onboarding_flashcards_title">智慧記憶卡</string>
     <string name="onboarding_flashcards_desc">根據您的筆記自動生成記憶卡。非常適合記憶和間隔重複。</string>
     <string name="onboarding_quiz_title">互動測驗</string>
-    <string name="onboarding_quiz_desc">透過 AI 生成的測驗檢驗您的知識。跟蹤進度，找出薄弱環節。</string>
+    <string name="onboarding_quiz_desc">透過 AI 生成的測驗檢驗您的知識。追蹤進度，找出薄弱環節。</string>
     <string name="onboarding_audio_title">音訊播客 (Pro)</string>
     <string name="onboarding_audio_desc">ScribeAI 免費使用。播客屬於可選的 Pro 方案：將筆記轉為音訊，隨時隨地學習。</string>
     <string name="onboarding_enable_notifications">開啟通知</string>
@@ -232,7 +232,7 @@
     </plurals>
     <string name="scan_error_load_images">載入圖片失敗: %1$s</string>
     <string name="scan_error_pdf_too_large">PDF 過大 (%1$s MB)。請減少頁數。</string>
-    <string name="scan_error_doc_too_large">文件過大。請減少頁數或降低質量。</string>
+    <string name="scan_error_doc_too_large">文件過大。請減少頁數或降低品質。</string>
     <string name="scan_error_process">處理文件失敗: %1$s</string>
     <string name="scan_error_max_pages">最多允許 10 頁</string>
     <string name="scan_error_capture">拍攝失敗: %1$s</string>

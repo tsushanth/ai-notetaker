@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
+const { getLanguageInstruction } = require('../utils/languages');
 const { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, requestStructured, enoughOf } = require('../utils/aiOutput');
 
 /**
@@ -36,16 +37,6 @@ function truncateContent(content, maxChars = MAX_CONTENT_CHARS) {
   });
 
   return truncated;
-}
-
-/**
- * Get language instruction for AI prompts
- */
-function getLanguageInstruction(language) {
-  if (!language || language === 'english') {
-    return '';
-  }
-  return `\n\nIMPORTANT: Respond entirely in ${language}. All output must be in ${language}.`;
 }
 
 /** Shown to the user when the model reply could not be read even after a retry. */

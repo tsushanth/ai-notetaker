@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Used by the Phone Call screen (PhoneScreen) as its "Recording" label. -->
+    <string name="rec_channel_recording">錄音</string>
+</resources>

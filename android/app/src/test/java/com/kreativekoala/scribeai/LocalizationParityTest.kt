@@ -54,11 +54,12 @@ class LocalizationParityTest {
     }
 
     private fun localeDirs(): List<File> =
-        (res.listFiles { f -> f.isDirectory && f.name.matches(Regex("values-[a-z]{2,3}(-r[A-Z]{2})?")) } ?: emptyArray())
+        (res.listFiles { f -> f.isDirectory && f.name.matches(Regex("values-([a-z]{2,3}(-r[A-Z]{2})?|b\\+zh\\+Hant)")) } ?: emptyArray())
             .sortedBy { it.name }
 
     private fun tag(dirName: String): String {
         val q = dirName.removePrefix("values-")
+        if (q.startsWith("b+")) return q.removePrefix("b+").replace("+", "-")
         val t = q.replace("-r", "-")
         return if (t == "in") "id" else t
     }
@@ -89,12 +90,13 @@ class LocalizationParityTest {
         "es" to setOf("one", "many", "other"),
         "it" to setOf("one", "many", "other"),
         "pt-BR" to setOf("one", "many", "other"), "pt" to setOf("one", "many", "other"), "cs" to setOf("one", "few", "many", "other"),
-        "ja" to setOf("other"), "ko" to setOf("other"), "zh-CN" to setOf("other"),
+        "ja" to setOf("other"), "ko" to setOf("other"), "zh-CN" to setOf("other"), "zh-TW" to setOf("other"), "zh-HK" to setOf("other"), "zh-Hant" to setOf("other"),
         "th" to setOf("other"), "vi" to setOf("other"), "id" to setOf("other"), "ms" to setOf("other")
     )
 
     @Test fun localesConfigListsExactlyTheShippedLanguages() {
-        val shipped = localeDirs().map { tag(it.name) }.toMutableSet().apply { add("en") }
+        // zh-Hant (values-b+zh+Hant) is the script fallback for Macau and other Traditional regions, not a picker entry.
+        val shipped = localeDirs().map { tag(it.name) }.toMutableSet().apply { add("en"); remove("zh-Hant") }
         val text = File(res, "xml/locales_config.xml").readText()
         val listed = Regex("android:name=\"([^\"]+)\"").findAll(text).map { it.groupValues[1] }.toSet()
         assertEquals("languages in values-* but not in locales_config.xml", emptySet<String>(), shipped - listed)

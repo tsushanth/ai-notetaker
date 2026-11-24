@@ -237,7 +237,7 @@ function SettingsContent() {
     {
       name: 'Major World Languages',
       languages: filteredLanguages.filter((l) =>
-        ['english', 'spanish', 'french', 'german', 'portuguese', 'italian', 'chinese', 'chinese_traditional', 'japanese', 'korean'].includes(l.code)
+        ['english', 'spanish', 'french', 'german', 'portuguese', 'italian', 'chinese', 'chinese_traditional', 'chinese_traditional_hk', 'japanese', 'korean'].includes(l.code)
       ),
     },
     {

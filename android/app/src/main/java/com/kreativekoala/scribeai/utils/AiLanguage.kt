@@ -17,13 +17,19 @@ object AiLanguage {
     /** Backend language name to BCP-47 tag, in the order shown in the dialog. Must stay inside the backend allow-list. */
     val ALL: List<Pair<String, String>> = listOf(
         "english" to "en", "spanish" to "es", "french" to "fr", "german" to "de", "portuguese" to "pt", "italian" to "it",
-        "chinese" to "zh-Hans", "chinese_traditional" to "zh-Hant", "japanese" to "ja", "korean" to "ko",
+        "chinese" to "zh-Hans", "chinese_traditional" to "zh-TW", "chinese_traditional_hk" to "zh-HK", "japanese" to "ja", "korean" to "ko",
         "hindi" to "hi", "bengali" to "bn", "tamil" to "ta", "telugu" to "te", "urdu" to "ur", "marathi" to "mr",
         "gujarati" to "gu", "punjabi" to "pa",
         "dutch" to "nl", "polish" to "pl", "russian" to "ru", "ukrainian" to "uk", "swedish" to "sv", "norwegian" to "no",
         "danish" to "da", "finnish" to "fi", "greek" to "el", "czech" to "cs", "romanian" to "ro", "hungarian" to "hu",
         "arabic" to "ar", "hebrew" to "he", "turkish" to "tr", "persian" to "fa", "swahili" to "sw",
         "thai" to "th", "vietnamese" to "vi", "indonesian" to "id", "malay" to "ms", "tagalog" to "fil"
+    )
+
+    private val CHINESE_ENDONYMS = mapOf(
+        "zh-Hans" to "简体中文",
+        "zh-TW" to "繁體中文（台灣）",
+        "zh-HK" to "繁體中文（香港）"
     )
 
     private val nameByLanguage: Map<String, String> = mapOf(
@@ -41,8 +47,14 @@ object AiLanguage {
     fun forLocale(locale: Locale = Locale.getDefault()): String {
         val lang = locale.language
         if (lang == "zh") {
-            val traditional = locale.script == "Hant" || locale.country in setOf("TW", "HK", "MO")
-            return if (traditional) "chinese_traditional" else "chinese"
+            // Script wins over region: zh-Hans-HK is Simplified, zh-Hant-CN is Traditional. Without a script, the region decides.
+            val traditional = when (locale.script) {
+                "Hans" -> false
+                "Hant" -> true
+                else -> locale.country in setOf("TW", "HK", "MO")
+            }
+            if (!traditional) return "chinese"
+            return if (locale.country == "HK" || locale.country == "MO") "chinese_traditional_hk" else "chinese_traditional"
         }
         return nameByLanguage[lang] ?: DEFAULT
     }
@@ -70,6 +82,8 @@ object AiLanguage {
 
     /** Name for the dialog in the app's language, with the language's own name when it differs: "Spanish (Español)". */
     fun displayName(tag: String, uiLocale: Locale = Locale.getDefault()): String {
+        // The three Chinese choices differ by script and region, which the platform's names blur, so they use their own names.
+        CHINESE_ENDONYMS[tag]?.let { return it }
         val language = Locale.forLanguageTag(tag)
         val inUi = language.getDisplayName(uiLocale).replaceFirstChar { it.titlecase(uiLocale) }
         val native = language.getDisplayName(language).replaceFirstChar { it.titlecase(language) }

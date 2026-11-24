@@ -11,7 +11,8 @@ export const SUPPORTED_LANGUAGES = [
   { code: 'portuguese', name: 'Portuguese', nativeName: 'Português' },
   { code: 'italian', name: 'Italian', nativeName: 'Italiano' },
   { code: 'chinese', name: 'Chinese (Simplified)', nativeName: '简体中文' },
-  { code: 'chinese_traditional', name: 'Chinese (Traditional)', nativeName: '繁體中文' },
+  { code: 'chinese_traditional', name: 'Chinese (Traditional, Taiwan)', nativeName: '繁體中文（台灣）' },
+  { code: 'chinese_traditional_hk', name: 'Chinese (Traditional, Hong Kong)', nativeName: '繁體中文（香港）' },
   { code: 'japanese', name: 'Japanese', nativeName: '日本語' },
   { code: 'korean', name: 'Korean', nativeName: '한국어' },
   // South Asian Languages

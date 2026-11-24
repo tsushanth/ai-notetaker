@@ -88,7 +88,7 @@
     <string name="ui_generation_failed">生成失敗</string>
     <string name="ui_explanation">解釋</string>
     <string name="ui_number_of_flashcards">閃卡數量</string>
-    <string name="ui_custom_instructions_optional">自定義說明（可選）</string>
+    <string name="ui_custom_instructions_optional">自訂說明（可選）</string>
     <string name="ui_e_g_focus_on_definitions">例如：側重於定義，使用簡單的語言...</string>
     <string name="ui_this_may_take_20_40">這可能需要 20 到 40 秒</string>
     <string name="ui_creating_your_mind_map">正在建立您的思維導圖...</string>

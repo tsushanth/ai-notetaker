@@ -47,7 +47,7 @@
     <string name="error_meeting_cancel">取消會議失敗</string>
     <string name="error_meeting_delete">刪除會議失敗</string>
     <string name="error_meeting_validate">驗證連結失敗</string>
-    <string name="error_access_denied">訪問被拒絕，請重新登入。</string>
+    <string name="error_access_denied">存取被拒絕，請重新登入。</string>
     <string name="error_notes_not_found">未找到筆記。</string>
     <string name="error_notes_load_code">載入筆記失敗 (%1$d)</string>
     <string name="error_note_fetch">獲取筆記失敗</string>
@@ -100,7 +100,7 @@
     <string name="voip_end_no_answer">無人接聽</string>
     <string name="voip_end_cancelled">通話已取消</string>
     <string name="voip_end_failed">通話失敗</string>
-    <string name="voip_error_no_token">沒有訪問令牌</string>
+    <string name="voip_error_no_token">沒有存取令牌</string>
     <string name="voip_error_connection">連線失敗</string>
     <string name="phone_status_connecting">連線中...</string>
     <string name="phone_status_ringing_dots">響鈴中...</string>

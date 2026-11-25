@@ -24,6 +24,7 @@ const payoutService = require('../services/payoutService');
 const creatorActivityService = require('../services/creatorActivityService');
 const commissionCapService = require('../services/commissionCapService');
 const fraudAnomalyService = require('../services/fraudAnomalyService');
+const { cronAuth } = require('../middleware/cronAuth');
 
 /**
  * Process earnings that have reached maturity (daily job)
@@ -268,36 +269,7 @@ function createJobRoutes() {
   const router = express.Router();
 
   // Middleware to verify Cloud Scheduler requests
-  const verifySchedulerRequest = (req, res, next) => {
-    // In production, verify the request is from Cloud Scheduler
-    // Check for specific headers or use IAM authentication
-    const schedulerToken = req.headers['x-cloudscheduler'];
-    const appEngineToken = req.headers['x-appengine-cron'];
-
-    // For development, allow all requests
-    if (process.env.NODE_ENV === 'development') {
-      return next();
-    }
-
-    // In production, require either Cloud Scheduler or App Engine cron header
-    // Or use a secret token
-    const secretToken = process.env.CRON_SECRET_TOKEN;
-    const providedToken = req.headers['x-cron-token'];
-
-    if (schedulerToken || appEngineToken || (secretToken && providedToken === secretToken)) {
-      return next();
-    }
-
-    logger.warn('Unauthorized cron request', {
-      ip: req.ip,
-      headers: Object.keys(req.headers),
-    });
-
-    return res.status(403).json({
-      success: false,
-      error: 'Unauthorized',
-    });
-  };
+  const verifySchedulerRequest = cronAuth; // the shared secret only: scheduler headers can be set by anyone
 
   /**
    * POST /api/jobs/process-maturity

@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">Không thể gửi email đặt lại mật khẩu. Vui lòng thử lại sau.</string>
+    <string name="tts_still_generating">Âm thanh vẫn đang được chuẩn bị. Hãy thử lại sau một phút.</string>
 </resources>

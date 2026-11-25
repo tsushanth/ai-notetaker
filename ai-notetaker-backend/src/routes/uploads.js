@@ -31,10 +31,8 @@ const ALLOWED_MIME_TYPES = [
   'application/pdf',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // docx
   'application/vnd.openxmlformats-officedocument.presentationml.presentation', // pptx
-  'application/vnd.ms-powerpoint', // ppt
-  'application/vnd.oasis.opendocument.presentation', // odp
   'text/plain'
-];
+]; // only types pdfService can read; the Android picker offers the same list (utils/DocumentTypes.kt)
 
 // Configure multer for file uploads (kept for backward compatibility)
 const upload = multer({

@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">Non è stato possibile inviare l\'e-mail di reimpostazione. Riprova più tardi.</string>
+    <string name="tts_still_generating">L\'audio è ancora in preparazione. Riprova tra un minuto.</string>
 </resources>

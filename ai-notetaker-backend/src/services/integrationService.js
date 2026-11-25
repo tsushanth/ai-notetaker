@@ -3,6 +3,7 @@ const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 const axios = require('axios');
+const { checkPublicUrl, postJson } = require('../utils/safeOutbound');
 
 class IntegrationService {
   // ============================================
@@ -446,7 +447,8 @@ class IntegrationService {
       ]
     };
 
-    await axios.post(webhookUrl, message);
+    // The stored address is writable by its owner: only Slack's webhook host is ever called.
+    await postJson(webhookUrl, message, { allowHosts: ['hooks.slack.com'] });
 
     logger.info('Note shared to Slack', { userId, noteId });
 
@@ -461,6 +463,11 @@ class IntegrationService {
    * Register a webhook URL for a user (Zapier catch hook)
    */
   async registerWebhook(userId, webhookUrl, events = ['note.created']) {
+    try {
+      await checkPublicUrl(webhookUrl);
+    } catch (error) {
+      throw new AppError('The webhook URL must be a public https address.', 400);
+    }
     const { data, error } = await supabaseAdmin
       .from('user_webhooks')
       .insert({
@@ -501,7 +508,8 @@ class IntegrationService {
 
     // Fire all webhooks in parallel, don't wait
     for (const hook of hooks) {
-      axios.post(hook.webhook_url, webhookPayload, { timeout: 5000 })
+      // Checked again on every send: the row can be written directly by its owner, and DNS can change.
+      postJson(hook.webhook_url, webhookPayload, { timeoutMs: 5000 })
         .then(() => {
           logger.debug('Webhook delivered', { webhookId: hook.id, event });
         })

@@ -6,8 +6,10 @@ const router = express.Router();
 const { createClient } = require('@supabase/supabase-js');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
-const { loginLimiters } = require('../middleware/loginRateLimit');
+const { loginLimiters, resetRequestLimiters, passwordUpdateLimiters } = require('../middleware/loginRateLimit');
+const passwordReset = require('../services/passwordReset');
 const { signupAppMetadata, noteSignup } = require('../services/outreachAttribution');
+const { reportCounted } = require('../utils/failureReporter');
 
 // The one shared admin client (service role). It is also the client /health inspects, so a regression that makes it act
 // as a user is visible there.
@@ -124,6 +126,37 @@ router.post('/register', async (req, res) => {
             error: 'Registration failed. Please try again.'
         });
     }
+});
+
+/**
+ * POST /api/auth/password/reset  { email }
+ * Send the reset email. Answers an error when it could not be sent, so no client shows "email sent" for nothing.
+ */
+router.post('/password/reset', ...resetRequestLimiters, async (req, res) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim() : '';
+    if (!email || email.length > 254 || !email.includes('@')) {
+        return res.status(400).json({ success: false, error: 'A valid email address is required' });
+    }
+    const out = await passwordReset.requestReset(email);
+    // 5xx answers are reported by the safety net; a rate limit (the mailer allows very few per hour) is counted here.
+    if (out.status === 429) reportCounted('AUTH password_reset', 'Password reset email refused: rate limit', {});
+    res.status(out.status).json(out.body);
+});
+
+/**
+ * POST /api/auth/password/update  { access_token, password }
+ * Set a new password with the recovery session from the reset link.
+ */
+router.post('/password/update', ...passwordUpdateLimiters, async (req, res) => {
+    const { access_token: accessToken, password } = req.body || {};
+    if (typeof accessToken !== 'string' || !accessToken || accessToken.length > 4096) {
+        return res.status(400).json({ success: false, code: 'RESET_LINK_EXPIRED', error: 'This reset link has expired. Request a new one.' });
+    }
+    if (typeof password !== 'string' || password.length < 6 || password.length > 1024) {
+        return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+    }
+    const out = await passwordReset.updatePassword(accessToken, password);
+    res.status(out.status).json(out.body);
 });
 
 /**

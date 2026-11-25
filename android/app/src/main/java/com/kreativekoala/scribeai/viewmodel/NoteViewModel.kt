@@ -30,6 +30,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import com.kreativekoala.scribeai.utils.AppStrings
 import com.kreativekoala.scribeai.R
+import com.kreativekoala.scribeai.FailureReporterInterceptor
 
 sealed class NoteUiState {
     object Loading : NoteUiState()
@@ -84,6 +85,7 @@ class NoteViewModel(
 
 
     private val client = OkHttpClient.Builder()
+        .addInterceptor(FailureReporterInterceptor())
         .connectTimeout(60, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)

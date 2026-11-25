@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
+import { reportWebFailure } from '@/components/WebFailureReporter';
+import { isUnexpectedSignInFailure } from '@/lib/reportable';
 
 /**
  * Email and password sign-in for accounts created with an email address (for example in the Android app), which could
@@ -27,6 +30,7 @@ export default function EmailSignInForm() {
       const result = await authApi.loginWithEmail(email.trim(), password);
       login(result.user as Parameters<typeof login>[0], result.token);
     } catch (err) {
+      if (isUnexpectedSignInFailure(err)) reportWebFailure('Sign In', err);
       setError(err instanceof Error ? err.message : 'Sign in failed. Please try again.');
       setBusy(false);
     }
@@ -71,6 +75,11 @@ export default function EmailSignInForm() {
         Sign in
       </button>
       {error && <p className="text-sm text-[var(--accent-red)] text-center">{error}</p>}
+      <p className="text-center text-sm">
+        <Link href="/reset-password" className="text-[var(--accent-purple-light)] hover:underline">
+          Forgot your password?
+        </Link>
+      </p>
     </form>
   );
 }

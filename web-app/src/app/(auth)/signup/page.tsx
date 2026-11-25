@@ -7,6 +7,8 @@ import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
+import { reportWebFailure } from '@/components/WebFailureReporter';
+import { isUnexpectedSignInFailure } from '@/lib/reportable';
 import GoogleSignInButton, { GOOGLE_UNAVAILABLE_MESSAGE } from '@/components/GoogleSignInButton';
 
 
@@ -30,6 +32,7 @@ export default function SignupPage() {
       login(result.user as any, result.token);
       router.push('/notes');
     } catch (err) {
+      if (isUnexpectedSignInFailure(err)) reportWebFailure('Sign In with Google', err);
       setError(err instanceof Error ? err.message : 'Google login failed');
       setIsLoading(false);
     }

@@ -6,7 +6,12 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
-const { reportFailure } = require('../utils/failureReporter');
+const { reportFailure, reportCounted } = require('../utils/failureReporter');
+const playVerify = require('../utils/playVerify');
+const { decide, trustConfig, tokenHash, alreadyHas, PLATFORMS } = require('../utils/subscriptionTrust');
+const { verifyAppleJws, AppleSignatureError } = require('../utils/appleJws');
+const { cronAuth } = require('../middleware/cronAuth');
+const { adminOnly } = require('../middleware/adminOnly');
 
 // Stripe errors that are our/Stripe's fault (not a declined card or bad input): these page the owner.
 function reportStripeFailure(flow, error) {
@@ -35,6 +40,43 @@ const STRIPE_PRICES = {
   yearly: process.env.STRIPE_PRICE_YEARLY || 'price_1Sjv8UKFBTQTkmztT2AC3ae9'
 };
 
+const SYNC_STATUSES = ['active', 'grace_period', 'cancelled', 'expired'];
+const GRANTING = ['active', 'grace_period'];
+
+/** Count what happened to a client's claim. Fixed messages, so the reporter groups them; no ids, tokens or amounts. */
+function countTrust(outcome, platform, reason) {
+  reportCounted('subscription_verify', `Subscription ${outcome}`, { platform: String(platform), reason: String(reason) });
+}
+
+/** A request for access that could not be verified: it may be a real buyer, so the owner is told each time. */
+function reportRefused(platform, reason) {
+  void reportFailure('subscription_verify', new Error('Subscription claim not verified (no access granted)'), { platform: String(platform), reason: String(reason) });
+}
+
+/**
+ * Keep an unverifiable claim as 'pending' (grants nothing) when the account has no subscription worth keeping, so the
+ * store's own signed message can activate it and a real buyer is not lost. Never touches a row that gives access.
+ */
+async function holdAsPending(userId, existing, claim) {
+  const ended = !existing || ['pending', 'expired'].includes(existing.status)
+    || (existing.status === 'cancelled' && !(Date.parse(existing.current_period_end) > Date.now()));
+  if (!ended) return false;
+  const row = {
+    user_id: userId,
+    product_id: String(claim.productId).slice(0, 200),
+    platform: claim.platform,
+    status: 'pending',
+    original_transaction_id: claim.originalTransactionId ? String(claim.originalTransactionId).slice(0, 200) : null,
+    current_period_end: null,
+    updated_at: new Date().toISOString()
+  };
+  const { error } = existing
+    ? await supabase.from('subscriptions').update(row).eq('user_id', userId)
+    : await supabase.from('subscriptions').insert({ ...row, created_at: row.updated_at });
+  if (error) logger.warn('Could not hold a subscription claim', { userId, error: error.message });
+  return !error;
+}
+
 // ============================================
 // Subscription Sync Endpoint (from iOS/Android client)
 // ============================================
@@ -52,8 +94,10 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
     trialEndDate,
     autoRenewEnabled,
     priceAmount,
-    priceCurrency
+    priceCurrency,
+    purchaseToken: rawToken
   } = req.body;
+  const purchaseToken = typeof rawToken === 'string' && rawToken && rawToken.length <= 4096 ? rawToken : null;
 
   logger.info('Subscription sync received', { userId, productId, status, platform });
 
@@ -65,6 +109,10 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
     });
   }
 
+  if (!PLATFORMS.includes(platform) || !SYNC_STATUSES.includes(status)) {
+    return res.status(400).json({ success: false, error: 'Unsupported platform or status' });
+  }
+
   try {
     // Check if subscription exists for this user
     const { data: existingSubscription, error: fetchError } = await supabase
@@ -72,6 +120,29 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
       .select('*')
       .eq('user_id', userId)
       .single();
+
+    const existing = existingSubscription && !fetchError ? existingSubscription : null;
+    const grants = GRANTING.includes(status);
+    const verification = platform === 'android' && purchaseToken && grants
+      ? await playVerify.verifySubscription({ purchaseToken, productId })
+      : null;
+    const trust = decide({ platform, status, productId, existing, verification, config: trustConfig() });
+    if (trust.action === 'refuse') {
+      logger.warn('Subscription sync refused', { userId, productId, platform, reason: trust.reason });
+      reportRefused(platform, trust.reason);
+      // A token the store calls false is not kept.
+      const pending = verification?.result === 'invalid' ? false : await holdAsPending(userId, existing, {
+        productId, platform, originalTransactionId: originalTransactionId || transactionId
+      });
+      return res.status(403).json({
+        success: false,
+        code: 'PURCHASE_NOT_VERIFIED',
+        pending,
+        error: 'This purchase could not be verified with the store yet.'
+      });
+    }
+    const isNewActivation = grants && !alreadyHas(existing, { productId, platform }); // true here only if verified or in log mode
+    if (grants && !trust.verified && isNewActivation) countTrust('activated without store verification', platform, trust.reason);
 
     const subscriptionData = {
       user_id: userId,
@@ -86,8 +157,22 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
       auto_renew_enabled: autoRenewEnabled !== false,
       price_amount: priceAmount || null,
       price_currency: priceCurrency || 'USD',
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      ...trust.patch
     };
+    if (trust.verified) {
+      subscriptionData.metadata = {
+        ...existing?.metadata,
+        verified: true,
+        verified_at: new Date().toISOString(),
+        purchase_token_sha256: tokenHash(purchaseToken),
+        play_state: verification.state,
+        play_expires_at: verification.expiresAt
+      };
+    } else if (grants && existing?.metadata?.verified && !expirationDate) {
+      // An unverified refresh must not erase an end date the store gave us.
+      subscriptionData.current_period_end = existing.current_period_end ?? null;
+    }
 
     let subscription;
     if (existingSubscription && !fetchError) {
@@ -116,16 +201,30 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
       logger.info('Subscription created', { userId, subscriptionId: subscription.id });
     }
 
-    // Log subscription event
-    await logSubscriptionEvent(userId, subscription.id, {
-      eventType: isTrial ? 'trial_started' : 'subscription_started',
+    // One purchase, one account: a store-verified token moving to this account ends it on any other.
+    if (trust.verified && verification.result === 'entitled') {
+      const { error: moveError } = await supabase
+        .from('subscriptions')
+        .update({ status: 'expired', updated_at: new Date().toISOString() })
+        .eq('metadata->>purchase_token_sha256', tokenHash(purchaseToken))
+        .neq('user_id', userId);
+      if (moveError) logger.warn('Could not release a moved purchase', { error: moveError.message });
+    }
+
+    // Log subscription event: only when something changed (the apps sync on every start)
+    const eventType = isNewActivation && subscription.status === 'active'
+      ? (isTrial ? 'trial_started' : 'subscription_started')
+      : (status === 'cancelled' && existing?.status === 'active' ? 'subscription_cancelled' : null);
+    if (eventType) await logSubscriptionEvent(userId, subscription.id, {
+      eventType,
       platform,
       productId,
       transactionId,
       originalTransactionId: originalTransactionId || transactionId,
       priceAmount,
       priceCurrency,
-      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
+      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+      metadata: { verified: trust.verified }
     });
 
     res.json({
@@ -384,7 +483,7 @@ router.post('/event', authenticate, asyncHandler(async (req, res) => {
   // Get subscription ID if exists
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('id')
+    .select('id, status, platform, product_id, current_period_end')
     .eq('user_id', userId)
     .single();
 
@@ -423,6 +522,17 @@ router.post('/event', authenticate, asyncHandler(async (req, res) => {
       case 'trial_converted':
         statusUpdate = { status: 'active', is_trial: false };
         break;
+    }
+
+    // A client event may end access; giving it back on the client's word follows the same rule as /sync.
+    if (statusUpdate?.status === 'active' && subscription.status !== 'active') {
+      const trust = decide({ platform: subscription.platform, status: 'active', productId: subscription.product_id, existing: subscription, verification: null, config: trustConfig() });
+      if (trust.action === 'refuse') {
+        reportRefused(subscription.platform, 'client_event');
+        statusUpdate = null;
+      } else if (!alreadyHas(subscription, { productId: subscription.product_id, platform: subscription.platform })) {
+        countTrust('activated without store verification', subscription.platform, 'client_event');
+      }
     }
 
     if (statusUpdate) {
@@ -513,6 +623,18 @@ router.post('/reconcile', authenticate, asyncHandler(async (req, res) => {
       });
     }
 
+    // The client's word again (iOS only; see utils/subscriptionTrust.js). It grants nothing; ending access is accepted.
+    let reconcileTrust = null;
+    if (isActive || isSubscribed) {
+      reconcileTrust = decide({ platform: 'ios', status: isActive ? 'active' : 'grace_period', productId, existing: existingSubscription, verification: null, config: trustConfig() });
+      if (reconcileTrust.action === 'refuse') {
+        reportRefused('ios', 'client_reconcile');
+        const pending = await holdAsPending(userId, existingSubscription, { productId, platform: 'ios', originalTransactionId });
+        return res.status(403).json({ success: false, code: 'PURCHASE_NOT_VERIFIED', pending, error: 'This purchase could not be verified with the store yet.' });
+      }
+      if (!alreadyHas(existingSubscription, { productId, platform: 'ios' })) countTrust('activated without store verification', 'ios', 'client_reconcile');
+    }
+
     // Update subscription record
     const subscriptionData = {
       user_id: userId,
@@ -527,7 +649,8 @@ router.post('/reconcile', authenticate, asyncHandler(async (req, res) => {
       auto_renew_enabled: autoRenewEnabled !== false,
       price_amount: priceAmount || existingSubscription?.price_amount,
       price_currency: priceCurrency || existingSubscription?.price_currency || 'USD',
-      updated_at: now.toISOString()
+      updated_at: now.toISOString(),
+      ...reconcileTrust?.patch
     };
 
     let subscription;
@@ -1094,24 +1217,37 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
     return res.status(400).json({ success: false, error: 'Missing signedPayload' });
   }
 
+  // Verify Apple's signature on the notification and on everything inside it before reading any of it. This route takes
+  // no login, so an unsigned or forged body must change nothing.
+  let verified;
   try {
-    // Decode and verify the JWS (JSON Web Signature)
-    // In production, you should verify the signature using Apple's public key
-    const payload = decodeAppleJWS(signedPayload);
+    const notification = verifyAppleJws(signedPayload);
+    const bundle = process.env.APPLE_BUNDLE_ID || 'KreativeKoala.scribeai';
+    if (notification.data && String(notification.data.bundleId || '').toLowerCase() !== bundle.toLowerCase()) {
+      throw new AppleSignatureError('other_app');
+    }
+    verified = {
+      notification,
+      transaction: notification.data?.signedTransactionInfo ? verifyAppleJws(notification.data.signedTransactionInfo) : null,
+      renewal: notification.data?.signedRenewalInfo ? verifyAppleJws(notification.data.signedRenewalInfo) : null
+    };
+  } catch (error) {
+    const reason = error instanceof AppleSignatureError ? error.reason : 'unreadable';
+    logger.warn('Apple webhook rejected', { reason });
+    reportCounted('webhook_apple', 'Apple webhook rejected: signature not verified', { reason });
+    return res.status(401).json({ success: false, error: 'Signature not verified' });
+  }
+
+  try {
+    const payload = verified.notification;
 
     logger.info('Apple webhook received', {
       notificationType: payload.notificationType,
       subtype: payload.subtype
     });
 
-    // Decode the transaction info
-    const transactionInfo = payload.data?.signedTransactionInfo
-      ? decodeAppleJWS(payload.data.signedTransactionInfo)
-      : null;
-
-    const renewalInfo = payload.data?.signedRenewalInfo
-      ? decodeAppleJWS(payload.data.signedRenewalInfo)
-      : null;
+    const transactionInfo = verified.transaction;
+    const renewalInfo = verified.renewal;
 
     if (!transactionInfo) {
       logger.warn('Apple webhook: No transaction info found');
@@ -1140,48 +1276,16 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
       subscription = data;
     }
 
-    // Fallback: try to find by product_id for iOS platform (for sandbox testing where txn_id = 0)
-    if (!subscription && transactionInfo.productId) {
-      const { data } = await supabase
-        .from('subscriptions')
-        .select('*, user_id')
-        .eq('platform', 'ios')
-        .eq('product_id', transactionInfo.productId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (data) {
-        subscription = data;
-        logger.info('Apple webhook: Found subscription via product_id fallback', {
-          subscriptionId: data.id,
-          userId: data.user_id
-        });
-
-        // Update the subscription with the real transaction ID for future webhooks
-        if (transactionInfo.originalTransactionId && transactionInfo.originalTransactionId !== '0') {
-          await supabase
-            .from('subscriptions')
-            .update({
-              original_transaction_id: transactionInfo.originalTransactionId,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', data.id);
-          logger.info('Apple webhook: Updated subscription with original_transaction_id', {
-            subscriptionId: data.id,
-            originalTransactionId: transactionInfo.originalTransactionId
-          });
-        }
-      }
-    }
-
     if (!subscription) {
       logger.warn('Apple webhook: No subscription found for transaction', {
         originalTransactionId: transactionInfo.originalTransactionId,
         productId: transactionInfo.productId,
         notificationType: payload.notificationType
       });
+      // A purchase can be announced before the app has told us about it: ask Apple to send it again later.
+      if (['SUBSCRIBED', 'DID_RENEW', 'OFFER_REDEEMED'].includes(payload.notificationType)) {
+        return res.status(503).json({ success: false, error: 'Subscription not known yet' });
+      }
       return res.json({ success: true }); // Acknowledge receipt
     }
 
@@ -1225,9 +1329,11 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
     // Handle subscription status changes
     let statusUpdate = {};
     switch (payload.notificationType) {
+      case 'OFFER_REDEEMED':
       case 'SUBSCRIBED':
         statusUpdate = {
           status: 'active',
+          ...(transactionInfo.productId && { product_id: transactionInfo.productId }),
           current_period_end: transactionInfo.expiresDate
             ? new Date(transactionInfo.expiresDate).toISOString()
             : null
@@ -1237,6 +1343,7 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
       case 'DID_RENEW':
         statusUpdate = {
           status: 'active',
+          ...(transactionInfo.productId && { product_id: transactionInfo.productId }),
           is_trial: false,
           current_period_end: transactionInfo.expiresDate
             ? new Date(transactionInfo.expiresDate).toISOString()
@@ -1318,7 +1425,7 @@ router.post('/webhook/apple', asyncHandler(async (req, res) => {
 // ============================================
 // Get subscription metrics (admin endpoint)
 // ============================================
-router.get('/metrics', authenticate, asyncHandler(async (req, res) => {
+router.get('/metrics', authenticate, adminOnly, asyncHandler(async (req, res) => {
   const days = parseInt(req.query.days) || 30;
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
@@ -1354,17 +1461,7 @@ router.get('/metrics', authenticate, asyncHandler(async (req, res) => {
 // Fix Stale Trials (Scheduled Job Endpoint)
 // Called by Cloud Scheduler to auto-fix stale trials
 // ============================================
-router.post('/fix-stale-trials', asyncHandler(async (req, res) => {
-  // Verify this is called by Cloud Scheduler or has admin auth
-  const authHeader = req.headers.authorization;
-  const schedulerHeader = req.headers['x-cloudscheduler'] || req.headers['x-appengine-cron'];
-
-  // Allow if it's from Cloud Scheduler OR has valid auth token
-  if (!schedulerHeader && !authHeader) {
-    logger.warn('Fix stale trials: Unauthorized request');
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
+router.post('/fix-stale-trials', cronAuth, asyncHandler(async (req, res) => {
   const now = new Date();
   const nowISO = now.toISOString();
 
@@ -1468,7 +1565,7 @@ router.post('/fix-stale-trials', asyncHandler(async (req, res) => {
 // Request Apple Notification History (Admin endpoint)
 // Use this to recover missed webhook notifications
 // ============================================
-router.post('/apple/request-history', authenticate, asyncHandler(async (req, res) => {
+router.post('/apple/request-history', authenticate, adminOnly, asyncHandler(async (req, res) => {
   const { startDate, endDate, notificationType } = req.body;
 
   logger.info('Requesting Apple notification history', {
@@ -1600,7 +1697,7 @@ router.post('/apple/request-history', authenticate, asyncHandler(async (req, res
 // Get transaction history for a user (Admin endpoint)
 // Pulls directly from Apple for reconciliation
 // ============================================
-router.post('/apple/transaction-history', authenticate, asyncHandler(async (req, res) => {
+router.post('/apple/transaction-history', authenticate, adminOnly, asyncHandler(async (req, res) => {
   const { originalTransactionId } = req.body;
 
   if (!originalTransactionId) {

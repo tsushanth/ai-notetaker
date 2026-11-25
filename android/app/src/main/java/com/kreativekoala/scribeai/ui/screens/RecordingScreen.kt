@@ -55,6 +55,8 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.concurrent.TimeUnit
+import com.kreativekoala.scribeai.FailureReporterInterceptor
+import com.kreativekoala.scribeai.utils.ErrorReportingService
 
 // Processing steps for recording
 enum class RecordingStep(val titleResId: Int, val index: Int) {
@@ -983,6 +985,7 @@ private suspend fun uploadAudio(file: File, token: String, title: String): Strin
     return withContext(Dispatchers.IO) {
         try {
             val client = OkHttpClient.Builder()
+                .addInterceptor(FailureReporterInterceptor())
                 .connectTimeout(60, TimeUnit.SECONDS)
                 .writeTimeout(120, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
@@ -1017,10 +1020,13 @@ private suspend fun uploadAudio(file: File, token: String, title: String): Strin
                 data?.optString("id")
             } else {
                 Log.e("RecordingScreen", "Upload failed: ${response.code}")
+                // 5xx is reported by the interceptor.
+                if (response.code < 500) ErrorReportingService.reportHttp(ErrorReportingService.UserFlow.RECORD_AUDIO, response.code)
                 null
             }
         } catch (e: Exception) {
             Log.e("RecordingScreen", "Upload error", e)
+            ErrorReportingService.reportException(ErrorReportingService.UserFlow.RECORD_AUDIO, e)
             null
         }
     }
@@ -1032,6 +1038,7 @@ private suspend fun startTranscription(recordingId: String, token: String): Tran
     return withContext(Dispatchers.IO) {
         try {
             val client = OkHttpClient.Builder()
+                .addInterceptor(FailureReporterInterceptor())
                 .connectTimeout(60, TimeUnit.SECONDS)
                 .readTimeout(300, TimeUnit.SECONDS) // 5 min for transcription
                 .build()
@@ -1063,11 +1070,16 @@ private suspend fun startTranscription(recordingId: String, token: String): Tran
                 if (response.code == 429) {
                     TranscriptionOutcome(null, FreeTierErrors.dailyLimitMessage(responseBody))
                 } else {
+                    // 422 is "no speech", which the server reports with the audio facts; 5xx comes from the interceptor.
+                    if (response.code != 422 && response.code < 500) {
+                        ErrorReportingService.reportHttp(ErrorReportingService.UserFlow.TRANSCRIPTION, response.code)
+                    }
                     TranscriptionOutcome(null)
                 }
             }
         } catch (e: Exception) {
             Log.e("RecordingScreen", "Transcription error", e)
+            ErrorReportingService.reportException(ErrorReportingService.UserFlow.TRANSCRIPTION, e)
             TranscriptionOutcome(null)
         }
     }

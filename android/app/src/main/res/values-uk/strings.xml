@@ -278,4 +278,6 @@
     <string name="pro_trial_format">Безкоштовний пробний період: %d дн.</string>
     <string name="pro_plans_unavailable">Не вдалося завантажити плани з Google Play. Спробуйте пізніше.</string>
     <string name="pro_nothing_to_restore">Активної підписки не знайдено</string>
+    <string name="error_reset_email_failed">Не вдалося надіслати лист для скидання пароля. Спробуйте пізніше.</string>
+    <string name="tts_still_generating">Аудіо ще готується. Спробуйте знову за хвилину.</string>
 </resources>

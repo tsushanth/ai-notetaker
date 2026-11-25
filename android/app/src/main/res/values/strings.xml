@@ -340,4 +340,6 @@
     <string name="pro_trial_format">%d-day free trial</string>
     <string name="pro_plans_unavailable">Plans could not be loaded from Google Play. Please try again later.</string>
     <string name="pro_nothing_to_restore">No active subscription found</string>
+    <string name="error_reset_email_failed">We could not send the reset email. Please try again later.</string>
+    <string name="tts_still_generating">The audio is still being prepared. Try again in a minute.</string>
 </resources>

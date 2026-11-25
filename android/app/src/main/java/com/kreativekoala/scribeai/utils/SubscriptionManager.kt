@@ -43,6 +43,7 @@ class SubscriptionManager(private val context: Context) {
     }
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var authManager: AuthManager? = null
+    @Volatile private var lastPurchaseToken: String? = null
 
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -82,6 +83,7 @@ class SubscriptionManager(private val context: Context) {
             }
         } else if (billingResult.responseCode != BillingClient.BillingResponseCode.USER_CANCELED) {
             Log.e(TAG, "Purchase failed: ${billingResult.debugMessage}")
+            reportBillingFailure("Purchase failed", billingResult.responseCode) // i18n-ok
         }
     }
 
@@ -156,6 +158,7 @@ class SubscriptionManager(private val context: Context) {
             if (activePurchases.isNotEmpty()) {
                 val purchase = activePurchases.first()
                 val productId = purchase.products.firstOrNull() ?: ""
+                lastPurchaseToken = purchase.purchaseToken
                 updateSubscriptionState(productId, purchase.purchaseTime)
                 acknowledgePurchaseIfNeeded(purchase)
             } else {
@@ -169,6 +172,7 @@ class SubscriptionManager(private val context: Context) {
         if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) return
         val productId = purchase.products.firstOrNull() ?: return
         acknowledgePurchaseIfNeeded(purchase)
+        lastPurchaseToken = purchase.purchaseToken
         updateSubscriptionState(productId, purchase.purchaseTime)
 
         val price = getFormattedPrice(productId)
@@ -211,6 +215,9 @@ class SubscriptionManager(private val context: Context) {
             val result = billingClient.acknowledgePurchase(ackParams)
             if (result.responseCode == BillingClient.BillingResponseCode.OK) {
                 Log.d(TAG, "Purchase acknowledged: ${purchase.orderId}")
+            } else {
+                // Google refunds a purchase that is never acknowledged.
+                reportBillingFailure("Purchase acknowledge failed", result.responseCode) // i18n-ok
             }
         }
     }
@@ -229,6 +236,12 @@ class SubscriptionManager(private val context: Context) {
         syncWithServer()
     }
 
+    private fun reportBillingFailure(what: String, responseCode: Int) {
+        if (ReportRules.shouldReportBilling(responseCode)) {
+            ErrorReportingService.reportError(ErrorReportingService.UserFlow.PURCHASE, "$what: billing response $responseCode") // i18n-ok
+        }
+    }
+
     // ── Purchase flow ─────────────────────────────────────────────────────────
 
     fun launchSubscriptionFlow(
@@ -240,6 +253,7 @@ class SubscriptionManager(private val context: Context) {
         val productDetails = _products.value.find { it.productId == productId }
         if (productDetails == null) {
             Log.e(TAG, "ProductDetails not found for $productId")
+            ErrorReportingService.reportError(ErrorReportingService.UserFlow.PURCHASE, "Product not loaded: $productId") // i18n-ok
             onError("Product not found")
             return
         }
@@ -257,6 +271,7 @@ class SubscriptionManager(private val context: Context) {
         val result = billingClient.launchBillingFlow(activity, params)
         if (result.responseCode != BillingClient.BillingResponseCode.OK) {
             Log.e(TAG, "launchBillingFlow failed: ${result.debugMessage}")
+            reportBillingFailure("Billing screen did not open", result.responseCode) // i18n-ok
             onError(result.debugMessage)
         }
         // Success is handled by PurchasesUpdatedListener → handlePurchase → updateSubscriptionState
@@ -276,6 +291,7 @@ class SubscriptionManager(private val context: Context) {
                 val purchase = activePurchases.first()
                 val productId = purchase.products.firstOrNull() ?: ""
                 acknowledgePurchaseIfNeeded(purchase)
+                lastPurchaseToken = purchase.purchaseToken
                 updateSubscriptionState(productId, purchase.purchaseTime)
                 refreshAccessStatus()
                 withContext(Dispatchers.Main) { onSuccess() }
@@ -407,15 +423,20 @@ class SubscriptionManager(private val context: Context) {
                     isTrial = false,
                     autoRenewEnabled = true,
                     priceAmount = getFormattedPrice(resolvedProductId).replace(Regex("[^0-9.]"), ""),
-                    priceCurrency = getPriceCurrencyCode(resolvedProductId)
+                    priceCurrency = getPriceCurrencyCode(resolvedProductId),
+                    purchaseToken = lastPurchaseToken
                 )
                 val response = RetrofitClient.apiService.syncSubscription("Bearer $token", request)
                 if (response.isSuccessful) {
                     Log.d(TAG, "Subscription synced with server")
                     refreshAccessStatus()
+                } else if (response.code() != 401 && response.code() < 500) { // 5xx: the interceptor reports it
+                    // 403 here means the server could not confirm a purchase the phone believes in.
+                    ErrorReportingService.reportError(ErrorReportingService.UserFlow.PURCHASE, "Subscription sync refused: HTTP ${response.code()}") // i18n-ok
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error syncing subscription", e)
+                ErrorReportingService.reportException(ErrorReportingService.UserFlow.PURCHASE, e)
             }
         }
     }

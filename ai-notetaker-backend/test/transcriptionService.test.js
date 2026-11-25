@@ -165,6 +165,67 @@ test('the level probe is only used when the transcript is empty, and its failure
   assert.doesNotMatch(lastUpdate().error_message, /level/);
 });
 
+test('wrong language guess: an empty first answer is retried with the multilingual model and saved', async () => {
+  setup(); levelImpl = async () => ({ peakDb: -6.5, meanDb: -23.2, silent: false });
+  const second = JSON.stringify({ metadata: { duration: 32.2 }, results: { channels: [{ alternatives: [{ transcript: SECRET, confidence: 0.98, languages: ['hi'] }] }] } });
+  mockFetch(respond(200, dgBody({ text: '', duration: 32.2, lang: 'tr', conf: 0.55 })), respond(200, second));
+  const out = await service.transcribeRecording('u1', REC_ID);
+  assert.equal(out.status, 'completed'); assert.equal(out.transcription, SECRET);
+  assert.equal(fetchCalls.length, 2);
+  assert.match(fetchCalls[1].url, /model=nova-3/); assert.match(fetchCalls[1].url, /language=multi/);
+  assert.equal(outcomeLog().fallback, 'used'); assert.equal(outcomeLog().detectedLanguage, 'hi');
+  assert.equal(reports.length, 0);
+});
+
+test('a low-confidence second answer is not used, and audible audio with no transcript pages under its own message', async () => {
+  setup(); levelImpl = async () => ({ peakDb: -12, meanDb: -36, silent: false });
+  const guess = JSON.stringify({ metadata: { duration: 6 }, results: { channels: [{ alternatives: [{ transcript: 'noise guess', confidence: 0.3 }] }] } });
+  mockFetch(respond(200, dgBody({ text: '', duration: 6, lang: 'en', conf: 0 })), respond(200, guess));
+  await assert.rejects(service.transcribeRecording('u1', REC_ID), { statusCode: 422 });
+  assert.match(lastUpdate().error_message, /^NO_SPEECH: .*level audible/);
+  assert.equal(reports.length, 1);
+  assert.equal(reports[0][1].message, 'Recording EMPTY_TRANSCRIPT_WITH_SOUND');
+  assert.ok(!reports[0][1].message.includes('NO_SPEECH'), 'must not match the Worker mute rule');
+});
+
+test('digital silence is not sent a second time and stays NO_SPEECH', async () => {
+  setup(); levelImpl = async () => ({ peakDb: -91, meanDb: -91, silent: true });
+  mockFetch(respond(200, dgBody({ text: '', duration: 8, lang: 'en', conf: 0 })));
+  await assert.rejects(service.transcribeRecording('u1', REC_ID), { statusCode: 422 });
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(reports[0][1].message, 'Recording NO_SPEECH');
+});
+
+test('a failing second pass leaves the first answer standing', async () => {
+  setup(); levelImpl = async () => ({ peakDb: -12, meanDb: -36, silent: false });
+  mockFetch(respond(200, dgBody({ text: '', duration: 6 })), respond(503));
+  await assert.rejects(service.transcribeRecording('u1', REC_ID), { statusCode: 422 });
+  assert.equal(fetchCalls.length, 2);
+  assert.equal(outcomeLog().fallback, 'failed');
+});
+
+test('a long recording that came back almost empty on a weak language guess gets the second pass', async () => {
+  setup();
+  const fuller = JSON.stringify({ metadata: { duration: 465 }, results: { channels: [{ alternatives: [{ transcript: 'word '.repeat(900), confidence: 0.95 }] }] } });
+  mockFetch(respond(200, dgBody({ text: 'word '.repeat(100), duration: 465, lang: 'en', conf: 0.3 })), respond(200, fuller));
+  const out = await service.transcribeRecording('u1', REC_ID);
+  assert.equal(fetchCalls.length, 2);
+  assert.ok(out.transcription.length > 4000);
+});
+
+test('second-pass rules against the numbers measured on real recordings (no transcript text)', () => {
+  const { isWeakAnswer, preferFallback } = require('../src/services/deepgramClient');
+  const r = (chars, confidence, durationSec = 6, languageConfidence = 0.6) => ({ text: 'x'.repeat(chars), confidence, durationSec, languageConfidence });
+  assert.equal(isWeakAnswer(r(35, 1.0, 5, 0.78)), false);          // working English: untouched
+  assert.equal(isWeakAnswer(r(53, 0.59, 4.7, 0.89)), true);        // wrong-language text at low confidence
+  assert.equal(preferFallback(r(53, 0.59), r(30, 0.79)), true);
+  assert.equal(isWeakAnswer(r(236, 0.51, 465, 0.30)), true);       // 7 minutes, almost nothing
+  assert.equal(preferFallback(r(236, 0.51), r(643, 1.0)), true);
+  assert.equal(preferFallback(r(0, 0), r(22, 0.64)), true);        // empty first answer
+  assert.equal(preferFallback(r(0, 0), r(0, 0)), false);           // nothing either way: genuine no-speech
+  assert.equal(preferFallback(r(40, 0.62), r(35, 0.68)), false);   // not clearly better
+});
+
 test('empty transcript with no detection info says unknown', async () => {
   setup();
   mockFetch(respond(200, JSON.stringify({ metadata: { duration: 0.4 }, results: { channels: [{ alternatives: [{ transcript: '  ' }] }] } })));

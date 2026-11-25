@@ -18,6 +18,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import com.kreativekoala.scribeai.utils.AppStrings
 import com.kreativekoala.scribeai.R
+import com.kreativekoala.scribeai.utils.ErrorReportingService
 
 /** HTTP 404 on the notes list: the user simply has no notes yet. Typed so callers do not depend on message text. */
 class NotesNotFoundException(message: String) : Exception(message)
@@ -405,10 +406,12 @@ class NoteRepository {
                         else -> AppStrings.get(R.string.error_mind_map_generate)
                     }
                     Log.e(TAG, "❌ generateMindMap failed: ${response.code()} - $errorBody")
+                    ErrorReportingService.reportHttp(ErrorReportingService.UserFlow.GENERATE_MINDMAP, response.code())
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ generateMindMap exception", e)
+                ErrorReportingService.reportException(ErrorReportingService.UserFlow.GENERATE_MINDMAP, e)
                 Result.failure(e)
             }
         }
@@ -466,17 +469,21 @@ class NoteRepository {
                     Result.success(response.body()!!.data!!)
                 } else {
                     val errorBody = response.errorBody()?.string() ?: ""
-                    val errorMessage = when (response.code()) {
-                        401 -> AppStrings.get(R.string.error_session_expired)
-                        402, 403 -> AppStrings.get(R.string.error_try_again_later)
-                        429 -> FreeTierErrors.dailyLimitMessage(errorBody)
+                    val stillGenerating = errorBody.contains("TTS_STILL_GENERATING")
+                    val errorMessage = when {
+                        stillGenerating -> AppStrings.get(R.string.tts_still_generating)
+                        response.code() == 401 -> AppStrings.get(R.string.error_session_expired)
+                        response.code() == 402 || response.code() == 403 -> AppStrings.get(R.string.error_try_again_later)
+                        response.code() == 429 -> FreeTierErrors.dailyLimitMessage(errorBody)
                         else -> AppStrings.get(R.string.error_audio_generate)
                     }
                     Log.e(TAG, "❌ generateTTS failed: ${response.code()} - $errorBody")
+                    if (!stillGenerating) ErrorReportingService.reportHttp(ErrorReportingService.UserFlow.READ_ALOUD, response.code())
                     Result.failure(Exception(errorMessage))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "❌ generateTTS exception", e)
+                ErrorReportingService.reportException(ErrorReportingService.UserFlow.READ_ALOUD, e)
                 Result.failure(e)
             }
         }
@@ -537,6 +544,7 @@ class NoteRepository {
             } else {
                 val errorBody = response.errorBody()?.string()
                 Log.e("NoteRepository", "Chat failed: ${response.code()} - $errorBody")
+                ErrorReportingService.reportHttp(ErrorReportingService.UserFlow.CHAT_WITH_NOTE, response.code())
                 if (response.code() == 429) {
                     Result.failure(FreeTierErrors.DailyLimitException(FreeTierErrors.dailyLimitMessage(errorBody)))
                 } else {
@@ -545,6 +553,7 @@ class NoteRepository {
             }
         } catch (e: Exception) {
             Log.e("NoteRepository", "Error in chat", e)
+            ErrorReportingService.reportException(ErrorReportingService.UserFlow.CHAT_WITH_NOTE, e)
             Result.failure(e)
         }
     }

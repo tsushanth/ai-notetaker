@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">بودكاست</string>
+    <string name="error_reset_email_failed">تعذّر إرسال رسالة إعادة التعيين. يُرجى المحاولة لاحقًا.</string>
+    <string name="tts_still_generating">لا يزال الصوت قيد التجهيز. حاول مرة أخرى بعد دقيقة.</string>
 </resources>

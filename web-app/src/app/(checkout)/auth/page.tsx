@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { authApi } from '@/lib/api';
+import { reportWebFailure } from '@/components/WebFailureReporter';
+import { isUnexpectedSignInFailure } from '@/lib/reportable';
 
 const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
@@ -49,6 +51,7 @@ function AuthContent() {
             login(result.user as any, result.token);
             router.push(returnTo);
           } catch (err) {
+            if (isUnexpectedSignInFailure(err)) reportWebFailure('Sign In with Google', err);
             setError(err instanceof Error ? err.message : 'Google login failed');
             setIsLoading(false);
           }

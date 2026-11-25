@@ -3,8 +3,15 @@
  * Uses self-hosted Kokoro TTS (readaloud-tts on Cloud Run)
  */
 
+const crypto = require('crypto');
+const { spawn } = require('child_process');
 const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
+const { reportFailure } = require('../utils/failureReporter');
+const { TtsError } = require('../utils/ttsError');
+const { cleanTextForSpeech, splitForSpeech } = require('../utils/speechText');
+const { concatWav, wavSeconds } = require('../utils/wav');
+const { LOCAL_ONLY_NOTE_IDS } = require('../middleware/localOnlyNote');
 
 // Kokoro voice IDs mapped from legacy OpenAI-style names
 const KOKORO_VOICES = {
@@ -25,101 +32,109 @@ const VOICE_PAIRS = {
 
 const TTS_BASE_URL = process.env.SELFHOSTED_TTS_URL || 'https://listenai-tts-worker.fly.dev';
 
+const PIECE_TIMEOUT_MS = 60_000;
+const RETRY_DELAY_MS = 1_000;
+const MIN_SPLIT_CHARS = 40;      // a failing piece is halved down to this size before giving up
+const PIECE_GAP_MS = 150;        // pause between pieces
+const positive = (v, d) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d);
+const jobDeadlineMs = () => positive(process.env.TTS_JOB_DEADLINE_MS, 10 * 60_000);
+const maxChars = () => positive(process.env.TTS_MAX_CHARS, 20_000);
+
+/** WAV -> mono MP3 with the ffmpeg already in the image. Resolves null when that is not possible (the WAV is then used). */
+function encodeMp3(wav, { ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg', timeoutMs = 120_000 } = {}) {
+  return new Promise((resolve) => {
+    let child;
+    try {
+      child = spawn(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', 'pipe:0', '-ac', '1', '-b:a', '64k', '-f', 'mp3', 'pipe:1'], { timeout: timeoutMs });
+    } catch { return resolve(null); }
+    const out = [];
+    child.on('error', () => resolve(null));
+    child.stdin.on('error', () => {});
+    child.stderr.on('data', () => {});
+    child.stdout.on('data', (d) => out.push(d));
+    child.on('close', (code) => resolve(code === 0 && out.length ? Buffer.concat(out) : null));
+    child.stdin.end(wav);
+  });
+}
+
 class TTSService {
-  constructor() {
-    this.MAX_CHUNK_SIZE = 5000;
-  }
-
-  /**
-   * Split text into chunks that fit within TTS limits
-   */
-  splitTextIntoChunks(text, maxSize = this.MAX_CHUNK_SIZE) {
-    const chunks = [];
-    let currentChunk = '';
-
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-
-    for (const sentence of sentences) {
-      if (sentence.length > maxSize) {
-        const words = sentence.split(' ');
-        for (const word of words) {
-          if ((currentChunk + word).length > maxSize) {
-            chunks.push(currentChunk.trim());
-            currentChunk = word + ' ';
-          } else {
-            currentChunk += word + ' ';
-          }
-        }
-      } else if ((currentChunk + sentence).length > maxSize) {
-        chunks.push(currentChunk.trim());
-        currentChunk = sentence;
-      } else {
-        currentChunk += sentence;
-      }
-    }
-
-    if (currentChunk.trim()) {
-      chunks.push(currentChunk.trim());
-    }
-
-    return chunks;
-  }
-
   /**
    * Clean text for TTS processing
    */
   cleanTextForTTS(text) {
-    return text
-      .replace(/\*\*.*?\*\*/g, '')
-      .replace(/\[.*?\]/g, '')
-      .replace(/Host \d+:/g, '')
-      .replace(/\n\n+/g, ' ')
-      .trim();
+    return cleanTextForSpeech(text);
   }
 
-  /**
-   * Synthesize speech using self-hosted Kokoro TTS
-   */
-  async synthesizeWithKokoro(text, voice = 'nova', speed = 1.0) {
-    const voiceId = KOKORO_VOICES[voice.toLowerCase()] || KOKORO_VOICES['nova'];
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000);
-
+  /** One request to the Kokoro worker for one short piece. Resolves a WAV buffer or throws a TtsError. */
+  async synthesizePiece(text, voiceId, speed) {
+    let response;
     try {
-      const endpoint = text.length > this.MAX_CHUNK_SIZE ? '/synthesize-long' : '/synthesize';
-
-      const response = await fetch(`${TTS_BASE_URL}${endpoint}`, {
+      response = await fetch(`${TTS_BASE_URL}/synthesize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          text: text,
+          text,
           voice_id: voiceId,
           speed: Math.max(0.5, Math.min(2.0, speed)),
           model: 'kokoro',
           language: 'en',
-          max_chunk_chars: this.MAX_CHUNK_SIZE,
         }),
-        signal: controller.signal,
+        signal: AbortSignal.timeout(PIECE_TIMEOUT_MS),
       });
-
-      clearTimeout(timeoutId);
-
       if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Kokoro TTS error (${response.status}): ${error}`);
+        await response.text().catch(() => '');
+        throw new TtsError('WORKER_ERROR', `worker answered ${response.status}`, { workerStatus: response.status });
       }
-
-      const arrayBuffer = await response.arrayBuffer();
-      return Buffer.from(arrayBuffer);
+      return Buffer.from(await response.arrayBuffer());
     } catch (error) {
-      clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
-        throw new Error('Kokoro TTS request timed out after 120 seconds');
+      if (error instanceof TtsError) throw error;
+      if (error.name === 'AbortError' || error.name === 'TimeoutError') throw new TtsError('WORKER_TIMEOUT', 'worker did not answer in time');
+      throw new TtsError('WORKER_UNREACHABLE', error.cause?.code || error.name);
+    }
+  }
+
+  /**
+   * A piece that fails is retried once when the failure looks passing (timeout, network, 429/502/503/504). A 500 usually
+   * means the piece overflows the model, so it is halved and each half sent again. Nothing is ever skipped.
+   */
+  async synthesizeResilient(text, voiceId, speed, deadline, attempt = 1) {
+    if (Date.now() > deadline) throw new TtsError('DEADLINE', 'job deadline reached');
+    try {
+      return [await this.synthesizePiece(text, voiceId, speed)];
+    } catch (error) {
+      const passing = error.code === 'WORKER_TIMEOUT' || error.code === 'WORKER_UNREACHABLE' || [429, 502, 503, 504].includes(error.workerStatus);
+      if (passing && attempt < 3) {
+        await new Promise((r) => setTimeout(r, positive(process.env.TTS_RETRY_DELAY_MS, RETRY_DELAY_MS) * attempt));
+        return this.synthesizeResilient(text, voiceId, speed, deadline, attempt + 1);
+      }
+      if (error.workerStatus === 500 && text.length >= MIN_SPLIT_CHARS) {
+        const halves = splitForSpeech(text, Math.ceil(text.length / 2));
+        if (halves.length > 1) {
+          const parts = [];
+          for (const half of halves) parts.push(...await this.synthesizeResilient(half, voiceId, speed, deadline));
+          return parts;
+        }
       }
       throw error;
+    }
+  }
+
+  /**
+   * Synthesize speech using self-hosted Kokoro TTS: piece by piece, joined into one WAV. All of the text or an error.
+   */
+  async synthesizeWithKokoro(text, voice = 'nova', speed = 1.0, { deadline = Date.now() + jobDeadlineMs(), stats } = {}) {
+    const voiceId = KOKORO_VOICES[voice.toLowerCase()] || KOKORO_VOICES['nova'];
+    const pieces = splitForSpeech(text);
+    if (pieces.length === 0) throw new TtsError('NOTHING_TO_READ');
+    if (stats) stats.pieces = pieces.length;
+    const audio = [];
+    for (const piece of pieces) audio.push(...await this.synthesizeResilient(piece, voiceId, speed, deadline));
+    try {
+      return concatWav(audio, PIECE_GAP_MS);
+    } catch (error) {
+      throw new TtsError('BAD_AUDIO', error.message);
     }
   }
 
@@ -131,7 +146,10 @@ class TTSService {
 
     const cleanText = this.cleanTextForTTS(text);
     if (!cleanText || cleanText.length === 0) {
-      throw new Error('Text is required');
+      throw new TtsError('NOTHING_TO_READ');
+    }
+    if (cleanText.length > maxChars()) {
+      throw new TtsError('TOO_LONG', `${cleanText.length} characters`);
     }
 
     logger.info('TTS synthesis request', {
@@ -140,7 +158,6 @@ class TTSService {
       kokoroVoice: KOKORO_VOICES[voice.toLowerCase()] || KOKORO_VOICES['nova'],
     });
 
-    // Kokoro's /synthesize-long handles chunking server-side
     return await this.synthesizeWithKokoro(cleanText, voice, speed);
   }
 
@@ -149,25 +166,6 @@ class TTSService {
    */
   async generateAudio(text, voice = 'alloy') {
     return await this.synthesize(text, { voice });
-  }
-
-  /**
-   * Generate audio from multiple chunks (fallback if needed)
-   */
-  async generateAudioFromChunks(text, voice, speed = 1.0) {
-    const chunks = this.splitTextIntoChunks(text);
-    logger.info(`Kokoro TTS: Processing ${chunks.length} chunks`);
-
-    const audioBuffers = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const buffer = await this.synthesizeWithKokoro(chunks[i], voice, speed);
-      audioBuffers.push(buffer);
-      if (i < chunks.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
-
-    return Buffer.concat(audioBuffers);
   }
 
   /**
@@ -279,13 +277,9 @@ class TTSService {
         voice = (i % 2 === 0) ? voice1 : voice2;
       }
 
-      const cleanText = segment.text
-        .replace(/\*\*.*?\*\*/g, '')
-        .replace(/\[.*?\]/g, '')
-        .replace(/\n\n+/g, ' ')
-        .trim();
+      const cleanText = cleanTextForSpeech(segment.text);
 
-      if (!cleanText) continue;
+      if (!splitForSpeech(cleanText).length) continue;
 
       logger.info(`Generating segment ${i + 1}/${segments.length}`, {
         speaker: segment.speaker,
@@ -314,7 +308,7 @@ class TTSService {
       bufferCount: audioBuffers.length
     });
 
-    return Buffer.concat(audioBuffers);
+    return concatWav(audioBuffers, PIECE_GAP_MS);
   }
 
   /**
@@ -386,39 +380,72 @@ class TTSService {
   }
 
   /**
+   * The welcome note is built into the app under one fixed id, and the server keeps a per-user copy under a generated id.
+   * Map the fixed id to this user's copy.
+   */
+  async resolveNoteId(userId, noteId) {
+    if (!LOCAL_ONLY_NOTE_IDS.has(String(noteId).toLowerCase())) return noteId;
+    const { data } = await supabaseAdmin
+      .from('notes')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('source_type', 'tutorial')
+      .order('created_at', { ascending: false })
+      .limit(1);
+    return data?.[0]?.id || noteId;
+  }
+
+  /**
    * Generate TTS for a note and save to storage
    */
   async generateForNote(userId, noteId, options = {}) {
-    const { voice = 'nova', speed = 1.0 } = options;
+    const { voice = 'nova', speed = 1.0, stats = {} } = options;
+    const id = await this.resolveNoteId(userId, noteId);
 
     const { data: note, error: noteError } = await supabaseAdmin
       .from('notes')
       .select('content, formatted_content, title')
-      .eq('id', noteId)
+      .eq('id', id)
       .eq('user_id', userId)
       .single();
 
-    if (noteError || !note) {
-      throw new Error('Note not found');
+    if (noteError && noteError.code !== 'PGRST116') {
+      throw new TtsError('INTERNAL', `note lookup failed: ${noteError.code || 'unknown'}`);
+    }
+    if (!note) {
+      throw new TtsError('NOTE_NOT_FOUND');
     }
 
-    const textToSpeak = note.formatted_content || note.content;
-    if (!textToSpeak || textToSpeak.length === 0) {
-      throw new Error('Note has no content');
+    const cleanText = this.cleanTextForTTS(note.formatted_content || note.content);
+    stats.chars = cleanText.length;
+    if (!cleanText) {
+      throw new TtsError('NOTHING_TO_READ');
+    }
+    if (cleanText.length > maxChars()) {
+      throw new TtsError('TOO_LONG', `${cleanText.length} characters`);
     }
 
-    const audioBuffer = await this.synthesize(textToSpeak, { voice, speed });
+    // Same text, voice and speed already saved (for example by an earlier request that stopped waiting): reuse it.
+    const textSha = crypto.createHash('sha256').update(cleanText).digest('hex');
+    const saved = await this.getSavedAudio(id);
+    if (saved && saved.text_sha256 === textSha && saved.voice === voice && saved.speed === speed) {
+      return { audio_url: saved.audio_url, voice, speed, duration_seconds: saved.duration_seconds };
+    }
 
-    const fileName = `tts/${userId}/${noteId}-${Date.now()}.wav`;
+    const wav = await this.synthesizeWithKokoro(cleanText, voice, speed, { stats });
+    const durationSeconds = Math.ceil(wavSeconds(wav));
+    const mp3 = await encodeMp3(wav); // about six times smaller: long notes exceed the storage size limit as WAV
+
+    const fileName = `tts/${userId}/${id}-${Date.now()}.${mp3 ? 'mp3' : 'wav'}`;
     const { error: uploadError } = await supabaseAdmin.storage
       .from('audio')
-      .upload(fileName, audioBuffer, {
-        contentType: 'audio/wav',
+      .upload(fileName, mp3 || wav, {
+        contentType: mp3 ? 'audio/mpeg' : 'audio/wav',
         upsert: true,
       });
 
     if (uploadError) {
-      throw new Error(`Failed to upload audio: ${uploadError.message}`);
+      throw new TtsError('UPLOAD_FAILED', uploadError.message);
     }
 
     const { data: urlData } = supabaseAdmin.storage
@@ -426,19 +453,19 @@ class TTSService {
       .getPublicUrl(fileName);
 
     const audioUrl = urlData.publicUrl;
-    const estimatedDuration = Math.ceil((textToSpeak.length / 5) / 150 * 60);
 
     const { error: dbError } = await supabaseAdmin
       .from('ai_content')
       .upsert({
-        note_id: noteId,
+        note_id: id,
         content_type: 'tts',
         content: {
           audio_url: audioUrl,
           voice,
           speed,
-          duration_seconds: estimatedDuration,
-          text_length: textToSpeak.length,
+          duration_seconds: durationSeconds,
+          text_length: cleanText.length,
+          text_sha256: textSha,
         },
         created_at: new Date().toISOString(),
       }, {
@@ -446,30 +473,52 @@ class TTSService {
       });
 
     if (dbError) {
+      // The audio plays, but it will not be found when the note is reopened: report it.
       logger.error('Failed to save TTS to ai_content', {
         error: dbError.message,
         code: dbError.code,
         details: dbError.details,
-        noteId,
+        noteId: id,
         userId
       });
+      void reportFailure('tts_failed', new Error('Read Aloud failed: SAVE_FAILED'), { code: 'SAVE_FAILED', db_code: String(dbError.code || 'unknown') });
     } else {
-      logger.info('TTS saved to ai_content', { noteId, audioUrl });
+      logger.info('TTS saved to ai_content', { noteId: id, audioUrl });
     }
 
     return {
       audio_url: audioUrl,
       voice,
       speed,
-      duration_seconds: estimatedDuration,
+      duration_seconds: durationSeconds,
     };
+  }
+
+  async getSavedAudio(noteId) {
+    const { data } = await supabaseAdmin
+      .from('ai_content')
+      .select('content')
+      .eq('note_id', noteId)
+      .eq('content_type', 'tts')
+      .limit(1);
+    return data?.[0]?.content || null;
   }
 
   /**
    * Get saved TTS for a note
    */
-  async getTTSForNote(userId, noteId) {
+  async getTTSForNote(userId, requestedNoteId) {
+    const noteId = await this.resolveNoteId(userId, requestedNoteId);
     logger.info('Fetching saved TTS', { noteId, userId });
+
+    // Only the owner of the note may read its audio.
+    const { data: owned } = await supabaseAdmin
+      .from('notes')
+      .select('id')
+      .eq('id', noteId)
+      .eq('user_id', userId)
+      .limit(1);
+    if (!owned?.length) return null;
 
     const { data, error } = await supabaseAdmin
       .from('ai_content')
@@ -507,3 +556,4 @@ class TTSService {
 }
 
 module.exports = new TTSService();
+module.exports.encodeMp3 = encodeMp3;

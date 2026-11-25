@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">播客</string>
+    <string name="error_reset_email_failed">无法发送重置邮件。请稍后再试。</string>
+    <string name="tts_still_generating">音频仍在准备中。请一分钟后再试。</string>
 </resources>

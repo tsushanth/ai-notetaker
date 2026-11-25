@@ -8,8 +8,10 @@
  *                         UPLOADED_STUCK_MIN: the file arrived but transcription never started. Report only, not mutated.
  *   - ZERO_COMPLETED_24H recordings were created in the last 24 h and none completed.
  *   - PIPELINE_DEADMAN   uploads exist in the last DEADMAN_DAYS days but zero recordings completed in that window.
- *   The last two only count "pipeline-relevant" uploads: a recording that failed with NO_SPEECH is a property of the
- *   audio (silence), not of the pipeline, and a row still inside its normal processing time is in flight. They also
+ *   The last two only count "pipeline-relevant" uploads: a recording that failed with NO_SPEECH on silent (or unmeasured)
+ *   audio is a property of the recording, not of the pipeline, and a row still inside its normal processing time is in
+ *   flight. NO_SPEECH on audio that has sound ("level audible") does count: that is what a broken transcription looks
+ *   like. They also
  *   need at least MIN_ATTEMPTS such uploads from at least MIN_USERS distinct users, so a low-traffic app (a few
  *   uploads a month) does not page because one user recorded silence. Individual failures still page one by one
  *   through recording_failed in transcriptionService, so a single real provider error is never hidden by this.
@@ -17,7 +19,7 @@
  * email per COOLDOWN_H per process (the Worker dedupes per hour on top). Fire-and-forget; never throws.
  */
 const { logger } = require('../utils/logger');
-const { reportFailure } = require('../utils/failureReporter');
+const { reportFailure, heartbeat } = require('../utils/failureReporter');
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -60,10 +62,11 @@ function emit(code, context, now) {
   return true;
 }
 
-// Failures that describe the recording, not the pipeline (silence/noise). Matches the current
-// "NO_SPEECH: audio ..." form and the older "No speech detected in the recording" text.
+// Failures that describe the recording, not the pipeline (silence). Matches the current "NO_SPEECH: audio ..." form
+// and the older "No speech detected in the recording" text. An empty transcript for audible sound is not one of them.
 function isUserCausedFailure(r) {
-  return r.status === 'failed' && /^(NO_SPEECH\b|No speech detected)/i.test(String(r.error_message || ''));
+  const message = String(r.error_message || '');
+  return r.status === 'failed' && /^(NO_SPEECH\b|No speech detected)/i.test(message) && !/level audible/i.test(message);
 }
 
 /**
@@ -158,6 +161,7 @@ async function reconcileRecordings({ db, now = Date.now() } = {}) {
     if (ev.deadman) {
       emit('PIPELINE_DEADMAN', { uploads_in_window: String(ev.uploadsInDeadmanWindow), window_days: String(CFG.deadmanDays), completed: '0' }, now);
     }
+    void heartbeat('recording-reconciler');
     return ev;
   } catch (e) {
     logger.error('Reconciler threw', { error: e.message });

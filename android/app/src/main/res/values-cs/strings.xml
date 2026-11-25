@@ -278,4 +278,6 @@
     <string name="pro_trial_format">%d denní zkušební verze zdarma</string>
     <string name="pro_plans_unavailable">Plány se nepodařilo načíst z Google Play. Zkus to prosím později.</string>
     <string name="pro_nothing_to_restore">Nebylo nalezeno žádné aktivní předplatné</string>
+    <string name="error_reset_email_failed">E-mail pro obnovení hesla se nepodařilo odeslat. Zkuste to prosím později.</string>
+    <string name="tts_still_generating">Zvuk se stále připravuje. Zkuste to znovu za minutu.</string>
 </resources>

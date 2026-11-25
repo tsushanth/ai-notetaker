@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">पॉडकास्ट</string>
+    <string name="error_reset_email_failed">रीसेट ईमेल नहीं भेजा जा सका। कृपया बाद में फिर कोशिश करें।</string>
+    <string name="tts_still_generating">ऑडियो अभी तैयार हो रहा है। एक मिनट बाद फिर कोशिश करें।</string>
 </resources>

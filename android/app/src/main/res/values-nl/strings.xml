@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">De e-mail om je wachtwoord te herstellen kon niet worden verzonden. Probeer het later opnieuw.</string>
+    <string name="tts_still_generating">De audio wordt nog gemaakt. Probeer het over een minuut opnieuw.</string>
 </resources>

@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">Die E-Mail zum Zurücksetzen konnte nicht gesendet werden. Bitte versuche es später erneut.</string>
+    <string name="tts_still_generating">Das Audio wird noch erstellt. Versuche es in einer Minute erneut.</string>
 </resources>

@@ -32,6 +32,7 @@ object ErrorReportingService {
         SIGN_UP("Sign Up"),
         SIGN_IN_WITH_GOOGLE("Sign In with Google"),
         SIGN_OUT("Sign Out"),
+        PASSWORD_RESET("Password Reset"), // i18n-ok
 
         // Content creation flows
         RECORD_AUDIO("Record Audio"),
@@ -47,6 +48,8 @@ object ErrorReportingService {
         GENERATE_PODCAST("Generate Podcast"),
         GENERATE_DIAGRAM("Generate Diagram"),
         GENERATE_INFOGRAPHIC("Generate Infographic"),
+        GENERATE_MINDMAP("Generate Mind Map"), // i18n-ok
+        READ_ALOUD("Read Aloud"), // i18n-ok
         CHAT_WITH_NOTE("Chat with Note"),
 
         // Subscription flows
@@ -97,6 +100,16 @@ object ErrorReportingService {
             }
         }
         reportError(flow, errorMessage)
+    }
+
+    /** A request the server refused. Status only; limits, paywalls and expired sessions are not failures. */
+    fun reportHttp(flow: UserFlow, status: Int) {
+        if (ReportRules.shouldReportHttp(status)) reportError(flow, "HTTP $status") // i18n-ok
+    }
+
+    /** A request that never got an answer (or broke the app's reading of it). The exception type only. */
+    fun reportException(flow: UserFlow, error: Throwable) {
+        if (ReportRules.shouldReportException(error)) reportError(flow, "Request failed: ${error.javaClass.simpleName}") // i18n-ok
     }
 
     /**

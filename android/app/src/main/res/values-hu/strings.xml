@@ -278,4 +278,6 @@
     <string name="pro_trial_format">%d napos ingyenes próba</string>
     <string name="pro_plans_unavailable">A csomagokat nem sikerült betölteni a Google Playből. Kérjük, próbáld újra később.</string>
     <string name="pro_nothing_to_restore">Nem található aktív előfizetés</string>
+    <string name="error_reset_email_failed">A jelszó-visszaállító e-mailt nem sikerült elküldeni. Próbáld újra később.</string>
+    <string name="tts_still_generating">A hang még készül. Próbáld újra egy perc múlva.</string>
 </resources>

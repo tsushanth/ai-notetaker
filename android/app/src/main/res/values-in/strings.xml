@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">Email pengaturan ulang tidak dapat dikirim. Silakan coba lagi nanti.</string>
+    <string name="tts_still_generating">Audio masih disiapkan. Coba lagi sebentar lagi.</string>
 </resources>

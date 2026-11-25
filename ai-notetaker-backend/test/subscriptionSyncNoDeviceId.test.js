@@ -12,7 +12,11 @@ const app = h.makeApp({ '/api/subscriptions': require('../src/routes/subscriptio
 let server;
 test.before(async () => { server = await h.listen(app); });
 test.after(() => server.close());
-test.beforeEach(() => h.resetDb());
+// An account that already has this access, so the sync grants nothing new (a new grant needs store verification).
+test.beforeEach(() => {
+  h.resetDb();
+  h.db.subscriptions = [{ id: 's1', user_id: U, product_id: 'scribeai_monthly', platform: 'android', status: 'active', current_period_end: null }];
+});
 
 const body = { productId: 'scribeai_monthly', platform: 'android', status: 'active', transactionId: 'GPA.1' };
 

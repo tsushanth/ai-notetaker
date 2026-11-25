@@ -28,19 +28,28 @@ function accountKey(req) {
 const tooMany = (req, res) =>
   res.status(429).json({ success: false, error: 'Too many sign-in attempts. Please wait a few minutes and try again.' });
 
-const make = (max, keyGenerator) =>
+const make = (max, keyGenerator, { countSuccess = false, handler = tooMany } = {}) =>
   rateLimit({
     windowMs: WINDOW_MS,
     max,
     standardHeaders: true,
     legacyHeaders: false,
-    skipSuccessfulRequests: true,
+    skipSuccessfulRequests: !countSuccess,
     keyGenerator,
-    handler: tooMany,
+    handler,
     validate: false,
   });
 
+// Password reset: every request counts (each one can send an email), per address and per account.
+const tooManyResets = (req, res) =>
+  res.status(429).json({ success: false, error: 'Too many password reset attempts. Please wait a few minutes and try again.' });
+
 module.exports = {
+  resetRequestLimiters: [
+    make(10, (req) => `ip:${clientAddress(req)}`, { countSuccess: true, handler: tooManyResets }),
+    make(3, (req) => `acct:${accountKey(req)}`, { countSuccess: true, handler: tooManyResets }),
+  ],
+  passwordUpdateLimiters: [make(20, (req) => `ip:${clientAddress(req)}`, { handler: tooManyResets })],
   loginLimiters: [make(MAX_PER_IP, (req) => `ip:${clientAddress(req)}`), make(MAX_PER_ACCOUNT, (req) => `acct:${accountKey(req)}`)],
   clientAddress,
   accountKey,

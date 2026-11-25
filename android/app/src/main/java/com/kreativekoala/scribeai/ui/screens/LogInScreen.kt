@@ -41,6 +41,8 @@ import com.kreativekoala.scribeai.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import java.util.UUID
+import com.kreativekoala.scribeai.utils.ErrorReportingService
+import com.kreativekoala.scribeai.utils.ReportRules
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +58,8 @@ fun LoginScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var showForgotPasswordDialog by remember { mutableStateOf(false) }  // NEW
     var forgotPasswordEmail by remember { mutableStateOf("") }  // NEW
-    var forgotPasswordSent by remember { mutableStateOf(false) }  // NEW
+    var forgotPasswordSent by remember { mutableStateOf(false) }
+    var forgotPasswordSending by remember { mutableStateOf(false) }  // NEW
 
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -180,6 +183,9 @@ fun LoginScreen(
 
                             } catch (e: Exception) {
                                 isLoading = false
+                                if (ReportRules.shouldReportCredential(e)) {
+                                    ErrorReportingService.reportException(ErrorReportingService.UserFlow.SIGN_IN_WITH_GOOGLE, e)
+                                }
                                 errorMessage = when {
                                     e.message?.contains("canceled", ignoreCase = true) == true -> null  // User cancelled
                                     e.message?.contains("no credentials", ignoreCase = true) == true ->
@@ -554,15 +560,21 @@ fun LoginScreen(
                         onClick = {
                             if (forgotPasswordEmail.isNotBlank() &&
                                 android.util.Patterns.EMAIL_ADDRESS.matcher(forgotPasswordEmail).matches()) {
-                                // Call password reset
-                                coroutineScope.launch {
-                                    viewModel.resetPassword(forgotPasswordEmail)
-                                    forgotPasswordSent = true
+                                // "Email sent" only once the sign-in service has accepted the request.
+                                forgotPasswordSending = true
+                                viewModel.resetPassword(forgotPasswordEmail) { error ->
+                                    forgotPasswordSending = false
+                                    if (error == null) {
+                                        forgotPasswordSent = true
+                                    } else {
+                                        Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                                    }
                                 }
                             } else {
                                 Toast.makeText(context, context.getString(R.string.error_enter_valid_email), Toast.LENGTH_SHORT).show()
                             }
                         },
+                        enabled = !forgotPasswordSending,
                         colors = ButtonDefaults.buttonColors(containerColor = Purple80)
                     ) {
                         Text(stringResource(R.string.send_reset_link))

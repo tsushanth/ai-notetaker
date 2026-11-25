@@ -8,6 +8,8 @@ import { authApi } from '@/lib/api';
 import EmailSignInForm from '@/components/EmailSignInForm';
 import { Loader2 } from 'lucide-react';
 import { STUDY_FORMATS } from '@/lib/studyFormats';
+import { reportWebFailure } from '@/components/WebFailureReporter';
+import { isUnexpectedSignInFailure } from '@/lib/reportable';
 import { safeNext } from '@/lib/session';
 import { GOOGLE_UNAVAILABLE_MESSAGE } from '@/components/GoogleSignInButton';
 
@@ -70,6 +72,7 @@ export default function LoginPage() {
             login(result.user as any, result.token);
             router.push(nextRef.current || '/notes');
           } catch (err) {
+            if (isUnexpectedSignInFailure(err)) reportWebFailure('Sign In with Google', err);
             setError(err instanceof Error ? err.message : 'Google login failed');
             setIsLoading(false);
           }

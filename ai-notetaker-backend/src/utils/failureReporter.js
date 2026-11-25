@@ -73,9 +73,31 @@ function reportCounted(flow, message, context = {}, windowMs = COUNTED_WINDOW_MS
 }
 function _resetCountedForTests() { counted.clear(); }
 
-/** A background job or flow failed (worker, queue, cron). */
+/** A background job or flow failed (worker, queue, cron). The promise never rejects; callers may await it before exit. */
 function reportFailure(flow, err, context = {}) {
-  void post('failure', flow, err, context, 5000);
+  return post('failure', flow, err, context, 5000);
+}
+
+const HEARTBEAT_ENDPOINT = ENDPOINT.replace(/\/v1\/report$/, '/v1/usage');
+const HEARTBEAT_MIN_GAP_MS = 4 * 60 * 1000;
+const lastBeat = new Map();
+
+/**
+ * "This background job ran and worked." The Worker emails when a registered job goes quiet (its HEARTBEATS setting:
+ * scribeai/<job>). At most one beat per job per few minutes; never throws, never blocks.
+ */
+async function heartbeat(job, now = Date.now()) {
+  if (DISABLED || (lastBeat.has(job) && now - lastBeat.get(job) < HEARTBEAT_MIN_GAP_MS)) return false;
+  lastBeat.set(job, now);
+  try {
+    await fetch(HEARTBEAT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Report-Key': KEY },
+      body: JSON.stringify({ metric: `heartbeat.${job}`, value: 1 }),
+      signal: AbortSignal.timeout(5000),
+    });
+    return true;
+  } catch { return false; }
 }
 
 /** Process is about to die: await this before process.exit so the email actually goes out. */
@@ -83,4 +105,4 @@ function reportCrash(flow, err) {
   return post('crash', flow, err, {}, 2500);
 }
 
-module.exports = { reportBackendError, reportUnreportedServerError, reportFailure, reportCounted, reportCrash, routeLabel, _resetCountedForTests };
+module.exports = { reportBackendError, reportUnreportedServerError, reportFailure, reportCounted, reportCrash, routeLabel, heartbeat, _resetCountedForTests };

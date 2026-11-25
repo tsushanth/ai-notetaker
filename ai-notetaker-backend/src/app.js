@@ -365,6 +365,7 @@ app.listen(PORT, () => {
   console.log(`Allowed origins: ${allowedOrigins.join(', ')}`);
   console.log(`Trust proxy enabled: ${app.get('trust proxy')}`);
   require('./services/recordingReconciler').startRecordingReconciler();
+  require('./services/meetingSweeper').startMeetingSweeper();
   require('./services/llmMonitor').startProbe({ log: (m) => console.warn(`[llm-monitor] ${m}`) });
 });
 

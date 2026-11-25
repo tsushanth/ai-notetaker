@@ -194,23 +194,3 @@ export const getPlatformInfo = (platform: MeetingPlatform) => {
   };
   return platformMap[platform];
 };
-
-// Meeting URL validator
-export const validateMeetingUrl = (url: string): { valid: boolean; platform: MeetingPlatform | null } => {
-  const lowercased = url.toLowerCase();
-
-  if (lowercased.includes('zoom.us/j/') || lowercased.includes('zoom.us/my/')) {
-    return { valid: true, platform: 'zoom' };
-  }
-  if (lowercased.includes('meet.google.com/')) {
-    return { valid: true, platform: 'google_meet' };
-  }
-  if (lowercased.includes('teams.microsoft.com') || lowercased.includes('teams.live.com')) {
-    return { valid: true, platform: 'teams' };
-  }
-  if (lowercased.includes('webex.com')) {
-    return { valid: true, platform: 'webex' };
-  }
-
-  return { valid: false, platform: null };
-};

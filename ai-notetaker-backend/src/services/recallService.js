@@ -9,6 +9,17 @@ const { logger } = require('../utils/logger');
 const RECALL_API_BASE = 'https://us-west-2.recall.ai/api/v1';
 const RECALL_API_KEY = process.env.RECALL_API_KEY;
 
+// Zoom link forms Recall documents (https://docs.recall.ai/docs/meeting-urls): meeting, start, web client, webinar,
+// personal room and invitation links. Zoom for Government (zoomgov.com) is not supported by Recall's Zoom bots.
+const ZOOM_HOST = String.raw`https?://(?:[\w-]+\.)*(?:zoom\.us|zoom\.com|zoom-x\.de)`;
+const ZOOM_URL_PATTERNS = [
+  String.raw`/(?:j|s|wc(?:/join)?)/\d+`,
+  String.raw`/w/\w+`,
+  String.raw`/my/[\w.%+=-]+`,
+  String.raw`/meetings/\d+/invitations`,
+].map((path) => new RegExp(ZOOM_HOST + path, 'i'));
+const ZOOMGOV_URL = /https?:\/\/(?:[\w-]+\.)*zoomgov\.com(?![\w.-])/i;
+
 class RecallService {
   constructor() {
     if (!RECALL_API_KEY) {
@@ -122,7 +133,7 @@ class RecallService {
         botId,
         error: error.message,
       });
-      throw new Error('Failed to get bot status');
+      throw Object.assign(new Error('Failed to get bot status'), { status: error.response?.status });
     }
   }
 
@@ -250,7 +261,7 @@ class RecallService {
    */
   detectPlatform(meetingUrl) {
     const url = meetingUrl.toLowerCase();
-    if (url.includes('zoom.us')) return 'zoom';
+    if (url.includes('zoom.us') || ZOOM_URL_PATTERNS.some((pattern) => pattern.test(url))) return 'zoom';
     if (url.includes('meet.google.com')) return 'google_meet';
     if (url.includes('teams.microsoft.com') || url.includes('teams.live.com')) return 'teams';
     if (url.includes('webex.com')) return 'webex';
@@ -267,8 +278,7 @@ class RecallService {
 
     const urlPatterns = [
       // Zoom patterns
-      /https?:\/\/[\w.-]*zoom\.us\/j\/\d+/i,
-      /https?:\/\/[\w.-]*zoom\.us\/my\/[\w.-]+/i,
+      ...ZOOM_URL_PATTERNS,
       // Google Meet patterns
       /https?:\/\/meet\.google\.com\/[\w-]+/i,
       // Microsoft Teams patterns
@@ -279,6 +289,11 @@ class RecallService {
     ];
 
     return urlPatterns.some((pattern) => pattern.test(meetingUrl));
+  }
+
+  /** Zoom for Government links get their own message instead of "invalid link". */
+  isZoomGovUrl(meetingUrl) {
+    return typeof meetingUrl === 'string' && ZOOMGOV_URL.test(meetingUrl);
   }
 
   /**

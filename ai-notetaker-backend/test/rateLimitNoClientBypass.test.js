@@ -1,4 +1,4 @@
-// Boots the real app with stand-in settings and a limit of 2: no header a client can send may lift the limit.
+// Boots the real app with stand-in settings and a limit of 2: the x-bypass-rate-limit header must not lift the limit.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');

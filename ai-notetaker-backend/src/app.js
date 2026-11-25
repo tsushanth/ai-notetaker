@@ -252,8 +252,8 @@ const limiter = rateLimit({
     if (req.path.includes('/ai/podcast/status/')) {
       return true;
     }
-    // Nothing a client sends lifts the limit (older app builds still send x-bypass-rate-limit; it is ignored):
-    // a value shipped inside an app can be read out of it.
+    // Older app builds still send x-bypass-rate-limit; it is ignored, because a value shipped inside an app can be
+    // read out of it.
     const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
     const isAllowlisted = rateLimitAllowlist.some(ip => clientIp.includes(ip.trim()));
     if (isAllowlisted) {

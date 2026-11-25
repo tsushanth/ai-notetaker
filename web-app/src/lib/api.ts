@@ -1,5 +1,7 @@
 // API client for communicating with the backend
 // Hardcoded for reliability in production builds
+import { getSignupSource, clearOutreachTouch } from './outreachUtm.ts';
+
 const API_BASE_URL = 'https://ai-notetaker-backend.fly.dev';
 
 /** An error from the backend, carrying the HTTP status and the machine-readable code when there is one. */
@@ -76,10 +78,13 @@ async function apiRequest<T>(endpoint: string, options: ApiOptions = {}): Promis
 // Auth API
 export const authApi = {
   loginWithGoogle: async (idToken: string) => {
-    return apiRequest<{ token: string; user: unknown }>('/api/auth/google', {
+    const signup_source = getSignupSource();
+    const result = await apiRequest<{ token: string; user: unknown }>('/api/auth/google', {
       method: 'POST',
-      body: { idToken },
+      body: signup_source ? { idToken, signup_source } : { idToken },
     });
+    clearOutreachTouch(); // the first touch now lives on the account
+    return result;
   },
 
   loginWithApple: async (idToken: string) => {
@@ -97,10 +102,13 @@ export const authApi = {
   },
 
   register: async (email: string, password: string, name?: string) => {
-    return apiRequest<{ token: string; user: unknown }>('/api/auth/register', {
+    const signup_source = getSignupSource();
+    const result = await apiRequest<{ token: string; user: unknown }>('/api/auth/register', {
       method: 'POST',
-      body: { email, password, name },
+      body: signup_source ? { email, password, name, signup_source } : { email, password, name },
     });
+    clearOutreachTouch(); // the first touch now lives on the account
+    return result;
   },
 
   getProfile: async (token: string) => {

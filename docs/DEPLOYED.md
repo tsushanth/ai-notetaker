@@ -4,8 +4,18 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
-| Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v27 | `registry.fly.io/scribe-ai-web:deployment-01M8897SNH3MD6VC361701G2XD` | `origin/main` at `af073ad` (#84; `web-app/` tree `c93a36896a6a1347cf473ee8a934746444b784f4` identical to main) | 2026-11-25 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v50 | `registry.fly.io/ai-notetaker-backend:deployment-01M888D4XPE89154AGDX4QDATT` | `origin/main` at `04549fe` (#82; `ai-notetaker-backend/` tree `46d78e957afe3f6efdceba2417776d1550ddf4cc` identical to main) | 2026-11-25 (UTC) |
+| Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v28 | `registry.fly.io/scribe-ai-web:deployment-01M89RR39Z01JFANFZRJ2MHM02` | `origin/main` at `2d587de` (#86; `web-app/` tree `1e9eb8bd62d06e7304ddac27646c47bf0aeed1ce` identical to main) | 2026-11-25 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v52 | `registry.fly.io/ai-notetaker-backend:deployment-01M89RQ7KREQ9ZDZ9PXHK238XP` | `origin/main` at `2d587de` (#86; `ai-notetaker-backend/` tree `fca2dbaeca7463083def10504650ed7de30b7db5` identical to main) | 2026-11-25 (UTC) |
+
+## 2026-11-25 Meeting bot failures (#86): backend v52, web v28
+- Both with `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `2d587de`, backend first.
+- Change: the bot failure reason is saved and shown, never-joined or unrecorded meetings end as failed, a 5-minute sweep resolves stuck meetings (`MEETING_SWEEPER_DISABLED=1` turns it off), more Zoom link forms and a passcode warning.
+- Quiet moment checked: no meeting due within 30 minutes and no recording updated in the previous 45 minutes.
+- Verified: tests rerun before merge (backend 474, web 114, web typecheck clean); `/health/ready` 200; sweeper started and its first pass resolved one old stuck meeting to failed; scribeai.online `/` and `/login` 200. NOT verified: a real bot joining a meeting, a real webhook delivery.
+- Rollback: `flyctl releases rollback 51 -a ai-notetaker-backend` and `flyctl releases rollback 27 -a scribe-ai-web`.
+
+## 2026-11-25 Backend v51: configuration only
+- Same image as v50. Set `OUTREACH_EVENT_SECRET` and `OUTREACH_EVENTS_URL`, so outreach attribution reporting from #82 is now on. Off switch: unset `OUTREACH_EVENTS_URL`.
 
 ## 2026-11-24 Web v27: outreach UTM sent as `signup_source` (#84)
 - `scribe-ai-web` v26 (image `deployment-01M85HF3541E01QZ2QFR2KFTVJ`) -> v27 (image `deployment-01M8897SNH3MD6VC361701G2XD`), `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `af073ad`; the `web-app/` tree equals main's. No GitHub workflow deploys this app (no `.github`), so merging #84 did not deploy; the manual deploy did. This is a Next.js frontend, no long-running jobs live in it.

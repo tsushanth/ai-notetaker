@@ -1,6 +1,7 @@
 const { supabase } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const jwt = require('jsonwebtoken');
+const { rememberVerifiedToken } = require('./apiRateLimit');
 
 // JWT secret for custom tokens (Google sign-in)
 const jwtSecret = process.env.JWT_SECRET || process.env.SUPABASE_JWT_SECRET;
@@ -161,6 +162,7 @@ const authenticate = async (req, res, next) => {
     req.userEmail = user.email;
     req.token = token;  // ← Also store at top level for easy access
     req.authMethod = authMethod;
+    rememberVerifiedToken(token, user.id);
 
     // Log successful authentication (debug level)
     logger.debug('Authentication successful', {
@@ -243,6 +245,7 @@ const optionalAuth = async (req, res, next) => {
         req.userEmail = user.email;
         req.token = token;
         req.authMethod = authMethod;
+        rememberVerifiedToken(token, user.id);
       }
     }
   } catch (error) {

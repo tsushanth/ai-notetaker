@@ -5,7 +5,13 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v26 | `registry.fly.io/scribe-ai-web:deployment-01M85HF3541E01QZ2QFR2KFTVJ` | `origin/main` at `447a90f` (#76 + #77; `web-app/` tree `0d84ca5f9e88fa9e7f12b21221b6da3ac896febb` identical to main) | 2026-11-24 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v49 | `registry.fly.io/ai-notetaker-backend:deployment-01M85NVAWGAHWKJNC1PFJ0C5KD` | `origin/main` at `5f7c4b7` (#75; `ai-notetaker-backend/` tree `bc04163d6206a9b780d4d02db01511b92268f13e` identical to main) | 2026-11-24 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v50 | `registry.fly.io/ai-notetaker-backend:deployment-01M888D4XPE89154AGDX4QDATT` | `origin/main` at `04549fe` (#82; `ai-notetaker-backend/` tree `46d78e957afe3f6efdceba2417776d1550ddf4cc` identical to main) | 2026-11-25 (UTC) |
+
+## 2026-11-24 Backend v50: outreach attribution reporting (#82), flag OFF
+- `ai-notetaker-backend` v49 (image `deployment-01M85NVAWGAHWKJNC1PFJ0C5KD`) -> v50 (image `deployment-01M888D4XPE89154AGDX4QDATT`), `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `04549fe`; the deployed subtree equals main's. Delta from 5f7c4b7 in `ai-notetaker-backend/`: only #82.
+- Change: `POST /api/auth/register` and `/api/auth/google` accept an optional `signup_source`; an outreach first touch is stored in auth `app_metadata.outreach` and a signup event is reported; first `/api/ai/summary` or `/api/recordings/transcribe` reports `activated`. All to the Calldesk outreach metrics layer, and nothing is sent unless `OUTREACH_EVENTS_URL` and an event secret are set (neither is; no secret touched, no migration). No client sends `signup_source` yet. Enable steps and the baseline SQL: `docs/OUTREACH-ATTRIBUTION.md`, `docs/outreach-baseline.sql`.
+- Tests before merge: `node --test --test-concurrency=2 test/`: 442 pass, 0 fail. Quiet moment: only the keep-alive ping in the logs for 45 minutes. Verified live: `/health/ready` 200 `{"ready":true}`; unauthenticated `/api/ai/summary` and `/api/recordings/transcribe` 401; empty `/api/auth/register` 400, all as before. NOT verified live: an authenticated summary (needs a token), covered by unit tests.
+- Rollback: `flyctl releases rollback 49 -a ai-notetaker-backend`.
 
 ## 2026-11-24 Backend v49: document processing failure report says why (#75)
 - `ai-notetaker-backend` v48 (image `deployment-01M85HBN77DXB9R84TC90TDJ5W`) -> v49 (image `deployment-01M85NVAWGAHWKJNC1PFJ0C5KD`), `flyctl deploy` from a clean detached worktree of `origin/main` at `5f7c4b7`; the deployed subtree equals main's. Delta from 447a90f in `ai-notetaker-backend/`: only #75 (`src/routes/uploads.js`, new `src/utils/documentFailure.js`, new `test/documentFailure.test.js`).

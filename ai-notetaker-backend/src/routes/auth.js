@@ -7,6 +7,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { OAuth2Client } = require('google-auth-library');
 const { authenticate } = require('../middleware/auth');
 const { loginLimiters } = require('../middleware/loginRateLimit');
+const { signupAppMetadata, noteSignup } = require('../services/outreachAttribution');
 
 // The one shared admin client (service role). It is also the client /health inspects, so a regression that makes it act
 // as a user is visible there.
@@ -33,7 +34,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
  * Register a new user with email and password
  */
 router.post('/register', async (req, res) => {
-    const { email, password, name } = req.body;
+    const { email, password, name, signup_source: signupSource } = req.body;
 
     if (!email || !password) {
         return res.status(400).json({
@@ -58,7 +59,9 @@ router.post('/register', async (req, res) => {
             user_metadata: {
                 name: name || email.split('@')[0],
                 source: 'web'
-            }
+            },
+            // Outreach first touch (optional signup_source in the body); admin-only storage, undefined when not from an outreach link.
+            app_metadata: signupAppMetadata(signupSource)
         });
 
         if (authError) {
@@ -76,6 +79,8 @@ router.post('/register', async (req, res) => {
                 error: authError.message || 'Registration failed'
             });
         }
+
+        noteSignup(authData.user.email, signupSource); // outreach metrics: fire and forget, off unless OUTREACH_EVENTS_URL is set
 
         // Create a session for the user
         const { data: sessionData, error: sessionError } = await passwordSignIn(email, password);
@@ -211,7 +216,7 @@ router.post('/login', ...loginLimiters, async (req, res) => {
  * Sign in or register with Google
  */
 router.post('/google', async (req, res) => {
-    const { idToken } = req.body;
+    const { idToken, signup_source: signupSource } = req.body;
 
     if (!idToken) {
         return res.status(400).json({
@@ -292,7 +297,9 @@ router.post('/google', async (req, res) => {
                     provider: 'google',
                     google_id: googleId,
                     source: 'web'
-                }
+                },
+                // Outreach first touch (optional signup_source in the body); admin-only storage, undefined when not from an outreach link.
+                app_metadata: signupAppMetadata(signupSource)
             });
 
             if (createError) {
@@ -320,6 +327,7 @@ router.post('/google', async (req, res) => {
                 // New user created successfully
                 userId = newUser.user.id;
                 console.log('Created new user:', userId);
+                noteSignup(email, signupSource); // outreach metrics: fire and forget, off unless OUTREACH_EVENTS_URL is set
 
                 // Create profile
                 await supabaseAdmin.from('profiles').upsert({

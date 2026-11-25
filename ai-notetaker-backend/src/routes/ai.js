@@ -1,4 +1,5 @@
 const express = require('express');
+const { noteActivation } = require('../services/outreachAttribution');
 const { logger } = require('../utils/logger');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
@@ -69,6 +70,7 @@ router.post('/summary', checkUsageLimits('summary'), validate('generateAIContent
 
   // Record usage for free tier tracking
   await recordUsage(req.userId, 'summary', { note_id });
+  noteActivation(req.userId); // outreach metrics: first summary, fire and forget, off by default
 
   res.json({
     success: true,

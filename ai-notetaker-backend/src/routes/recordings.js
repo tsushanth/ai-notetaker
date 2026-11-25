@@ -1,4 +1,5 @@
 const express = require('express');
+const { noteActivation } = require('../services/outreachAttribution');
 const router = express.Router();
 const multer = require('multer');
 const { authenticate } = require('../middleware/auth');
@@ -90,6 +91,7 @@ router.post('/transcribe', transcriptionGuard(), asyncHandler(async (req, res) =
 
   // Start transcription (can be async in production)
   const result = await transcriptionService.transcribeRecording(req.userId, recording_id);
+  noteActivation(req.userId); // outreach metrics: first transcription, fire and forget, off by default
 
   res.json({
     success: true,

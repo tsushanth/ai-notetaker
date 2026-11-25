@@ -31,5 +31,7 @@ where ts > now() - interval '7 days'
   and outcome in ('ok', 'client_error', 'server_error', 'abandoned')
 group by feature;
 revoke all on public.feature_outcomes, public.feature_health from anon, authenticated;
+-- The identity column's sequence gets the project's default grants too.
+revoke all on sequence public.feature_outcomes_id_seq from anon, authenticated;
 
 -- Optional retention (run when wanted): delete from public.feature_outcomes where ts < now() - interval '90 days';

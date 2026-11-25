@@ -41,7 +41,8 @@ async function requestReset(email, deps) {
   if (r.status === 429) {
     return { status: 429, body: { success: false, code: 'RESET_RATE_LIMITED', error: 'Too many reset emails were requested. Please wait an hour and try again.' } };
   }
-  if (r.status === 400 || r.status === 422) {
+  // The built-in mailer refuses everyone outside the project team with a 400: our setup, not the user's address.
+  if ((r.status === 400 || r.status === 422) && r.code !== 'email_address_not_authorized') {
     return { status: 400, body: { success: false, error: 'Please check the email address and try again.' } };
   }
   return { status: 502, body: { success: false, code: 'RESET_SEND_FAILED', error: 'The reset email could not be sent. Please try again.' } };

@@ -41,6 +41,13 @@ test('a refused or failed email is an error, never success', async () => {
   assert.equal((await post('reset', { email: 'nope' })).status, 400);
 });
 
+test('a mailer that will not send to this recipient is a send failure, not a bad address', async () => {
+  answer = () => new Response('{"error_code":"email_address_not_authorized","msg":"Email address not authorized"}', { status: 400 });
+  const r = await post('reset', { email: 'd@x.test' });
+  assert.equal(r.status, 502);
+  assert.equal(r.body.code, 'RESET_SEND_FAILED');
+});
+
 test('reset requests per account are limited even when they succeed', async () => {
   answer = () => new Response('{}', { status: 200 });
   const results = [];

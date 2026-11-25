@@ -4,6 +4,12 @@ primary_region = "iad"
 [build]
   dockerfile = "Dockerfile"
 
+[env]
+  # Log only until the server can check Google Play purchases (GOOGLE_PLAY_SERVICE_ACCOUNT_JSON): without it, enforcing
+  # would hold every new Android purchase as pending. Remove this line to enforce, once that key is set AND the app
+  # release that sends the purchase token is out (see src/utils/subscriptionTrust.js).
+  SUBSCRIPTION_VERIFY_MODE = "log"
+
 [http_service]
   internal_port = 8080
   force_https = true

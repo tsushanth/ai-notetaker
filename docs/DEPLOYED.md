@@ -4,8 +4,15 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
-| Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v26 | `registry.fly.io/scribe-ai-web:deployment-01M85HF3541E01QZ2QFR2KFTVJ` | `origin/main` at `447a90f` (#76 + #77; `web-app/` tree `0d84ca5f9e88fa9e7f12b21221b6da3ac896febb` identical to main) | 2026-11-24 (UTC) |
+| Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v27 | `registry.fly.io/scribe-ai-web:deployment-01M8897SNH3MD6VC361701G2XD` | `origin/main` at `af073ad` (#84; `web-app/` tree `c93a36896a6a1347cf473ee8a934746444b784f4` identical to main) | 2026-11-25 (UTC) |
 | Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v50 | `registry.fly.io/ai-notetaker-backend:deployment-01M888D4XPE89154AGDX4QDATT` | `origin/main` at `04549fe` (#82; `ai-notetaker-backend/` tree `46d78e957afe3f6efdceba2417776d1550ddf4cc` identical to main) | 2026-11-25 (UTC) |
+
+## 2026-11-24 Web v27: outreach UTM sent as `signup_source` (#84)
+- `scribe-ai-web` v26 (image `deployment-01M85HF3541E01QZ2QFR2KFTVJ`) -> v27 (image `deployment-01M8897SNH3MD6VC361701G2XD`), `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `af073ad`; the `web-app/` tree equals main's. No GitHub workflow deploys this app (no `.github`), so merging #84 did not deploy; the manual deploy did. This is a Next.js frontend, no long-running jobs live in it.
+- Change: `src/lib/outreachUtm.ts` keeps `utm_source/utm_campaign/utm_content` from a landing URL with `utm_source=outreach` (localStorage `outreach_first_touch`, first touch wins, 30 days, try/catch everywhere); `authApi.loginWithGoogle` and `authApi.register` send them as `signup_source` (the backend field from #82) and clear them after a successful call. All three Google sign-in screens go through `loginWithGoogle`. No cookie, no third-party script, nothing else read from the URL.
+- Tests before merge: `node --test test/*.ts` 109 pass, 0 fail; `tsc` and `next build` clean.
+- Verified live (headless Chromium, no sign-in, no account): scribeai.online and scribe-ai-web.fly.dev `/` 200, with `?utm_source=outreach&utm_campaign=selftest&utm_content=x` localStorage `outreach_first_touch` holds exactly those three fields plus a timestamp; `/login` and `/signup` the same; a visit without the params stores nothing; no cookie set by this code; no console errors on scribeai.online (on the `.fly.dev` host Google's script logs "origin is not allowed for the given client ID", as before, that origin is not on the OAuth client). NOT verified: a real sign-in carrying `signup_source` (would create an account); covered by the request-body unit test. The backend reports nothing until `OUTREACH_EVENTS_URL` and the secret are set (see `docs/OUTREACH-ATTRIBUTION.md`).
+- Rollback: `flyctl releases rollback 26 -a scribe-ai-web`.
 
 ## 2026-11-24 Backend v50: outreach attribution reporting (#82), flag OFF
 - `ai-notetaker-backend` v49 (image `deployment-01M85NVAWGAHWKJNC1PFJ0C5KD`) -> v50 (image `deployment-01M888D4XPE89154AGDX4QDATT`), `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `04549fe`; the deployed subtree equals main's. Delta from 5f7c4b7 in `ai-notetaker-backend/`: only #82.

@@ -1514,23 +1514,8 @@ router.post('/admin/unfreeze-commissions/:creatorId', authenticate, requireAdmin
 // CRON ENDPOINTS (protected by CRON_SECRET_TOKEN)
 // =====================================================
 
-const CRON_SECRET = process.env.CRON_SECRET_TOKEN;
-
-// Middleware to verify cron requests
-const verifyCronAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ success: false, error: 'Unauthorized' });
-  }
-
-  const token = authHeader.substring(7);
-  if (token !== CRON_SECRET) {
-    return res.status(401).json({ success: false, error: 'Invalid cron token' });
-  }
-
-  next();
-};
+// Middleware to verify cron requests (shared secret, constant-time, closed when unset)
+const { cronAuth: verifyCronAuth } = require('../middleware/cronAuth');
 
 // Cron: Mature earnings after 45-day holding period
 router.post('/cron/mature-earnings', verifyCronAuth, asyncHandler(async (req, res) => {

@@ -4,6 +4,7 @@ import Script from 'next/script';
 import './globals.css';
 import WebFailureReporter from '@/components/WebFailureReporter'
 import SessionExpiryWatcher from '@/components/SessionExpiryWatcher'
+import OutreachCapture from '@/components/OutreachCapture'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -60,6 +61,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}>
         <WebFailureReporter />
         <SessionExpiryWatcher />
+        <OutreachCapture />
         {children}
       </body>
     </html>

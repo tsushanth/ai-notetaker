@@ -146,6 +146,41 @@ function parseMindMap(text) {
   return { title: optionText(obj.title) || 'Mind Map', nodes };
 }
 
+/**
+ * Last resort for a mind map cut off at max_tokens: keep every node object that arrived complete. Returns null unless
+ * at least the root and three branches survived, so a stub is never shown as a result.
+ */
+function salvageMindMap(text, minNodes = 4) {
+  const source = String(text || '');
+  const listStart = source.search(/"nodes"\s*:\s*\[/);
+  if (listStart < 0) return null;
+  const nodes = [];
+  let depth = 0, start = -1, inString = false, escaped = false;
+  for (let i = source.indexOf('[', listStart) + 1; i < source.length; i++) {
+    const c = source[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === '\\') escaped = true;
+      else if (c === '"') inString = false;
+    } else if (c === '"') inString = true;
+    else if (c === '{') { if (depth === 0) start = i; depth += 1; }
+    else if (c === '}') {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        try { nodes.push(JSON.parse(source.slice(start, i + 1))); } catch { /* skip a damaged node */ }
+        start = -1;
+      }
+    } else if (c === ']' && depth === 0) break;
+  }
+  const title = /"title"\s*:\s*"((?:[^"\\]|\\.)*)"/.exec(source.slice(0, listStart))?.[1];
+  try {
+    const map = parseMindMap(JSON.stringify({ title, nodes }));
+    return map.nodes.length >= minNodes ? map : null;
+  } catch {
+    return null;
+  }
+}
+
 const STRICT_RETRY_NOTE = '\n\nYour previous reply could not be read by a program. Reply again with ONLY the raw JSON in the exact structure requested: start with the opening bracket, end with the closing bracket, no markdown fences, no commentary before or after.';
 
 const sumUsage = (a, b) => ({
@@ -162,19 +197,22 @@ const sumUsage = (a, b) => ({
  *   isComplete(value) -> boolean                      (optional; false = usable but too short, worth one retry)
  *
  * Returns { value, usage, attempts, partial }. `partial` is true when the best valid value failed isComplete after the
- * retry. Throws StructuredOutputError when nothing valid was produced. `onFailure(info)` receives metadata only, never
+ * retry, or when `salvage(text)` rebuilt a value from a reply that was cut off.
+ * Throws StructuredOutputError when nothing valid was produced. `onFailure(info)` receives metadata only, never
  * note or model text.
  */
-async function requestStructured({ request, parse, maxTokens, maxTokensCap = 8000, isComplete, onFailure }) {
+async function requestStructured({ request, parse, maxTokens, maxTokensCap = 8000, isComplete, onFailure, salvage }) {
   let usage = null;
   let budget = maxTokens;
   let lastError = null;
   let best = null;
+  const cutOff = [];
   for (let attempt = 1; attempt <= 2; attempt++) {
     const completion = await request({ strictNote: attempt === 1 ? '' : STRICT_RETRY_NOTE, maxTokens: budget });
     usage = sumUsage(usage, completion?.usage);
     const text = completion?.content?.find?.((b) => b && b.type === 'text')?.text ?? completion?.content?.[0]?.text ?? '';
     const truncated = completion?.stop_reason === 'max_tokens';
+    if (truncated) cutOff.push(text);
     try {
       const value = parse(text);
       if (!isComplete || isComplete(value)) return { value, usage, attempts: attempt, partial: false };
@@ -188,10 +226,16 @@ async function requestStructured({ request, parse, maxTokens, maxTokensCap = 800
     if (truncated) budget = Math.min(Math.ceil(budget * 1.75), maxTokensCap);
   }
   if (best) return { value: best, usage, attempts: 2, partial: true };
+  if (salvage) {
+    for (const text of [...cutOff].sort((a, b) => b.length - a.length)) {
+      const value = salvage(text);
+      if (value) return { value, usage, attempts: 2, partial: true };
+    }
+  }
   throw new StructuredOutputError(lastError ? lastError.message : 'Unreadable model reply');
 }
 
 /** Valid results must reach about 70% of what was asked for to count as complete. */
 const enoughOf = (requested) => (value) => !requested || (Array.isArray(value) && value.length >= Math.ceil(requested * 0.7));
 
-module.exports = { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, requestStructured, enoughOf, STRICT_RETRY_NOTE };
+module.exports = { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, salvageMindMap, requestStructured, enoughOf, STRICT_RETRY_NOTE };

@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Подкаст</string>
+    <string name="error_reset_email_failed">Не удалось отправить письмо для сброса пароля. Повторите попытку позже.</string>
+    <string name="tts_still_generating">Аудио ещё готовится. Повторите попытку через минуту.</string>
 </resources>

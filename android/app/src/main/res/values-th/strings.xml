@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">พอดแคสต์</string>
+    <string name="error_reset_email_failed">ไม่สามารถส่งอีเมลรีเซ็ตได้ โปรดลองอีกครั้งในภายหลัง</string>
+    <string name="tts_still_generating">กำลังเตรียมเสียงอยู่ โปรดลองอีกครั้งในอีกหนึ่งนาที</string>
 </resources>

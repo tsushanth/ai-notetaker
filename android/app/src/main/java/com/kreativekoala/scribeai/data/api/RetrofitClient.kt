@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit
 import javax.net.ssl.SSLException
 import com.kreativekoala.scribeai.utils.AppStrings
 import com.kreativekoala.scribeai.R
+import com.kreativekoala.scribeai.FailureReporterInterceptor
 
 /**
  * Network error types for better error handling
@@ -112,6 +113,9 @@ class RetryInterceptor(
         // AI generation endpoints - don't auto-retry (expensive operations)
         if (path.contains("/ai/")) return false
 
+        // Read Aloud waits long enough by itself, and every repeat used up the daily allowance.
+        if (path.contains("/tts/")) return false
+
         return true
     }
 }
@@ -175,6 +179,8 @@ object RetrofitClient {
      * Default OkHttpClient with standard timeouts
      */
     private val defaultOkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(FailureReporterInterceptor()) // first: sees the answer left after retries
+        .addInterceptor(LongRequestInterceptor())
         .addInterceptor(subscriptionBypassInterceptor)
         .addInterceptor(retryInterceptor)
         .addInterceptor(loggingInterceptor)
@@ -187,6 +193,8 @@ object RetrofitClient {
      * Extended timeout client for AI operations and large uploads
      */
     val extendedTimeoutClient: OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor(FailureReporterInterceptor()) // first: sees the answer left after retries
+        .addInterceptor(LongRequestInterceptor())
         .addInterceptor(subscriptionBypassInterceptor)
         .addInterceptor(retryInterceptor)
         .addInterceptor(loggingInterceptor)

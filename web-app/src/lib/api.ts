@@ -94,6 +94,20 @@ export const authApi = {
     });
   },
 
+  requestPasswordReset: async (email: string) => {
+    return apiRequest<{ success: boolean }>('/api/auth/password/reset', {
+      method: 'POST',
+      body: { email },
+    });
+  },
+
+  updatePassword: async (accessToken: string, password: string) => {
+    return apiRequest<{ success: boolean }>('/api/auth/password/update', {
+      method: 'POST',
+      body: { access_token: accessToken, password },
+    });
+  },
+
   loginWithEmail: async (email: string, password: string) => {
     return apiRequest<{ token: string; user: unknown }>('/api/auth/login', {
       method: 'POST',
@@ -762,6 +776,8 @@ export const ttsApi = {
     }>('/api/tts/generate', {
       method: 'POST',
       token,
+      // A browser waits much longer than the phone apps for a long note.
+      headers: { 'x-tts-wait-ms': '280000' },
       body: {
         note_id: noteId,
         voice: options?.voice || 'nova',

@@ -5,11 +5,14 @@ const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 const storageService = require('./storageService');
 const path = require('path');
-const { transcribeAudio, TranscriptionError } = require('./deepgramClient');
+const { transcribeAudio, TranscriptionError, FALLBACK_LISTEN_URL, isWeakAnswer, preferFallback } = require('./deepgramClient');
 const { measureLevel } = require('../utils/audioLevel');
 const { reportFailure, reportCounted } = require('../utils/failureReporter');
 
-const REPORTABLE_CODES = new Set(['NO_SPEECH', 'PROVIDER_ERROR', 'PROVIDER_TIMEOUT', 'DOWNLOAD_FAILED', 'EMPTY_FILE', 'RECORD_UPDATE_FAILED', 'MARK_FAILED_UPDATE_FAILED']);
+// An empty transcript for audio that has sound is reported under its own message: the reporter mutes "NO_SPEECH"
+// (silent files), and this one must still page.
+const AUDIBLE_EMPTY_CODE = 'EMPTY_TRANSCRIPT_WITH_SOUND';
+const REPORTABLE_CODES = new Set(['NO_SPEECH', AUDIBLE_EMPTY_CODE, 'PROVIDER_ERROR', 'PROVIDER_TIMEOUT', 'DOWNLOAD_FAILED', 'EMPTY_FILE', 'RECORD_UPDATE_FAILED', 'MARK_FAILED_UPDATE_FAILED']);
 
 // Shown instead of the generic message when the stored audio is digital silence: it tells the user what to check.
 const SILENT_MESSAGE = 'The recording is completely silent. Check that the microphone is allowed for this app, not muted and not in use by another app, then try again.';
@@ -209,6 +212,24 @@ class TranscriptionService {
         outcome.attempts = dgErr.attempts || 0;
         throw dgErr;
       }
+      // Nothing, or a weak answer: measure whether there was sound, then ask a second way.
+      let level = null;
+      const empty = !dg.text || dg.text.trim().length === 0;
+      if (empty) level = await measureLevel(audioBuffer);
+      if ((empty && !level?.silent) || isWeakAnswer(dg)) {
+        outcome.fallback = 'no_better';
+        try {
+          const second = await transcribeAudio({ body: audioBuffer, mimeType, url: FALLBACK_LISTEN_URL, maxAttempts: 1 });
+          if (preferFallback(dg, second)) {
+            outcome.fallback = 'used';
+            dg = { ...second, durationSec: second.durationSec ?? dg.durationSec, attempts: dg.attempts + second.attempts };
+          }
+        } catch (fallbackErr) {
+          // The first answer stands.
+          outcome.fallback = 'failed';
+          logger.warn('Fallback transcription failed', { recordingId, error: fallbackErr.message });
+        }
+      }
       outcome.providerStatus = dg.providerStatus;
       outcome.attempts = dg.attempts;
       outcome.durationSec = dg.durationSec;
@@ -226,9 +247,8 @@ class TranscriptionService {
         const lang = dg.detectedLanguage
           ? `${dg.detectedLanguage}${dg.languageConfidence != null ? ` (confidence ${dg.languageConfidence})` : ''}`
           : 'unknown';
-        // Was there any sound at all? A file of pure zeros means the device delivered silence (mic
+        // Was there any sound at all (measured above)? A file of pure zeros means the device delivered silence (mic
         // muted/blocked/in use), which no transcription change can fix and the user can. Best effort.
-        const level = await measureLevel(audioBuffer);
         outcome.audioLevel = level ? (level.silent ? 'silent' : 'audible') : 'unknown';
         const levelFacts = level ? `, level ${level.silent ? 'silent (all samples zero)' : 'audible'} (peak ${level.peakDb} dB, mean ${level.meanDb} dB)` : '';
         throw new TranscriptionError('NO_SPEECH', level?.silent ? SILENT_MESSAGE : 'No speech detected in the recording', 422, {
@@ -313,7 +333,7 @@ class TranscriptionService {
           ? error.dbMessage
           : `INTERNAL_ERROR: ${String(error.message || 'unknown error').slice(0, 300)}`;
         const marked = await this.markFailed(recordingId, dbMessage, durationSec);
-        this.reportRecordingFailed(code, outcome);
+        this.reportRecordingFailed(code === 'NO_SPEECH' && outcome.audioLevel === 'audible' ? AUDIBLE_EMPTY_CODE : code, outcome);
         // The row is now stuck in 'processing' (the reconciler will also catch it); say so explicitly.
         if (!marked) this.reportRecordingFailed('MARK_FAILED_UPDATE_FAILED', outcome);
       }

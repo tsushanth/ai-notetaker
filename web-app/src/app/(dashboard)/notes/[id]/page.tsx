@@ -42,6 +42,8 @@ import {
 } from 'lucide-react';
 import SummarySection from '@/components/SummarySection';
 import { extractSummaryText } from '@/lib/summary';
+import { reportWebFailure } from '@/components/WebFailureReporter';
+import { isUnexpectedFeatureFailure } from '@/lib/reportable';
 import type { Note, ChatMessage, QuizQuestion, FlashcardContent, InfographicContent } from '@/types';
 
 type TabType = 'notes' | 'chat' | 'quiz' | 'flashcards' | 'infographic' | 'podcast' | 'tts';
@@ -449,6 +451,7 @@ export default function NoteDetailPage() {
       };
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
+      if (isUnexpectedFeatureFailure(err)) reportWebFailure('Chat with Note', err);
       setChatMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -810,6 +813,7 @@ export default function NoteDetailPage() {
         };
 
         audio.onerror = () => {
+          reportWebFailure('Read Aloud', new Error('Audio could not be played'));
           setError('Failed to play audio');
           setIsPlayingTts(false);
         };
@@ -818,6 +822,7 @@ export default function NoteDetailPage() {
       }
     } catch (err) {
       console.error('TTS generation error:', err);
+      if (isUnexpectedFeatureFailure(err)) reportWebFailure('Read Aloud', err);
       setError(err instanceof Error ? err.message : 'Failed to generate speech');
     } finally {
       setIsGeneratingTts(false);

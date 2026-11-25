@@ -19,6 +19,12 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import android.net.Uri
+import com.kreativekoala.scribeai.R
+import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.utils.ErrorReportingService
+import com.kreativekoala.scribeai.utils.PasswordResetLink
+import com.kreativekoala.scribeai.utils.ReportRules
 
 sealed class AuthState {
     object Idle : AuthState()
@@ -104,6 +110,7 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
                         errorJson.optString("message", "Login failed"))
 
                     Log.e("AuthViewModel", "Login failed: $errorMessage")
+                    reportAuthFailure(ErrorReportingService.UserFlow.SIGN_IN, response.code, responseBody)
                     withContext(Dispatchers.Main) {
                         _authState.value = AuthState.Error(errorMessage)
                     }
@@ -158,6 +165,7 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
 
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Sign in error", e)
+                ErrorReportingService.reportException(ErrorReportingService.UserFlow.SIGN_IN, e)
                 withContext(Dispatchers.Main) {
                     _authState.value = AuthState.Error(e.message ?: "An error occurred")
                 }
@@ -165,42 +173,54 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
         }
     }
 
-    /**
-     * Reset password using OkHttp (Supabase /auth/v1/recover endpoint)
-     */
-    fun resetPassword(email: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                Log.d("AuthViewModel", "Attempting password reset for: $email")
+    /** Report a refused sign-in or sign-up that is not the user's own mistake: status and error code only. */
+    private fun reportAuthFailure(flow: ErrorReportingService.UserFlow, status: Int, body: String?) {
+        if (ReportRules.shouldReportAuth(status, body)) {
+            ErrorReportingService.reportError(flow, "HTTP $status ${ReportRules.authErrorCode(body)}") // i18n-ok
+        }
+    }
 
+    /**
+     * Reset password using OkHttp (Supabase /auth/v1/recover endpoint). [onResult] is called on the main thread with
+     * null when the email was accepted, else with the message to show.
+     */
+    fun resetPassword(email: String, onResult: (error: String?) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val error = try {
                 val json = JSONObject().apply {
                     put("email", email)
                 }
 
+                // The web page works on any device. If the project does not allow that address yet, the sign-in service
+                // uses the app link instead, which PasswordResetLinkActivity forwards to the same page.
+                val redirect = Uri.encode(PasswordResetLink.WEB_PAGE)
                 val request = Request.Builder()
-                    .url("$supabaseUrl/auth/v1/recover")
+                    .url("$supabaseUrl/auth/v1/recover?redirect_to=$redirect")
                     .post(json.toString().toRequestBody("application/json".toMediaType()))
                     .addHeader("apikey", supabaseKey)
                     .addHeader("Content-Type", "application/json")
                     .build()
 
-                val response = client.newCall(request).execute()
-                val responseBody = response.body?.string()
-
-                Log.d("AuthViewModel", "Password reset response code: ${response.code}")
-
-                if (!response.isSuccessful) {
-                    val errorJson = JSONObject(responseBody ?: "{}")
-                    val errorMessage = errorJson.optString("error_description",
-                        errorJson.optString("message", "Password reset failed"))
-                    Log.e("AuthViewModel", "Password reset failed: $errorMessage")
-                } else {
-                    Log.d("AuthViewModel", "✅ Password reset email sent successfully")
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        null
+                    } else {
+                        val body = response.body?.string()
+                        Log.e("AuthViewModel", "Password reset failed: ${response.code}")
+                        // A rate limit here is the mailer refusing to send: the owner needs to know.
+                        ErrorReportingService.reportError(
+                            ErrorReportingService.UserFlow.PASSWORD_RESET,
+                            "HTTP ${response.code} ${ReportRules.authErrorCode(body)}", // i18n-ok
+                        )
+                        AppStrings.get(R.string.error_reset_email_failed)
+                    }
                 }
-
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Password reset error", e)
+                ErrorReportingService.reportException(ErrorReportingService.UserFlow.PASSWORD_RESET, e)
+                AppStrings.get(R.string.error_network)
             }
+            withContext(Dispatchers.Main) { onResult(error) }
         }
     }
 
@@ -236,6 +256,7 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
                         errorJson.optString("message", "Sign up failed"))
 
                     Log.e("AuthViewModel", "Sign up failed: $errorMessage")
+                    reportAuthFailure(ErrorReportingService.UserFlow.SIGN_UP, response.code, responseBody)
                     withContext(Dispatchers.Main) {
                         _authState.value = AuthState.Error(errorMessage)
                     }
@@ -298,6 +319,7 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
 
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Sign up error", e)
+                ErrorReportingService.reportException(ErrorReportingService.UserFlow.SIGN_UP, e)
                 withContext(Dispatchers.Main) {
                     _authState.value = AuthState.Error(e.message ?: "An error occurred")
                 }
@@ -338,6 +360,7 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
                         errorJson.optString("message", "Google sign-in failed"))
 
                     Log.e("AuthViewModel", "Google sign in failed: $errorMessage")
+                    reportAuthFailure(ErrorReportingService.UserFlow.SIGN_IN_WITH_GOOGLE, response.code, responseBody)
                     withContext(Dispatchers.Main) {
                         _authState.value = AuthState.Error(errorMessage)
                     }
@@ -391,6 +414,7 @@ class AuthViewModel(application: Application, private val authManager: AuthManag
 
             } catch (e: Exception) {
                 Log.e("AuthViewModel", "Google sign in error", e)
+                ErrorReportingService.reportException(ErrorReportingService.UserFlow.SIGN_IN_WITH_GOOGLE, e)
                 withContext(Dispatchers.Main) {
                     _authState.value = AuthState.Error(e.message ?: "Google sign-in failed")
                 }

@@ -8,7 +8,17 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const ttsService = require('../services/ttsService');
+const ttsJobs = require('../services/ttsJobs');
+const { TtsError } = require('../utils/ttsError');
+const { LOCAL_ONLY_NOTE_IDS, LOCAL_ONLY_CODE } = require('../middleware/localOnlyNote');
 const { featureDailyCap } = require('../middleware/freeTierLimits');
+const { reportCounted } = require('../utils/failureReporter');
+
+const ttsCap = featureDailyCap('tts');
+// Joining a generation that is already running (an app retry) does not spend the daily allowance again.
+const capUnlessRunning = (req, res, next) => (
+  ttsJobs.isRunning(req.userId, req.body?.note_id, req.body?.voice, req.body?.speed) ? next() : ttsCap(req, res, next)
+);
 
 // Async handler wrapper
 const asyncHandler = (fn) => (req, res, next) => {
@@ -59,9 +69,14 @@ router.post('/synthesize', authenticate, featureDailyCap('tts'), asyncHandler(as
     res.send(audioBuffer);
   } catch (error) {
     logger.error('TTS synthesis error', { error: error.message, userId: req.user.id });
+    if (error instanceof TtsError) {
+      // 5xx answers are reported by the safety net; a text the user cannot get audio for (4xx) is counted here.
+      if (error.statusCode < 500) reportCounted('tts_failed', `Read Aloud failed: ${error.code}`, { code: error.code });
+      return res.status(error.statusCode).json({ success: false, code: `TTS_${error.code}`, error: error.userMessage });
+    }
     res.status(500).json({
       success: false,
-      error: error.message,
+      error: 'Failed to generate audio. Please try again.',
     });
   }
 }));
@@ -70,7 +85,7 @@ router.post('/synthesize', authenticate, featureDailyCap('tts'), asyncHandler(as
  * POST /api/tts/generate
  * Generate TTS for a note and save to storage
  */
-router.post('/generate', authenticate, featureDailyCap('tts'), asyncHandler(async (req, res) => {
+router.post('/generate', authenticate, capUnlessRunning, asyncHandler(async (req, res) => {
   const {
     note_id,
     voice = 'nova',
@@ -85,11 +100,25 @@ router.post('/generate', authenticate, featureDailyCap('tts'), asyncHandler(asyn
   }
 
   try {
-    const result = await ttsService.generateForNote(req.user.id, note_id, {
+    const job = ttsJobs.start(ttsService, req.user.id, note_id, {
       voice,
       speed: parseFloat(speed),
     });
+    const outcome = await ttsJobs.wait(job, ttsJobs.waitBudgetMs(req.headers['x-tts-wait-ms']));
 
+    if (!outcome.done) {
+      // Not a failure: the job goes on and reports itself if it fails. An app retry joins it and picks up the audio.
+      res.locals.failureReported = true;
+      res.locals.outcome = 'pending';
+      res.set('Retry-After', '30');
+      return res.status(503).json({
+        success: false,
+        code: 'TTS_STILL_GENERATING',
+        error: 'The audio is still being generated. Try again in a minute.',
+      });
+    }
+
+    const { result } = outcome;
     logger.info('TTS generated for note', {
       userId: req.user.id,
       noteId: note_id,
@@ -107,10 +136,14 @@ router.post('/generate', authenticate, featureDailyCap('tts'), asyncHandler(asyn
       },
     });
   } catch (error) {
-    logger.error('TTS generation error', { error: error.message, userId: req.user.id, noteId: note_id });
-    res.status(500).json({
+    // The job has already logged and reported the failure.
+    res.locals.failureReported = true;
+    const known = error instanceof TtsError ? error : new TtsError('INTERNAL');
+    const localOnly = known.code === 'NOTE_NOT_FOUND' && LOCAL_ONLY_NOTE_IDS.has(String(note_id).toLowerCase());
+    res.status(known.statusCode).json({
       success: false,
-      error: error.message,
+      code: localOnly ? LOCAL_ONLY_CODE : `TTS_${known.code}`,
+      error: localOnly ? 'The sample note is not ready for Read Aloud yet. Try one of your own notes.' : known.userMessage,
     });
   }
 }));

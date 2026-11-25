@@ -13,6 +13,7 @@
 // (notes -> ai_content, recordings, shared_notes, learning_sessions; challenges -> challenge_participants).
 const OWNED_TABLES = [
   ['analytics_events', 'user_id'],
+  ['feature_outcomes', 'user_id'],
   ['challenge_participants', 'user_id'],
   ['challenges', 'creator_user_id'],
   ['learning_lessons', 'user_id'],

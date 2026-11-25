@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">팟캐스트</string>
+    <string name="error_reset_email_failed">재설정 이메일을 보내지 못했습니다. 나중에 다시 시도해 주세요.</string>
+    <string name="tts_still_generating">오디오를 아직 준비하고 있습니다. 1분 후에 다시 시도해 주세요.</string>
 </resources>

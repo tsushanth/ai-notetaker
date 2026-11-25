@@ -6,6 +6,8 @@ import { useAuthStore } from '@/store/authStore';
 import { subscriptionApi } from '@/lib/api';
 import { FREE_FOR_EVERYONE, PREMIUM_PERKS } from '@/lib/freeTier';
 import { CHECKOUT_PLANS, savingsHeadline, savingsPercent } from '@/lib/plans';
+import { reportWebFailure } from '@/components/WebFailureReporter';
+import { isUnexpectedFeatureFailure } from '@/lib/reportable';
 
 const plans = CHECKOUT_PLANS;
 
@@ -59,6 +61,7 @@ function SubscriptionContent() {
         throw new Error('Failed to create checkout session');
       }
     } catch (err) {
+      if (isUnexpectedFeatureFailure(err)) reportWebFailure('Purchase Subscription', err);
       const message = err instanceof Error ? err.message : 'Failed to start checkout';
       setError(message);
       setIsCheckingOut(false);

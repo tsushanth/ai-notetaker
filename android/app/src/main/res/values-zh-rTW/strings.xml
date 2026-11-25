@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">播客</string>
+    <string name="error_reset_email_failed">無法傳送重設郵件。請稍後再試。</string>
+    <string name="tts_still_generating">音訊仍在準備中。請一分鐘後再試。</string>
 </resources>

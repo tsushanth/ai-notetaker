@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">Sıfırlama e-postası gönderilemedi. Lütfen daha sonra tekrar deneyin.</string>
+    <string name="tts_still_generating">Ses hâlâ hazırlanıyor. Bir dakika sonra tekrar deneyin.</string>
 </resources>

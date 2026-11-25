@@ -41,6 +41,7 @@ function table(name) {
   q.range = (a, b) => { q.range = [a, b]; return q; };
   const run = () => {
     const all = rows.filter((r) => q.filters.every((f) => f(r)));
+    if (q.mutation) for (const r of all) Object.assign(r, q.mutation);
     const page = Array.isArray(q.range) ? all.slice(q.range[0], q.range[1] + 1) : all;
     return { data: q.head ? null : page, count: q.wantCount ? all.length : null, error: null };
   };
@@ -54,8 +55,9 @@ function table(name) {
     p.select = () => ({ single: async () => ({ data: list[0], error: null }) });
     return p;
   };
-  const noop = () => { const p = Promise.resolve({ data: null, error: null }); p.eq = () => p; p.select = () => ({ single: async () => ({ data: null, error: null }) }); return p; };
-  q.upsert = noop; q.update = noop; q.delete = noop;
+  const noop = () => { const p = Promise.resolve({ data: null, error: null }); p.eq = () => p; p.neq = () => p; p.select = () => ({ single: async () => ({ data: null, error: null }) }); return p; };
+  q.upsert = noop; q.delete = noop;
+  q.update = (values) => { q.mutation = values; return q; }; // applied to the rows the later filters match
   return q;
 }
 const fakeSupabase = { createClient: () => ({ from: table, storage: { from: () => ({ createSignedUploadUrl: async () => ({ data: { signedUrl: 'https://signed.example/u' }, error: null }), download: async () => ({ data: null, error: { message: 'no storage in tests' } }) }) }, auth: {} }) };

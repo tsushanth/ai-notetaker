@@ -5,7 +5,7 @@ const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
 const { getLanguageInstruction } = require('../utils/languages');
-const { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, requestStructured, enoughOf } = require('../utils/aiOutput');
+const { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, salvageMindMap, requestStructured, enoughOf } = require('../utils/aiOutput');
 
 /**
  * Maximum characters to send to AI (approximately 100K tokens = ~400K chars)
@@ -40,6 +40,10 @@ function truncateContent(content, maxChars = MAX_CONTENT_CHARS) {
 }
 
 /** Shown to the user when the model reply could not be read even after a retry. */
+const MINDMAP_MAX_NODES = 30;
+const MINDMAP_MAX_TOKENS = 6000;
+const MINDMAP_TOKEN_CAP = 12000;
+
 const structuredFailure = (what) => new AppError(`We couldn't generate ${what} from this note just now. Please try again.`, 502);
 
 class AIService {
@@ -421,9 +425,11 @@ ${truncateContent(note.content)}`;
 1. Have a central topic node representing the main subject
 2. Have 3-6 main branches representing key themes/topics
 3. Each main branch should have 2-4 child nodes with supporting details
-4. Keep labels concise (2-5 words) but include a longer "content" field for detail
+4. Keep labels concise (2-5 words) and each "content" field to one sentence of at most 25 words
 5. Assign each main branch a different color from this palette: ["#BB86FC", "#03DAC6", "#CF6679", "#FF7597", "#FFB74D", "#81C784"]
 ${explorationInstruction}
+
+Use at most ${MINDMAP_MAX_NODES} nodes in total, however long the content is: pick the most important ideas.
 
 Return ONLY valid JSON in this exact structure:
 {
@@ -453,8 +459,11 @@ Return ONLY valid JSON in this exact structure:
 Content to analyze:
 ${truncateContent(note.content)}`;
 
-      const { value: mindMapData, usage } = await requestStructured({
-        maxTokens: 3000,
+      const { value: mindMapData, usage, partial } = await requestStructured({
+        // 3000 cut off real replies on both attempts; non-English text needs more tokens per node still.
+        maxTokens: MINDMAP_MAX_TOKENS,
+        maxTokensCap: MINDMAP_TOKEN_CAP,
+        salvage: salvageMindMap,
         request: ({ strictNote, maxTokens }) => anthropic.messages.create({
           model: MODELS.GPT4_MINI,
           system: `You are an expert educator who creates clear, visually organized mind maps for studying. Create hierarchical structures that help visual learners understand and remember content. Always respond with valid JSON only: a single JSON object, no markdown fences and no text outside the JSON.${getLanguageInstruction(language)}`,
@@ -471,7 +480,8 @@ ${truncateContent(note.content)}`;
       const aiContent = await this.saveAIContent(noteId, 'mindmap', {
         title: mindMapData.title,
         nodes: mindMapData.nodes,
-        model: MODELS.GPT4_MINI
+        model: MODELS.GPT4_MINI,
+        ...(partial && { partial: true })
       });
 
       // Log usage

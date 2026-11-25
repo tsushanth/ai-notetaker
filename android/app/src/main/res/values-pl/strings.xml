@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">Nie udało się wysłać e-maila do resetowania hasła. Spróbuj ponownie później.</string>
+    <string name="tts_still_generating">Nagranie jest jeszcze przygotowywane. Spróbuj ponownie za minutę.</string>
 </resources>

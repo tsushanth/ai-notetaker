@@ -90,6 +90,9 @@ app.use(cors({
   credentials: true
 }));
 
+// Feature outcomes: one row per user request, including those the caller abandons. Before every route, webhooks too.
+app.use(require('./middleware/featureOutcomes').featureOutcomes().middleware);
+
 // ============================================
 // IMPORTANT: Webhooks need raw body for signature verification
 // These routes MUST be defined BEFORE express.json() middleware
@@ -345,6 +348,7 @@ app.listen(PORT, () => {
   console.log(`Trust proxy enabled: ${app.get('trust proxy')}`);
   require('./services/recordingReconciler').startRecordingReconciler();
   require('./services/meetingSweeper').startMeetingSweeper();
+  require('./services/featureHealth').startFeatureHealth();
   require('./services/llmMonitor').startProbe({ log: (m) => console.warn(`[llm-monitor] ${m}`) });
 });
 
@@ -356,7 +360,7 @@ process.on('SIGTERM', async () => {
     const { llmUsage } = require('./config/openai');
     const monitor = require('./services/llmMonitor').getMonitor();
     await Promise.race([
-      Promise.allSettled([llmUsage.flush(), monitor ? monitor.recorder.flush() : null]),
+      Promise.allSettled([llmUsage.flush(), monitor ? monitor.recorder.flush() : null, require('./services/ttsJobs').reportInterrupted(), require('./middleware/featureOutcomes').featureOutcomes().flush()]),
       new Promise((r) => setTimeout(r, 2500)),
     ]);
   } catch (e) { /* best effort */ }

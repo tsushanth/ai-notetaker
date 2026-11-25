@@ -46,6 +46,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import com.kreativekoala.scribeai.utils.AppStrings
+import com.kreativekoala.scribeai.FailureReporterInterceptor
+import com.kreativekoala.scribeai.utils.DocumentTypes
+import com.kreativekoala.scribeai.utils.ErrorReportingService
+import com.kreativekoala.scribeai.utils.FreeTierErrors
 
 // File size limits
 private const val MAX_FILE_SIZE_MB = 50
@@ -107,7 +111,7 @@ fun PDFUploadScreen(
     }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
             val info = getFileInfoFromUri(context, it)
@@ -184,7 +188,7 @@ fun PDFUploadScreen(
                     fileName = fileName,
                     fileSize = fileSize,
                     errorMessage = errorMessage,
-                    onSelectFile = { filePickerLauncher.launch("*/*") },
+                    onSelectFile = { filePickerLauncher.launch(DocumentTypes.ACCEPTED) },
                     onUpload = {
                         if (selectedFileUri == null) {
                             errorMessage = AppStrings.get(R.string.pdf_error_select_file)
@@ -786,6 +790,7 @@ private suspend fun startUploadFlow(
     onError: (String) -> Unit
 ) {
     val client = OkHttpClient.Builder()
+        .addInterceptor(FailureReporterInterceptor())
         .connectTimeout(120, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(120, TimeUnit.SECONDS)
@@ -868,6 +873,11 @@ private suspend fun startUploadFlow(
             client.newCall(processRequest).execute()
         }
 
+        if (processResponse.code == 429) {
+            // Daily upload limit: say so; it is not a failure.
+            onStateChange(UploadScreenState.Error(FreeTierErrors.dailyLimitMessage(processResponse.body?.string())))
+            return
+        }
         if (!processResponse.isSuccessful) {
             throw Exception(AppStrings.get(R.string.pdf_error_start_processing))
         }
@@ -878,6 +888,7 @@ private suspend fun startUploadFlow(
 
     } catch (e: Exception) {
         Log.e(TAG, "Upload flow error", e)
+        ErrorReportingService.reportException(ErrorReportingService.UserFlow.UPLOAD_PDF, e)
         onStateChange(UploadScreenState.Error(e.message ?: AppStrings.get(R.string.error_upload_generic)))
     }
 }

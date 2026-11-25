@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">ポッドキャスト</string>
+    <string name="error_reset_email_failed">再設定メールを送信できませんでした。しばらくしてからもう一度お試しください。</string>
+    <string name="tts_still_generating">音声はまだ準備中です。1分後にもう一度お試しください。</string>
 </resources>

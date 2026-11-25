@@ -338,4 +338,6 @@
 
     <!-- wave2: machine-translated, needs native review -->
     <string name="tab_podcast">Podcast</string>
+    <string name="error_reset_email_failed">Não foi possível enviar o e-mail de redefinição. Tente novamente mais tarde.</string>
+    <string name="tts_still_generating">O áudio ainda está sendo preparado. Tente novamente em um minuto.</string>
 </resources>

@@ -227,15 +227,15 @@ class PDFService {
           const extractedText = await this.extractPptxText(buffer);
           return extractedText;
         } catch (e) {
-          logger.warn('PPTX text extraction failed, using fallback', { error: e.message });
-          // Fallback: Try to parse as PDF if converted, or return placeholder
-          return '[PowerPoint document - text extraction limited]';
+          // A placeholder note here looked like success and held nothing of the document.
+          logger.warn('PPTX text extraction failed', { error: e.message });
+          throw new AppError('Could not read the text of this presentation. Save it as a PDF and upload that.', 400);
         }
       }
 
       // ODP (OpenDocument Presentation)
       if (mimeType === 'application/vnd.oasis.opendocument.presentation') {
-        return '[OpenDocument presentation - text extraction not yet supported]';
+        throw new AppError('OpenDocument presentations are not supported. Save it as a PDF and upload that.', 400);
       }
 
       // Unknown type - try PDF parse as fallback

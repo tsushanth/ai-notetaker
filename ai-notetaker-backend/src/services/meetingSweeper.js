@@ -10,6 +10,7 @@
  */
 const { logger } = require('../utils/logger');
 const { summarizeBot, MESSAGES } = require('../utils/recallStatus');
+const { heartbeat } = require('../utils/failureReporter');
 
 const MIN = 60 * 1000;
 const HOUR = 60 * MIN;
@@ -99,6 +100,7 @@ async function sweepStaleMeetings({ db, recall, meetings, now = Date.now() } = {
       }
     }
     if (counts.checked) logger.info('Meeting sweep finished', counts);
+    void heartbeat('meeting-sweeper');
   } catch (e) {
     logger.error('Meeting sweep failed', { error: e.message });
   }

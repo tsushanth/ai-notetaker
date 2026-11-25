@@ -6,7 +6,9 @@ const { authenticate } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
-const { reportFailure } = require('../utils/failureReporter');
+const { reportFailure, reportCounted } = require('../utils/failureReporter');
+const playVerify = require('../utils/playVerify');
+const { decide, trustConfig, tokenHash, alreadyHas, PLATFORMS } = require('../utils/subscriptionTrust');
 
 // Stripe errors that are our/Stripe's fault (not a declined card or bad input): these page the owner.
 function reportStripeFailure(flow, error) {
@@ -35,6 +37,14 @@ const STRIPE_PRICES = {
   yearly: process.env.STRIPE_PRICE_YEARLY || 'price_1Sjv8UKFBTQTkmztT2AC3ae9'
 };
 
+const SYNC_STATUSES = ['active', 'grace_period', 'cancelled', 'expired'];
+const GRANTING = ['active', 'grace_period'];
+
+/** Count what happened to a client's claim. Fixed messages, so the reporter groups them; no ids, tokens or amounts. */
+function countTrust(outcome, platform, reason) {
+  reportCounted('subscription_verify', `Subscription ${outcome}`, { platform: String(platform), reason: String(reason) });
+}
+
 // ============================================
 // Subscription Sync Endpoint (from iOS/Android client)
 // ============================================
@@ -52,8 +62,10 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
     trialEndDate,
     autoRenewEnabled,
     priceAmount,
-    priceCurrency
+    priceCurrency,
+    purchaseToken: rawToken
   } = req.body;
+  const purchaseToken = typeof rawToken === 'string' && rawToken && rawToken.length <= 4096 ? rawToken : null;
 
   logger.info('Subscription sync received', { userId, productId, status, platform });
 
@@ -65,6 +77,10 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
     });
   }
 
+  if (!PLATFORMS.includes(platform) || !SYNC_STATUSES.includes(status)) {
+    return res.status(400).json({ success: false, error: 'Unsupported platform or status' });
+  }
+
   try {
     // Check if subscription exists for this user
     const { data: existingSubscription, error: fetchError } = await supabase
@@ -72,6 +88,24 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
       .select('*')
       .eq('user_id', userId)
       .single();
+
+    const existing = existingSubscription && !fetchError ? existingSubscription : null;
+    const grants = GRANTING.includes(status);
+    const verification = platform === 'android' && purchaseToken && grants
+      ? await playVerify.verifySubscription({ purchaseToken, productId })
+      : null;
+    const trust = decide({ platform, status, productId, existing, verification, config: trustConfig() });
+    if (trust.action === 'refuse') {
+      logger.warn('Subscription sync refused', { userId, productId, platform, reason: trust.reason });
+      countTrust('activation refused', platform, trust.reason);
+      return res.status(403).json({
+        success: false,
+        code: 'PURCHASE_NOT_VERIFIED',
+        error: 'This purchase could not be verified with the store.'
+      });
+    }
+    const isNewActivation = grants && !alreadyHas(existing, { productId, platform });
+    if (grants && !trust.verified && isNewActivation) countTrust('activated without store verification', platform, trust.reason);
 
     const subscriptionData = {
       user_id: userId,
@@ -86,8 +120,22 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
       auto_renew_enabled: autoRenewEnabled !== false,
       price_amount: priceAmount || null,
       price_currency: priceCurrency || 'USD',
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
+      ...trust.patch
     };
+    if (trust.verified) {
+      subscriptionData.metadata = {
+        ...existing?.metadata,
+        verified: true,
+        verified_at: new Date().toISOString(),
+        purchase_token_sha256: tokenHash(purchaseToken),
+        play_state: verification.state,
+        play_expires_at: verification.expiresAt
+      };
+    } else if (existing?.metadata?.verified && !expirationDate) {
+      // An unverified refresh must not erase an end date the store gave us.
+      subscriptionData.current_period_end = existing.current_period_end ?? null;
+    }
 
     let subscription;
     if (existingSubscription && !fetchError) {
@@ -116,16 +164,30 @@ router.post('/sync', authenticate, asyncHandler(async (req, res) => {
       logger.info('Subscription created', { userId, subscriptionId: subscription.id });
     }
 
-    // Log subscription event
-    await logSubscriptionEvent(userId, subscription.id, {
-      eventType: isTrial ? 'trial_started' : 'subscription_started',
+    // One purchase, one account: a store-verified token moving to this account ends it on any other.
+    if (trust.verified && verification.result === 'entitled') {
+      const { error: moveError } = await supabase
+        .from('subscriptions')
+        .update({ status: 'expired', updated_at: new Date().toISOString() })
+        .eq('metadata->>purchase_token_sha256', tokenHash(purchaseToken))
+        .neq('user_id', userId);
+      if (moveError) logger.warn('Could not release a moved purchase', { error: moveError.message });
+    }
+
+    // Log subscription event: only when something changed (the apps sync on every start)
+    const eventType = isNewActivation && subscription.status === 'active'
+      ? (isTrial ? 'trial_started' : 'subscription_started')
+      : (status === 'cancelled' && existing?.status === 'active' ? 'subscription_cancelled' : null);
+    if (eventType) await logSubscriptionEvent(userId, subscription.id, {
+      eventType,
       platform,
       productId,
       transactionId,
       originalTransactionId: originalTransactionId || transactionId,
       priceAmount,
       priceCurrency,
-      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox'
+      environment: process.env.NODE_ENV === 'production' ? 'production' : 'sandbox',
+      metadata: { verified: trust.verified }
     });
 
     res.json({
@@ -384,7 +446,7 @@ router.post('/event', authenticate, asyncHandler(async (req, res) => {
   // Get subscription ID if exists
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('id')
+    .select('id, status, platform, product_id, current_period_end')
     .eq('user_id', userId)
     .single();
 
@@ -423,6 +485,13 @@ router.post('/event', authenticate, asyncHandler(async (req, res) => {
       case 'trial_converted':
         statusUpdate = { status: 'active', is_trial: false };
         break;
+    }
+
+    // A client event may end access; giving it back on the client's word follows the same rule as /sync.
+    if (statusUpdate?.status === 'active' && subscription.status !== 'active') {
+      const trust = decide({ platform: subscription.platform, status: 'active', productId: subscription.product_id, existing: subscription, verification: null, config: trustConfig() });
+      countTrust(trust.action === 'refuse' ? 'activation refused' : 'activated without store verification', subscription.platform, 'client_event');
+      if (trust.action === 'refuse') statusUpdate = null;
     }
 
     if (statusUpdate) {
@@ -511,6 +580,15 @@ router.post('/reconcile', authenticate, asyncHandler(async (req, res) => {
         environment: 'production',
         metadata: { source: 'client_reconciliation' }
       });
+    }
+
+    // The client's word again (iOS only; see utils/subscriptionTrust.js).
+    if (isActive && !alreadyHas(existingSubscription, { productId, platform: 'ios' })) {
+      const trust = decide({ platform: 'ios', status: 'active', productId, existing: existingSubscription, verification: null, config: trustConfig() });
+      countTrust(trust.action === 'refuse' ? 'activation refused' : 'activated without store verification', 'ios', 'client_reconcile');
+      if (trust.action === 'refuse') {
+        return res.status(403).json({ success: false, code: 'PURCHASE_NOT_VERIFIED', error: 'This purchase could not be verified with the store.' });
+      }
     }
 
     // Update subscription record

@@ -326,7 +326,9 @@ data class SubscriptionSyncRequest(
     val trialEndDate: String? = null,
     val autoRenewEnabled: Boolean = true,
     val priceAmount: String? = null,
-    val priceCurrency: String? = null
+    val priceCurrency: String? = null,
+    /** Google Play purchase token: lets the server check the purchase with Google. */
+    val purchaseToken: String? = null
 )
 
 // Trial check with device ID (for abuse prevention)

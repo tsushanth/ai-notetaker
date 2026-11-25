@@ -121,12 +121,33 @@ function attach(client, { supabaseAdmin, log = () => {}, model = 'claude-haiku-4
   return singleton;
 }
 
+/**
+ * What to do with each probe result: beat (the probe job is alive, whatever the answer) and report when the provider has
+ * failed `threshold` probes in a row (an hour's cooldown per process).
+ */
+function createProbeAlerts({ report, beat, threshold = 2, cooldownMs = 3600_000, now = Date.now }) {
+  let failures = 0;
+  let reportedAt = null;
+  return (row) => {
+    if (!row) return;
+    beat('llm-probe');
+    if (row.ok) { failures = 0; return; }
+    failures += 1;
+    if (failures >= threshold && (reportedAt === null || now() - reportedAt >= cooldownMs)) {
+      reportedAt = now();
+      report('llm_probe', new Error('AI provider probe failing'), { status: String(row.status ?? 'none'), error_type: String(row.error_type || 'unknown'), consecutive: String(failures) });
+    }
+  };
+}
+
 /** Periodic live probe (default every 10 minutes; LLM_PROBE_INTERVAL_MIN=0 turns it off). */
 function startProbe({ minutes = Number(process.env.LLM_PROBE_INTERVAL_MIN ?? 10), log = () => {} } = {}) {
   if (!singleton || !(minutes > 0) || singleton.probeTimer) return;
-  const run = () => singleton.probe().catch((e) => log(`llm probe failed to run: ${trim(e?.message)}`));
+  const { reportFailure, heartbeat } = require('../utils/failureReporter');
+  const onResult = createProbeAlerts({ report: (...a) => { void reportFailure(...a); }, beat: (job) => { void heartbeat(job); } });
+  const run = () => singleton.probe().then(onResult).catch((e) => log(`llm probe failed to run: ${trim(e?.message)}`));
   const first = setTimeout(run, 60_000); first.unref?.();
   singleton.probeTimer = setInterval(run, minutes * 60_000); singleton.probeTimer.unref?.();
 }
 
-module.exports = { attach, startProbe, createRecorder, instrument, probeOnce, okRow, failRow, getMonitor: () => singleton };
+module.exports = { attach, startProbe, createProbeAlerts, createRecorder, instrument, probeOnce, okRow, failRow, getMonitor: () => singleton };

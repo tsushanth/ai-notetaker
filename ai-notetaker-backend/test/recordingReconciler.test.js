@@ -4,8 +4,9 @@ const assert = require('node:assert/strict');
 process.env.NODE_ENV = 'test';
 function stub(rel, exports) { const abs = require.resolve(rel); require.cache[abs] = { id: abs, filename: abs, loaded: true, exports }; }
 const reports = [];
+const beats = [];
 stub('../src/utils/logger', { logger: { info() {}, warn() {}, error() {}, debug() {} } });
-stub('../src/utils/failureReporter', { reportFailure: (flow, err, ctx) => reports.push({ flow, message: err.message, ctx }) });
+stub('../src/utils/failureReporter', { reportFailure: (flow, err, ctx) => reports.push({ flow, message: err.message, ctx }), heartbeat: (job) => beats.push(job) });
 const rec = require('../src/services/recordingReconciler');
 
 const NOW = Date.UTC(2026, 9, 30, 12, 0, 0);
@@ -60,6 +61,14 @@ test('evaluate: NO_SPEECH failures (new and legacy text) are the audio, not the 
   // but they do not hide a real outage next to them
   const mixed = rec.evaluate([noSpeech(1 * H), row('failed', 2 * H), row('failed', 3 * H), row('failed', 4 * H)], 0, NOW);
   assert.equal(mixed.deadman, true);
+});
+
+test('evaluate: empty transcripts for audio that has sound count against the pipeline', () => {
+  const audible = (h) => noSpeech(h * H, { error_message: 'NO_SPEECH: audio 22s, detected language en (confidence 0), file 267 KB, level audible (peak -18 dB, mean -43.6 dB)' });
+  const silent = noSpeech(1 * H, { error_message: 'NO_SPEECH: audio 8s, detected language en (confidence 0), file 99 KB, level silent (all samples zero) (peak -91 dB, mean -91 dB)' });
+  const ev = rec.evaluate([audible(2), audible(3), audible(4), silent], 0, NOW);
+  assert.equal(ev.uploadsInDeadmanWindow, 3);
+  assert.equal(ev.zeroCompleted24h, true);
 });
 
 test('evaluate: rows still in flight do not count as attempts', () => {
@@ -152,6 +161,14 @@ test('reconcile: a failing query reports RECONCILER_QUERY_FAILED instead of goin
   assert.equal(reports.length, 1);
   assert.equal(reports[0].ctx.code, 'RECONCILER_QUERY_FAILED');
   assert.ok(!JSON.stringify(reports).includes('connection refused'));
+});
+
+test('reconcile: a pass that worked beats; a pass that could not read does not', async () => {
+  rec._resetForTests(); beats.length = 0;
+  await rec.reconcileRecordings({ db: fakeDb({ rows: [], completed: 0 }), now: NOW });
+  assert.deepEqual(beats, ['recording-reconciler']);
+  await rec.reconcileRecordings({ db: fakeDb({ queryError: 'down' }), now: NOW });
+  assert.equal(beats.length, 1);
 });
 
 test('reconcile: healthy data sends nothing', async () => {

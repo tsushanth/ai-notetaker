@@ -5,7 +5,15 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v29 | `registry.fly.io/scribe-ai-web:deployment-01M8A8X995H1PXV5HBG5CE0HMV` | `origin/main` at `2d02b97` (#90; `web-app/` tree `b3184d97a4226a3b8620c0f7462b4c4985d6d74c` identical to main) | 2026-11-25 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v54 | `registry.fly.io/ai-notetaker-backend:deployment-01M8A8VMQXPBBM9TTHSKAYMKZ4` | `origin/main` at `2d02b97` (#90; `ai-notetaker-backend/` tree `f76c98569e1ab2fcba3910e5975c47787aca93c8` identical to main) | 2026-11-25 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v55 | `registry.fly.io/ai-notetaker-backend:deployment-01M8AAHX4H255JK7K6JE972NDH` | `origin/main` at `cdc8adb` (#92; `ai-notetaker-backend/` tree `64e9d906505873ef935d86c3154ea4ff59ecaea5` identical to main) | 2026-11-25 (UTC) |
+
+## 2026-11-25 Backend v55: rate limit ignores the x-bypass-rate-limit header (#92)
+- `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `cdc8adb`. The only backend difference from v54 is #92 (checked file by file before the deploy: the running v54 files matched `68b7230`, with `src/app.js` the only file changed since). `SUBSCRIPTION_VERIFY_MODE=log` unchanged. Quiet moment: no recording, meeting or AI request in the logs read before the deploy (from 20:50 UTC), only keep-alive pings and unauthenticated checks.
+- Change: the header older app builds send no longer lifts the API rate limit. Those builds keep working and are counted per user like every other client (production advertises 10,000 requests per 15 minutes; the tightest polling loops in the clients are 2 seconds, about 450 per 15 minutes). No app release needed.
+- Tests before merge (Node 22): 550 tests, 547 pass, 0 fail, 3 cancelled in `outreachEvents.test.js` (cancelled the same way on Node 20; that file does not touch the changed code).
+- Verified live: `/health` healthy, `/health/ready` 200; a request carrying the header value from the shipped app now gets rate-limit headers and is counted; unauthenticated `/api/ai/summarize` 401; the running backend's source files match `origin/main` (120 files).
+- `RATE_LIMIT_BYPASS_TOKEN` is now read by nothing and can be removed from Fly (left in place).
+- Rollback: `flyctl releases rollback 54 -a ai-notetaker-backend` (restores the bypass).
 
 ## 2026-11-25 Backend v54, web v29: failing features, feature outcomes, server access checks (#90)
 - Both with `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `2d02b97`, backend first. Quiet moment: no meeting or recording in progress, no live AI call in the previous 15 minutes.

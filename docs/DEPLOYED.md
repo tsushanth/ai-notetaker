@@ -7,6 +7,16 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v29 | `registry.fly.io/scribe-ai-web:deployment-01M8A8X995H1PXV5HBG5CE0HMV` | `origin/main` at `2d02b97` (#90; `web-app/` tree `b3184d97a4226a3b8620c0f7462b4c4985d6d74c` identical to main) | 2026-11-25 (UTC) |
 | Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v56 | `registry.fly.io/ai-notetaker-backend:deployment-01M8AEF10E4AV76G9Z1B49J147` | `origin/main` at `21347ff` (#94; `ai-notetaker-backend/` tree `47f354b882554da6ed73bae861aa8d331295d86f` identical to main) | 2026-11-25 (UTC) |
 
+## 2026-11-25 Android 58.32 (versionCode 93), Play production, staged 20%
+- Tag `play/58.32-93` = `main` at `f65f650` (#96, version bump on top of `fbf81dd`). The AAB was built from exactly this commit in a clean detached worktree.
+- Play read back after commit: production 58.32 (93) `inProgress` userFraction 0.2, 58.31 (92) `completed`; beta, alpha and internal moved to 93 `completed` (the internal draft "58.29 (declaration)" vc90 is left in place). Uploaded with the Play edit API.
+- Package `com.kreativekoala.scribeai`, targetSdk 36 / minSdk 26, Play Billing 8.0.0, AAB sha256 `da02557baa6b20cd5284dc1f8750d858c6f454b833cf91fd720f2f05322ad7a8`, `jarsigner -verify` ok. Release note (en-US): "Fixes for Read Aloud and long transcriptions. The file picker now shows only the document types ScribeAI can read."
+- Contents: the Android changes of #90: longer waits for AI, Read Aloud and transcription requests (no automatic repeat of Read Aloud), "still preparing" and daily-limit messages, document picker limited to supported types, password reset reports a failed send and handles the app link, subscription sync sends the Play purchase token, more failure reports.
+- Checks: `testDebugUnitTest` 64 tests, 0 failures; `lintDebug` 1 error, `StateFlowValueCalledInComposition` in `ThemeManager.kt` (file unchanged since 58.31), 749 warnings. No permission added compared with the Play-generated APK of vc92.
+- NOT verified: any device run, the Play-signed build, delivery of a reset email (still needs a mail server, see the v54 entry), a Play purchase check.
+- `SUBSCRIPTION_VERIFY_MODE=log` is unchanged on the backend; the purchase token is now sent by this release.
+- Rollback: halt the production rollout in the Play Console; 58.31 (92) stays for everyone else. Promotion to 100% needs a 24-48 h crash and ANR review first. Not promoted beyond 20%.
+
 ## 2026-11-25 Backend v56: the API rate limit counts only verified users and real client addresses (#94)
 - `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `21347ff`; the only backend difference from v55 is #94. `SUBSCRIPTION_VERIFY_MODE=log` unchanged. No recording, meeting or AI request in the logs read before the deploy (22:50 UTC).
 - Was: the limiter keyed on the user id of a token without checking its signature, and took the first `X-Forwarded-For` value for anonymous requests and for the allowlist, so a made-up token or header started a new allowance, spent another user's, or matched the allowlist (which also matched by substring).

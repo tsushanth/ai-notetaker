@@ -12,6 +12,8 @@ const { validateEnvOrExit } = require('./config/envValidation');
 validateEnvOrExit();
 
 const { errorHandler } = require('./middleware/errorHandler');
+const { rateLimitKey, isAllowlisted, parseAllowlist } = require('./middleware/apiRateLimit');
+const { clientAddress } = require('./middleware/loginRateLimit');
 const { requestLogger } = require('./utils/logger');
 
 // Import routes
@@ -202,7 +204,7 @@ app.use((req, res, next) => { res.on('finish', () => reportUnreportedServerError
 
 // Rate limiting allowlist (for testing)
 // Add IPs to RATE_LIMIT_ALLOWLIST env var as comma-separated values
-const rateLimitAllowlist = (process.env.RATE_LIMIT_ALLOWLIST || '').split(',').filter(ip => ip.trim());
+const rateLimitAllowlist = parseAllowlist(process.env.RATE_LIMIT_ALLOWLIST);
 const rateLimitDisabled = process.env.RATE_LIMIT_DISABLED === 'true';
 
 // Rate limiting with proper proxy support
@@ -212,62 +214,32 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  // Prefer a per-user key when the request carries an auth token. Falls
-  // back to IP only when truly anonymous. This stops users behind a shared
-  // NAT (or behind one user's testing burst) from being denied service.
-  keyGenerator: (req) => {
-    // Token can ride on the Authorization header (API clients) or on
-    // ?token= (server-rendered pages loaded in a WebView).
-    let token = null;
-    const auth = req.headers.authorization;
-    if (auth && auth.startsWith('Bearer ')) {
-      token = auth.substring(7);
-    } else if (req.query && req.query.token) {
-      token = req.query.token;
-    }
-    if (token) {
-      try {
-        // Just decode the JWT body — we don't need to verify the signature
-        // for the purpose of bucketing requests. If the payload is forged
-        // the user still hits their own bucket; downstream auth handles auth.
-        const parts = token.split('.');
-        if (parts.length >= 2) {
-          const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-          if (payload && payload.sub) return `user:${payload.sub}`;
-        }
-      } catch (_) { /* fall through to IP */ }
-    }
-    const forwarded = req.headers['x-forwarded-for'];
-    if (forwarded) {
-      return `ip:${forwarded.split(',')[0].trim()}`;
-    }
-    return `ip:${req.ip || req.connection.remoteAddress || 'unknown'}`;
-  },
+  // Per verified user, so people behind a shared NAT do not use up each other's allowance; per client address
+  // otherwise. See middleware/apiRateLimit.js.
+  keyGenerator: rateLimitKey,
   // Skip rate limiting for allowlisted IPs, disabled, or polling endpoints
   skip: (req) => {
     if (rateLimitDisabled) {
       return true;
     }
     // Skip rate limiting for podcast status polling (called every 2s during generation)
-    if (req.path.includes('/ai/podcast/status/')) {
+    if (req.path.startsWith('/ai/podcast/status/')) {
       return true;
     }
     // Older app builds still send x-bypass-rate-limit; it is ignored, because a value shipped inside an app can be
     // read out of it.
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
-    const isAllowlisted = rateLimitAllowlist.some(ip => clientIp.includes(ip.trim()));
-    if (isAllowlisted) {
-      console.log(`Rate limit bypassed for allowlisted IP: ${clientIp}`);
+    const allowlisted = isAllowlisted(req, rateLimitAllowlist);
+    if (allowlisted) {
+      console.log(`Rate limit bypassed for allowlisted IP: ${clientAddress(req)}`);
     }
-    return isAllowlisted;
+    return allowlisted;
   },
   // Skip failed requests to prevent attackers from bypassing rate limit
   skipFailedRequests: false,
   skipSuccessfulRequests: false,
   // Custom handler for rate limit exceeded
   handler: (req, res) => {
-    const clientIp = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.ip;
-    console.log(`Rate limit exceeded for IP: ${clientIp}`);
+    console.log(`Rate limit exceeded for IP: ${clientAddress(req)}`);
     res.status(429).json({
       success: false,
       error: 'Too many requests from this IP, please try again later.'

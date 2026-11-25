@@ -4,9 +4,8 @@
  * budget), in two independent buckets:
  *   - per account (the e-mail being tried), so one account cannot be ground down from many addresses
  *   - per client address, so one address cannot try many accounts
- * The general API limiter is too loose for this (1000 requests per 15 minutes) and keys on X-Forwarded-For, which a
- * client can set itself; here the address comes from Fly-Client-IP, which Fly's proxy overwrites. Counters are in memory,
- * per machine, so with N machines the real ceiling is N times the number below.
+ * The general API limiter is far too loose for this. The address comes from Fly-Client-IP, which Fly's proxy overwrites.
+ * Counters are in memory, per machine, so with N machines the real ceiling is N times the number below.
  */
 const rateLimit = require('express-rate-limit');
 

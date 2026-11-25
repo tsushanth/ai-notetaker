@@ -7,6 +7,12 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v28 | `registry.fly.io/scribe-ai-web:deployment-01M89RR39Z01JFANFZRJ2MHM02` | `origin/main` at `2d587de` (#86; `web-app/` tree `1e9eb8bd62d06e7304ddac27646c47bf0aeed1ce` identical to main) | 2026-11-25 (UTC) |
 | Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v53 | `registry.fly.io/ai-notetaker-backend:deployment-01M89SPYXK0DJ12H1GPGXGE5VC` | `origin/main` at `98d42d1` (#19; `ai-notetaker-backend/` tree `7c23c535ad2b95d7f86c98c5caf10d21d52edf58` identical to main) | 2026-11-25 (UTC) |
 
+## 2026-11-25 Database: row-level security and storage policy hardening (Supabase `shufmkocfnjnlwshqrue`)
+- Applied to production before this was committed, as migration `rls_close_open_policies_2026_11_25`: `ai-notetaker-backend/scripts/rls-close-open-policies-2026-11-25.sql`. No deploy, no data change, no secret change.
+- Server-only tables no longer grant anything to the `anon` or `authenticated` roles; client write grants removed from `recordings`, `shared_notes`, `phone_calls`; client access removed from `verified_phones`; an over-broad insert policy on `notes` and the open storage policies dropped. The apps and website use only `/auth/v1` and signed upload URLs.
+- Verified: role checks in transactions that were rolled back (client roles refused; own-note insert, owner reads and service-role writes still pass), `/health` all checks healthy, public file download URLs answer 200. NOT verified: a signed upload from a real device after the change.
+- Reverse: `ai-notetaker-backend/scripts/rls-close-open-policies-2026-11-25-ROLLBACK.sql` (restore only the single object that is needed).
+
 ## 2026-11-25 Backend v53: Recall webhook requires a valid signature (#19)
 - `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `98d42d1`; only the webhook route and its test changed since v52.
 - Change: requests that fail the Svix signature check get 401 (503 if no secret is configured). The old accept-unsigned fallback is gone.

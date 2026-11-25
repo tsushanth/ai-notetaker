@@ -5,7 +5,15 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v28 | `registry.fly.io/scribe-ai-web:deployment-01M89RR39Z01JFANFZRJ2MHM02` | `origin/main` at `2d587de` (#86; `web-app/` tree `1e9eb8bd62d06e7304ddac27646c47bf0aeed1ce` identical to main) | 2026-11-25 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v52 | `registry.fly.io/ai-notetaker-backend:deployment-01M89RQ7KREQ9ZDZ9PXHK238XP` | `origin/main` at `2d587de` (#86; `ai-notetaker-backend/` tree `fca2dbaeca7463083def10504650ed7de30b7db5` identical to main) | 2026-11-25 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v53 | `registry.fly.io/ai-notetaker-backend:deployment-01M89SPYXK0DJ12H1GPGXGE5VC` | `origin/main` at `98d42d1` (#19; `ai-notetaker-backend/` tree `7c23c535ad2b95d7f86c98c5caf10d21d52edf58` identical to main) | 2026-11-25 (UTC) |
+
+## 2026-11-25 Backend v53: Recall webhook requires a valid signature (#19)
+- `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `98d42d1`; only the webhook route and its test changed since v52.
+- Change: requests that fail the Svix signature check get 401 (503 if no secret is configured). The old accept-unsigned fallback is gone.
+- Before merge: a dashboard test delivery and a replayed real bot event logged `outcome: ok`; 474 tests pass. Quiet moment: no active meeting, no recording updated in 20 minutes.
+- Verified after deploy: `/health/ready` 200; unsigned and forged-signature requests 401; a test delivery and a replayed real event were accepted.
+- The Recall dashboard endpoint for this route was created the same day; the earlier one pointed at a retired server and was disabled.
+- Rollback: `flyctl releases rollback 52 -a ai-notetaker-backend`.
 
 ## 2026-11-25 Meeting bot failures (#86): backend v52, web v28
 - Both with `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `2d587de`, backend first.

@@ -10,8 +10,8 @@ import {
   MeetingPlatform,
   getMeetingStatusInfo,
   getPlatformInfo,
-  validateMeetingUrl,
 } from '@/types';
+import { validateMeetingUrl, meetingFailureText, MeetingUrlCheck } from '@/lib/meetings';
 
 export default function MeetingsPage() {
   const router = useRouter();
@@ -254,21 +254,22 @@ function MeetingCard({
 }) {
   const statusInfo = getMeetingStatusInfo(meeting.status);
   const platformInfo = getPlatformInfo(meeting.platform);
+  const failureText = meetingFailureText(meeting);
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-4 min-w-0">
           {/* Platform icon */}
           <div
-            className="text-2xl w-12 h-12 flex items-center justify-center rounded-lg"
+            className="text-2xl w-12 h-12 shrink-0 flex items-center justify-center rounded-lg"
             style={{ backgroundColor: `${platformInfo.color}20` }}
           >
             {getPlatformEmoji(meeting.platform)}
           </div>
 
           {/* Content */}
-          <div>
+          <div className="min-w-0 break-words">
             <h3 className="font-medium text-gray-900 dark:text-white">
               {meeting.title || 'Untitled Meeting'}
             </h3>
@@ -284,6 +285,9 @@ function MeetingCard({
                 {statusInfo.displayText}
               </span>
             </div>
+            {failureText && (
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{failureText}</p>
+            )}
             {meeting.duration_seconds && (
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 Duration: {formatDuration(meeting.duration_seconds)}
@@ -293,7 +297,7 @@ function MeetingCard({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           {statusInfo.isCancellable && (
             <button
               onClick={onCancel}
@@ -340,7 +344,7 @@ function CreateMeetingModal({
   setMeetingUrl: (url: string) => void;
   title: string;
   setTitle: (title: string) => void;
-  urlValidation: { valid: boolean; platform: string | null };
+  urlValidation: MeetingUrlCheck;
   isCreating: boolean;
   createError: string | null;
   onClose: () => void;
@@ -380,8 +384,11 @@ function CreateMeetingModal({
               <p className={`text-sm mt-1 ${urlValidation.valid ? 'text-green-500' : 'text-red-500'}`}>
                 {urlValidation.valid
                   ? `${getPlatformInfo(urlValidation.platform as MeetingPlatform).displayName} detected`
-                  : 'Invalid meeting URL'}
+                  : urlValidation.error || 'Invalid meeting URL'}
               </p>
+            )}
+            {meetingUrl && urlValidation.warning && (
+              <p className="text-sm mt-1 text-amber-600 dark:text-amber-400">{urlValidation.warning}</p>
             )}
           </div>
 

@@ -10,8 +10,28 @@ const recallService = require('./recallService');
 const noteService = require('./noteService');
 const storageService = require('./storageService');
 const axios = require('axios');
+const {
+  BOT_STATUS, TERMINAL_BOT_STATUSES, MESSAGES,
+  extractStatus, isOutOfOrder, summarizeBot, describeFailure,
+} = require('../utils/recallStatus');
+
+// A status event never overwrites these meeting statuses; PostgREST filter list, applied in the same UPDATE.
+const SETTLED_MEETING_STATUSES = '("transcribing","completed","failed","cancelled")';
+const ACTIVE_BOT_STATUSES = ['joining', 'in_call', 'recording'];
+
+/** Should this bot be re-read from Recall? Also covers a finished bot whose meeting still waits for processing. */
+function needsReconcile(meeting, botRun) {
+  if (!botRun.recall_bot_id) return false;
+  return ACTIVE_BOT_STATUSES.includes(botRun.status) || (meeting.status === 'processing' && botRun.status === 'done');
+}
 
 class MeetingService {
+  constructor() {
+    // Wait before processing so Recall has finished writing its files, and between transcript retries.
+    this.processingDelayMs = 5000;
+    this.transcriptRetryMs = 5000;
+  }
+
   /**
    * Create a new meeting and deploy bot
    * @param {string} userId - User ID
@@ -21,6 +41,10 @@ class MeetingService {
    */
   async createMeeting(userId, meetingUrl, options = {}) {
     const { title, scheduledStart } = options;
+
+    if (recallService.isZoomGovUrl(meetingUrl)) {
+      throw new AppError('Zoom for Government (zoomgov.com) meetings are not supported.', 400);
+    }
 
     // Validate URL
     if (!recallService.validateMeetingUrl(meetingUrl)) {
@@ -76,11 +100,12 @@ class MeetingService {
         logger.error('Failed to create bot run record', { error: botError.message });
       }
 
-      // Update meeting status
+      // Update meeting status, unless a status event for this bot already moved it on
       await supabaseAdmin
         .from('meetings')
         .update({ status: 'bot_joining' })
-        .eq('id', meeting.id);
+        .eq('id', meeting.id)
+        .eq('status', 'pending');
 
       logger.info('Bot deployed successfully', {
         meetingId: meeting.id,
@@ -137,9 +162,7 @@ class MeetingService {
     }
 
     // If bot is active, optionally get latest status from Recall
-    const activeBotRun = meeting.bot_runs?.find((br) =>
-      ['joining', 'in_call', 'recording'].includes(br.status)
-    );
+    const activeBotRun = meeting.bot_runs?.find((br) => needsReconcile(meeting, br));
 
     if (activeBotRun?.recall_bot_id) {
       try {
@@ -189,17 +212,14 @@ class MeetingService {
    */
   async reconcileFromRecall(botId, recallStatus) {
     try {
-      const changes = recallStatus?.status_changes || [];
-      if (!changes.length) return;
-      const latest = changes[changes.length - 1];
-      const code = latest.code;
-      if (!code) return;
+      const { change } = summarizeBot(recallStatus);
+      if (!change) return;
 
       await this.handleBotStatusWebhook({
-        event: `bot.${code}`,
+        event: `bot.${change.code}`,
         data: {
           bot: { id: botId },
-          data: { code, created_at: latest.created_at, sub_code: latest.sub_code },
+          data: { code: change.code, created_at: change.created_at, sub_code: change.sub_code },
         },
       });
     } catch (e) {
@@ -242,9 +262,7 @@ class MeetingService {
     const meetings = data || [];
     const reconcileTargets = [];
     for (const m of meetings) {
-      const active = m.bot_runs?.find((br) =>
-        ['joining', 'in_call', 'recording'].includes(br.status) && br.recall_bot_id
-      );
+      const active = m.bot_runs?.find((br) => needsReconcile(m, br));
       if (active) reconcileTargets.push(active.recall_bot_id);
     }
     if (reconcileTargets.length) {
@@ -330,21 +348,13 @@ class MeetingService {
    * @param {Object} payload - Webhook payload from Recall.ai
    */
   async handleBotStatusWebhook(payload) {
-    // Recall.ai webhook structure (observed from real webhooks):
-    // {
-    //   event: "bot.done" | "bot.call_ended" | "recording.done",
-    //   data: {
-    //     bot: { id: "...", metadata: {} },
-    //     data: { code: "...", sub_code: "...", updated_at: "..." },
-    //     recording?: { id: "...", metadata: {} }
-    //   }
-    // }
-    const bot_id = payload.data?.bot?.id || payload.data?.bot_id || payload.bot_id;
-    const status = payload.data?.data?.code || payload.data?.status?.code || payload.status || payload.event?.replace('bot.', '');
+    // Payload shapes are described in utils/recallStatus.js
+    const { botId: bot_id, code: status, subCode, at } = extractStatus(payload);
 
     logger.info('Processing Recall webhook', {
       botId: bot_id,
       status,
+      subCode,
       event: payload.event,
       dataKeys: payload.data ? Object.keys(payload.data) : [],
     });
@@ -371,59 +381,22 @@ class MeetingService {
       return;
     }
 
-    // Map Recall status to our status
-    const statusMap = {
-      joining_call: 'joining',
-      in_waiting_room: 'joining',
-      in_call_not_recording: 'in_call',
-      in_call_recording: 'recording',
-      call_ended: 'done',
-      done: 'done',
-      fatal: 'failed',
-      analysis_done: 'done',
-    };
+    // Only bot status events (and recording.done) move statuses; other artifact events say nothing about the bot.
+    const aboutBot = !payload.event || payload.event.startsWith('bot.') || payload.event === 'recording.done';
+    const mappedBotStatus = aboutBot ? BOT_STATUS[status] : undefined;
 
-    const mappedBotStatus = statusMap[status] || botRun.status;
-
-    // Update bot run
-    const botRunUpdate = {
-      status: mappedBotStatus,
-      recall_status: payload,
-    };
-
-    if (status === 'in_call_recording' && !botRun.join_time) {
-      botRunUpdate.join_time = new Date().toISOString();
+    if (mappedBotStatus) {
+      const storedAt = extractStatus(botRun.recall_status || {}).at;
+      if (isOutOfOrder({ status: botRun.status, at: storedAt }, mappedBotStatus, at)) {
+        logger.info('Ignoring out-of-order bot status', {
+          botRunId: botRun.id,
+          current: botRun.status,
+          incoming: mappedBotStatus,
+        });
+      } else {
+        await this.applyBotStatus(botRun, { payload, status: mappedBotStatus, code: status, subCode, at });
+      }
     }
-
-    if (status === 'call_ended' || status === 'done') {
-      botRunUpdate.leave_time = new Date().toISOString();
-    }
-
-    await supabaseAdmin.from('bot_runs').update(botRunUpdate).eq('id', botRun.id);
-
-    // Update meeting status
-    const meetingStatusMap = {
-      joining: 'bot_joining',
-      in_call: 'in_progress',
-      recording: 'recording',
-      done: 'processing',
-      failed: 'failed',
-    };
-
-    const mappedMeetingStatus = meetingStatusMap[mappedBotStatus];
-    if (mappedMeetingStatus) {
-      await supabaseAdmin
-        .from('meetings')
-        .update({ status: mappedMeetingStatus })
-        .eq('id', botRun.meeting_id);
-    }
-
-    logger.info('Bot status updated', {
-      botRunId: botRun.id,
-      meetingId: botRun.meeting_id,
-      oldStatus: botRun.status,
-      newStatus: mappedBotStatus,
-    });
 
     // Process recording when meeting analysis is complete
     // recording.done or analysis_done events indicate transcript is ready
@@ -436,8 +409,81 @@ class MeetingService {
             error: err.message,
           });
         });
-      }, 5000); // Wait 5 seconds before processing
+      }, this.processingDelayMs);
     }
+  }
+
+  /**
+   * Write one bot status change to the bot run and its meeting. The filters are part of each UPDATE so that two events
+   * handled at the same time cannot move a finished bot or a settled meeting backwards.
+   */
+  async applyBotStatus(botRun, { payload, status, code, subCode, at }) {
+    const when = Number.isFinite(Date.parse(at)) ? new Date(at).toISOString() : new Date().toISOString();
+    const botRunUpdate = { status, recall_status: payload };
+
+    if (code === 'in_call_recording' && !botRun.join_time) {
+      botRunUpdate.join_time = when;
+    }
+
+    if ((code === 'call_ended' || code === 'done') && !botRun.leave_time) {
+      botRunUpdate.leave_time = when;
+    }
+
+    let reason = null;
+    if (status === 'failed') {
+      reason = describeFailure(subCode);
+      botRunUpdate.error_code = subCode;
+      botRunUpdate.error_message = reason;
+    }
+
+    let botQuery = supabaseAdmin.from('bot_runs').update(botRunUpdate).eq('id', botRun.id);
+    if (status === 'done') botQuery = botQuery.neq('status', 'failed');
+    if (!TERMINAL_BOT_STATUSES.includes(status)) botQuery = botQuery.not('status', 'in', '("done","failed")');
+    const { error: botError } = await botQuery;
+    if (botError) logger.error('Failed to update bot run status', { botRunId: botRun.id, error: botError.message });
+
+    // Update meeting status
+    const meetingStatusMap = {
+      joining: 'bot_joining',
+      in_call: 'in_progress',
+      recording: 'recording',
+      done: 'processing',
+      failed: 'failed',
+    };
+
+    const mappedMeetingStatus = meetingStatusMap[status];
+    if (mappedMeetingStatus) {
+      let meetingQuery = supabaseAdmin
+        .from('meetings')
+        .update({ status: mappedMeetingStatus, ...(reason && { error_message: reason }) })
+        .eq('id', botRun.meeting_id)
+        .not('status', 'in', SETTLED_MEETING_STATUSES);
+      if (!TERMINAL_BOT_STATUSES.includes(status)) meetingQuery = meetingQuery.neq('status', 'processing');
+      const { error: meetingError } = await meetingQuery;
+      if (meetingError) logger.error('Failed to update meeting status', { meetingId: botRun.meeting_id, error: meetingError.message });
+    }
+
+    logger.info('Bot status updated', {
+      botRunId: botRun.id,
+      meetingId: botRun.meeting_id,
+      oldStatus: botRun.status,
+      newStatus: status,
+      subCode,
+    });
+  }
+
+  /** End a meeting that this process has claimed ('transcribing') as failed, with a reason the user can read. */
+  async failClaimedMeeting(meetingId, botRunId, message, subCode = null) {
+    await supabaseAdmin
+      .from('bot_runs')
+      .update({ status: 'failed', error_code: subCode, error_message: message })
+      .eq('id', botRunId);
+    await supabaseAdmin
+      .from('meetings')
+      .update({ status: 'failed', error_message: message })
+      .eq('id', meetingId)
+      .eq('status', 'transcribing');
+    logger.info('Meeting ended without a recording', { meetingId, botRunId, subCode });
   }
 
   /**
@@ -469,7 +515,7 @@ class MeetingService {
         .from('meetings')
         .update({ status: 'transcribing' })
         .eq('id', meetingId)
-        .not('status', 'in', '("transcribing","completed","failed")')
+        .not('status', 'in', SETTLED_MEETING_STATUSES)
         .is('note_id', null)
         .select()
         .single();
@@ -484,6 +530,19 @@ class MeetingService {
       }
 
       logger.info('Starting recording processing', { meetingId, botRunId });
+
+      let summary = null;
+      try {
+        summary = summarizeBot(await recallService.getBotStatus(recallBotId));
+      } catch (statusError) {
+        logger.warn('Could not read the bot before processing', { meetingId, error: statusError.message });
+      }
+
+      // Never admitted, refused permission to record, and so on: there is nothing to fetch.
+      if (summary?.terminal && !summary.recorded) {
+        await this.failClaimedMeeting(meetingId, botRunId, describeFailure(summary.subCode, MESSAGES.NEVER_RECORDED), summary.subCode);
+        return;
+      }
 
       // Get transcript from Recall with retry logic
       let transcript = '';
@@ -507,7 +566,7 @@ class MeetingService {
           });
           if (attempt < maxRetries) {
             // Wait before retrying (exponential backoff)
-            await new Promise((resolve) => setTimeout(resolve, attempt * 5000));
+            await new Promise((resolve) => setTimeout(resolve, attempt * this.transcriptRetryMs));
           }
         }
       }
@@ -522,12 +581,12 @@ class MeetingService {
         if (recordingData?.download_url) {
           // Download and store recording
           const recordingBuffer = await this.downloadRecording(recordingData.download_url);
-          recordingPath = `meetings/${userId}/${meetingId}/recording.mp4`;
+          const uploadPath = `meetings/${userId}/${meetingId}/recording.mp4`;
 
           const supabaseAdmin2 = storageService.getAdminClient();
           const { error: uploadError } = await supabaseAdmin2.storage
             .from(storageService.bucket)
-            .upload(recordingPath, recordingBuffer, {
+            .upload(uploadPath, recordingBuffer, {
               contentType: 'video/mp4',
               upsert: true,
             });
@@ -535,6 +594,7 @@ class MeetingService {
           if (uploadError) {
             logger.warn('Failed to upload recording', { error: uploadError.message });
           } else {
+            recordingPath = uploadPath;
             logger.info('Recording uploaded', { meetingId, path: recordingPath });
 
             // Create recording record
@@ -585,6 +645,18 @@ class MeetingService {
         logger.info('Note created from meeting', { meetingId, noteId });
       }
 
+      // Nothing the user can open: this is a failure, not a completed meeting.
+      if (!noteId && !recordingPath) {
+        if (!summary) {
+          // Recall could not be read at all. Release the claim so a later pass (meetingSweeper) tries again.
+          await supabaseAdmin.from('meetings').update({ status: 'processing' }).eq('id', meetingId).eq('status', 'transcribing');
+          return;
+        }
+        const message = summary.recorded ? MESSAGES.NOTHING_RETRIEVED : describeFailure(summary.subCode, MESSAGES.NEVER_RECORDED);
+        await this.failClaimedMeeting(meetingId, botRunId, message, summary.subCode);
+        return;
+      }
+
       // Calculate duration from timestamps if not from recording
       let duration = recordingDuration;
       if (!duration && botRun.join_time) {
@@ -629,7 +701,7 @@ class MeetingService {
           .from('meetings')
           .update({
             status: 'failed',
-            error_message: `Processing failed: ${error.message}`,
+            error_message: MESSAGES.PROCESSING_FAILED,
           })
           .eq('id', botRun.meeting_id);
       }

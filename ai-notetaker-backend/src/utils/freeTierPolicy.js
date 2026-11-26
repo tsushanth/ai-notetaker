@@ -14,6 +14,14 @@
  * those apply in BOTH modes, they are what keeps "free" affordable.
  */
 
+// Every usage_tracking.feature_type the backend writes. The table has a check constraint on this column: a value that is
+// missing there is refused and that daily limit is never saved. Add a type here AND in a new migration
+// (scripts/usage-tracking-feature-types-*.sql); test/usageRecording.test.js fails until both agree.
+const USAGE_FEATURE_TYPES = Object.freeze([
+  'note_created', 'summary', 'quiz', 'flashcards', 'podcast', 'chat', 'diagram',
+  'mindmap', 'infographic', 'learning', 'create', 'compete', 'suggestions', 'formatting', 'upload', 'tts'
+]);
+
 // usage_tracking.feature_type values that count as one AI generation (same list the old monthly cap used).
 const AI_FEATURE_TYPES = ['summary', 'quiz', 'flashcards', 'chat', 'mindmap', 'diagram'];
 
@@ -137,6 +145,7 @@ function isOverLimit(used, limit) {
 }
 
 module.exports = {
+  USAGE_FEATURE_TYPES,
   AI_FEATURE_TYPES,
   FEATURE_CAPS,
   UNINSTRUMENTED_UNIT_COST_USD,

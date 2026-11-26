@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
 const { legacyLimitsEnabled, freeExceptCostly, PRO_FEATURES } = require('../utils/freeTierPolicy');
+const { reportCounted } = require('../utils/failureReporter');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -240,7 +241,8 @@ const recordUsage = async (userId, featureType, metadata = {}) => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    await supabase
+    // supabase-js does not throw on a refused row: the error has to be read.
+    const { error } = await supabase
       .from('usage_tracking')
       .insert({
         user_id: userId,
@@ -249,10 +251,15 @@ const recordUsage = async (userId, featureType, metadata = {}) => {
         metadata,
         created_at: new Date().toISOString()
       });
+    if (error) throw Object.assign(new Error(error.message), { code: error.code });
 
     logger.debug('Usage recorded', { userId, featureType });
+    return true;
   } catch (error) {
-    logger.error('Failed to record usage', { error: error.message, userId, featureType });
+    // The request goes on, but the daily limit and the spend guard will not count this use: say so loudly.
+    logger.error('Failed to record usage', { error: error.message, code: error.code, userId, featureType });
+    reportCounted('usage_record_failed', `Usage row refused: ${featureType}`, { feature: String(featureType), db_code: String(error.code || 'unknown') });
+    return false;
   }
 };
 

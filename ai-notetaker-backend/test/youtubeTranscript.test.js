@@ -173,6 +173,21 @@ test('no speech and private videos say so', async () => {
   assert.ok(!outage.calls.includes('generate'));
 });
 
+test('a generation that finds nothing to transcribe says no speech and records what was charged', async () => {
+  // Seen live on silent videos: mode=generate answers 206, charged 1 credit.
+  for (const generate of [
+    async () => { throw new SupadataError('transcript-unavailable', null, { status: 206, billed: 1 }); },
+    async () => { throw new SupadataError('transcript-unavailable', 'job failed'); },
+  ]) {
+    const { service, rows } = setup({ generate });
+    await rejects(service.processVideoUrl('u1', URL_), 'NO_SPEECH');
+    assert.equal(rows[0].status, 'failed');
+  }
+  const { service, rows } = setup({ generate: async () => { throw new SupadataError('transcript-unavailable', null, { status: 206, billed: 1 }); } });
+  await rejects(service.processVideoUrl('u1', URL_), 'NO_SPEECH');
+  assert.equal(rows[0].credits, 2);
+});
+
 test('estimate: 2 credits per started minute plus the lookup', () => {
   assert.equal(estimateCredits(1), 3);
   assert.equal(estimateCredits(61), 5);

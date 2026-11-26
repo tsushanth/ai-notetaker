@@ -90,11 +90,13 @@ function createTranscriptGeneration({ supadata, ledger, env = process.env, now =
     try {
       got = await obtain();
     } catch (error) {
-      // A request the vendor refused cost nothing: it does not use up the user's allowance or the month's credits.
-      const free = error.billed === 0;
-      await write(row.id, { status: free ? 'released' : 'failed', error_code: String(error.code || 'unknown'), ...(free ? { credits: 1 } : {}) });
+      // Where the answer says what was charged, record that (plus 1 for the length lookup) instead of the estimate. A
+      // request the vendor refused cost nothing, and does not use up the user's allowance either.
+      const billed = typeof error.billed === 'number' ? error.billed : null;
+      await write(row.id, { status: billed === 0 ? 'released' : 'failed', error_code: String(error.code || 'unknown'), ...(billed === null ? {} : { credits: 1 + billed }) });
       logger.error('Transcript generation failed', { userId, videoId, code: error.code, error: error.message });
-      throw new TranscriptError('TRANSCRIPT_FAILED');
+      // "No transcript available" from a generation means there is nothing to hear in the video.
+      throw new TranscriptError(error.code === 'transcript-unavailable' ? 'NO_SPEECH' : 'TRANSCRIPT_FAILED');
     }
     if (!got.content || !got.content.trim()) {
       await write(row.id, { status: 'failed', error_code: 'NO_SPEECH' });

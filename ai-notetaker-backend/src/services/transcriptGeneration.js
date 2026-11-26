@@ -20,6 +20,7 @@ const DAY_MS = 24 * 3600 * 1000;
 const NO_JOB_PENDING_MS = 10 * 60_000; // a reservation without a vendor job id older than this is dead
 const JOB_RESUME_MS = 70 * 60_000;     // vendor job results expire an hour after they finish
 const WARN_SHARE = 0.8;
+const NOTHING_TO_HEAR = ['NO_SPEECH', 'transcript-unavailable'];
 
 const positive = (v, d) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d);
 
@@ -42,8 +43,8 @@ function defaultLedger() {
   return {
     async latest(userId, videoId, since) {
       const rows = check(await supabaseAdmin.from('transcript_generations')
-        .select('id, status, job_id, note_id, created_at')
-        .eq('user_id', userId).eq('video_id', videoId).in('status', ['pending', 'done']).gte('created_at', since)
+        .select('id, status, job_id, note_id, error_code, created_at')
+        .eq('user_id', userId).eq('video_id', videoId).in('status', ['pending', 'done', 'failed']).gte('created_at', since)
         .order('created_at', { ascending: false }).limit(1));
       return rows?.[0] || null;
     },
@@ -125,6 +126,8 @@ function createTranscriptGeneration({ supadata, ledger, env = process.env, now =
       const note = await db().findNote(userId, prior.note_id);
       if (note) return { note, reused: true };
     }
+    // Usually learnt after the request has been answered, so it is said on the next ask instead of paying again.
+    if (prior?.status === 'failed' && NOTHING_TO_HEAR.includes(prior.error_code)) throw new TranscriptError('NO_SPEECH');
     if (prior?.status === 'pending') {
       const age = now() - Date.parse(prior.created_at);
       if (prior.job_id && age < JOB_RESUME_MS) return finish(prior, () => vendor().pollJob(prior.job_id), args, { resumed: true });

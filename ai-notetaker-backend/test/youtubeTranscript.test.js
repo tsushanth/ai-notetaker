@@ -29,7 +29,7 @@ function setup({ env = ON, captions = noCaptions, generate = async () => ({ cont
     pollJob: async (jobId) => { calls.push(`poll:${jobId}`); return poll ? poll() : { content: 'from the job', lang: 'en' }; },
   };
   const book = {
-    latest: async (u, v) => [...rows].reverse().find((r) => r.user_id === u && r.video_id === v && ['pending', 'done'].includes(r.status)) || null,
+    latest: async (u, v) => [...rows].reverse().find((r) => r.user_id === u && r.video_id === v && ['pending', 'done', 'failed'].includes(r.status)) || null,
     reserve: reserve || (async (p) => { const row = { id: rows.length + 1, user_id: p.userId, video_id: p.videoId, credits: p.credits, status: 'pending', created_at: new Date().toISOString(), limits: [p.userDaily, p.monthlyCredits] }; rows.push(row); return { ok: true, id: row.id, month_credits: p.credits }; }),
     update: async (id, patch) => Object.assign(rows.find((r) => r.id === id), patch),
     findNote: async (u, id) => notes.find((n) => n.id === id && n.user_id === u) || null,
@@ -208,6 +208,18 @@ test('a generation that finds nothing to transcribe says no speech and records w
   const { service, rows } = setup({ generate: async () => { throw new SupadataError('transcript-unavailable', null, { status: 206, billed: 1 }); } });
   await rejects(service.processVideoUrl('u1', URL_), 'NO_SPEECH');
   assert.equal(rows[0].credits, 2);
+});
+
+test('asking again about a video with nothing to hear says so without paying again; other failures may be retried', async () => {
+  const silent = setup({ generate: async () => { throw new SupadataError('transcript-unavailable', null, { status: 206, billed: 1 }); } });
+  await rejects(silent.service.processVideoUrl('u1', URL_), 'NO_SPEECH');
+  await rejects(silent.service.processVideoUrl('u1', URL_), 'NO_SPEECH');
+  assert.equal(silent.calls.filter((c) => c === 'generate').length, 1);
+  assert.equal(silent.rows.length, 1);
+  const flaky = setup({ generate: async () => { throw new SupadataError('timeout', 'TimeoutError'); } });
+  await rejects(flaky.service.processVideoUrl('u1', URL_), 'TRANSCRIPT_FAILED');
+  await rejects(flaky.service.processVideoUrl('u1', URL_), 'TRANSCRIPT_FAILED');
+  assert.equal(flaky.calls.filter((c) => c === 'generate').length, 2);
 });
 
 test('estimate: 2 credits per started minute plus the lookup', () => {

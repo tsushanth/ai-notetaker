@@ -32,7 +32,11 @@ const VOICE_PAIRS = {
 
 const TTS_BASE_URL = process.env.SELFHOSTED_TTS_URL || 'https://listenai-tts-worker.fly.dev';
 
-const PIECE_TIMEOUT_MS = 60_000;
+// The worker works one request at a time and finishes it even after the caller has gone, so sending a timed-out piece
+// again only queues the same work behind the first copy. One long wait, no resend.
+const PIECE_TIMEOUT_MS = 180_000;
+const PIECE_BUDGET_MS = 20_000;   // job time allowed per piece; a healthy worker takes about 11 s
+const SLOW_PIECE_MS = 60_000;     // this slow twice running means the worker has used up its CPU credit
 const RETRY_DELAY_MS = 1_000;
 const MIN_SPLIT_CHARS = 40;      // a failing piece is halved down to this size before giving up
 const PIECE_GAP_MS = 150;        // pause between pieces
@@ -97,15 +101,15 @@ class TTSService {
   }
 
   /**
-   * A piece that fails is retried once when the failure looks passing (timeout, network, 429/502/503/504). A 500 usually
-   * means the piece overflows the model, so it is halved and each half sent again. Nothing is ever skipped.
+   * A piece that fails is retried twice when the failure looks passing (network, 429/502/503/504), never after a timeout.
+   * A 500 usually means the piece overflows the model, so it is halved and each half sent again. Nothing is ever skipped.
    */
   async synthesizeResilient(text, voiceId, speed, deadline, attempt = 1) {
     if (Date.now() > deadline) throw new TtsError('DEADLINE', 'job deadline reached');
     try {
       return [await this.synthesizePiece(text, voiceId, speed)];
     } catch (error) {
-      const passing = error.code === 'WORKER_TIMEOUT' || error.code === 'WORKER_UNREACHABLE' || [429, 502, 503, 504].includes(error.workerStatus);
+      const passing = error.code === 'WORKER_UNREACHABLE' || [429, 502, 503, 504].includes(error.workerStatus);
       if (passing && attempt < 3) {
         await new Promise((r) => setTimeout(r, positive(process.env.TTS_RETRY_DELAY_MS, RETRY_DELAY_MS) * attempt));
         return this.synthesizeResilient(text, voiceId, speed, deadline, attempt + 1);
@@ -125,13 +129,25 @@ class TTSService {
   /**
    * Synthesize speech using self-hosted Kokoro TTS: piece by piece, joined into one WAV. All of the text or an error.
    */
-  async synthesizeWithKokoro(text, voice = 'nova', speed = 1.0, { deadline = Date.now() + jobDeadlineMs(), stats } = {}) {
+  async synthesizeWithKokoro(text, voice = 'nova', speed = 1.0, { deadline, stats } = {}) {
     const voiceId = KOKORO_VOICES[voice.toLowerCase()] || KOKORO_VOICES['nova'];
     const pieces = splitForSpeech(text);
     if (pieces.length === 0) throw new TtsError('NOTHING_TO_READ');
     if (stats) stats.pieces = pieces.length;
+    // A long note needs more time than a short one: the deadline grows with the number of pieces.
+    const until = deadline ?? Date.now() + Math.max(jobDeadlineMs(), pieces.length * PIECE_BUDGET_MS);
     const audio = [];
-    for (const piece of pieces) audio.push(...await this.synthesizeResilient(piece, voiceId, speed, deadline));
+    let slow = 0;
+    for (const [i, piece] of pieces.entries()) {
+      const began = Date.now();
+      audio.push(...await this.synthesizeResilient(piece, voiceId, speed, until));
+      const took = Date.now() - began;
+      slow = took > SLOW_PIECE_MS ? slow + 1 : 0;
+      // At this pace the rest cannot finish in time, and staying on the shared worker only delays everyone else.
+      if (slow >= 2 && Date.now() + (pieces.length - i - 1) * took > until) {
+        throw new TtsError('WORKER_SLOW', `${i + 1} of ${pieces.length} pieces done`);
+      }
+    }
     try {
       return concatWav(audio, PIECE_GAP_MS);
     } catch (error) {

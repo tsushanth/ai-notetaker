@@ -7,6 +7,7 @@ const MESSAGES = {
   NOTHING_TO_READ: [422, 'This note has no text to read aloud.'],
   TOO_LONG: [422, 'This note is too long to read aloud.'],
   DEADLINE: [422, 'This note took too long to turn into audio. Try a shorter note.'],
+  WORKER_SLOW: [422, 'Read Aloud is busy right now. Please try again later.'], // 422: released apps resend a 5xx at once
   WORKER_ERROR: [502, 'Failed to generate audio. Please try again.'],
   WORKER_TIMEOUT: [502, 'Failed to generate audio. Please try again.'],
   WORKER_UNREACHABLE: [502, 'Failed to generate audio. Please try again.'],

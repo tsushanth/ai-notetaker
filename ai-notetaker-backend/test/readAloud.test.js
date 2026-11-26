@@ -260,3 +260,59 @@ test('an edited welcome note and any other note are never shared or served share
     assert.ok(store.uploads.every((u) => !u.name.startsWith('tts/shared/')));
   }
 });
+
+/** A worker that takes `ms` of (mocked) time for every piece. */
+function timedWorker(t, ms) {
+  let clock = 1_000_000;
+  t.mock.method(Date, 'now', () => clock);
+  worker(() => { clock += ms; return 200; });
+}
+
+test('a timed-out piece is not sent again: the worker is still working on the first copy', async () => {
+  reset('Short note.'); worker(() => Object.assign(new Error('slow'), { name: 'TimeoutError' }));
+  await assert.rejects(tts.generateForNote('u1', 'n1'), { code: 'WORKER_TIMEOUT' });
+  assert.equal(sent.length, 1);
+});
+
+test('a long note gets time in proportion to its length, past the ten minutes a short one gets', async (t) => {
+  reset(sentences(240)); timedWorker(t, 18_000);
+  await tts.generateForNote('u1', 'n1');
+  assert.ok((sent.length - 1) * 18_000 > 10 * 60_000, 'the last piece starts after the ten minutes');
+  assert.equal(store.uploads.length, 1);
+});
+
+test('a worker too slow to finish in time is left after two pieces, with its own code', async (t) => {
+  reset(sentences(200)); timedWorker(t, 145_000);
+  await assert.rejects(tts.generateForNote('u1', 'n1'), { code: 'WORKER_SLOW', statusCode: 422 });
+  assert.equal(sent.length, 2);
+});
+
+test('a short note still completes on a slow worker', async (t) => {
+  reset(sentences(14)); timedWorker(t, 145_000);
+  await tts.generateForNote('u1', 'n1');
+  assert.equal(sent.length, 3);
+  assert.equal(store.uploads.length, 1);
+});
+
+test('another voice of the same note waits its turn, even when the first fails; other notes do not wait', async () => {
+  reset();
+  const order = [];
+  const gates = [];
+  const service = { generateForNote: (_u, noteId, { voice }) => {
+    order.push(`${noteId} ${voice}`);
+    return new Promise((resolve, reject) => gates.push({ resolve, reject }));
+  } };
+  const tick = () => new Promise((r) => setImmediate(r));
+  const first = jobs.start(service, 'u1', 'n1', { voice: 'nova' });
+  const second = jobs.start(service, 'u1', 'n1', { voice: 'shimmer' });
+  const other = jobs.start(service, 'u1', 'n2', { voice: 'nova' });
+  await tick();
+  assert.deepEqual(order, ['n1 nova', 'n2 nova']);
+  assert.equal(jobs.isRunning('u1', 'n1', 'shimmer', 1), true);
+  gates[0].reject(new TtsError('WORKER_ERROR'));
+  await assert.rejects(first);
+  await tick();
+  assert.deepEqual(order, ['n1 nova', 'n2 nova', 'n1 shimmer']);
+  gates[1].resolve({}); gates[2].resolve({});
+  await Promise.all([second, other]);
+});

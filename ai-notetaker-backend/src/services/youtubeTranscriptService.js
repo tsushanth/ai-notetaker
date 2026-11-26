@@ -306,11 +306,10 @@ class YouTubeTranscriptService {
    * Extract video ID from YouTube URL
    */
   extractYouTubeId(url) {
+    // A watch link may carry other parameters before v= (watch?app=desktop&v=...); live streams use /live/.
     const patterns = [
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
-      /youtube\.com\/embed\/([^&\n?#]+)/,
-      /youtube\.com\/v\/([^&\n?#]+)/,
-      /youtube\.com\/shorts\/([^&\n?#]+)/
+      /(?:youtube\.com\/watch\/?\?(?:[^#\n]*?&)?v=|youtu\.be\/)([^&\n?#/]+)/i,
+      /youtube\.com\/(?:embed|v|shorts|live)\/([^&\n?#/]+)/i
     ];
 
     for (const pattern of patterns) {

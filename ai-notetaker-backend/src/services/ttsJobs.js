@@ -4,6 +4,8 @@
  * A long note takes longer than a phone waits for one HTTP answer. The job keeps running after the caller has gone, saves
  * the audio, and ends in exactly one of two ways: a saved file, or one failure report. A second request for the same
  * audio (the apps retry on their own, or the user taps again) joins the running job instead of starting another.
+ * Another voice or speed of a note that is already being made waits its turn: side by side they take twice as long, and
+ * the older one could finish last and replace the newer saved audio.
  * Jobs live in this process: a request that lands on another machine starts its own, and a shutdown reports them.
  */
 const { logger } = require('../utils/logger');
@@ -33,9 +35,11 @@ function start(ttsService, userId, noteId, { voice = 'nova', speed = 1.0 } = {})
   const k = key(userId, noteId, voice, speed);
   const running = jobs.get(k);
   if (running) return running.promise;
-  const job = { startedAt: Date.now(), stats: { chars: 0, pieces: 0 } };
+  const note = `${userId}|${noteId}`;
+  const ahead = [...jobs.values()].filter((j) => j.note === note).map((j) => j.promise);
+  const job = { note, startedAt: Date.now(), stats: { chars: 0, pieces: 0 } };
   jobs.set(k, job);
-  job.promise = Promise.resolve()
+  job.promise = Promise.allSettled(ahead)
     .then(() => ttsService.generateForNote(userId, noteId, { voice, speed: parseFloat(speed), stats: job.stats }))
     .catch((err) => {
       const e = err instanceof TtsError ? err : new TtsError('INTERNAL', err.message);

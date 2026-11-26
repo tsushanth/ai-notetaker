@@ -27,6 +27,12 @@ class SlidingWindow {
     if (arr.length < limit) return { allowed: true, used: arr.length };
     return { allowed: false, used: arr.length, retryAfterSec: Math.max(1, Math.ceil((arr[0] + DAY_MS - now) / 1000)) };
   }
+  /** When this window will have room under `limit` again (ms), or null if it has room now. */
+  freeAt(key, limit, now = Date.now()) {
+    const arr = this.hits.get(key) || [];
+    this.prune(arr, now);
+    return arr.length >= limit ? arr[arr.length - limit] + DAY_MS : null;
+  }
   record(key, now = Date.now()) {
     const arr = this.hits.get(key) || [];
     this.prune(arr, now);
@@ -95,6 +101,19 @@ function defaultDeps() {
         .gte('created_at', since);
       if (error) throw new Error(error.message);
       return count || 0;
+    },
+    /** created_at of the row at position `index` (oldest first) inside the window, or null. */
+    async usageAt(userId, types, since, index) {
+      const { data, error } = await supabaseAdmin
+        .from('usage_tracking')
+        .select('created_at')
+        .eq('user_id', userId)
+        .in('feature_type', types)
+        .gte('created_at', since)
+        .order('created_at', { ascending: true })
+        .range(index, index);
+      if (error) throw new Error(error.message);
+      return data?.[0]?.created_at || null;
     },
     async recordUsage(userId, featureType, metadata) {
       const { recordUsage } = require('./subscription');
@@ -268,6 +287,13 @@ function transcriptionGuard({ deps, window = sharedSttWindow, env = process.env 
   };
 }
 
+/** "about 5 hours" / "about 20 minutes" for a limit message. */
+function waitText(seconds) {
+  if (seconds < 3600) { const m = Math.max(1, Math.ceil(seconds / 60)); return `about ${m} minute${m === 1 ? '' : 's'}`; }
+  const h = Math.ceil(seconds / 3600);
+  return `about ${h} hour${h === 1 ? '' : 's'}`;
+}
+
 /** Shared by every per-feature cap: the 429 body for "you used today's allowance". */
 function capBlock(scope, message, limit, used, retryAfterSec) {
   return { scope, message, limit, used, retryAfterSec: retryAfterSec || 3600 };
@@ -340,8 +366,16 @@ async function evaluateFeatureCap(feature, userId, { deps, window, env = process
   }
   if (blocked) {
     logger.info('Feature daily limit reached', { userId, feature, used: Math.max(used, mem.used), limit });
-    return capBlock(feature, `You have reached today's limit of ${limit} ${spec.label}. It resets on a rolling 24-hour basis, so please try again later.`,
-      limit, Math.max(used, mem.used), mem.retryAfterSec);
+    // Room opens when enough of the oldest uses are 24 hours old, in the table and in this process.
+    let freeAt = win.freeAt(key, limit, now) || 0;
+    if (used >= limit && d.usageAt) {
+      const at = await safe(`${feature}-reset`, userId, () => d.usageAt(userId, spec.types, sinceIso(now), used - limit), null);
+      if (at) freeAt = Math.max(freeAt, Date.parse(at) + DAY_MS);
+    }
+    const retryAfterSec = freeAt > now ? Math.ceil((freeAt - now) / 1000) : null;
+    const when = retryAfterSec ? `You can try again in ${waitText(retryAfterSec)}.` : 'It resets on a rolling 24-hour basis, so please try again later.';
+    return capBlock(feature, `You have reached today's limit of ${limit} ${spec.label}. ${when}`,
+      limit, Math.max(used, mem.used), retryAfterSec);
   }
   win.record(key, now);
   if (spec.record) await safe(`${feature}-record`, userId, () => d.recordUsage(userId, spec.types[0], { via: 'daily_cap' }), null);
@@ -444,6 +478,7 @@ function meetingBotGuard({ deps, window = featureWindow('meeting'), env = proces
 }
 
 module.exports = {
+  waitText,
   SlidingWindow, aiDailyLimit, transcriptionGuard, defaultDeps,
   featureDailyCap, admitFeature, admitAutoFormatting, meetingBotGuard, llmSpendBreaker,
   evaluateFeatureCap, evaluateLlmBudget, sendBlock, capBlock,

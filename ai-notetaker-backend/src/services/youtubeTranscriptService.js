@@ -1,139 +1,99 @@
-const { YoutubeTranscript } = require('youtube-transcript');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
+const { TranscriptError } = require('../utils/transcriptError');
+const { createSupadataClient } = require('./supadataClient');
+const { createTranscriptGeneration } = require('./transcriptGeneration');
 const noteService = require('./noteService');
+
+// Released Android apps stop waiting after 60 seconds, so an answer goes out before that.
+const RESPONSE_BUDGET_MS = 50_000;
 
 /**
  * YouTube Transcript Service
- * 
- * Strategy:
- * 1. Try YouTube's built-in transcript (free, fast)
- * 2. Fallback to Supadata API (handles videos without captions via AI)
- * 
- * Supadata pricing:
- * - Free tier: 100 requests/month
- * - Native transcripts (mode=native): 1 credit
- * - AI-generated transcripts (mode=generate): uses AI credits
- * 
- * Get API key at: https://supadata.ai
+ *
+ * 1. Existing captions from Supadata (mode=native, 1 credit).
+ * 2. No captions: Supadata writes the transcript (services/transcriptGeneration.js: limits, cost ledger, kill switch).
  */
 class YouTubeTranscriptService {
-  constructor() {
-    this.supadataApiKey = process.env.SUPADATA_API_KEY;
-    this.supadataBaseUrl = 'https://api.supadata.ai/v1';
+  constructor({ supadata, generation } = {}) {
+    this.supadata = supadata || null;
+    this.generation = generation || null;
+  }
+
+  client() { return (this.supadata ||= createSupadataClient()); }
+
+  generator() { return (this.generation ||= createTranscriptGeneration({ supadata: this.client() })); }
+
+  /** A transcript for this link is already being written for this user: asking again costs nothing. */
+  isGenerating(userId, videoUrl) {
+    const videoId = typeof videoUrl === 'string' ? this.extractYouTubeId(videoUrl) : null;
+    return !!videoId && !!this.generation?.isRunning(userId, videoId.slice(0, 11));
   }
 
   /**
    * Process YouTube video URL and create a note
    */
-  async processVideoUrl(userId, videoUrl, title) {
+  async processVideoUrl(userId, videoUrl, title, { budgetMs = RESPONSE_BUDGET_MS } = {}) {
+    const began = Date.now();
     try {
       // Validate URL
       if (!this.isValidVideoUrl(videoUrl)) {
         throw new AppError('Invalid YouTube URL', 400);
       }
 
-      // Extract video ID
-      const videoId = this.extractYouTubeId(videoUrl);
+      // Extract video ID (11 characters; anything after that is share-text debris)
+      const videoId = /^[A-Za-z0-9_-]{11}/.exec(this.extractYouTubeId(videoUrl) || '')?.[0];
       if (!videoId) {
         throw new AppError('Could not extract video ID from URL', 400);
       }
 
       logger.info('Processing YouTube video', { userId, videoId });
 
-      // Get video info
-      const videoInfo = await this.getVideoInfo(videoId);
-
-      // Try to get transcript
-      let fullText;
-      let transcriptSource = 'youtube';
-      let segmentCount = 0;
-
-      try {
-        // First, try YouTube's built-in transcript (free)
-        const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-        
-        if (transcript && transcript.length > 0) {
-          fullText = transcript.map(segment => segment.text).join(' ');
-          segmentCount = transcript.length;
-          logger.info('Got transcript from YouTube', { videoId, segments: segmentCount });
-        } else {
-          throw new Error('Empty transcript');
-        }
-      } catch (transcriptError) {
-        logger.warn('YouTube transcript not available, trying Supadata', {
-          videoId,
-          error: transcriptError.message
+      const save = async (content, source, lang) => {
+        // Get video info
+        const videoInfo = await this.getVideoInfo(videoId);
+        return noteService.createNote(userId, {
+          title: title || videoInfo.title || `YouTube Video ${videoId}`,
+          content,
+          source_type: 'video',
+          source_url: videoUrl,
+          metadata: {
+            video_id: videoId,
+            channel: videoInfo.author_name,
+            thumbnail: videoInfo.thumbnail_url,
+            transcript_source: source,
+            transcript_language: lang || 'auto',
+            segment_count: 1
+          }
         });
-
-        // Fallback: Use Supadata API
-        try {
-          const supadataResult = await this.getTranscriptFromSupadata(videoUrl, videoId);
-          fullText = supadataResult.content;
-          transcriptSource = supadataResult.source; // 'supadata_native' or 'supadata_generated'
-          segmentCount = 1;
-          logger.info('Got transcript from Supadata', { 
-            videoId, 
-            source: transcriptSource,
-            lang: supadataResult.lang
-          });
-        } catch (supadataError) {
-          logger.error('Supadata fallback also failed', {
-            videoId,
-            error: supadataError.message
-          });
-
-          throw new AppError(
-            'Could not get transcript for this video. The video may be private, too long, or have no audio.',
-            404
-          );
-        }
-      }
-
-      if (!fullText || fullText.trim().length === 0) {
-        throw new AppError(
-          'No transcript content could be extracted from this video.',
-          404
-        );
-      }
-
-      // Create note
-      const note = await noteService.createNote(userId, {
-        title: title || videoInfo.title || `YouTube Video ${videoId}`,
-        content: fullText,
-        source_type: 'video',
-        source_url: videoUrl,
-        metadata: {
-          video_id: videoId,
-          channel: videoInfo.author_name,
-          thumbnail: videoInfo.thumbnail_url,
-          transcript_source: transcriptSource,
-          transcript_language: 'auto',
-          segment_count: segmentCount
-        }
-      });
-
-      logger.info('YouTube video processed successfully', {
-        userId,
-        noteId: note.id,
-        videoId,
-        transcriptSource,
-        characters: fullText.length
-      });
-
-      return {
-        note,
-        stats: {
-          segments: segmentCount,
-          characters: fullText.length,
-          words: fullText.split(/\s+/).length,
-          transcriptSource
-        }
       };
+      const answer = (note, transcriptSource) => {
+        const text = String(note.content ?? '');
+        logger.info('YouTube video processed successfully', { userId, noteId: note.id, videoId, transcriptSource, characters: text.length });
+        return { note, stats: { segments: 1, characters: text.length, words: text.split(/\s+/).filter(Boolean).length, transcriptSource } };
+      };
+      const waitForGeneration = async () => {
+        const job = this.generator().start({ userId, videoId, saveNote: (content, lang) => save(content, 'supadata_generated', lang) });
+        let timer;
+        const pending = new Promise((resolve) => { timer = setTimeout(() => resolve(null), Math.max(0, began + budgetMs - Date.now())); });
+        const done = await Promise.race([job, pending]).finally(() => clearTimeout(timer));
+        if (!done) throw new TranscriptError('TRANSCRIPT_PENDING');
+        return answer(done.note, 'supadata_generated');
+      };
+
+      if (this.isGenerating(userId, videoUrl)) return await waitForGeneration();
+
+      const native = await this.getCaptions(videoId, Math.max(1000, began + budgetMs - Date.now()));
+      if (!native) {
+        logger.info('YouTube video has no captions', { userId, videoId });
+        return await waitForGeneration();
+      }
+      return answer(await save(native.content, 'supadata_native', native.lang), 'supadata_native');
 
     } catch (error) {
       logger.error('Error processing YouTube video', {
         error: error.message,
+        code: error.publicCode,
         stack: error.stack,
         userId,
         videoUrl
@@ -147,130 +107,20 @@ class YouTubeTranscriptService {
     }
   }
 
-  /**
-   * Get transcript using Supadata API
-   * Supadata handles both native captions and AI-generated transcripts
-   */
-  async getTranscriptFromSupadata(videoUrl, videoId) {
-    if (!this.supadataApiKey) {
-      throw new Error('SUPADATA_API_KEY not configured. Get one at https://supadata.ai');
+  /** The video's own captions: { content, lang }, or null when it has none. */
+  async getCaptions(videoId, pollTimeoutMs = RESPONSE_BUDGET_MS) {
+    try {
+      let result = await this.client().transcript(videoId, 'native');
+      // Long videos are answered with a job to poll.
+      if (result.jobId) result = await this.client().pollJob(result.jobId, { intervalMs: 2000, timeoutMs: pollTimeoutMs });
+      return result.content && result.content.trim() ? result : null;
+    } catch (error) {
+      if (error.code === 'transcript-unavailable') return null;
+      logger.error('Supadata captions request failed', { videoId, code: error.code, error: error.message });
+      if (['not-found', 'forbidden'].includes(error.code)) throw new TranscriptError('VIDEO_UNAVAILABLE');
+      if (error.code === 'invalid-request') throw new TranscriptError('NO_TRANSCRIPT');
+      throw new TranscriptError('TRANSCRIPT_SERVICE_ERROR');
     }
-
-    logger.info('Fetching transcript from Supadata', { videoId });
-
-    // Build URL with parameters.
-    // mode=native: only use the 1-credit native-caption path. The 'auto'
-    // mode silently falls through to AI generation at 2 credits/minute,
-    // which on captionless videos can spike a single fetch to 30+ credits.
-    // Refusing those means the caller sees "no transcript" and the upstream
-    // pipeline can choose a cheaper local-Whisper path instead.
-    const params = new URLSearchParams({
-      url: videoUrl,
-      text: 'true',
-      mode: 'native'
-    });
-
-    const response = await fetch(`${this.supadataBaseUrl}/transcript?${params}`, {
-      method: 'GET',
-      headers: {
-        'x-api-key': this.supadataApiKey,
-        'Accept': 'application/json'
-      }
-    });
-
-    // Handle async job (HTTP 202)
-    if (response.status === 202) {
-      const jobData = await response.json();
-      logger.info('Supadata returned async job, polling...', { 
-        videoId, 
-        jobId: jobData.jobId 
-      });
-      
-      // Poll for result
-      return await this.pollSupadataJob(jobData.jobId, videoId);
-    }
-
-    // Handle immediate response
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        `Supadata API error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`
-      );
-    }
-
-    const data = await response.json();
-
-    if (!data.content) {
-      throw new Error('No transcript content in Supadata response');
-    }
-
-    // Ensure content is a string (Supadata may return array of segments)
-    let content = data.content;
-    if (Array.isArray(content)) {
-      content = content.map(segment =>
-        typeof segment === 'string' ? segment : (segment.text || segment.content || '')
-      ).join(' ');
-    } else if (typeof content !== 'string') {
-      content = String(content);
-    }
-
-    return {
-      content,
-      lang: data.lang || 'en',
-      source: data.generated ? 'supadata_generated' : 'supadata_native'
-    };
-  }
-
-  /**
-   * Poll Supadata job for async transcript generation
-   */
-  async pollSupadataJob(jobId, videoId, maxAttempts = 30, intervalMs = 2000) {
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      logger.debug('Polling Supadata job', { videoId, jobId, attempt });
-
-      const response = await fetch(`${this.supadataBaseUrl}/transcript/${jobId}`, {
-        method: 'GET',
-        headers: {
-          'x-api-key': this.supadataApiKey,
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Supadata job poll error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'completed') {
-        logger.info('Supadata job completed', { videoId, jobId });
-
-        // Ensure content is a string
-        let content = data.result?.content || data.content;
-        if (Array.isArray(content)) {
-          content = content.map(segment =>
-            typeof segment === 'string' ? segment : (segment.text || segment.content || '')
-          ).join(' ');
-        } else if (typeof content !== 'string') {
-          content = String(content);
-        }
-
-        return {
-          content,
-          lang: data.result?.lang || data.lang || 'en',
-          source: 'supadata_generated'
-        };
-      }
-
-      if (data.status === 'failed') {
-        throw new Error(`Supadata job failed: ${data.error || 'Unknown error'}`);
-      }
-
-      // Wait before next poll
-      await new Promise(resolve => setTimeout(resolve, intervalMs));
-    }
-
-    throw new Error('Supadata job timed out');
   }
 
   /**
@@ -341,3 +191,4 @@ class YouTubeTranscriptService {
 }
 
 module.exports = new YouTubeTranscriptService();
+module.exports.YouTubeTranscriptService = YouTubeTranscriptService;

@@ -9,6 +9,9 @@ primary_region = "iad"
   # would hold every new Android purchase as pending. Remove this line to enforce, once that key is set AND the app
   # release that sends the purchase token is out (see src/utils/subscriptionTrust.js).
   SUBSCRIPTION_VERIFY_MODE = "log"
+  # YouTube videos without captions: let Supadata write the transcript (limits in src/services/transcriptGeneration.js:
+  # 20 minute videos, 3 per user per day, 3,000 credits a month). Kill switch: set to "false" and deploy.
+  YOUTUBE_GENERATE_ENABLED = "true"
 
 [http_service]
   internal_port = 8080

@@ -421,18 +421,34 @@ router.post('/pdf', featureDailyCap('upload'), upload.single('file'), asyncHandl
   });
 }));
 
+// Asking again while this user's transcript is still being written does not spend the daily upload allowance.
+const videoCap = featureDailyCap('upload');
+function capUnlessGenerating(req, res, next) {
+  const youtube = require('../services/youtubeTranscriptService');
+  return youtube.isGenerating?.(req.userId, req.body?.url) ? next() : videoCap(req, res, next);
+}
+
 /**
  * Process video URL (YouTube transcripts)
  * POST /api/uploads/video-url
  * Body: { url, title }
  */
-router.post('/video-url', featureDailyCap('upload'), validate('processVideoUrl'), asyncHandler(async (req, res) => {
+router.post('/video-url', capUnlessGenerating, validate('processVideoUrl'), asyncHandler(async (req, res) => {
   const { url, title } = req.validatedBody;
 
   // Import the new transcript service
   const youtubeTranscriptService = require('../services/youtubeTranscriptService');
 
-  const result = await youtubeTranscriptService.processVideoUrl(req.userId, url, title);
+  let result;
+  try {
+    result = await youtubeTranscriptService.processVideoUrl(req.userId, url, title);
+  } catch (error) {
+    if (error.publicCode !== 'TRANSCRIPT_PENDING') throw error;
+    // Not a failure: the transcript is still being written and the note is saved when it is done.
+    res.locals.outcome = 'pending';
+    res.set('Retry-After', '60');
+    return res.status(error.statusCode).json({ success: false, code: error.publicCode, error: error.message });
+  }
 
   res.status(201).json({
     success: true,

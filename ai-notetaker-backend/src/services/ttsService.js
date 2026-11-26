@@ -12,6 +12,7 @@ const { TtsError } = require('../utils/ttsError');
 const { cleanTextForSpeech, splitForSpeech } = require('../utils/speechText');
 const { concatWav, wavSeconds } = require('../utils/wav');
 const { resolveNoteId, isStockWelcomeNote } = require('./welcomeNote');
+const { createPollySpeech } = require('./pollySpeech');
 
 // Kokoro voice IDs mapped from legacy OpenAI-style names
 const KOKORO_VOICES = {
@@ -63,6 +64,11 @@ function encodeMp3(wav, { ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg', time
 }
 
 class TTSService {
+  constructor() {
+    // Off unless switched on and given its own key (services/pollySpeech.js); then it is tried before the own worker.
+    this.paidSpeech = createPollySpeech({ encode: (audio) => encodeMp3(audio) });
+  }
+
   /**
    * Clean text for TTS processing
    */
@@ -465,7 +471,11 @@ class TTSService {
     let wav = null;
     let mp3 = sharedPath ? await this.getSharedAudio(sharedPath) : null;
     let durationSeconds;
-    if (mp3) {
+    // The welcome text stays on the shared audio made by the own worker: paying per new account would buy nothing.
+    const paid = mp3 || stock ? null : await this.paidSpeech.synthesize(cleanText, { voice, speed, userId, noteId: id });
+    if (paid) {
+      ({ mp3, durationSeconds } = paid);
+    } else if (mp3) {
       durationSeconds = Math.ceil((mp3.length * 8) / MP3_BITS_PER_SECOND);
     } else {
       wav = await this.synthesizeWithKokoro(cleanText, voice, speed, { stats });

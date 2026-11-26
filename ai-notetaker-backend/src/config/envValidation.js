@@ -27,8 +27,8 @@ const requiredEnvVars = [
   // Anthropic
   { name: 'ANTHROPIC_API_KEY', description: 'Anthropic API key for AI features' },
 
-  // YouTube transcript fallback - essential for videos without native captions
-  { name: 'SUPADATA_API_KEY', description: 'Supadata API key for YouTube transcript fallback' },
+  // YouTube transcripts: the only source, with and without captions
+  { name: 'SUPADATA_API_KEY', description: 'Supadata API key for YouTube transcripts' },
 
   // Stripe - Required for web subscriptions
   { name: 'STRIPE_SECRET_KEY', description: 'Stripe secret key for payment processing' },

@@ -5,7 +5,15 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v29 | `registry.fly.io/scribe-ai-web:deployment-01M8A8X995H1PXV5HBG5CE0HMV` | `origin/main` at `2d02b97` (#90; `web-app/` tree `b3184d97a4226a3b8620c0f7462b4c4985d6d74c` identical to main) | 2026-11-25 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v56 | `registry.fly.io/ai-notetaker-backend:deployment-01M8AEF10E4AV76G9Z1B49J147` | `origin/main` at `21347ff` (#94; `ai-notetaker-backend/` tree `47f354b882554da6ed73bae861aa8d331295d86f` identical to main) | 2026-11-25 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v57 | `registry.fly.io/ai-notetaker-backend:deployment-01M8ARX7XR2JNA9GM2P4737BHC` | `origin/main` at `966eda4` (#98; `ai-notetaker-backend/` tree `8fa188a5263137b80914796a6794fc3218ec7533` identical to main) | 2026-11-26 (UTC) |
+
+## 2026-11-26 Backend v57: the welcome note no longer counts as a failed note load (#98)
+- `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `966eda4`; the only backend difference from v56 is #98. `SUBSCRIPTION_VERIFY_MODE=log` unchanged, no secret change. Before the deploy (01:53 UTC): no recording being transcribed or created in the previous 45 / 20 minutes, no meeting in progress, no non-GET request in 10 minutes.
+- Was: `GET /api/notes/:id` for the app's built-in welcome note answered 404 and counted as a failed attempt, which raised `Feature failing (LOW_SUCCESS_24H)`. The app shows its own copy, so nothing was broken for the user. Now: `404 LOCAL_ONLY_NOTE` with outcome `denied`.
+- Data: 62 `feature_outcomes` rows (ids 37-44, 49-52, 64-67, 69, 73-76, 81, 84-87, 90-94, 98, 103-107, 109, 111-116, 132-136, 138, 143-146, 157-160, 162-165; `status = 404` on `GET /api/notes/:id` and its DOCX export, before 01:53 UTC) changed from `client_error` to `denied`, after matching them one for one to welcome-note requests in the logs. Reverse: set those rows back to `client_error`.
+- Tests before merge (Node 20): 560 tests, 557 pass, 0 fail, 3 cancelled in `outreachEvents.test.js` (as before). The new test fails without the change.
+- Verified live: `/health` healthy, `/health/ready` 200, unauthenticated note request 401, running source files match `origin/main` (119 files under `src/`), `feature_health` shows `GET /api/notes/:id` 15 of 15. NOT verified live: a signed-in request for the welcome note (covered by the test).
+- Rollback: `flyctl releases rollback 56 -a ai-notetaker-backend`.
 
 ## 2026-11-25 Android 58.32 (versionCode 93), Play production, staged 20%
 - Tag `play/58.32-93` = `main` at `f65f650` (#96, version bump on top of `fbf81dd`). The AAB was built from exactly this commit in a clean detached worktree.

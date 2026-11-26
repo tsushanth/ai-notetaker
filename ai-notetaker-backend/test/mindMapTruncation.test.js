@@ -11,8 +11,11 @@ process.env.FAILURE_REPORTER_DISABLED = '1';
 const swap = (rel, exports) => { const full = require.resolve(path.join(__dirname, '..', 'src', rel)); require.cache[full] = { id: full, filename: full, loaded: true, exports }; };
 const replies = []; const calls = []; const saved = [];
 swap('config/openai.js', { anthropic: { messages: { create: async (r) => { calls.push(r); return replies.shift(); } } }, llmUsage: { withFeature: (_f, fn) => fn() }, MODELS: { GPT4_MINI: 'm' }, PRICING: { m: { input: 0, output: 0 } } });
-swap('config/supabase.js', { supabaseAdmin: { from: (t) => ({ upsert: (row) => { saved.push([t, row]); return { select: () => ({ single: async () => ({ data: { id: 'ai-1' }, error: null }) }) }; }, insert: async () => ({ error: null }) }) } });
-swap('services/noteService.js', { getNoteById: async () => ({ id: 'n1', content: 'A long note.' }) });
+// The notes table answers the welcome-note lookup: this user's copy.
+const copyQuery = { eq: () => copyQuery, order: () => copyQuery, limit: async () => ({ data: [{ id: 'my-welcome-copy' }], error: null }) };
+swap('config/supabase.js', { supabaseAdmin: { from: (t) => ({ select: () => copyQuery, upsert: (row) => { saved.push([t, row]); return { select: () => ({ single: async () => ({ data: { id: 'ai-1' }, error: null }) }) }; }, insert: async () => ({ error: null }) }) } });
+const asked = [];
+swap('services/noteService.js', { getNoteById: async (userId, id) => { asked.push([userId, id]); return { id, content: 'A long note.' }; } });
 const aiService = require('../src/services/aiService');
 const { salvageMindMap } = require('../src/utils/aiOutput');
 
@@ -47,4 +50,13 @@ test('a stub is not shown as a result', async () => {
   reset(); replies.push(reply(stub, 'max_tokens'), reply(stub, 'max_tokens'));
   await assert.rejects(aiService.generateMindMap('u1', 'n1', {}), { statusCode: 502 });
   assert.equal(saved.length, 0);
+});
+
+test("the app's welcome note id is read and saved as this user's copy, and answered under the id that was asked", async () => {
+  reset(); asked.length = 0; replies.push(reply(full, 'end_turn'));
+  const sentinel = '00000000-0000-0000-0000-000000000001';
+  const out = await aiService.generateMindMap('u1', sentinel, {});
+  assert.deepEqual(asked, [['u1', 'my-welcome-copy']]);
+  assert.equal(saved.find(([t]) => t === 'ai_content')[1].note_id, 'my-welcome-copy');
+  assert.equal(out.note_id, sentinel);
 });

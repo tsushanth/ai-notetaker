@@ -4,6 +4,7 @@ const { supabaseAdmin } = require('../config/supabase');
 const { logger } = require('../utils/logger');
 const { AppError } = require('../middleware/errorHandler');
 const noteService = require('./noteService');
+const { resolveNoteId } = require('./welcomeNote');
 const { getLanguageInstruction } = require('../utils/languages');
 const { StructuredOutputError, parseQuiz, parseFlashcards, parseMindMap, salvageMindMap, requestStructured, enoughOf } = require('../utils/aiOutput');
 
@@ -412,7 +413,9 @@ ${truncateContent(note.content)}`;
     const { language = 'english', includeExploration = true } = options;
 
     try {
-      const note = await noteService.getNoteById(userId, noteId);
+      // The app sends its built-in welcome note under a fixed id; this user's copy is stored under another one.
+      const storedId = await resolveNoteId(userId, noteId);
+      const note = await noteService.getNoteById(userId, storedId);
       if (!note) {
         throw new AppError('Note not found', 404);
       }
@@ -477,7 +480,7 @@ ${truncateContent(note.content)}`;
       });
 
       // Save AI content
-      const aiContent = await this.saveAIContent(noteId, 'mindmap', {
+      const aiContent = await this.saveAIContent(storedId, 'mindmap', {
         title: mindMapData.title,
         nodes: mindMapData.nodes,
         model: MODELS.GPT4_MINI,

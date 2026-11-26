@@ -11,7 +11,7 @@ const { reportFailure } = require('../utils/failureReporter');
 const { TtsError } = require('../utils/ttsError');
 const { cleanTextForSpeech, splitForSpeech } = require('../utils/speechText');
 const { concatWav, wavSeconds } = require('../utils/wav');
-const { LOCAL_ONLY_NOTE_IDS } = require('../middleware/localOnlyNote');
+const { resolveNoteId, isStockWelcomeNote } = require('./welcomeNote');
 
 // Kokoro voice IDs mapped from legacy OpenAI-style names
 const KOKORO_VOICES = {
@@ -39,13 +39,14 @@ const PIECE_GAP_MS = 150;        // pause between pieces
 const positive = (v, d) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d);
 const jobDeadlineMs = () => positive(process.env.TTS_JOB_DEADLINE_MS, 10 * 60_000);
 const maxChars = () => positive(process.env.TTS_MAX_CHARS, 20_000);
+const MP3_BITS_PER_SECOND = 64_000; // constant bitrate, so a stored file's length follows from its size
 
 /** WAV -> mono MP3 with the ffmpeg already in the image. Resolves null when that is not possible (the WAV is then used). */
 function encodeMp3(wav, { ffmpegPath = process.env.FFMPEG_PATH || 'ffmpeg', timeoutMs = 120_000 } = {}) {
   return new Promise((resolve) => {
     let child;
     try {
-      child = spawn(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', 'pipe:0', '-ac', '1', '-b:a', '64k', '-f', 'mp3', 'pipe:1'], { timeout: timeoutMs });
+      child = spawn(ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-i', 'pipe:0', '-ac', '1', '-b:a', String(MP3_BITS_PER_SECOND), '-f', 'mp3', 'pipe:1'], { timeout: timeoutMs });
     } catch { return resolve(null); }
     const out = [];
     child.on('error', () => resolve(null));
@@ -379,20 +380,26 @@ class TTSService {
     }
   }
 
-  /**
-   * The welcome note is built into the app under one fixed id, and the server keeps a per-user copy under a generated id.
-   * Map the fixed id to this user's copy.
-   */
-  async resolveNoteId(userId, noteId) {
-    if (!LOCAL_ONLY_NOTE_IDS.has(String(noteId).toLowerCase())) return noteId;
-    const { data } = await supabaseAdmin
-      .from('notes')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('source_type', 'tutorial')
-      .order('created_at', { ascending: false })
-      .limit(1);
-    return data?.[0]?.id || noteId;
+  /** Audio of the app's own welcome text made earlier, or null. A miss or a storage error only means making it again. */
+  async getSharedAudio(path) {
+    try {
+      const { data, error } = await supabaseAdmin.storage.from('audio').download(path);
+      if (error || !data) return null;
+      const audio = Buffer.from(await data.arrayBuffer());
+      return audio.length ? audio : null;
+    } catch (error) {
+      logger.warn('Shared welcome audio could not be read', { error: error.message });
+      return null;
+    }
+  }
+
+  async storeSharedAudio(path, mp3) {
+    try {
+      const { error } = await supabaseAdmin.storage.from('audio').upload(path, mp3, { contentType: 'audio/mpeg', upsert: true });
+      if (error) logger.warn('Shared welcome audio could not be stored', { error: error.message });
+    } catch (error) {
+      logger.warn('Shared welcome audio could not be stored', { error: error.message });
+    }
   }
 
   /**
@@ -400,11 +407,11 @@ class TTSService {
    */
   async generateForNote(userId, noteId, options = {}) {
     const { voice = 'nova', speed = 1.0, stats = {} } = options;
-    const id = await this.resolveNoteId(userId, noteId);
+    const id = await resolveNoteId(userId, noteId);
 
     const { data: note, error: noteError } = await supabaseAdmin
       .from('notes')
-      .select('content, formatted_content, title')
+      .select('content, formatted_content, title, source_type')
       .eq('id', id)
       .eq('user_id', userId)
       .single();
@@ -416,7 +423,10 @@ class TTSService {
       throw new TtsError('NOTE_NOT_FOUND');
     }
 
-    const cleanText = this.cleanTextForTTS(note.formatted_content || note.content);
+    // The app's own welcome text is the same for everyone, so its audio can be made once. The formatted version is not
+    // used for it: that differs from user to user, and the app shows its own copy anyway.
+    const stock = isStockWelcomeNote(note);
+    const cleanText = this.cleanTextForTTS(stock ? note.content : note.formatted_content || note.content);
     stats.chars = cleanText.length;
     if (!cleanText) {
       throw new TtsError('NOTHING_TO_READ');
@@ -432,9 +442,21 @@ class TTSService {
       return { audio_url: saved.audio_url, voice, speed, duration_seconds: saved.duration_seconds };
     }
 
-    const wav = await this.synthesizeWithKokoro(cleanText, voice, speed, { stats });
-    const durationSeconds = Math.ceil(wavSeconds(wav));
-    const mp3 = await encodeMp3(wav); // about six times smaller: long notes exceed the storage size limit as WAV
+    // Only the unchanged welcome text at normal speed is shared between users; every user still gets a file of their own.
+    const sharedPath = stock && speed === 1
+      ? `tts/shared/welcome/${textSha}-${KOKORO_VOICES[voice.toLowerCase()] || KOKORO_VOICES.nova}.mp3`
+      : null;
+    let wav = null;
+    let mp3 = sharedPath ? await this.getSharedAudio(sharedPath) : null;
+    let durationSeconds;
+    if (mp3) {
+      durationSeconds = Math.ceil((mp3.length * 8) / MP3_BITS_PER_SECOND);
+    } else {
+      wav = await this.synthesizeWithKokoro(cleanText, voice, speed, { stats });
+      durationSeconds = Math.ceil(wavSeconds(wav));
+      mp3 = await encodeMp3(wav); // about six times smaller: long notes exceed the storage size limit as WAV
+      if (sharedPath && mp3) await this.storeSharedAudio(sharedPath, mp3);
+    }
 
     const fileName = `tts/${userId}/${id}-${Date.now()}.${mp3 ? 'mp3' : 'wav'}`;
     const { error: uploadError } = await supabaseAdmin.storage
@@ -508,7 +530,7 @@ class TTSService {
    * Get saved TTS for a note
    */
   async getTTSForNote(userId, requestedNoteId) {
-    const noteId = await this.resolveNoteId(userId, requestedNoteId);
+    const noteId = await resolveNoteId(userId, requestedNoteId);
     logger.info('Fetching saved TTS', { noteId, userId });
 
     // Only the owner of the note may read its audio.

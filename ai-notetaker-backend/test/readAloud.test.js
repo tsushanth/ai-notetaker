@@ -11,7 +11,7 @@ const reports = [];
 stub('../src/utils/logger', { logger: { info() {}, warn() {}, error() {}, debug() {} } });
 stub('../src/utils/failureReporter', { reportFailure: (flow, err, ctx) => { reports.push({ flow, message: err.message, ctx }); return Promise.resolve(); } });
 
-const store = { notes: [], ai_content: [], uploads: [] };
+const store = { notes: [], ai_content: [], uploads: [], shared: {} };
 function from(table) {
   const filters = [];
   const q = {
@@ -27,6 +27,7 @@ function from(table) {
 let uploadError = null;
 stub('../src/config/supabase', { supabaseAdmin: { from, storage: { from: () => ({
   upload: async (name, body, opts) => { if (uploadError) return { error: { message: uploadError } }; store.uploads.push({ name, body, opts }); return { error: null }; },
+  download: async (name) => (store.shared[name] ? { data: new Blob([store.shared[name]]), error: null } : { data: null, error: { message: 'not found' } }),
   getPublicUrl: (name) => ({ data: { publicUrl: `https://x.test/audio/${name}` } }),
 }) } } });
 
@@ -64,7 +65,7 @@ function reset(content = sentences(3)) {
     { id: 'mine-tutorial', user_id: 'u1', source_type: 'tutorial', content },
     { id: 'n1', user_id: 'u1', source_type: 'video', content },
   ];
-  store.ai_content = []; store.uploads = [];
+  store.ai_content = []; store.uploads = []; store.shared = {};
 }
 
 test('text is split below the size at which the worker starts skipping, and no word is lost', () => {
@@ -189,4 +190,73 @@ test('MP3 encoding with the real ffmpeg, when this machine has it', async (t) =>
   const out = await tts.encodeMp3(wav(48000), { ffmpegPath: 'ffmpeg' });
   if (!out) return t.skip('ffmpeg not installed');
   assert.ok(out.length > 100 && out.length < 44 + 96000);
+});
+
+// The welcome text shared by every user. Taken from the app source so the test fails if the app's text changes without
+// its hash being added.
+const appSource = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', '..', 'android/app/src/main/java/com/kreativekoala/scribeai/utils/TutorialContent.kt'), 'utf8');
+const WELCOME = appSource.split('const val TUTORIAL_CONTENT = """')[1].split('"""')[0];
+const { isStockWelcomeNote } = require('../src/services/welcomeNote');
+
+test('only an unchanged, app-supplied welcome note counts as the shared one', () => {
+  assert.equal(isStockWelcomeNote({ source_type: 'tutorial', content: WELCOME }), true, 'add the new hash in welcomeNote.js');
+  assert.equal(isStockWelcomeNote({ source_type: 'tutorial', content: `${WELCOME} my own line` }), false);
+  assert.equal(isStockWelcomeNote({ source_type: 'manual', content: WELCOME }), false);
+  assert.equal(isStockWelcomeNote(null), false);
+});
+
+/** Give u1 and u2 a welcome note copy each; ffmpeg is replaced so an MP3 comes back (only an MP3 is shared). */
+function welcomeSetup(t, extra = {}) {
+  reset(); worker(() => 200);
+  store.notes = ['u1', 'u2'].map((u) => ({ id: `${u}-welcome`, user_id: u, source_type: 'tutorial', content: WELCOME, formatted_content: `Formatted differently for ${u}.`, ...extra }));
+  const fs = require('node:fs');
+  const script = require('node:path').join(require('node:os').tmpdir(), `fake-ffmpeg-${process.pid}`);
+  fs.writeFileSync(script, '#!/bin/sh\ncat >/dev/null\nhead -c 16000 /dev/zero\n', { mode: 0o755 });
+  process.env.FFMPEG_PATH = script;
+  t.after(() => { process.env.FFMPEG_PATH = '/nonexistent/ffmpeg'; fs.rmSync(script, { force: true }); });
+}
+/** What the real bucket would then hold. */
+const keepSharedUploads = () => { for (const u of store.uploads) if (u.name.startsWith('tts/shared/')) store.shared[u.name] = u.body; };
+
+test('welcome audio is made once; the next user gets a copy of their own without synthesis', async (t) => {
+  welcomeSetup(t);
+  const first = await tts.generateForNote('u1', SENTINEL);
+  const calls = sent.length;
+  assert.ok(calls > 5);
+  assert.ok(sent.every((s) => !s.text.includes('Formatted differently')));
+  assert.match(first.audio_url, /tts\/u1\/u1-welcome-/);
+  keepSharedUploads();
+  assert.equal(Object.keys(store.shared).length, 1);
+  assert.match(Object.keys(store.shared)[0], /^tts\/shared\/welcome\/[0-9a-f]{64}-af_nicole\.mp3$/);
+  store.uploads = [];
+  const second = await tts.generateForNote('u2', SENTINEL);
+  assert.equal(sent.length, calls, 'no synthesis for the second user');
+  assert.deepEqual(store.uploads.map((u) => u.name.replace(/-\d+\.mp3$/, '')), ['tts/u2/u2-welcome']);
+  assert.match(second.audio_url, /tts\/u2\/u2-welcome-/);
+  assert.equal(second.duration_seconds, 2, '16,000 bytes at 64 kbit/s');
+});
+
+test('another voice is made separately; another speed is not shared', async (t) => {
+  welcomeSetup(t);
+  await tts.generateForNote('u1', SENTINEL); keepSharedUploads();
+  let calls = sent.length;
+  store.uploads = [];
+  await tts.generateForNote('u2', SENTINEL, { voice: 'echo' });
+  assert.ok(sent.length > calls);
+  assert.ok(store.uploads.some((u) => u.name.endsWith('-am_michael.mp3')));
+  calls = sent.length; store.uploads = [];
+  await tts.generateForNote('u2', SENTINEL, { speed: 1.5 });
+  assert.ok(sent.length > calls);
+  assert.ok(store.uploads.every((u) => !u.name.startsWith('tts/shared/')));
+});
+
+test('an edited welcome note and any other note are never shared or served shared audio', async (t) => {
+  for (const extra of [{ content: `${WELCOME}\nMy private line.`, formatted_content: null }, { source_type: 'manual' }]) {
+    welcomeSetup(t, extra);
+    await tts.generateForNote('u1', 'u1-welcome');
+    const calls = sent.length;
+    await tts.generateForNote('u2', 'u2-welcome');
+    assert.equal(sent.length, calls * 2);
+    assert.ok(store.uploads.every((u) => !u.name.startsWith('tts/shared/')));
+  }
 });

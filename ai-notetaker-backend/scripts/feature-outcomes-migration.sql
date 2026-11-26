@@ -2,6 +2,7 @@
 -- (src/services/featureHealth.js). Route patterns, status, timing and the account id only; no request content.
 -- RLS is on with no policies and the view runs as its caller, so only the backend's service role can read either.
 -- Safe to run twice. Apply BEFORE or after the deploy: without it the backend drops the rows and logs once an hour.
+-- Re-running this file recreates the view: then run feature-health-exclude-test-accounts-2026-11-26.sql again.
 create table if not exists public.feature_outcomes (
   id bigint generated always as identity primary key,
   ts timestamptz not null default now(),

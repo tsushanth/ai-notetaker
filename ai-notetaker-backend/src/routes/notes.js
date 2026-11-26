@@ -5,6 +5,7 @@ const { validate } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
 const noteService = require('../services/noteService');
 const integrationService = require('../services/integrationService');
+const { isLocalOnlyNoteId, answerLocalOnlyNote } = require('../middleware/localOnlyNote');
 
 // All routes require authentication
 router.use(authenticate);
@@ -59,14 +60,19 @@ router.get('/', asyncHandler(async (req, res) => {
  */
 router.get('/:id', asyncHandler(async (req, res) => {
   const note = await noteService.getNoteById(req.userId, req.params.id);
-  
+
   if (!note) {
+    // The app asks for its built-in welcome note too and shows its own copy. Looked up first: one early account
+    // has a stored row under that id.
+    if (isLocalOnlyNoteId(req.params.id)) {
+      return answerLocalOnlyNote(res, 'This sample note only exists on your device.');
+    }
     return res.status(404).json({
       success: false,
       error: 'Note not found'
     });
   }
-  
+
   res.json({
     success: true,
     data: note

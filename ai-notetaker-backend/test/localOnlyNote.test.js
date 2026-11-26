@@ -45,6 +45,40 @@ test('the local-only check still requires sign-in', async () => {
   assert.equal(r.status, 401);
 });
 
+test('GET /api/notes/:id: a device-only note is not a failed attempt; a missing ordinary note still is', async () => {
+  const express = require('express');
+  const { createFeatureOutcomes } = require('../src/middleware/featureOutcomes');
+  const noteService = require('../src/services/noteService');
+  const original = noteService.getNoteById;
+  const stored = { id: TUTORIAL, user_id: 'legacy-user' };
+  noteService.getNoteById = async (userId) => (userId === 'legacy-user' ? stored : null);
+  const rows = [];
+  const outcomes = createFeatureOutcomes({ insert: async (batch) => rows.push(...batch) });
+  const app = express();
+  app.use(outcomes.middleware);
+  app.use('/api/notes', require('../src/routes/notes'));
+  const s = await h.listen(app);
+  try {
+    const tutorial = await h.call(s, 'GET', `/api/notes/${TUTORIAL}`, { user: 'free-user' });
+    assert.equal(tutorial.status, 404);
+    assert.equal(tutorial.body.code, 'LOCAL_ONLY_NOTE');
+    const missing = await h.call(s, 'GET', '/api/notes/6f1d1c52-0000-4000-8000-000000000002', { user: 'free-user' });
+    assert.equal(missing.status, 404);
+    assert.equal(missing.body.error, 'Note not found');
+    const legacy = await h.call(s, 'GET', `/api/notes/${TUTORIAL}`, { user: 'legacy-user' });
+    assert.equal(legacy.status, 200);
+    await outcomes.flush();
+    assert.deepEqual(rows.map((r) => [r.feature, r.outcome]), [
+      ['GET /api/notes/:id', 'denied'],
+      ['GET /api/notes/:id', 'client_error'],
+      ['GET /api/notes/:id', 'ok']
+    ]);
+  } finally {
+    noteService.getNoteById = original;
+    s.close();
+  }
+});
+
 test('ordinary note ids are untouched (share still reaches the service)', async () => {
   const r = await h.call(server, 'POST', '/api/notes/6f1d1c52-0000-4000-8000-000000000002/share', { user: 'free-user', body: {} });
   assert.equal(r.status, 200);

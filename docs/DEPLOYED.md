@@ -5,7 +5,18 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v29 | `registry.fly.io/scribe-ai-web:deployment-01M8A8X995H1PXV5HBG5CE0HMV` | `origin/main` at `2d02b97` (#90; `web-app/` tree `b3184d97a4226a3b8620c0f7462b4c4985d6d74c` identical to main) | 2026-11-25 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v58 | `registry.fly.io/ai-notetaker-backend:deployment-01M8AXSBE9C3BTWST1DDSDVNQZ` | `origin/main` at `c74cc21` (#101; `ai-notetaker-backend/` tree `799e4955099191f67d83a1df6238da3ca13798e7` identical to main) | 2026-11-26 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v59 | `registry.fly.io/ai-notetaker-backend:deployment-01M8C608ZN4CFFGM58AZK2MM88` | `origin/main` at `a96edb4` (#103; `ai-notetaker-backend/` tree `08240cf9af5a091ad977a61cf00798dc39461042` identical to main) | 2026-11-26 (UTC) |
+
+## 2026-11-26 Backend v59: Read Aloud of long notes; more YouTube link shapes (#103)
+- `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `a96edb4`, 15:01 UTC. `SUBSCRIPTION_VERIFY_MODE=log` unchanged, no secret change. Before the deploy: no Read Aloud request since 08:36, no recording or meeting activity in the log lines read (from 14:07), last upload request finished 14:58.
+- Cause (08:23-08:41 UTC, one user): a 13,551 character note (51 pieces) was on its last pieces when the ten minute job deadline passed; a second job for another voice of the same note ran beside it; at about 08:33 the speech worker (`listenai-tts-worker`, shared CPU, shared with ReadAloud) used up its CPU burst credit and one piece went from about 10 s to 145 s. Each timed-out piece was sent again twice, so the worker synthesized the same text three times.
+- Now: the job deadline is 20 s per piece (never under ten minutes); a timed-out piece is not resent (one 180 s wait); another voice or speed of a note waits its turn; two slow pieces with no way to finish end the job with `WORKER_SLOW` (422).
+- YouTube: `watch?...&v=` and `/live/` links yield the video id. The link behind the three failures of 06:14-06:16 UTC is not logged, so it is not known that it had one of these shapes.
+- Tests before merge: full backend suite 570 of 570 passed; five new behaviour tests fail without the change. `readAloud.test.js` takes about two minutes to exit because the timer of the ffmpeg-missing case stays open.
+- Verified live: `/health` and `/health/ready` 200, unauthenticated Read Aloud 401, running source files match `origin/main` (120 files under `src/`), one synthetic text of 1,033 characters from the running backend: 4 pieces, 41.4 s, 101.5 s of audio. NOT verified live: a long note, a queued second voice, `WORKER_SLOW`, a signed-in device request.
+- Capacity limit that remains: about 23-25 characters a second. A released app waits up to 270 s (58.32, about 6,000 characters) or about 400 s with its automatic repeats (58.31 and older, about 9,000); longer notes finish in the background and play on a later tap or reopen. One machine's CPU credit covers roughly 14,000-15,000 characters from full and refills in about two hours, so the accepted 20,000 can still fail.
+- Spend: no model call; one short synthesis on our own speech worker, already running.
+- Rollback: `flyctl releases rollback 58 -a ai-notetaker-backend`.
 
 ## 2026-11-26 Backend v58: welcome note mind map and Read Aloud; test accounts left out of feature health (#100, #101)
 - `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `c74cc21`, 03:18 UTC. `SUBSCRIPTION_VERIFY_MODE=log` unchanged, no secret change. Before the deploy: no recording being transcribed, no meeting open, no non-GET request in 15 minutes.

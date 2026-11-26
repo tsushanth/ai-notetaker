@@ -181,6 +181,16 @@ function createTranscriptGeneration({ supadata, ledger, env = process.env, now =
 
   return {
     isRunning: (userId, videoId) => jobs.has(key(userId, videoId)),
+    /** The note already made from a generated transcript of this video in the last day, or null. Never throws. */
+    async savedNote(userId, videoId) {
+      try {
+        const prior = await db().latest(userId, videoId, new Date(now() - DAY_MS).toISOString());
+        return prior?.status === 'done' && prior.note_id ? await db().findNote(userId, prior.note_id) : null;
+      } catch (error) {
+        logger.warn('Could not look for an earlier generated note', { userId, videoId, error: error.message });
+        return null;
+      }
+    },
     /** Start (or join) the job for this user and video. Resolves { note, reused } or rejects with a TranscriptError. */
     start(args) {
       const k = key(args.userId, args.videoId);

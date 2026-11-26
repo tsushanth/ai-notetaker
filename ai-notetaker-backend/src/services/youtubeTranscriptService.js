@@ -83,6 +83,11 @@ class YouTubeTranscriptService {
 
       if (this.isGenerating(userId, videoUrl)) return await waitForGeneration();
 
+      // Asked again after "still writing": hand back that note. The vendor serves a transcript it has generated as if it
+      // were captions, so going on would make a second copy.
+      const saved = await this.generator().savedNote(userId, videoId);
+      if (saved) return answer(saved, 'supadata_generated');
+
       const native = await this.getCaptions(videoId, Math.max(1000, began + budgetMs - Date.now()));
       if (!native) {
         logger.info('YouTube video has no captions', { userId, videoId });

@@ -140,6 +140,28 @@ test('a slow generation answers "still writing", then asking again joins it, the
   assert.equal(calls.filter((c) => c === 'generate').length, 1);
 });
 
+test('after a generation the vendor answers the captions request with it: the saved note is returned, not a copy', async () => {
+  // Seen live: once generated, mode=native returns the text.
+  let generated = false;
+  const { service, calls } = setup({
+    captions: () => (generated ? { content: 'spoken words here', lang: 'none' } : noCaptions()),
+    generate: async () => { generated = true; return { content: 'spoken words here', lang: 'dz', billed: 4 }; },
+  });
+  const first = await service.processVideoUrl('u1', URL_);
+  const before = notes.length;
+  const paid = calls.length;
+  const again = await service.processVideoUrl('u1', URL_);
+  assert.equal(again.note.id, first.note.id);
+  assert.equal(again.stats.transcriptSource, 'supadata_generated');
+  assert.equal(notes.length, before);
+  assert.equal(calls.length, paid, 'no vendor request for the repeat');
+});
+
+test('a ledger that cannot be read does not stop a captioned video', async () => {
+  const { service } = setup({ captions: () => ({ content: 'the captions' }), ledger: { latest: async () => { throw new Error('db down'); } } });
+  assert.equal((await service.processVideoUrl('u1', URL_)).note.content, 'the captions');
+});
+
 test('a vendor job is saved, and a restarted machine resumes it without paying again', async () => {
   const { service, calls, rows } = setup({ generate: async () => ({ jobId: 'job-1', billed: 10 }) });
   await service.processVideoUrl('u1', URL_);

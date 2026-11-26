@@ -7,13 +7,19 @@
 -- do not add patterns that could match other people.
 
 -- The view runs as its caller and the backend's service role cannot read auth.users, so one definer function returns
--- only the ids, and only the service role may call it.
+-- only the ids. The client roles (anon, authenticated) may not call it.
 create or replace function public.monitoring_test_user_ids()
 returns setof uuid
 language sql stable security definer set search_path = ''
 as $fn$ select id from auth.users where coalesce(email, '') ~* '{{OWNER_EMAIL_REGEX}}' $fn$;
 revoke all on function public.monitoring_test_user_ids() from public, anon, authenticated;
 grant execute on function public.monitoring_test_user_ids() to service_role;
+-- The dashboard's read-only SQL role (it can already read every table) keeps being able to read the view.
+do $do$ begin
+  if exists (select 1 from pg_roles where rolname = 'supabase_read_only_user') then
+    grant execute on function public.monitoring_test_user_ids() to supabase_read_only_user;
+  end if;
+end $do$;
 
 create or replace view public.feature_health with (security_invoker = true) as
 select feature,

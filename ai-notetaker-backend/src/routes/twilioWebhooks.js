@@ -11,10 +11,9 @@
  *   - call-status, dial-complete: lifecycle updates
  *   - recording-complete: post-call recording metadata + storage
  *
- * NOTE: These webhooks are public — Twilio signs them with TWILIO_AUTH_TOKEN
- * which the TwilioService.validateWebhookSignature helper checks. We accept
- * unsigned requests in development; production should add a middleware
- * that validates X-Twilio-Signature against the request URL.
+ * NOTE: These webhooks are public. Twilio signs them with TWILIO_AUTH_TOKEN;
+ * middleware/twilioWebhookAuth.js validates X-Twilio-Signature (log-only until
+ * TWILIO_WEBHOOK_ENFORCE=1).
  */
 
 const express = require('express');
@@ -22,6 +21,10 @@ const router = express.Router();
 const { twiml: TwiML } = require('twilio');
 const { supabaseAdmin } = require('../config/supabase');
 const { TwilioService } = require('../services/twilioService');
+const { twilioWebhookAuth } = require('../middleware/twilioWebhookAuth');
+
+// Twilio signs every callback (X-Twilio-Signature). PHASE 1: verify + log only; set TWILIO_WEBHOOK_ENFORCE=1 to reject. See the middleware header.
+router.use(twilioWebhookAuth());
 
 // ───────────────────────────────────────────────────────────────────────────
 // Verification

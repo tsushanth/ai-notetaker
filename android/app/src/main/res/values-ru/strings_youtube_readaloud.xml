@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Не удалось прочитать эту ссылку. Проверьте, что это ссылка на видео YouTube, и попробуйте снова.</string>
+    <string name="youtube_pending_title">Расшифровка ещё создаётся</string>
+    <string name="readaloud_phone_non_english">Эта заметка не на английском, поэтому её читает голос вашего телефона.</string>
+    <string name="readaloud_phone_offline">Вы не в сети, поэтому эту заметку читает голос вашего телефона.</string>
+    <string name="readaloud_phone_no_voice">В телефоне нет голоса для этого языка. Его можно добавить в настройках синтеза речи.</string>
+    <string name="readaloud_phone_failed">Голос телефона не смог прочитать эту заметку. Попробуйте снова.</string>
+</resources>

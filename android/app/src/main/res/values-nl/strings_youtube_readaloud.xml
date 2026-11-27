@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Die link kon niet worden gelezen. Controleer of het een link naar een YouTube-video is en probeer het opnieuw.</string>
+    <string name="youtube_pending_title">Transcript wordt nog geschreven</string>
+    <string name="readaloud_phone_non_english">Deze notitie is niet in het Engels, dus de stem van je telefoon leest hem voor.</string>
+    <string name="readaloud_phone_offline">Je bent offline, dus de stem van je telefoon leest deze notitie voor.</string>
+    <string name="readaloud_phone_no_voice">Je telefoon heeft geen stem voor deze taal. Je kunt er een toevoegen bij de instellingen voor tekst-naar-spraak.</string>
+    <string name="readaloud_phone_failed">De stem van je telefoon kon deze notitie niet voorlezen. Probeer het opnieuw.</string>
+</resources>

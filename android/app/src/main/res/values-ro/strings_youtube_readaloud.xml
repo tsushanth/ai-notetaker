@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Linkul nu a putut fi citit. Verifică să fie un link către un videoclip YouTube și încearcă din nou.</string>
+    <string name="youtube_pending_title">Transcrierea este încă în lucru</string>
+    <string name="readaloud_phone_non_english">Această notiță nu este în engleză, așa că o citește vocea telefonului tău.</string>
+    <string name="readaloud_phone_offline">Ești offline, așa că această notiță este citită de vocea telefonului tău.</string>
+    <string name="readaloud_phone_no_voice">Telefonul tău nu are o voce pentru această limbă. Poți adăuga una din setările text în vorbire ale telefonului.</string>
+    <string name="readaloud_phone_failed">Vocea telefonului nu a putut citi această notiță. Încearcă din nou.</string>
+</resources>

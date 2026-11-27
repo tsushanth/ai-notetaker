@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Hindi mabasa ang link na iyon. Tiyaking link ito ng video sa YouTube at subukang muli.</string>
+    <string name="youtube_pending_title">Isinusulat pa ang transcript</string>
+    <string name="readaloud_phone_non_english">Hindi Ingles ang note na ito, kaya binabasa ito ng boses ng iyong telepono.</string>
+    <string name="readaloud_phone_offline">Offline ka, kaya binabasa ng boses ng iyong telepono ang note na ito.</string>
+    <string name="readaloud_phone_no_voice">Walang boses ang iyong telepono para sa wikang ito. Maaari kang magdagdag sa text-to-speech settings ng telepono.</string>
+    <string name="readaloud_phone_failed">Hindi mabasa ng boses ng iyong telepono ang note na ito. Subukang muli.</string>
+</resources>

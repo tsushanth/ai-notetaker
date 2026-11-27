@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Pautan itu tidak dapat dibaca. Pastikan ia pautan video YouTube dan cuba lagi.</string>
+    <string name="youtube_pending_title">Transkrip masih ditulis</string>
+    <string name="readaloud_phone_non_english">Nota ini bukan dalam bahasa Inggeris, jadi suara telefon anda membacanya.</string>
+    <string name="readaloud_phone_offline">Anda di luar talian, jadi suara telefon anda membaca nota ini.</string>
+    <string name="readaloud_phone_no_voice">Telefon anda tiada suara untuk bahasa ini. Anda boleh menambahnya dalam tetapan teks kepada pertuturan telefon.</string>
+    <string name="readaloud_phone_failed">Suara telefon anda tidak dapat membaca nota ini. Cuba lagi.</string>
+</resources>

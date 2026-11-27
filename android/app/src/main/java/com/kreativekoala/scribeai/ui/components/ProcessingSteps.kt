@@ -350,7 +350,8 @@ fun ProcessingErrorView(
     message: String,
     onRetry: () -> Unit,
     onGoBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    title: String = stringResource(R.string.something_went_wrong)
 ) {
     Column(
         modifier = modifier
@@ -373,7 +374,7 @@ fun ProcessingErrorView(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            stringResource(R.string.something_went_wrong),
+            title,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = TextPrimary

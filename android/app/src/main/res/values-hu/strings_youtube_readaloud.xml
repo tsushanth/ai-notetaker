@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Ezt a linket nem sikerült beolvasni. Ellenőrizd, hogy YouTube-videó linkje-e, és próbáld újra.</string>
+    <string name="youtube_pending_title">Az átirat még készül</string>
+    <string name="readaloud_phone_non_english">Ez a jegyzet nem angol nyelvű, ezért a telefonod hangja olvassa fel.</string>
+    <string name="readaloud_phone_offline">Offline vagy, ezért a telefonod hangja olvassa fel ezt a jegyzetet.</string>
+    <string name="readaloud_phone_no_voice">A telefonodon nincs hang ehhez a nyelvhez. A telefon szövegfelolvasási beállításaiban adhatsz hozzá egyet.</string>
+    <string name="readaloud_phone_failed">A telefonod hangja nem tudta felolvasni ezt a jegyzetet. Próbáld újra.</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">ไม่สามารถอ่านลิงก์นี้ได้ ตรวจสอบว่าเป็นลิงก์วิดีโอ YouTube แล้วลองอีกครั้ง</string>
+    <string name="youtube_pending_title">กำลังเขียนบทถอดความ</string>
+    <string name="readaloud_phone_non_english">โน้ตนี้ไม่ใช่ภาษาอังกฤษ จึงใช้เสียงของโทรศัพท์อ่าน</string>
+    <string name="readaloud_phone_offline">คุณออฟไลน์อยู่ จึงใช้เสียงของโทรศัพท์อ่านโน้ตนี้</string>
+    <string name="readaloud_phone_no_voice">โทรศัพท์ของคุณไม่มีเสียงสำหรับภาษานี้ คุณเพิ่มได้ในการตั้งค่าการอ่านออกเสียงข้อความ</string>
+    <string name="readaloud_phone_failed">เสียงของโทรศัพท์อ่านโน้ตนี้ไม่ได้ โปรดลองอีกครั้ง</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Bu bağlantı okunamadı. Bir YouTube video bağlantısı olduğundan emin olup tekrar deneyin.</string>
+    <string name="youtube_pending_title">Döküm hâlâ yazılıyor</string>
+    <string name="readaloud_phone_non_english">Bu not İngilizce olmadığı için telefonunuzun kendi sesi okuyor.</string>
+    <string name="readaloud_phone_offline">Çevrimdışısınız; bu notu telefonunuzun kendi sesi okuyor.</string>
+    <string name="readaloud_phone_no_voice">Telefonunuzda bu dil için ses yok. Telefonun metin okuma ayarlarından ekleyebilirsiniz.</string>
+    <string name="readaloud_phone_failed">Telefonunuzun sesi bu notu okuyamadı. Lütfen tekrar deneyin.</string>
+</resources>

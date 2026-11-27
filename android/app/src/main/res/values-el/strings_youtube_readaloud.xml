@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Δεν ήταν δυνατή η ανάγνωση αυτού του συνδέσμου. Βεβαιωθείτε ότι είναι σύνδεσμος βίντεο YouTube και δοκιμάστε ξανά.</string>
+    <string name="youtube_pending_title">Η μεταγραφή γράφεται ακόμη</string>
+    <string name="readaloud_phone_non_english">Αυτή η σημείωση δεν είναι στα αγγλικά, γι’ αυτό τη διαβάζει η φωνή του τηλεφώνου σας.</string>
+    <string name="readaloud_phone_offline">Είστε εκτός σύνδεσης, γι’ αυτό τη σημείωση τη διαβάζει η φωνή του τηλεφώνου σας.</string>
+    <string name="readaloud_phone_no_voice">Το τηλέφωνό σας δεν έχει φωνή για αυτήν τη γλώσσα. Μπορείτε να προσθέσετε μία από τις ρυθμίσεις μετατροπής κειμένου σε ομιλία.</string>
+    <string name="readaloud_phone_failed">Η φωνή του τηλεφώνου σας δεν μπόρεσε να διαβάσει τη σημείωση. Δοκιμάστε ξανά.</string>
+</resources>

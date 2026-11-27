@@ -500,6 +500,7 @@ class NoteViewModel(
                     .post(requestBody)
                     .addHeader("Authorization", "Bearer $cleanToken")
                     .addHeader("Content-Type", "application/json")
+                    .addHeader(VideoErrors.ACCEPTS_PENDING_HEADER, "1")
                     .build()
 
                 Log.d(TAG, "Making request to: ${request.url}")

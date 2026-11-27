@@ -5,7 +5,7 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 | Component | Fly app | Release | Image | Built from | Date |
 |---|---|---|---|---|---|
 | Web (`web-app/`, scribeai.online) | `scribe-ai-web` | v29 | `registry.fly.io/scribe-ai-web:deployment-01M8A8X995H1PXV5HBG5CE0HMV` | `origin/main` at `2d02b97` (#90; `web-app/` tree `b3184d97a4226a3b8620c0f7462b4c4985d6d74c` identical to main) | 2026-11-25 (UTC) |
-| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v63 | `registry.fly.io/ai-notetaker-backend:deployment-01M8CRJ1WKSTN1SRB4GDK92M3P` | `origin/main` at `8cf9c8b` (#109; `ai-notetaker-backend/` tree `e24eba6b5242c9e64488815c18578a6ea509e617`; running `src/`, package files and `fly.toml` identical) | 2026-11-26 (UTC) |
+| Backend (`ai-notetaker-backend/`) | `ai-notetaker-backend` | v64 | `registry.fly.io/ai-notetaker-backend:deployment-01M8D82Z8ERHVXAB5GD2DEMXSP` | `origin/main` at `0b82d5d` (#112; `ai-notetaker-backend/` tree `c892f598ff9e29e012a52a5d352c243eb2345a76`; running `src/` identical) | 2026-11-27 (UTC) |
 
 ## Android: merged, NOT released (next release: after 58.32, versionCode 93)
 
@@ -13,6 +13,15 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 - Read Aloud: notes that are not in English (decided on the device from the text) and any note while offline are read by the phone's own voice. If the phone has no voice for the language, the server voice is offered as before when online. Event `read_aloud_phone` (`ok`, `code`, `reason`, `language`).
 - Manifest: added the `TTS_SERVICE` `<queries>` entry (package visibility, not a permission), which Android 11+ requires for text-to-speech.
 - Checks: `:app:testDebugUnitTest` 82 tests, 0 failures; `:app:assembleDebug`. No device run.
+
+## 2026-11-27 Backend v64: released Android apps no longer report failure while a transcript is being written (#112)
+- `flyctl deploy --remote-only` from a clean detached worktree of `origin/main` at `0b82d5d`, 00:57 UTC. Only backend change since v63. No secret, flag or database change. Before the deploy: no recording, transcript or meeting in progress.
+- Was: for a video without captions the app got `409 TRANSCRIPT_PENDING` after 50 s and showed "Failed to process video" while the server was still writing the transcript.
+- Now: for an `okhttp` client without `x-accepts-pending: 1` the request is held open: `201` at once, a space every 15 s, the usual JSON when the note is saved; if no note comes the connection is cut. Web, iOS and builds that send the header still get the `409`.
+- Tests before merge (Node 20): 620 tests, 617 pass, 0 fail, 3 cancelled in `outreachEvents.test.js` (as before). The two held-request tests fail without the route change.
+- Verified live: `/health/ready` 200, running `src/` files identical to main (125). On a temporary account (deleted) with a 10 minute silent video: `201` at 51 s, only white space, then an HTTP/2 stream error at 73 s through the Fly proxy, so the app reports a failure, not a success. NOT verified live: a held request that ends with a note (unit tests only), any device. A deploy or restart cuts held requests (the app then shows a failure).
+- Spend: one transcript generation, within the vendor plan.
+- Rollback: `flyctl releases rollback 63 -a ai-notetaker-backend`.
 
 ## 2026-11-26 Backend v60 to v63: daily limits saved, transcripts for videos without captions, Polly built but off (#105, #106, #107, #109)
 - `flyctl deploy --remote-only` from a clean detached worktree of `origin/main`: v60 at `aa9602e` (#105, 20:05 UTC), v61 at `6cb91e0` (#106), v62 at `c208dc4` (#107, about 20:19 UTC), v63 at `8cf9c8b` (#109, about 20:26 UTC: a video with nothing to hear is remembered for a day and answered `NO_SPEECH` instead of being generated again; 612 tests, 609 pass, 0 fail, 3 cancelled as before; verified live: pending, then `NO_SPEECH` with no second generation). Before each: no recording being transcribed, no meeting open, no transcript generation pending. No secret change. `SUBSCRIPTION_VERIFY_MODE=log` unchanged.

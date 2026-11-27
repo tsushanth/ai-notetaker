@@ -31,6 +31,12 @@ data class VideoFailure(
 object VideoErrors {
     const val PENDING = "TRANSCRIPT_PENDING"
 
+    /**
+     * Sent as "1" with a video request: this app shows "still writing" itself. Without it the server holds the request
+     * open until the transcript is done, which it does for older releases.
+     */
+    const val ACCEPTS_PENDING_HEADER = "x-accepts-pending"
+
     /** An unsuccessful answer from POST /api/uploads/video-url. */
     fun fromResponse(status: Int, body: String?): VideoFailure {
         val serverCode = try {

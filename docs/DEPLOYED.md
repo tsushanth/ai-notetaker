@@ -9,7 +9,7 @@ Newest first. Parity rule: what runs in production is on `main` (tree compared f
 
 ## Android: merged, NOT released (next release: after 58.32, versionCode 93)
 
-- YouTube: the app shows the server's own error (daily limit, no captions, private, still writing the transcript) instead of one of its fixed texts; a rejected link, an expired session and network failures get their own message. `youtube.com/live/` links are no longer refused in the app. Event `youtube_result` (`ok`, `code`, `status`) records how each link ended; `processing_error` is no longer sent for "still writing".
+- YouTube: the app shows the server's own error (daily limit, no captions, private, still writing the transcript) instead of one of its fixed texts, and sends `x-accepts-pending: 1` so the server answers "still writing" at once instead of holding the request (#112); a rejected link, an expired session and network failures get their own message. `youtube.com/live/` links are no longer refused in the app. Event `youtube_result` (`ok`, `code`, `status`) records how each link ended; `processing_error` is no longer sent for "still writing".
 - Read Aloud: notes that are not in English (decided on the device from the text) and any note while offline are read by the phone's own voice. If the phone has no voice for the language, the server voice is offered as before when online. Event `read_aloud_phone` (`ok`, `code`, `reason`, `language`).
 - Manifest: added the `TTS_SERVICE` `<queries>` entry (package visibility, not a permission), which Android 11+ requires for text-to-speech.
 - Checks: `:app:testDebugUnitTest` 82 tests, 0 failures; `:app:assembleDebug`. No device run.

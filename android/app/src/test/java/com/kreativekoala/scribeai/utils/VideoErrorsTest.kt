@@ -62,6 +62,15 @@ class VideoErrorsTest {
         assertNull(f.serverMessage)
     }
 
+    /** The server holds the request open instead of answering "still writing" unless the app says it can show that. */
+    @Test fun theVideoRequestSaysItCanShowStillWriting() {
+        val viewModel = java.io.File("src/main/java/com/kreativekoala/scribeai/viewmodel/NoteViewModel.kt").readText()
+        val request = viewModel.substringAfter("/api/uploads/video-url\")").substringBefore(".build()")
+        assertTrue(request.contains(".addHeader(VideoErrors.ACCEPTS_PENDING_HEADER, \"1\")"))
+        val server = java.io.File("../../ai-notetaker-backend/src/utils/holdOpen.js").readText()
+        assertTrue(server.contains("'${VideoErrors.ACCEPTS_PENDING_HEADER}'"))
+    }
+
     @Test fun noAnswerIsToldApart() {
         assertEquals("timeout", VideoErrors.fromException(SocketTimeoutException("timeout")).code)
         assertEquals("no_connection", VideoErrors.fromException(UnknownHostException("x")).code)

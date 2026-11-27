@@ -11,6 +11,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { logger } = require('../utils/logger');
 const { reportFailure } = require('../utils/failureReporter');
 const { documentFailureContext } = require('../utils/documentFailure');
+const { answerWhenDone, showsPendingAsFailure } = require('../utils/holdOpen');
 const { featureDailyCap, admitFeature } = require('../middleware/freeTierLimits');
 const { v4: uuidv4 } = require('uuid');
 
@@ -421,6 +422,9 @@ router.post('/pdf', featureDailyCap('upload'), upload.single('file'), asyncHandl
   });
 }));
 
+// Longer than a transcript job can run (a 20 minute video takes about 7 minutes).
+const HOLD_BUDGET_MS = 15 * 60_000;
+
 // Asking again while this user's transcript is still being written does not spend the daily upload allowance.
 const videoCap = featureDailyCap('upload');
 function capUnlessGenerating(req, res, next) {
@@ -444,6 +448,10 @@ router.post('/video-url', capUnlessGenerating, validate('processVideoUrl'), asyn
     result = await youtubeTranscriptService.processVideoUrl(req.userId, url, title);
   } catch (error) {
     if (error.publicCode !== 'TRANSCRIPT_PENDING') throw error;
+    // Released Android apps would call this a failure: hold their request until the job on this machine ends.
+    if (showsPendingAsFailure(req) && youtubeTranscriptService.isGenerating?.(req.userId, url)) {
+      return answerWhenDone(res, () => youtubeTranscriptService.processVideoUrl(req.userId, url, title, { budgetMs: HOLD_BUDGET_MS }));
+    }
     // Not a failure: the transcript is still being written and the note is saved when it is done.
     res.locals.outcome = 'pending';
     res.set('Retry-After', '60');

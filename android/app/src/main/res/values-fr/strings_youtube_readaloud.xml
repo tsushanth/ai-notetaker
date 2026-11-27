@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Impossible de lire ce lien. Vérifiez qu\'il s\'agit d\'un lien vers une vidéo YouTube, puis réessayez.</string>
+    <string name="youtube_pending_title">Transcription en cours d\'écriture</string>
+    <string name="readaloud_phone_non_english">Cette note n\'est pas en anglais : c\'est la voix de votre téléphone qui la lit.</string>
+    <string name="readaloud_phone_offline">Vous êtes hors connexion : c\'est la voix de votre téléphone qui lit cette note.</string>
+    <string name="readaloud_phone_no_voice">Votre téléphone n\'a pas de voix pour cette langue. Vous pouvez en ajouter une dans les paramètres de synthèse vocale.</string>
+    <string name="readaloud_phone_failed">La voix de votre téléphone n\'a pas pu lire cette note. Veuillez réessayer.</string>
+</resources>

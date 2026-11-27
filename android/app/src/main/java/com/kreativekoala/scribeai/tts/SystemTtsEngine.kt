@@ -135,6 +135,34 @@ class SystemTtsEngine(private val context: Context) : TtsEngine {
         _state.value = TtsState.Ready
     }
 
+    override suspend fun speakIn(text: String, locale: Locale, online: Boolean): PhoneVoiceStart {
+        prepare()
+        val engine = tts?.takeIf { prepared } ?: return PhoneVoiceStart.NO_ENGINE
+        // Some engines throw instead of returning an empty voice list.
+        val installed = runCatching {
+            engine.voices.orEmpty().filter {
+                it.locale.language == locale.language &&
+                    !it.features.orEmpty().contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED)
+            }
+        }.getOrDefault(emptyList())
+        val voice = installed
+            .filter { online || !it.isNetworkConnectionRequired }
+            .sortedWith(
+                compareBy<Voice> { it.isNetworkConnectionRequired }
+                    .thenByDescending { it.locale.country == Locale.getDefault().country }
+                    .thenByDescending { it.quality }
+                    .thenBy { it.name }
+            )
+            .firstOrNull()
+        if (voice != null) {
+            engine.voice = voice
+        } else if (engine.setLanguage(locale) < TextToSpeech.LANG_AVAILABLE) {
+            return PhoneVoiceStart.NO_VOICE
+        }
+        speak(text)
+        return PhoneVoiceStart.STARTED
+    }
+
     override suspend fun speakSegments(segments: List<TtsSegment>, speed: Float) {
         prepare()
         val engine = tts ?: run {

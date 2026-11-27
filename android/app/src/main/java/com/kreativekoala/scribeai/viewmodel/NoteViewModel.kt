@@ -9,11 +9,14 @@ import com.kreativekoala.scribeai.data.local.toNote
 import com.kreativekoala.scribeai.data.models.*
 import com.kreativekoala.scribeai.data.repository.NoteRepository
 import com.kreativekoala.scribeai.data.repository.NotesNotFoundException
+import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.ErrorReportingService
 import com.kreativekoala.scribeai.utils.FreeTierErrors
 import com.kreativekoala.scribeai.utils.SubscriptionManager
 import com.kreativekoala.scribeai.utils.TutorialContent
 import com.kreativekoala.scribeai.utils.UserIdHelper
+import com.kreativekoala.scribeai.utils.VideoErrors
+import com.kreativekoala.scribeai.utils.VideoFailure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -463,7 +466,7 @@ class NoteViewModel(
         token: String,
         url: String,
         onSuccess: () -> Unit,
-        onError: (String) -> Unit
+        onError: (VideoFailure) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -476,8 +479,10 @@ class NoteViewModel(
                 // Validate token format
                 val tokenParts = cleanToken.split(".")
                 if (tokenParts.size != 3) {
+                    val failure = VideoFailure("invalid_token", textRes = R.string.error_invalid_token)
+                    AnalyticsService.trackYoutubeResult(failure)
                     withContext(Dispatchers.Main) {
-                        onError(AppStrings.get(R.string.error_invalid_token))
+                        onError(failure)
                     }
                     return@launch
                 }
@@ -505,21 +510,17 @@ class NoteViewModel(
                 Log.d(TAG, "Response code: ${response.code}")
 
                 if (!response.isSuccessful) {
-                    val errorMessage = try {
-                        val errorJson = JSONObject(responseBody ?: "{}")
-                        errorJson.optString("error", AppStrings.get(R.string.error_video_process))
-                    } catch (e: Exception) {
-                        AppStrings.get(R.string.error_video_process_code, response.code)
-                    }
-
-                    Log.e(TAG, "Request failed: $errorMessage")
+                    val failure = VideoErrors.fromResponse(response.code, responseBody)
+                    Log.e(TAG, "Request failed: ${response.code} ${failure.code}")
+                    AnalyticsService.trackYoutubeResult(failure)
                     withContext(Dispatchers.Main) {
-                        onError(errorMessage)
+                        onError(failure)
                     }
                     return@launch
                 }
 
                 Log.d(TAG, "✅ Video processed successfully")
+                AnalyticsService.trackYoutubeResult(null)
                 withContext(Dispatchers.Main) {
                     onSuccess()
                     loadNotes(token)
@@ -528,8 +529,10 @@ class NoteViewModel(
             } catch (e: Exception) {
                 Log.e(TAG, "Error processing video", e)
                 ErrorReportingService.reportError(ErrorReportingService.UserFlow.YOUTUBE_LINK, e)
+                val failure = VideoErrors.fromException(e)
+                AnalyticsService.trackYoutubeResult(failure)
                 withContext(Dispatchers.Main) {
-                    onError(e.message ?: AppStrings.get(R.string.error_unknown_occurred))
+                    onError(failure)
                 }
             }
         }

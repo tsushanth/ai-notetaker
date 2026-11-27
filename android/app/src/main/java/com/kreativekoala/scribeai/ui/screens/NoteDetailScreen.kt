@@ -28,6 +28,13 @@ import com.kreativekoala.scribeai.R
 import com.kreativekoala.scribeai.data.models.Note
 import com.kreativekoala.scribeai.data.models.CreateNoteRequest
 import com.kreativekoala.scribeai.ui.components.FormattedNoteView
+import com.kreativekoala.scribeai.tts.NoteLanguage
+import com.kreativekoala.scribeai.tts.PhoneVoice
+import com.kreativekoala.scribeai.tts.PhoneVoicePanel
+import com.kreativekoala.scribeai.tts.PhoneVoiceStart
+import com.kreativekoala.scribeai.tts.ReadAloudManager
+import com.kreativekoala.scribeai.tts.TtsState
+import com.kreativekoala.scribeai.tts.rememberIsOnline
 import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
@@ -749,6 +756,19 @@ fun NotesTab(
         currentNote.content
     }
 
+    // Read Aloud: the server voices speak English only, so other languages (and offline) use the phone's voice.
+    val readAloudContext = LocalContext.current
+    val online = rememberIsOnline()
+    val noteLanguage = remember(currentNote.id, displayContent) {
+        NoteLanguage.nonEnglish(displayContent, currentNote.metadata?.get("transcript_language") as? String)
+    }
+    var phoneVoiceProblem by remember(currentNote.id) { mutableStateOf<PhoneVoiceStart?>(null) }
+    val phoneEngine = remember { ReadAloudManager.get(readAloudContext.applicationContext).engine }
+    val phoneEngineState by phoneEngine.state.collectAsState()
+    DisposableEffect(currentNote.id) {
+        onDispose { phoneEngine.stop() }
+    }
+
     // Debug logging
     LaunchedEffect(currentNote.id) {
         android.util.Log.d("NotesTab", "Note: ${currentNote.id}")
@@ -978,6 +998,30 @@ fun NotesTab(
             ReadAloudSection(
                 showReadAloud = showReadAloud,
                 onToggle = { showReadAloud = !showReadAloud },
+                phoneVoice = PhoneVoice.reason(
+                    online, noteLanguage,
+                    hasPlayer = ttsMediaPlayer != null,
+                    speaking = phoneEngineState is TtsState.Speaking
+                )?.let { reason ->
+                    val panel: @Composable (@Composable () -> Unit) -> Unit = { serverFallback ->
+                        PhoneVoicePanel(
+                            text = displayContent,
+                            noteLanguage = noteLanguage,
+                            reason = reason,
+                            online = online,
+                            problem = phoneVoiceProblem,
+                            onProblem = { phoneVoiceProblem = it },
+                            onStartReading = {
+                                if (isTtsPlaying) {
+                                    ttsMediaPlayer?.pause()
+                                    isTtsPlaying = false
+                                }
+                            },
+                            serverFallback = serverFallback
+                        )
+                    }
+                    panel
+                },
                 ttsState = ttsState,
                 selectedVoice = selectedTtsVoice,
                 onVoiceSelected = { selectedTtsVoice = it },
@@ -1263,6 +1307,8 @@ private fun NoSummaryContent(onGenerateSummary: () -> Unit) {
 private fun ReadAloudSection(
     showReadAloud: Boolean,
     onToggle: () -> Unit,
+    /** Set when the phone's own voice is used; it gets the server player as a fallback to show if it cannot. */
+    phoneVoice: (@Composable (@Composable () -> Unit) -> Unit)?,
     ttsState: AIContentState,
     selectedVoice: String,
     onVoiceSelected: (String) -> Unit,
@@ -1342,125 +1388,128 @@ private fun ReadAloudSection(
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    when (ttsState) {
-                        is AIContentState.Loading -> {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Purple80)
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.ui_generating_audio), fontSize = 13.sp, color = TextSecondary)
+                    val serverVoice: @Composable () -> Unit = {
+                        when (ttsState) {
+                            is AIContentState.Loading -> {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Purple80)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(stringResource(R.string.ui_generating_audio), fontSize = 13.sp, color = TextSecondary)
+                                }
                             }
-                        }
-                        is AIContentState.Error -> {
-                            Text(
-                                (ttsState as AIContentState.Error).message,
-                                fontSize = 12.sp,
-                                color = AccentRed,
-                                modifier = Modifier.padding(bottom = 8.dp)
-                            )
-                            ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
-                        }
-                        is AIContentState.Success<*> -> {
-                            if (hasAudio) {
-                                // Audio player UI
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    // Progress slider
-                                    val sliderPosition = if (duration > 0) currentPosition.toFloat() / duration else 0f
-                                    Column {
-                                        Slider(
-                                            value = sliderPosition,
-                                            onValueChange = { fraction ->
-                                                mediaPlayer?.seekTo((fraction * duration).toInt())
-                                            },
-                                            colors = SliderDefaults.colors(thumbColor = Purple80, activeTrackColor = Purple80),
-                                            modifier = Modifier.fillMaxWidth()
-                                        )
-                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                            Text(formatTTSTime(currentPosition), fontSize = 10.sp, color = TextSecondary)
-                                            Text("-${formatTTSTime(maxOf(0, duration - currentPosition))}", fontSize = 10.sp, color = TextSecondary)
-                                        }
-                                    }
-
-                                    // Playback controls
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // Skip backward 10s
-                                        IconButton(onClick = { onSkip(-10) }) {
-                                            Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.ui_skip_back_10s), tint = TextPrimary, modifier = Modifier.size(28.dp))
-                                        }
-                                        Spacer(Modifier.width(16.dp))
-                                        // Play/Pause
-                                        Box(
-                                            modifier = Modifier
-                                                .size(56.dp)
-                                                .background(Purple80, androidx.compose.foundation.shape.CircleShape)
-                                                .clickable(onClick = onPlayPause),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Icon(
-                                                if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                                contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.note_play),
-                                                tint = Color.White,
-                                                modifier = Modifier.size(28.dp)
+                            is AIContentState.Error -> {
+                                Text(
+                                    (ttsState as AIContentState.Error).message,
+                                    fontSize = 12.sp,
+                                    color = AccentRed,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                                ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
+                            }
+                            is AIContentState.Success<*> -> {
+                                if (hasAudio) {
+                                    // Audio player UI
+                                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                        // Progress slider
+                                        val sliderPosition = if (duration > 0) currentPosition.toFloat() / duration else 0f
+                                        Column {
+                                            Slider(
+                                                value = sliderPosition,
+                                                onValueChange = { fraction ->
+                                                    mediaPlayer?.seekTo((fraction * duration).toInt())
+                                                },
+                                                colors = SliderDefaults.colors(thumbColor = Purple80, activeTrackColor = Purple80),
+                                                modifier = Modifier.fillMaxWidth()
                                             )
+                                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                                Text(formatTTSTime(currentPosition), fontSize = 10.sp, color = TextSecondary)
+                                                Text("-${formatTTSTime(maxOf(0, duration - currentPosition))}", fontSize = 10.sp, color = TextSecondary)
+                                            }
                                         }
-                                        Spacer(Modifier.width(16.dp))
-                                        // Skip forward 10s
-                                        IconButton(onClick = { onSkip(10) }) {
-                                            Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.ui_skip_forward_10s), tint = TextPrimary, modifier = Modifier.size(28.dp))
-                                        }
-                                    }
 
-                                    // Speed and regenerate row
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // Speed button
-                                        Box {
-                                            TextButton(onClick = { showSpeedMenu = true }) {
-                                                Text(
-                                                    if (speed == 1.0f) "1x" else "${speed}x",
-                                                    fontSize = 12.sp,
-                                                    fontWeight = FontWeight.Medium,
-                                                    color = TextPrimary
+                                        // Playback controls
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Skip backward 10s
+                                            IconButton(onClick = { onSkip(-10) }) {
+                                                Icon(Icons.Default.Replay10, contentDescription = stringResource(R.string.ui_skip_back_10s), tint = TextPrimary, modifier = Modifier.size(28.dp))
+                                            }
+                                            Spacer(Modifier.width(16.dp))
+                                            // Play/Pause
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(56.dp)
+                                                    .background(Purple80, androidx.compose.foundation.shape.CircleShape)
+                                                    .clickable(onClick = onPlayPause),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                                    contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.note_play),
+                                                    tint = Color.White,
+                                                    modifier = Modifier.size(28.dp)
                                                 )
                                             }
-                                            DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }, modifier = Modifier.background(CardBackground)) {
-                                                speedOptions.forEach { s ->
-                                                    DropdownMenuItem(
-                                                        text = { Text("${s}x", color = if (speed == s) Purple80 else TextPrimary) },
-                                                        onClick = {
-                                                            onSpeedChange(s)
-                                                            showSpeedMenu = false
-                                                        }
-                                                    )
-                                                }
+                                            Spacer(Modifier.width(16.dp))
+                                            // Skip forward 10s
+                                            IconButton(onClick = { onSkip(10) }) {
+                                                Icon(Icons.Default.Forward10, contentDescription = stringResource(R.string.ui_skip_forward_10s), tint = TextPrimary, modifier = Modifier.size(28.dp))
                                             }
                                         }
-                                        Spacer(Modifier.weight(1f))
-                                        // Regenerate button
-                                        TextButton(onClick = onGenerateTTS) {
-                                            Icon(Icons.Default.Refresh, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
-                                            Spacer(Modifier.width(4.dp))
-                                            Text(stringResource(R.string.regenerate), fontSize = 11.sp, color = TextSecondary)
+
+                                        // Speed and regenerate row
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            // Speed button
+                                            Box {
+                                                TextButton(onClick = { showSpeedMenu = true }) {
+                                                    Text(
+                                                        if (speed == 1.0f) "1x" else "${speed}x",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        color = TextPrimary
+                                                    )
+                                                }
+                                                DropdownMenu(expanded = showSpeedMenu, onDismissRequest = { showSpeedMenu = false }, modifier = Modifier.background(CardBackground)) {
+                                                    speedOptions.forEach { s ->
+                                                        DropdownMenuItem(
+                                                            text = { Text("${s}x", color = if (speed == s) Purple80 else TextPrimary) },
+                                                            onClick = {
+                                                                onSpeedChange(s)
+                                                                showSpeedMenu = false
+                                                            }
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Spacer(Modifier.weight(1f))
+                                            // Regenerate button
+                                            TextButton(onClick = onGenerateTTS) {
+                                                Icon(Icons.Default.Refresh, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                                                Spacer(Modifier.width(4.dp))
+                                                Text(stringResource(R.string.regenerate), fontSize = 11.sp, color = TextSecondary)
+                                            }
                                         }
                                     }
+                                } else {
+                                    ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
                                 }
-                            } else {
+                            }
+                            else -> {
                                 ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
                             }
                         }
-                        else -> {
-                            ReadAloudGenerateSection(selectedVoice, onVoiceSelected, onGenerateTTS)
-                        }
                     }
+                    if (phoneVoice != null) phoneVoice(serverVoice) else serverVoice()
                 }
             }
         }

@@ -479,6 +479,20 @@ object AnalyticsService {
         track(Event.YOUTUBE_PROCESSED)
     }
 
+    /** How a YouTube link ended: null = the note was made. `youtube_processed` is logged earlier, on the tap. */
+    fun trackYoutubeResult(failure: VideoFailure?) {
+        trackEvent(
+            "youtube_result",
+            buildMap {
+                put("ok", failure == null)
+                failure?.let {
+                    put("code", it.code)
+                    it.status?.let { status -> put("status", status) }
+                }
+            },
+        )
+    }
+
     fun trackRecordingStarted() {
         track(Event.RECORDING_STARTED)
     }

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Không đọc được liên kết đó. Hãy kiểm tra xem đó có phải liên kết video YouTube không rồi thử lại.</string>
+    <string name="youtube_pending_title">Vẫn đang viết bản chép lời</string>
+    <string name="readaloud_phone_non_english">Ghi chú này không phải tiếng Anh nên giọng đọc của điện thoại sẽ đọc.</string>
+    <string name="readaloud_phone_offline">Bạn đang ngoại tuyến nên giọng đọc của điện thoại sẽ đọc ghi chú này.</string>
+    <string name="readaloud_phone_no_voice">Điện thoại của bạn không có giọng đọc cho ngôn ngữ này. Bạn có thể thêm trong cài đặt chuyển văn bản thành giọng nói.</string>
+    <string name="readaloud_phone_failed">Giọng đọc của điện thoại không đọc được ghi chú này. Vui lòng thử lại.</string>
+</resources>

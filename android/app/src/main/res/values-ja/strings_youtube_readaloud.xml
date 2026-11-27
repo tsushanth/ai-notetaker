@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">このリンクを読み取れませんでした。YouTube動画のリンクか確認して、もう一度お試しください。</string>
+    <string name="youtube_pending_title">文字起こしを作成中です</string>
+    <string name="readaloud_phone_non_english">このノートは英語ではないため、端末の音声で読み上げます。</string>
+    <string name="readaloud_phone_offline">オフラインのため、このノートは端末の音声で読み上げます。</string>
+    <string name="readaloud_phone_no_voice">この言語の音声が端末にありません。端末のテキスト読み上げ設定で追加できます。</string>
+    <string name="readaloud_phone_failed">端末の音声でこのノートを読み上げられませんでした。もう一度お試しください。</string>
+</resources>

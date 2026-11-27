@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">링크를 읽을 수 없습니다. YouTube 동영상 링크인지 확인한 후 다시 시도하세요.</string>
+    <string name="youtube_pending_title">아직 스크립트를 작성 중입니다</string>
+    <string name="readaloud_phone_non_english">이 노트는 영어가 아니어서 휴대전화 음성으로 읽습니다.</string>
+    <string name="readaloud_phone_offline">오프라인 상태여서 이 노트는 휴대전화 음성으로 읽습니다.</string>
+    <string name="readaloud_phone_no_voice">휴대전화에 이 언어의 음성이 없습니다. 휴대전화의 텍스트 음성 변환 설정에서 추가할 수 있습니다.</string>
+    <string name="readaloud_phone_failed">휴대전화 음성으로 이 노트를 읽지 못했습니다. 다시 시도하세요.</string>
+</resources>

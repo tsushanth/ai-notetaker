@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Linkkiä ei voitu lukea. Tarkista, että se on YouTube-videon linkki, ja yritä uudelleen.</string>
+    <string name="youtube_pending_title">Litterointia kirjoitetaan vielä</string>
+    <string name="readaloud_phone_non_english">Tämä muistiinpano ei ole englanniksi, joten puhelimesi ääni lukee sen.</string>
+    <string name="readaloud_phone_offline">Olet offline-tilassa, joten puhelimesi ääni lukee tämän muistiinpanon.</string>
+    <string name="readaloud_phone_no_voice">Puhelimessasi ei ole ääntä tälle kielelle. Voit lisätä sellaisen puhelimen puhesynteesiasetuksissa.</string>
+    <string name="readaloud_phone_failed">Puhelimen ääni ei pystynyt lukemaan muistiinpanoa. Yritä uudelleen.</string>
+</resources>

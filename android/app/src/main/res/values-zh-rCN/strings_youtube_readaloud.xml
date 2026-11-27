@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">无法读取该链接。请确认它是 YouTube 视频链接，然后重试。</string>
+    <string name="youtube_pending_title">仍在生成文字稿</string>
+    <string name="readaloud_phone_non_english">这条笔记不是英文，因此由手机自带语音朗读。</string>
+    <string name="readaloud_phone_offline">你当前处于离线状态，因此由手机自带语音朗读这条笔记。</string>
+    <string name="readaloud_phone_no_voice">手机没有这种语言的语音。你可以在手机的文字转语音设置中添加。</string>
+    <string name="readaloud_phone_failed">手机语音无法朗读这条笔记。请重试。</string>
+</resources>

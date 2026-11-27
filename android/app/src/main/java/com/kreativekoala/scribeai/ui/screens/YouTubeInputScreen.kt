@@ -28,6 +28,7 @@ import com.kreativekoala.scribeai.ui.theme.*
 import com.kreativekoala.scribeai.utils.AnalyticsService
 import com.kreativekoala.scribeai.utils.AuthManager
 import com.kreativekoala.scribeai.utils.SubscriptionManager
+import com.kreativekoala.scribeai.utils.VideoFailure
 import com.kreativekoala.scribeai.viewmodel.NoteViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -53,6 +54,8 @@ fun YouTubeInputScreen(
     var processingSteps by remember { mutableStateOf(createYouTubeProcessingSteps(context)) }
     var currentStepIndex by remember { mutableIntStateOf(0) }
     var uploadComplete by remember { mutableStateOf(false) }
+    // The last "error" is the server saying it is still writing the transcript.
+    var pending by remember { mutableStateOf(false) }
 
     val authToken by authManager.authToken.collectAsState()
 
@@ -121,12 +124,16 @@ fun YouTubeInputScreen(
                             }
                         },
                         onGenerateNotes = {
+                            pending = false
                             if (youtubeUrl.isBlank()) {
                                 processingState = ProcessingState.Error("Please enter a YouTube URL")
                                 return@YouTubeInputContent
                             }
 
                             if (!isValidYouTubeUrl(youtubeUrl)) {
+                                AnalyticsService.trackYoutubeResult(
+                                    VideoFailure("refused_in_app", textRes = R.string.error_youtube_link)
+                                )
                                 processingState = ProcessingState.Error(
                                     "Please enter a valid YouTube URL.\n\n" +
                                     "Supported formats:\n" +
@@ -196,28 +203,13 @@ fun YouTubeInputScreen(
                                             AnalyticsService.trackNoteCreated("youtube")
                                         }
                                     },
-                                    onError = { error ->
-                                        val errorMessage = when {
-                                            error.contains("No transcript available") ||
-                                            error.contains("captions") ||
-                                            error.contains("subtitles") -> {
-                                                "This video doesn't have captions/subtitles available.\n\nPlease try a different video with captions enabled."
-                                            }
-                                            error.contains("401") || error.contains("Unauthorized") -> {
-                                                "Session expired.\n\nPlease log in again."
-                                            }
-                                            error.contains("private") || error.contains("unavailable") -> {
-                                                "This video is private or unavailable.\n\nPlease check the URL and try again."
-                                            }
-                                            error.contains("timeout") || error.contains("timed out") -> {
-                                                "Request timed out.\n\nThe video might be too long. Please try a shorter video."
-                                            }
-                                            else -> {
-                                                "Failed to process video.\n\nPlease try again."
-                                            }
+                                    onError = { failure ->
+                                        val message = failure.message { id, args -> context.getString(id, *args) }
+                                        processingState = ProcessingState.Error(message)
+                                        pending = failure.isPending
+                                        if (!failure.isPending) {
+                                            AnalyticsService.trackProcessingError("youtube", failure.serverMessage ?: failure.code)
                                         }
-                                        processingState = ProcessingState.Error(errorMessage)
-                                        AnalyticsService.trackProcessingError("youtube", error)
                                     }
                                 )
                             }
@@ -247,6 +239,9 @@ fun YouTubeInputScreen(
                 is ProcessingState.Error -> {
                     ProcessingErrorView(
                         message = state.message,
+                        title = stringResource(
+                            if (pending) R.string.youtube_pending_title else R.string.something_went_wrong
+                        ),
                         onRetry = {
                             processingState = ProcessingState.Idle
                             processingSteps = createYouTubeProcessingSteps(context)
@@ -462,7 +457,8 @@ fun isValidYouTubeUrl(url: String): Boolean {
         "youtu.be/",
         "youtube.com/embed/",
         "youtube.com/v/",
-        "youtube.com/shorts/"
+        "youtube.com/shorts/",
+        "youtube.com/live/"
     )
     return youtubePatterns.any { url.contains(it, ignoreCase = true) }
 }

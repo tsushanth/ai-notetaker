@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Não foi possível ler esse link. Verifique se é um link de vídeo do YouTube e tente de novo.</string>
+    <string name="youtube_pending_title">A transcrição ainda está sendo escrita</string>
+    <string name="readaloud_phone_non_english">Esta nota não está em inglês, por isso a voz do seu celular faz a leitura.</string>
+    <string name="readaloud_phone_offline">Você está offline, por isso a voz do seu celular lê esta nota.</string>
+    <string name="readaloud_phone_no_voice">Seu celular não tem voz para este idioma. Você pode adicionar uma nas configurações de conversão de texto em voz.</string>
+    <string name="readaloud_phone_failed">A voz do seu celular não conseguiu ler esta nota. Tente de novo.</string>
+</resources>

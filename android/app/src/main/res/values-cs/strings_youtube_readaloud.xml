@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Tento odkaz se nepodařilo přečíst. Zkontrolujte, že jde o odkaz na video na YouTube, a zkuste to znovu.</string>
+    <string name="youtube_pending_title">Přepis se stále vytváří</string>
+    <string name="readaloud_phone_non_english">Tato poznámka není v angličtině, proto ji čte hlas vašeho telefonu.</string>
+    <string name="readaloud_phone_offline">Jste offline, proto tuto poznámku čte hlas vašeho telefonu.</string>
+    <string name="readaloud_phone_no_voice">V telefonu není hlas pro tento jazyk. Můžete ho přidat v nastavení převodu textu na řeč.</string>
+    <string name="readaloud_phone_failed">Hlas telefonu nedokázal tuto poznámku přečíst. Zkuste to znovu.</string>
+</resources>

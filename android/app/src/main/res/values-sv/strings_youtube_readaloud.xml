@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- YouTube link errors and Read Aloud with the phone's own voice. -->
+<resources>
+    <string name="error_youtube_link">Länken kunde inte läsas. Kontrollera att det är en länk till en YouTube-video och försök igen.</string>
+    <string name="youtube_pending_title">Transkriptionen skrivs fortfarande</string>
+    <string name="readaloud_phone_non_english">Anteckningen är inte på engelska, så telefonens egen röst läser upp den.</string>
+    <string name="readaloud_phone_offline">Du är offline, så telefonens egen röst läser upp anteckningen.</string>
+    <string name="readaloud_phone_no_voice">Telefonen har ingen röst för det här språket. Du kan lägga till en i inställningarna för text till tal.</string>
+    <string name="readaloud_phone_failed">Telefonens röst kunde inte läsa upp anteckningen. Försök igen.</string>
+</resources>

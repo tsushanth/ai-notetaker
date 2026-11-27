@@ -32,6 +32,12 @@ interface TtsEngine {
     suspend fun speak(text: String, voiceId: String? = null, speed: Float = 1.0f)
 
     /**
+     * Speak [text] with a voice of [locale]'s language. [online] allows a voice that needs the network when the
+     * phone has none of its own.
+     */
+    suspend fun speakIn(text: String, locale: java.util.Locale, online: Boolean): PhoneVoiceStart
+
+    /**
      * Speak a sequence of (voice, text) segments back-to-back, switching voice
      * between segments. Used for multi-host content like Audexa Daily Brief
      * (Host 1 / Host 2 alternation) and ScribeAI podcasts. Default fallback is
